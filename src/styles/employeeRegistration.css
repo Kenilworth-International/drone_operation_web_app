@@ -446,6 +446,7 @@
     transform: translateY(-10px) scaleY(0.95);
     max-height: 0;
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scaleY(1);
@@ -682,4 +683,3 @@
   color: #64748b;
   font-size: 12px;
 }
-

@@ -325,22 +325,22 @@
   box-sizing: border-box;
 }
 
-.vehicle-admin-stats-grid-transport-hr > :nth-child(1) {
+.vehicle-admin-stats-grid-transport-hr> :nth-child(1) {
   background: #eaf3ff;
   border-color: #cfe0f8;
 }
 
-.vehicle-admin-stats-grid-transport-hr > :nth-child(2) {
+.vehicle-admin-stats-grid-transport-hr> :nth-child(2) {
   background: #fff7dc;
   border-color: #f0e0a3;
 }
 
-.vehicle-admin-stats-grid-transport-hr > :nth-child(3) {
+.vehicle-admin-stats-grid-transport-hr> :nth-child(3) {
   background: #eafaf2;
   border-color: #c7ecd8;
 }
 
-.vehicle-admin-stats-grid-transport-hr > :nth-child(4) {
+.vehicle-admin-stats-grid-transport-hr> :nth-child(4) {
   background: #f3efff;
   border-color: #ddd0ff;
 }
@@ -544,9 +544,9 @@
   overflow: hidden;
 }
 
-.details-table-panel-body-transport-hr > .quick-add-modal-hint-transport-hr,
-.details-table-panel-body-transport-hr > .assign-vehicle-toolbar-transport-hr,
-.details-table-panel-body-transport-hr > .pilot-assignment-teams-loading-pilotsassign {
+.details-table-panel-body-transport-hr>.quick-add-modal-hint-transport-hr,
+.details-table-panel-body-transport-hr>.assign-vehicle-toolbar-transport-hr,
+.details-table-panel-body-transport-hr>.pilot-assignment-teams-loading-pilotsassign {
   flex-shrink: 0;
 }
 
@@ -998,7 +998,7 @@
   color: #64748b;
 }
 
-.fuel-prices-modal-body-transport-hr .fuel-type-row-grid > div > span:last-child {
+.fuel-prices-modal-body-transport-hr .fuel-type-row-grid>div>span:last-child {
   color: #0f172a;
 }
 
@@ -1268,7 +1268,7 @@
   gap: 10px;
 }
 
-.km-chart-stats-transport-hr > div {
+.km-chart-stats-transport-hr>div {
   border: 1px solid #e4edf4;
   border-radius: 12px;
   background: #fbfdff;
@@ -1315,6 +1315,7 @@
     opacity: 0;
     transform: translateY(6px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -1399,7 +1400,7 @@
   margin-bottom: 12px;
 }
 
-.pool-request-grid-transport-hr > label {
+.pool-request-grid-transport-hr>label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1407,11 +1408,11 @@
   color: #475569;
 }
 
-.pool-request-grid-transport-hr > label.pool-passenger-field-transport-hr {
+.pool-request-grid-transport-hr>label.pool-passenger-field-transport-hr {
   gap: 6px;
 }
 
-.pool-request-grid-transport-hr > label.pool-request-category-field-transport-hr {
+.pool-request-grid-transport-hr>label.pool-request-category-field-transport-hr {
   min-width: 0;
 }
 
@@ -1422,7 +1423,7 @@
   gap: 10px 16px;
 }
 
-.pool-request-category-dept-row-transport-hr > label {
+.pool-request-category-dept-row-transport-hr>label {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1447,7 +1448,7 @@
   padding-right: 2rem;
 }
 
-.pool-request-grid-transport-hr > label.pool-datetime-label-transport-hr {
+.pool-request-grid-transport-hr>label.pool-datetime-label-transport-hr {
   cursor: pointer;
 }
 
@@ -1573,6 +1574,17 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+/* Force modal cards to center in the viewport even when ancestor transforms exist */
+.pool-assign-card-transport-hr,
+.pool-request-modal-card-transport-hr {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 1201 !important;
+  margin: 0 !important;
 }
 
 .pool-assign-card-transport-hr h4 {

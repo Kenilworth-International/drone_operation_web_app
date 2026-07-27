@@ -528,12 +528,62 @@
   color: rgba(225, 238, 255, 0.9) !important;
 }
 
-.ictumx-register-modal-form .employee-estate-like-suggestions-user-reg-ict,
 .ictumx-register-modal-form .employee-suggestion-panel-user-reg-ict {
   background:
     linear-gradient(145deg, rgba(8, 21, 38, 0.95), rgba(12, 28, 49, 0.92)) !important;
   border: 1px solid rgba(188, 220, 255, 0.32) !important;
   box-shadow: 0 12px 28px rgba(2, 8, 22, 0.4) !important;
+}
+
+/* Portal dropdown container (rendered at body level) */
+.employee-estate-like-suggestions-portal-user-reg-ict {
+  pointer-events: auto;
+}
+
+/* Theme overrides for portal-rendered suggestions (keeps dark ICT styling when rendered at body) */
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-suggestion-panel-user-reg-ict {
+  background: linear-gradient(145deg, rgba(8, 21, 38, 0.95), rgba(12, 28, 49, 0.92)) !important;
+  border: 1px solid rgba(188, 220, 255, 0.32) !important;
+  box-shadow: 0 12px 28px rgba(2, 8, 22, 0.4) !important;
+  color: #f4f9ff !important;
+  border-radius: 6px !important;
+}
+
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-estate-like-item-user-reg-ict,
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-suggestion-item-user-reg-ict {
+  background: transparent !important;
+  color: #f4f9ff !important;
+  border-bottom: 1px solid rgba(188, 220, 255, 0.12) !important;
+}
+
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-estate-like-item-user-reg-ict:hover,
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-suggestion-item-user-reg-ict:hover {
+  background: rgba(125, 196, 255, 0.14) !important;
+}
+
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-estate-like-title-user-reg-ict {
+  color: #ffffff !important;
+}
+
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-estate-like-meta-user-reg-ict,
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-estate-like-empty-user-reg-ict,
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-suggestion-meta-user-reg-ict,
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-suggestion-info-user-reg-ict {
+  color: rgba(198, 218, 245, 0.82) !important;
+}
+
+/* Ensure the portal-rendered suggestions are visible (in case display was overridden) */
+.employee-estate-like-suggestions-portal-user-reg-ict .employee-estate-like-suggestions-user-reg-ict {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Hide the original inline suggestions rendered inside the input wrapper
+   so that only the portal dropdown appears and avoids modal clipping. */
+.employee-estate-like-wrapper-user-reg-ict>.employee-estate-like-suggestions-user-reg-ict {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
 
 .ictumx-register-modal-form .employee-estate-like-item-user-reg-ict,
@@ -559,8 +609,31 @@
   color: rgba(198, 218, 245, 0.82) !important;
 }
 
+/* Allow the employee suggestion dropdown to escape the modal's scrolling container
+   so its absolutely positioned list is not clipped. Keep z-index high for visibility. */
+.ictumx-register-modal-form {
+  overflow: visible !important;
+}
+
 .ictumx-register-modal-form .employee-estate-like-indicator-user-reg-ict {
   color: rgba(175, 220, 255, 0.9) !important;
+}
+
+.employee-estate-like-suggestions-user-reg-ict {
+  position: absolute !important;
+  top: calc(100% + 4px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 12000 !important;
+  max-height: 320px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  border-radius: 6px !important;
+  box-shadow: 0 12px 28px rgba(2, 8, 22, 0.4) !important;
+  /* Force dark themed background and readable text even if inline styles apply */
+  background: linear-gradient(145deg, rgba(8, 21, 38, 0.95), rgba(12, 28, 49, 0.92)) !important;
+  border: 1px solid rgba(188, 220, 255, 0.32) !important;
+  color: #f4f9ff !important;
 }
 
 .ictumx-register-modal-form .vehicle-profile-gallery-card {
