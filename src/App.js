@@ -20,6 +20,7 @@ import WorkSummaryPage from './sections/finance/reports/WorkSummaryPage';
 import DayEndProcess from './sections/opsroom/dayend/DayEndProcess';
 import Earnings from './sections/finance/PilotEarnings/Earnings';
 import DayEndProcessAsc from './sections/opsroom/dayend/DayEndProcessAsc';
+import PlanCustomization from './sections/opsroom/dayend/PlanCustomization';
 // import ManagerRescheduler from './features/misc/ManagerRescheduler';
 import Missions from './features/misc/Missions';
 import BookingList from './sections/management/bookings/BookingList';
@@ -440,6 +441,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DayEndProcessAsc />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="planCustomization"
+            element={
+              <ProtectedRoute>
+                <PlanCustomization />
               </ProtectedRoute>
             }
           />

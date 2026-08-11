@@ -24,6 +24,8 @@ import {
   FaChartBar,
   FaRulerCombined,
   FaBolt,
+  FaCogs,
+  FaHome,
 } from 'react-icons/fa';
 import {
   useGetMissionsPendingPaymentQuery,
@@ -581,6 +583,13 @@ const WorkflowDashboard = () => {
       path: '/home/fieldSizeAdjustments',
       icon: FaRulerCombined,
       featureCode: FEATURE_CODES.WORKFLOW_QUICK_FIELD_SIZE_ADJUSTMENTS,
+    },
+    {
+      label: 'Plan Customization',
+      description: 'Customize plans',
+      path: '/home/planCustomization',
+      icon: FaCogs,
+      featureCode: FEATURE_CODES.WORKFLOW_QUICK_PLAN_CUSTOMIZATION,
     },
   ];
 
