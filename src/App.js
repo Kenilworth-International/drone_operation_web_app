@@ -8,6 +8,7 @@ import CreateBookings from './sections/management/bookings/CreateBookings';
 import Dashboard from './features/dashboard/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ApiDocsPage from './pages/ApiDocsPage';
 import ProceedPlan from './features/misc/ProceedPlan';
 import TeamAllocation from './features/misc/teamAllocation';
 import NonpTeamAllocation from './features/nonp/nonpTeamAllocation';
@@ -146,6 +147,14 @@ function App() {
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route
+          path="/docs"
+          element={
+            <ProtectedRoute>
+              <ApiDocsPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Wrap protected routes with ProtectedRoute */}
         <Route

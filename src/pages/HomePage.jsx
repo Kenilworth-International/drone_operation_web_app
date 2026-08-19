@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import TopNavBar from '../components/TopNavBar';
 import LeftNavBar from '../components/LeftNavBar';
 import CombChrome from '../components/CombChrome';
@@ -123,6 +123,10 @@ const HomePage = () => {
       </div>
       <div className="build-info-footer" title={buildLabel}>
         Build: {buildLabel}
+        {' · '}
+        <Link to="/docs" className="build-info-footer__docs-link">
+          API Docs
+        </Link>
       </div>
     </div>
   );

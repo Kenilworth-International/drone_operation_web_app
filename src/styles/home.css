@@ -310,11 +310,21 @@
   line-height: 1.3;
   padding: 4px 8px;
   border-radius: 6px;
-  pointer-events: none;
+  pointer-events: auto;
   max-width: calc(100vw - 24px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.build-info-footer__docs-link {
+  color: #93c5fd;
+  text-decoration: none;
+}
+
+.build-info-footer__docs-link:hover {
+  color: #bfdbfe;
+  text-decoration: underline;
 }
 
 @media (max-width: 768px) {
