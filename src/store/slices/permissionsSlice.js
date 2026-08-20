@@ -16,6 +16,8 @@ const createDefaultState = () => ({
     'Human Resource Management': ['md', 'mgr', 'dops'],
     'Administration Wing': ['md', 'mgr', 'dops'],
     'ICT Wing': ['md', 'dops'],
+    'Fleet Management Wing': ['md', 'mgr', 'dops'],
+    'Sales and Marketing Wing': ['md', 'mgr', 'dops'],
   },
   roles: ALL_ROLES,
 });

@@ -71,6 +71,8 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
       'Human Resource Management': true,
       'Administration Wing': true,
       'ICT Wing': true,
+      'Fleet Management Wing': true,
+      'Sales and Marketing Wing': true,
     };
   });
   const [expandedSubItems, setExpandedSubItems] = useState(() => {

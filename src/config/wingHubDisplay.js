@@ -114,6 +114,16 @@ export const WING_HUB_META = {
     label: 'GEO Spatial Technology Wing',
     color: '#5a2622',
   },
+  'Fleet Management Wing': {
+    abbr: 'FLMW',
+    label: 'Fleet Management Wing',
+    color: '#1e4d8c',
+  },
+  'Sales and Marketing Wing': {
+    abbr: 'SMW',
+    label: 'Sales and Marketing Wing',
+    color: '#9a3412',
+  },
 };
 
 /**

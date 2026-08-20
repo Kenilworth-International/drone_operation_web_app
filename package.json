@@ -64,7 +64,7 @@
   "scripts": {
     "copy:privacy-policies": "node scripts/copy-privacy-policies.js",
     "copy:redoc": "node scripts/copy-redoc-standalone.js",
-    "generate:api-docs": "node ../dsms_backend_dev/scripts/generate-openapi.js",
+    "generate:api-docs": "node scripts/generate-api-docs.js",
     "prepare:public": "npm run copy:privacy-policies && npm run copy:redoc && npm run generate:api-docs",
     "start": "npm run prepare:public && react-scripts start",
     "start:dev": "npm run prepare:public && cross-env REACT_APP_ENV=development GENERATE_SOURCEMAP=false react-scripts start",

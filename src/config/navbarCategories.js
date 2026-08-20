@@ -33,6 +33,7 @@ import {
   FaTachometerAlt,
   FaCloudSunRain,
   FaServer,
+  FaBullhorn,
 } from 'react-icons/fa';
 
 const navbarCategories = [
@@ -177,6 +178,16 @@ const navbarCategories = [
         pendingCountKey: 'fieldUnblock',
       },
     ],
+  },
+  {
+    title: 'Fleet Management Wing',
+    icon: FaTruck,
+    children: [],
+  },
+  {
+    title: 'Sales and Marketing Wing',
+    icon: FaBullhorn,
+    children: [],
   },
 ];
 

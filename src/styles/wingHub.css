@@ -394,6 +394,12 @@
   }
 }
 
+@media (min-width: 1680px) {
+  .wing-hub-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .wing-hub-card {
   position: relative;
   overflow: hidden;
