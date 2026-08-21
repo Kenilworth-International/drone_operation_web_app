@@ -26,18 +26,20 @@ const CanceledByPilots = () => {
   const [estateOptions, setEstateOptions] = useState([]);
   const [reasonOptions, setReasonOptions] = useState([]);
 
-  // Format date to YYYY-MM-DD for API
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-CA'); // Outputs YYYY-MM-DD
+    return date.toLocaleDateString('en-CA');
   };
 
-  // Format date for display (DD-MM-YYYY)
   const formatDisplayDate = (dateStr) => {
     const [year, month, day] = dateStr.split('-');
     return `${day}-${month}-${year}`;
   };
 
-  // Fetch data from API
+  const formatNum = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toFixed(2) : '0.00';
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -45,52 +47,50 @@ const CanceledByPilots = () => {
         startDate: formatDate(startDate),
         endDate: formatDate(endDate)
       }));
-      const response = result.data;
+      const plans = result.data || [];
 
-      // Handle API response safely
-      const plans = response || [];
-      
-      // Flatten tasks for table display
-      const flattenedData = plans.flatMap(plan => 
-        plan.tasks.map(task => {
-          // Calculate completion rate: if dji_field_area exists, calculate percentage
-          const completionRate = task.dji_field_area && task.area 
-            ? ((task.dji_field_area / task.area) * 100).toFixed(2)
-            : 0;
-          
-          // Determine type: 'x' = canceled, 'p' = partially completed (has dji_field_area with value)
-          const type = completionRate > 0 && completionRate < 100 ? 'p' : 'x';
-          
+      const flattenedData = plans.flatMap((plan) =>
+        (plan.tasks || []).map((task) => {
+          const fieldArea = Number(task.area) || 0;
+          // Pilot-reported completed extent from field_pilot_sub_tasks.fieldArea
+          const pilotFieldArea = Number(task.pilot_field_area) || 0;
+          const djiFieldArea = Number(task.dji_field_area) || 0;
+          const coveredArea = pilotFieldArea > 0 ? pilotFieldArea : djiFieldArea;
+          const completionRate =
+            fieldArea > 0 ? ((coveredArea / fieldArea) * 100).toFixed(2) : '0.00';
+          const type = task.type === 'p' ? 'p' : 'x';
+
           return {
             plan_id: plan.plan_id,
             date: plan.date,
             estate: plan.estate,
-            estate_area: plan.area.toFixed(2),
+            estate_area: formatNum(plan.area),
             task_id: task.task_id,
             pilot: task.pilot,
             field: task.field,
-            reason: task.reason,
-            area: task.area ? task.area.toFixed(2) : 0,
-            dji_field_area: task.dji_field_area ? task.dji_field_area.toFixed(2) : 0,
+            type,
+            reason: task.reason || '',
+            cancel_reason: task.cancel_reason || '',
+            partial_reason: task.partial_reason || '',
+            ops_reason: task.ops_reason || '',
+            area: formatNum(fieldArea),
+            pilot_field_area: formatNum(pilotFieldArea),
+            dji_field_area: formatNum(djiFieldArea),
             completion_rate: completionRate,
-            type: type
           };
         })
       );
 
       setData(flattenedData);
-
-      // Extract unique pilot names
-      const pilots = [...new Set(flattenedData.map(task => task.pilot))];
-      setPilotOptions(pilots);
-
-      // Extract unique estate names
-      const estates = [...new Set(flattenedData.map(task => task.estate))];
-      setEstateOptions(estates);
-
-      // Extract unique reasons
-      const reasons = [...new Set(flattenedData.map(task => task.reason))];
-      setReasonOptions(reasons);
+      setPilotOptions([...new Set(flattenedData.map((task) => task.pilot).filter(Boolean))]);
+      setEstateOptions([...new Set(flattenedData.map((task) => task.estate).filter(Boolean))]);
+      setReasonOptions([
+        ...new Set(
+          flattenedData
+            .flatMap((task) => [task.reason, task.cancel_reason, task.partial_reason, task.ops_reason])
+            .filter(Boolean)
+        ),
+      ]);
     } catch (error) {
       console.error("Error fetching data:", error);
       setData([]);
@@ -107,16 +107,18 @@ const CanceledByPilots = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
 
-  // Filter data based on selected pilot, estate, and reason
-  const filteredData = data.filter(task => 
+  const filteredData = data.filter((task) =>
     (!pilotFilter || task.pilot === pilotFilter) &&
     (!estateFilter || task.estate === estateFilter) &&
-    (!reasonFilter || task.reason === reasonFilter)
+    (!reasonFilter ||
+      task.reason === reasonFilter ||
+      task.cancel_reason === reasonFilter ||
+      task.partial_reason === reasonFilter ||
+      task.ops_reason === reasonFilter)
   );
 
-  // Download Excel function
   const downloadExcel = () => {
-    const worksheetData = filteredData.map(task => ({
+    const worksheetData = filteredData.map((task) => ({
       "Plan ID": task.plan_id,
       Date: formatDisplayDate(task.date),
       "Estate (Area)": `${task.estate} (${task.estate_area})`,
@@ -124,16 +126,18 @@ const CanceledByPilots = () => {
       Pilot: task.pilot,
       Field: task.field,
       Area: task.area,
+      "Pilot Field Area": task.pilot_field_area,
       "DJI Field Area": task.dji_field_area,
       "Completion Rate (%)": task.completion_rate,
       "Pilot Status": task.type === 'x' ? 'Canceled' : 'Partially Completed',
-      Reason: task.reason
+      "Cancel Reason": task.cancel_reason,
+      "Partial Reason": task.partial_reason,
+      "Ops Room Reason": task.ops_reason,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Canceled_Fields");
-    // Helper to format date as YYYY-MM-DD for filename
     const formatDateForFilename = (date) => {
       if (!date) return '';
       const d = new Date(date);
@@ -148,11 +152,9 @@ const CanceledByPilots = () => {
     XLSX.writeFile(workbook, `Canceled_Fields_Report_${estatePart}_${reasonPart}_${pilotPart}_${formatDateForFilename(startDate)}_to_${formatDateForFilename(endDate)}.xlsx`);
   };
 
-  // Download PDF function
   const downloadPDF = () => {
-    const doc = new jsPDF();
-    const title = "Canceled Fields Report";
-    // Helper to format date as YYYY-MM-DD for filename
+    const doc = new jsPDF({ orientation: 'landscape' });
+    const title = "Canceled / Partial by Pilots Report";
     const formatDateForFilename = (date) => {
       if (!date) return '';
       const d = new Date(date);
@@ -163,14 +165,12 @@ const CanceledByPilots = () => {
     };
     const dateRange = `${formatDisplayDate(formatDate(startDate))} to ${formatDisplayDate(formatDate(endDate))}`;
 
-    // Add title
     doc.setFontSize(16);
     doc.text(title, 14, 15);
     doc.setFontSize(10);
     doc.text(dateRange, 14, 22);
 
-    // Prepare table data
-    const tableData = filteredData.map(task => [
+    const tableData = filteredData.map((task) => [
       task.plan_id,
       formatDisplayDate(task.date),
       `${task.estate} (${task.estate_area})`,
@@ -178,36 +178,38 @@ const CanceledByPilots = () => {
       task.pilot,
       task.field,
       task.area,
-      task.dji_field_area,
+      task.pilot_field_area,
       task.completion_rate,
       task.type === 'x' ? 'Canceled' : 'Partially Completed',
-      task.reason
+      task.cancel_reason || '-',
+      task.partial_reason || '-',
+      task.ops_reason || '-',
     ]);
 
-    // Add table
     autoTable(doc, {
-      head: [['Plan ID', 'Date', 'Estate (Area)', 'Task ID', 'Pilot', 'Field', 'Area', 'DJI Field Area', 'Completion %', 'Pilot Status', 'Reason']],
+      head: [[
+        'Plan ID', 'Date', 'Estate (Area)', 'Task ID', 'Pilot', 'Field',
+        'Area', 'Pilot Area', 'Completion %', 'Status',
+        'Cancel Reason', 'Partial Reason', 'Ops Room',
+      ]],
       body: tableData,
       startY: 30,
       styles: {
-        fontSize: 8,
+        fontSize: 7,
         cellPadding: 2,
-        lineColor: [209, 213, 219], // gray-300
-        lineWidth: 0.1
+        lineColor: [209, 213, 219],
+        lineWidth: 0.1,
       },
       headStyles: {
-        fillColor: [22, 160, 133], // teal-600
-        textColor: 255, // white
+        fillColor: [22, 160, 133],
+        textColor: 255,
         fontStyle: 'bold',
         lineWidth: 0.2,
-        halign: 'center'
+        halign: 'center',
       },
       alternateRowStyles: {
-        fillColor: [249, 250, 251] // gray-50
+        fillColor: [249, 250, 251],
       },
-      columnStyles: {
-        10: { cellWidth: 40 } // Wider column for Reason
-      }
     });
 
     const pilotPart = pilotFilter ? pilotFilter.replace(/\s+/g, '_') : 'All_Pilots';
@@ -218,7 +220,6 @@ const CanceledByPilots = () => {
 
   return (
     <div className="ops-container6">
-      {/* Top Section (15%) */}
       <div className="ops6-section">
         <div className="ops6-section-next">
           <div className="report-toolbar ops6-top">
@@ -234,7 +235,7 @@ const CanceledByPilots = () => {
             <div className="report-toolbar-field">
               <select
                 value={pilotFilter}
-                onChange={e => setPilotFilter(e.target.value)}
+                onChange={(e) => setPilotFilter(e.target.value)}
               >
                 <option value="">All Pilots</option>
                 {pilotOptions.map((pilot, index) => (
@@ -245,7 +246,7 @@ const CanceledByPilots = () => {
             <div className="report-toolbar-field">
               <select
                 value={estateFilter}
-                onChange={e => setEstateFilter(e.target.value)}
+                onChange={(e) => setEstateFilter(e.target.value)}
               >
                 <option value="">All Estates</option>
                 {estateOptions.map((estate, index) => (
@@ -256,7 +257,7 @@ const CanceledByPilots = () => {
             <div className="report-toolbar-field">
               <select
                 value={reasonFilter}
-                onChange={e => setReasonFilter(e.target.value)}
+                onChange={(e) => setReasonFilter(e.target.value)}
               >
                 <option value="">All Reasons</option>
                 {reasonOptions.map((reason, index) => (
@@ -283,7 +284,6 @@ const CanceledByPilots = () => {
           </div>
         </div>
       </div>
-      {/* Bottom Section (85%) */}
       <div>
         {loading ? (
           <div className="flex justify-center items-center h-full">
@@ -313,14 +313,16 @@ const CanceledByPilots = () => {
                   <th>Pilot</th>
                   <th>Field</th>
                   <th>Area</th>
-                  <th>DJI Field Area</th>
+                  <th>Pilot Field Area</th>
                   <th>Completion Rate (%)</th>
                   <th>Pilot Status</th>
-                  <th>Reason</th>
+                  <th>Cancel Reason</th>
+                  <th>Partial Reason</th>
+                  <th>Ops Room Reason</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredData.map(task => (
+                {filteredData.map((task) => (
                   <tr key={task.task_id}>
                     <td>{task.plan_id}</td>
                     <td>{formatDisplayDate(task.date)}</td>
@@ -329,10 +331,12 @@ const CanceledByPilots = () => {
                     <td>{task.pilot}</td>
                     <td>{task.field}</td>
                     <td>{task.area}</td>
-                    <td>{task.dji_field_area}</td>
+                    <td>{task.pilot_field_area}</td>
                     <td>{task.completion_rate}%</td>
                     <td>{task.type === 'x' ? 'Canceled' : 'Partially Completed'}</td>
-                    <td>{task.reason}</td>
+                    <td>{task.cancel_reason || '-'}</td>
+                    <td>{task.partial_reason || '-'}</td>
+                    <td>{task.ops_reason || '-'}</td>
                   </tr>
                 ))}
               </tbody>

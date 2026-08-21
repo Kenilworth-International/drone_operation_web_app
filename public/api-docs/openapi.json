@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 787\n- **Route files:** 68\n- **Schema overlays applied:** 322\n- **Generated:** 2026-08-20T05:58:47.959Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 788\n- **Route files:** 68\n- **Schema overlays applied:** 323\n- **Generated:** 2026-08-21T08:03:13.431Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp`."
   },
   "servers": [
     {
@@ -182,7 +182,7 @@
     },
     {
       "name": "Pilot Assignment",
-      "description": "Ops room pilot-to-plan assignment, transport planning, deployment, drone unlocking."
+      "description": "Ops room pilot-to-plan assignment, transport planning, deployment, drone unlocking, and Today Plans full lifecycle detail."
     },
     {
       "name": "Pilot Mobile",
@@ -6449,6 +6449,311 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/pilot-assignment/plan-full-detail": {
+      "post": {
+        "summary": "Plan / Mission Full Detail",
+        "description": "Ops Room read-only lifecycle payload for the Today Plans detail drawer. Pass either `plan_id` (plantation) or `mission_id` (non-plantation). Aggregates header, manager approval/cancel, resource assignment, transport, chemicals (plans), per-field pilot workflow, and a derived chronological timeline. Field visit is represented by pilot `start_time` + coordinates (no separate visit table).",
+        "tags": [
+          "Pilot Assignment"
+        ],
+        "responses": {
+          "200": {
+            "description": "Full detail for drawer",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "plan",
+                        "mission"
+                      ]
+                    },
+                    "plan": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Present when kind=plan"
+                    },
+                    "mission": {
+                      "type": "object",
+                      "nullable": true,
+                      "description": "Present when kind=mission"
+                    },
+                    "manager": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "approval": {
+                          "type": "integer"
+                        },
+                        "cancel_reason_id": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "cancel_reason": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "approval_user_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "approval_time": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "resources": {
+                      "type": "object",
+                      "properties": {
+                        "assignment": {
+                          "type": "object",
+                          "nullable": true
+                        },
+                        "pilots": {
+                          "type": "array"
+                        },
+                        "drones": {
+                          "type": "array"
+                        }
+                      }
+                    },
+                    "transport": {
+                      "type": "object",
+                      "nullable": true,
+                      "properties": {
+                        "vehicle_no": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "driver_name": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "driver_arrival_time": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "chemicals": {
+                      "type": "object",
+                      "properties": {
+                        "chemical_lines": {
+                          "type": "array"
+                        },
+                        "time_of_day_label": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
+                    },
+                    "fields": {
+                      "type": "array",
+                      "description": "Enriched field_pilot_and_drones rows"
+                    },
+                    "timeline": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "meta": {
+                            "type": "object",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "example": {
+                  "status": true,
+                  "kind": "plan",
+                  "plan": {
+                    "id": 401,
+                    "picked_date": "2026-08-20",
+                    "estate_name": "Dunsinane Estate",
+                    "plan_active_ha": 4.5,
+                    "plan_active_fields_count": 2,
+                    "team_assigned": 1,
+                    "team_name": "Alpha Team",
+                    "created_at": "2026-08-19T08:12:00+05:30"
+                  },
+                  "manager": {
+                    "approval": 1,
+                    "approval_user_name": "Nimal Silva",
+                    "approval_time": "2026-08-19T09:05:00+05:30",
+                    "cancel_reason_id": null,
+                    "cancel_reason": null
+                  },
+                  "resources": {
+                    "assignment": {
+                      "id": 1201,
+                      "assignment_id": "ASN-20260820-01",
+                      "team_name": "Alpha Team",
+                      "created_at": "2026-08-19T10:20:00+05:30"
+                    },
+                    "pilots": [
+                      {
+                        "id": 55,
+                        "name": "Amal Perera",
+                        "mobile_no": "0771234567",
+                        "is_leader": true
+                      }
+                    ],
+                    "drones": [
+                      {
+                        "id": 12,
+                        "tag": "DR-12",
+                        "serial": "SN-99881"
+                      }
+                    ]
+                  },
+                  "transport": {
+                    "vehicle_no": "WP CAB-1234",
+                    "driver_name": "Kasun Dias",
+                    "driver_arrival_time": "2026-08-20T06:30:00+05:30"
+                  },
+                  "chemicals": {
+                    "time_of_day_label": "Morning",
+                    "chemical_lines": [
+                      {
+                        "chemical_id": 3,
+                        "chemical_name": "Glyphosate",
+                        "quantity": 2.5
+                      }
+                    ]
+                  },
+                  "fields": [
+                    {
+                      "task_id": 9001,
+                      "field_name": "Block D2",
+                      "condition_check": "a",
+                      "condition_check_time": "2026-08-20T07:05:00+05:30",
+                      "start_time": "2026-08-20T07:40:00+05:30",
+                      "water_received": 1,
+                      "water_received_time": "2026-08-20T07:55:00+05:30",
+                      "chemical_received": 1,
+                      "chemical_received_time": "2026-08-20T08:10:00+05:30",
+                      "pilot_field_area_ha": 2.1,
+                      "cancel_reason": "",
+                      "remaining_reason": ""
+                    }
+                  ],
+                  "timeline": [
+                    {
+                      "at": "2026-08-19T08:12:00+05:30",
+                      "type": "plan_created",
+                      "label": "Plan created",
+                      "meta": {
+                        "by": "Ops Clerk"
+                      }
+                    },
+                    {
+                      "at": "2026-08-19T09:05:00+05:30",
+                      "type": "manager_approved",
+                      "label": "Manager approved",
+                      "meta": {
+                        "by": "Nimal Silva"
+                      }
+                    },
+                    {
+                      "at": "2026-08-19T10:20:00+05:30",
+                      "type": "resources_assigned",
+                      "label": "Resources assigned",
+                      "meta": {
+                        "team": "Alpha Team"
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing plan_id / mission_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "description": "Plan or mission not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plan_id": {
+                    "type": "integer",
+                    "description": "Plantation plan id (use instead of mission_id)"
+                  },
+                  "mission_id": {
+                    "type": "integer",
+                    "description": "Non-plantation mission id (use instead of plan_id)"
+                  }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "plan_id"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "mission_id"
+                    ]
+                  }
+                ]
               }
             }
           }

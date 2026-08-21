@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetTodayPlansAndMissionsQuery } from '../../../api/services NodeJs/pilotAssignmentApi';
 import { Bars } from 'react-loader-spinner';
+import PlanFullDetailDrawer from './PlanFullDetailDrawer';
 import '../../../styles/todayPlans-com.css';
 
 function getTodayYYYYMMDD() {
@@ -57,6 +58,7 @@ function getFieldStatus(f) {
 const TodayPlans = () => {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(getTodayYYYYMMDD);
+  const [detailSelection, setDetailSelection] = useState(null);
   const { data, isLoading, error, refetch } = useGetTodayPlansAndMissionsQuery(selectedDate);
 
   if (isLoading) {
@@ -154,7 +156,16 @@ const TodayPlans = () => {
             {plans.map((plan) => (
               <div
                 key={`plan-${plan.id}`}
-                className={`today-plan-row-com item-card-com ${plan.is_assigned === 1 ? 'assigned-com' : 'unassigned-com'}`}
+                className={`today-plan-row-com item-card-com today-plan-row-clickable-com ${plan.is_assigned === 1 ? 'assigned-com' : 'unassigned-com'}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailSelection({ kind: 'plan', id: plan.id })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setDetailSelection({ kind: 'plan', id: plan.id });
+                  }
+                }}
               >
                 <div className="item-row-1-com">
                   <span className="item-type-badge-com item-type-plantation-com">Plantation</span>
@@ -166,6 +177,7 @@ const TodayPlans = () => {
                   <span className={`status-badge-com ${plan.is_assigned === 1 ? 'assigned-badge-com' : 'unassigned-badge-com'}`}>
                     {plan.is_assigned === 1 ? 'Assigned' : 'Unassigned'}
                   </span>
+                  <span className="today-plan-open-hint-com">View full details →</span>
                 </div>
                 <div className="item-row-main-com">
                   <div className="item-row-left-com">
@@ -265,7 +277,7 @@ const TodayPlans = () => {
                                     <span className="field-detail-sub-com">
                                       {f.water_received_time && ` ${formatFieldDateTime(f.water_received_time)}`}
                                       {getMapUrl(f.water_latitude, f.water_longitude) && (
-                                        <a href={getMapUrl(f.water_latitude, f.water_longitude)} target="_blank" rel="noopener noreferrer" className="field-detail-map-link-com">View in map</a>
+                                        <a href={getMapUrl(f.water_latitude, f.water_longitude)} target="_blank" rel="noopener noreferrer" className="field-detail-map-link-com" onClick={(e) => e.stopPropagation()}>View in map</a>
                                       )}
                                     </span>
                                   )}
@@ -279,7 +291,7 @@ const TodayPlans = () => {
                                     <span className="field-detail-sub-com">
                                       {f.chemical_received_time && ` ${formatFieldDateTime(f.chemical_received_time)}`}
                                       {getMapUrl(f.chemical_latitude, f.chemical_longitude) && (
-                                        <a href={getMapUrl(f.chemical_latitude, f.chemical_longitude)} target="_blank" rel="noopener noreferrer" className="field-detail-map-link-com">View in map</a>
+                                        <a href={getMapUrl(f.chemical_latitude, f.chemical_longitude)} target="_blank" rel="noopener noreferrer" className="field-detail-map-link-com" onClick={(e) => e.stopPropagation()}>View in map</a>
                                       )}
                                     </span>
                                   )}
@@ -299,13 +311,23 @@ const TodayPlans = () => {
             {missions.map((mission) => (
               <div
                 key={`mission-${mission.id}`}
-                className={`today-plan-row-com item-card-com ${mission.is_assigned === 1 ? 'assigned-com' : 'unassigned-com'}`}
+                className={`today-plan-row-com item-card-com today-plan-row-clickable-com ${mission.is_assigned === 1 ? 'assigned-com' : 'unassigned-com'}`}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailSelection({ kind: 'mission', id: mission.id })}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setDetailSelection({ kind: 'mission', id: mission.id });
+                  }
+                }}
               >
                 <div className="item-row-1-com">
                   <span className="item-type-badge-com item-type-nonplantation-com">Non Plantation</span>
                   <span className={`status-badge-com ${mission.is_assigned === 1 ? 'assigned-badge-com' : 'unassigned-badge-com'}`}>
                     {mission.is_assigned === 1 ? 'Assigned' : 'Unassigned'}
                   </span>
+                  <span className="today-plan-open-hint-com">View full details →</span>
                 </div>
                 <div className="item-row-main-com">
                   <div className="item-row-left-com">
@@ -366,6 +388,11 @@ const TodayPlans = () => {
           </div>
         )}
       </div>
+
+      <PlanFullDetailDrawer
+        selection={detailSelection}
+        onClose={() => setDetailSelection(null)}
+      />
     </div>
   );
 };

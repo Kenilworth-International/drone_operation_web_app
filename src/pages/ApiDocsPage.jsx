@@ -82,17 +82,44 @@ export default function ApiDocsPage() {
           await window.Redoc.init(
             patchedSpec,
             {
-              scrollYOffset: 56,
+              scrollYOffset: 58,
               hideDownloadButton: false,
               expandResponses: '200,201',
               jsonSampleExpandLevel: 2,
+              pathInMiddlePanel: true,
               theme: {
-                colors: { primary: { main: '#2563eb' } },
-                typography: {
-                  fontSize: '15px',
-                  fontFamily: 'Segoe UI, system-ui, sans-serif',
+                colors: {
+                  primary: { main: '#003057' },
+                  success: { main: '#15803d' },
+                  error: { main: '#b91c1c' },
+                  http: {
+                    get: '#0369a1',
+                    post: '#003057',
+                    put: '#b45309',
+                    delete: '#b91c1c',
+                  },
                 },
-                sidebar: { width: '280px' },
+                typography: {
+                  fontSize: '14px',
+                  fontFamily: '"Segoe UI", system-ui, -apple-system, sans-serif',
+                  headings: {
+                    fontFamily: '"Segoe UI", system-ui, -apple-system, sans-serif',
+                    fontWeight: '700',
+                  },
+                  code: {
+                    fontSize: '13px',
+                    fontFamily: 'Consolas, "Courier New", monospace',
+                  },
+                },
+                sidebar: {
+                  width: '300px',
+                  backgroundColor: '#0f172a',
+                  textColor: '#e2e8f0',
+                  activeTextColor: '#ffffff',
+                },
+                rightPanel: {
+                  backgroundColor: '#0b1220',
+                },
               },
             },
             containerRef.current
@@ -121,10 +148,13 @@ export default function ApiDocsPage() {
           <Link to="/home" className="api-docs-banner__back">
             ← Back to app
           </Link>
-          <span className="api-docs-banner__title">DSMS API Documentation</span>
+          <div className="api-docs-banner__brand">
+            <span className="api-docs-banner__eyebrow">DSMS Developer Portal</span>
+            <span className="api-docs-banner__title">API Documentation</span>
+          </div>
         </div>
         <div className="api-docs-banner__right">
-          <span className="api-docs-banner__env">Environment: {environmentLabel}</span>
+          <span className="api-docs-banner__env">{environmentLabel}</span>
           <code className="api-docs-banner__url">{serverUrl}</code>
         </div>
       </header>

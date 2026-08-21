@@ -205,7 +205,7 @@ const ModernReportSection = ({ category = null }) => {
         {
           id: 'canceled_pilot',
           name: 'Canceled by Pilots',
-          description: 'Tasks canceled by pilot decision',
+          description: 'Pilot canceled and partially completed tasks with reasons',
           icon: FaTimesCircle,
           component: CanceledByPilots,
           metrics: { label: 'Canceled', value: 'Track' }

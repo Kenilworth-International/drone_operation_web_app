@@ -362,6 +362,30 @@ export const pilotAssignmentApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ['PilotAssignmentPlans'],
     }),
+
+    // =====================================================
+    // PLAN / MISSION FULL DETAIL (Today Plans drawer)
+    // =====================================================
+    getPlanFullDetail: builder.query({
+      queryFn: async ({ plan_id, mission_id } = {}) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/pilot-assignment/plan-full-detail',
+            method: 'POST',
+            body: {
+              ...(plan_id != null ? { plan_id } : {}),
+              ...(mission_id != null ? { mission_id } : {}),
+            },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      providesTags: (_result, _error, arg) => [
+        { type: 'TodayPlansAndMissions', id: arg?.plan_id ? `plan-${arg.plan_id}` : `mission-${arg?.mission_id}` },
+      ],
+    }),
   }),
 });
 
@@ -386,5 +410,6 @@ export const {
   useAssignPilotTransportDetailsMutation,
   useGetHrTransportEstimatesQuery,
   useReschedulePilotAssignmentPlanMutation,
+  useGetPlanFullDetailQuery,
 } = pilotAssignmentApi;
 
