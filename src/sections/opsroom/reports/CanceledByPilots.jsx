@@ -27,12 +27,24 @@ const CanceledByPilots = () => {
   const [reasonOptions, setReasonOptions] = useState([]);
 
   const formatDate = (date) => {
-    return date.toLocaleDateString('en-CA');
+    if (!date) return '';
+    const d = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('en-CA');
   };
 
   const formatDisplayDate = (dateStr) => {
-    const [year, month, day] = dateStr.split('-');
-    return `${day}-${month}-${year}`;
+    if (dateStr == null || dateStr === '') return '—';
+    const s = String(dateStr).trim();
+    if (!s) return '—';
+    // Already YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      const [year, month, day] = s.slice(0, 10).split('-');
+      return `${day}-${month}-${year}`;
+    }
+    const d = new Date(s);
+    if (Number.isNaN(d.getTime())) return s;
+    return d.toLocaleDateString('en-GB');
   };
 
   const formatNum = (value) => {
@@ -41,11 +53,16 @@ const CanceledByPilots = () => {
   };
 
   const fetchData = async () => {
+    if (!startDate || !endDate) return;
+    const start = formatDate(startDate);
+    const end = formatDate(endDate);
+    if (!start || !end) return;
+
     setLoading(true);
     try {
       const result = await dispatch(baseApi.endpoints.getCanceledFieldsByDateRange.initiate({
-        startDate: formatDate(startDate),
-        endDate: formatDate(endDate)
+        startDate: start,
+        endDate: end,
       }));
       const plans = result.data || [];
 
@@ -103,6 +120,7 @@ const CanceledByPilots = () => {
   };
 
   useEffect(() => {
+    if (!startDate || !endDate) return;
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate]);
@@ -139,12 +157,8 @@ const CanceledByPilots = () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Canceled_Fields");
     const formatDateForFilename = (date) => {
-      if (!date) return '';
-      const d = new Date(date);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const formatted = formatDate(date);
+      return formatted || 'na';
     };
     const pilotPart = pilotFilter ? pilotFilter.replace(/\s+/g, '_') : 'All_Pilots';
     const estatePart = estateFilter ? estateFilter.replace(/\s+/g, '_') : 'All_Estates';
@@ -156,14 +170,12 @@ const CanceledByPilots = () => {
     const doc = new jsPDF({ orientation: 'landscape' });
     const title = "Canceled / Partial by Pilots Report";
     const formatDateForFilename = (date) => {
-      if (!date) return '';
-      const d = new Date(date);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
+      const formatted = formatDate(date);
+      return formatted || 'na';
     };
-    const dateRange = `${formatDisplayDate(formatDate(startDate))} to ${formatDisplayDate(formatDate(endDate))}`;
+    const startLabel = formatDate(startDate);
+    const endLabel = formatDate(endDate);
+    const dateRange = `${formatDisplayDate(startLabel)} to ${formatDisplayDate(endLabel)}`;
 
     doc.setFontSize(16);
     doc.text(title, 14, 15);
@@ -227,8 +239,8 @@ const CanceledByPilots = () => {
               startDate={startDate}
               endDate={endDate}
               onChange={(start, end) => {
-                setStartDate(start);
-                setEndDate(end);
+                if (start) setStartDate(start);
+                if (end) setEndDate(end);
               }}
               disabled={loading}
             />

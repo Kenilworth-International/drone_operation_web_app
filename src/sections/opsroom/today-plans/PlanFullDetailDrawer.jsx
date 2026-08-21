@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useGetPlanFullDetailQuery } from '../../../api/services NodeJs/pilotAssignmentApi';
 import { Bars } from 'react-loader-spinner';
+import { downloadPlanFullDetailExcel } from './todayPlansExcelExport';
 
 function formatDateTime(val) {
   if (val == null || val === '') return '—';
@@ -86,9 +87,9 @@ function Kv({ label, children }) {
   );
 }
 
-function Section({ title, subtitle, children, actions }) {
+function Section({ title, subtitle, children, actions, className = '' }) {
   return (
-    <section className="tp-detail-section-com">
+    <section className={`tp-detail-section-com ${className}`.trim()}>
       <div className="tp-detail-section-head-com">
         <div>
           <h3>{title}</h3>
@@ -321,9 +322,20 @@ export default function PlanFullDetailDrawer({ selection, onClose }) {
               ) : null}
             </p>
           </div>
-          <button type="button" className="tp-detail-close-com" onClick={onClose} aria-label="Close details">
-            ×
-          </button>
+          <div className="tp-detail-header-actions-com">
+            <button
+              type="button"
+              className="tp-detail-excel-btn-com"
+              disabled={!detail || showBusy}
+              onClick={() => downloadPlanFullDetailExcel(detail)}
+              title="Download Excel for this plan"
+            >
+              Download Excel
+            </button>
+            <button type="button" className="tp-detail-close-com" onClick={onClose} aria-label="Close details">
+              ×
+            </button>
+          </div>
         </header>
 
         <div className="tp-detail-body-com">
@@ -354,6 +366,7 @@ export default function PlanFullDetailDrawer({ selection, onClose }) {
 
           {detail && !showBusy && (
             <>
+              <div className="tp-detail-topbar-com">
               <div className="tp-detail-chips-com">
                 {kind === 'plan' && detail.manager && (
                   <span
@@ -411,32 +424,10 @@ export default function PlanFullDetailDrawer({ selection, onClose }) {
               <Section title="Lifecycle" subtitle="High-level progress across ops milestones">
                 <LifecycleStrip detail={detail} kind={kind} />
               </Section>
+              </div>
 
-              <Section title="Event timeline" subtitle="Chronological activity with timestamps">
-                {(detail.timeline || []).length === 0 ? (
-                  <p className="tp-detail-empty-com">No timestamped events yet.</p>
-                ) : (
-                  <ol className="tp-detail-timeline-com">
-                    {detail.timeline.map((ev, idx) => (
-                      <li key={`${ev.type}-${idx}`} className={`tp-tl-tone-${timelineTone(ev.type)}-com`}>
-                        <span className="tp-tl-dot-com" />
-                        <div className="tp-tl-content-com">
-                          <div className="tp-tl-title-row-com">
-                            <strong>{ev.label}</strong>
-                            <time dateTime={ev.at || undefined}>{formatDateTime(ev.at)}</time>
-                          </div>
-                          {ev.meta?.reason ? <p>Reason: {ev.meta.reason}</p> : null}
-                          {ev.meta?.by ? <p>By: {ev.meta.by}</p> : null}
-                          {ev.meta?.vehicle_no ? <p>Vehicle: {ev.meta.vehicle_no}</p> : null}
-                          {ev.meta?.driver_name ? <p>Driver: {ev.meta.driver_name}</p> : null}
-                          {ev.meta?.team ? <p>Team: {ev.meta.team}</p> : null}
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-              </Section>
-
+              <div className="tp-detail-grid-com">
+                <div className="tp-detail-col-com">
               <Section title={kind === 'mission' ? 'Mission details' : 'Plan details'}>
                 <dl className="tp-kv-grid-com">
                   {kind === 'plan' ? (
@@ -564,10 +555,40 @@ export default function PlanFullDetailDrawer({ selection, onClose }) {
                   )}
                 </Section>
               )}
+                </div>
+
+                <div className="tp-detail-col-com tp-detail-col-timeline-com">
+                  <Section title="Event timeline" subtitle="Chronological activity with timestamps" className="tp-timeline-panel-com">
+                    {(detail.timeline || []).length === 0 ? (
+                      <p className="tp-detail-empty-com">No timestamped events yet.</p>
+                    ) : (
+                      <ol className="tp-detail-timeline-com">
+                        {detail.timeline.map((ev, idx) => (
+                          <li key={`${ev.type}-${idx}`} className={`tp-tl-tone-${timelineTone(ev.type)}-com`}>
+                            <span className="tp-tl-dot-com" />
+                            <div className="tp-tl-content-com">
+                              <div className="tp-tl-title-row-com">
+                                <strong>{ev.label}</strong>
+                                <time dateTime={ev.at || undefined}>{formatDateTime(ev.at)}</time>
+                              </div>
+                              {ev.meta?.reason ? <p>Reason: {ev.meta.reason}</p> : null}
+                              {ev.meta?.by ? <p>By: {ev.meta.by}</p> : null}
+                              {ev.meta?.vehicle_no ? <p>Vehicle: {ev.meta.vehicle_no}</p> : null}
+                              {ev.meta?.driver_name ? <p>Driver: {ev.meta.driver_name}</p> : null}
+                              {ev.meta?.team ? <p>Team: {ev.meta.team}</p> : null}
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </Section>
+                </div>
+              </div>
 
               <Section
                 title="Fields / tasks"
                 subtitle="Acknowledge, field visit, water/chem, areas, and reasons"
+                className="tp-detail-section-wide-com"
               >
                 {(detail.fields || []).length === 0 ? (
                   <p className="tp-detail-empty-com">

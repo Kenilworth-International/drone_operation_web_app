@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useGetTodayPlansAndMissionsQuery } from '../../../api/services NodeJs/pilotAssignmentApi';
 import { Bars } from 'react-loader-spinner';
 import PlanFullDetailDrawer from './PlanFullDetailDrawer';
+import { downloadTodayPlansDayExcel } from './todayPlansExcelExport';
 import '../../../styles/todayPlans-com.css';
 
 function getTodayYYYYMMDD() {
@@ -99,17 +100,35 @@ const TodayPlans = () => {
           <span className="back-btn-icon-com">←</span>
         </button>
         <h1 className="today-plans-title-com">Today's Plantations & Non Plantation</h1>
-        <div className="today-plans-date-com">
-          <label htmlFor="today-plans-date-picker-com" className="date-label-com">Date:</label>
-          <input
-            id="today-plans-date-picker-com"
-            type="date"
-            className="today-plans-date-picker-com date-value-com"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            max={getTodayYYYYMMDD()}
-            title="Select date to view plans"
-          />
+        <div className="today-plans-header-actions-com">
+          <button
+            type="button"
+            className="today-plans-excel-btn-com"
+            disabled={plans.length === 0 && missions.length === 0}
+            onClick={() =>
+              downloadTodayPlansDayExcel({
+                date: selectedDate,
+                plans,
+                missions,
+                summary,
+              })
+            }
+            title="Download Excel for the selected day"
+          >
+            Download Excel (All Day)
+          </button>
+          <div className="today-plans-date-com">
+            <label htmlFor="today-plans-date-picker-com" className="date-label-com">Date:</label>
+            <input
+              id="today-plans-date-picker-com"
+              type="date"
+              className="today-plans-date-picker-com date-value-com"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              max={getTodayYYYYMMDD()}
+              title="Select date to view plans"
+            />
+          </div>
         </div>
       </div>
 
