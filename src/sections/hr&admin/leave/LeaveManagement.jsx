@@ -53,7 +53,7 @@ const LeaveManagement = () => {
     const key = String(row?.holiday_date || '').slice(0, 10);
     if (!key) return acc;
     const t = String(row?.holiday_type || '').toLowerCase();
-    if (t === 'mercantile' || t === 'poya') {
+    if (t === 'mercantile' || t === 'poya' || t === 'special') {
       acc[key] = {
         type: t,
         description: row.description != null ? String(row.description).trim() : '',

@@ -29,6 +29,7 @@ export default function HolidayMarkingPanel({
             <div className="leave-holiday-legend-leavemgt">
               <span className="holiday-dot-leavemgt mercantile-leavemgt" /> Statutory holidays
               <span className="holiday-dot-leavemgt poya-leavemgt" /> Poya
+              <span className="holiday-dot-leavemgt special-leavemgt" /> Special (company)
             </div>
           </div>
           <div className="leave-holiday-weekdays-leavemgt">
@@ -44,10 +45,19 @@ export default function HolidayMarkingPanel({
               const meta = holidayMetaByDate[cell.dateKey];
               const type = meta?.type || '';
               const desc = meta?.description || '';
+              const typeLabel =
+                type === 'mercantile'
+                  ? 'Statutory holiday'
+                  : type === 'poya'
+                    ? 'Poya holiday'
+                    : type === 'special'
+                      ? 'Special holiday'
+                      : '';
               const labelShort =
-                desc || (type === 'mercantile' ? 'Statutory' : type === 'poya' ? 'Poya' : '');
+                desc ||
+                (type === 'mercantile' ? 'Statutory' : type === 'poya' ? 'Poya' : type === 'special' ? 'Special' : '');
               const titleFull = type
-                ? `${cell.dateKey} — ${type === 'mercantile' ? 'Statutory holiday' : 'Poya holiday'}${desc ? ` — ${desc}` : ''}`
+                ? `${cell.dateKey} — ${typeLabel}${desc ? ` — ${desc}` : ''}`
                 : `${cell.dateKey} — no holiday`;
               return (
                 <button
@@ -93,6 +103,7 @@ export default function HolidayMarkingPanel({
               <option value="">None (remove mark)</option>
               <option value="mercantile">Statutory holiday</option>
               <option value="poya">Poya holiday</option>
+              <option value="special">Special holiday (company)</option>
             </select>
             <label className="leave-holiday-modal-label-leavemgt" htmlFor="holiday-desc-input-leavemgt">
               Holiday name / description

@@ -237,7 +237,7 @@ const RoasterPlanning = () => {
       const key = normalizeDateKey(row.holiday_date);
       if (!key) return;
       const t = String(row.holiday_type || '').toLowerCase();
-      if (t === 'mercantile' || t === 'poya') {
+      if (t === 'mercantile' || t === 'poya' || t === 'special') {
         map[key] = {
           type: t,
           description: row.description != null ? String(row.description).trim() : '',
@@ -250,7 +250,14 @@ const RoasterPlanning = () => {
   const holidayHoverLine = (dateString) => {
     const meta = holidayMetaByDate[dateString];
     if (!meta?.type) return '';
-    const kind = meta.type === 'mercantile' ? 'Statutory holiday' : 'Poya holiday';
+    const kind =
+      meta.type === 'mercantile'
+        ? 'Statutory holiday'
+        : meta.type === 'poya'
+          ? 'Poya holiday'
+          : meta.type === 'special'
+            ? 'Special holiday'
+            : 'Holiday';
     return meta.description ? ` | ${kind}: ${meta.description}` : ` | ${kind}`;
   };
 
@@ -909,6 +916,7 @@ const RoasterPlanning = () => {
           <span className="legend-pill-roaster attended-pill-roaster">Attended</span>
           <span className="legend-pill-roaster holiday-mercantile-legend-roaster">Statutory holidays</span>
           <span className="legend-pill-roaster holiday-poya-legend-roaster">Poya holiday</span>
+          <span className="legend-pill-roaster holiday-special-legend-roaster">Special holiday</span>
           <span className="legend-pill-roaster editing-pill-roaster">Editing Mode</span>
         </div>
         <div className="timeline-header-roaster">
@@ -917,7 +925,13 @@ const RoasterPlanning = () => {
             {monthDays.map((day) => {
               const hol = holidayMetaByDate[day.dateString]?.type;
               const holClass =
-                hol === 'mercantile' ? 'holiday-mercantile-roaster' : hol === 'poya' ? 'holiday-poya-roaster' : '';
+                hol === 'mercantile'
+                  ? 'holiday-mercantile-roaster'
+                  : hol === 'poya'
+                    ? 'holiday-poya-roaster'
+                    : hol === 'special'
+                      ? 'holiday-special-roaster'
+                      : '';
               return (
                 <div
                   key={day.dateString}
@@ -970,7 +984,13 @@ const RoasterPlanning = () => {
                 const isAttended = employee.attendance.attended.includes(day.dateString);
                 const hol = holidayMetaByDate[day.dateString]?.type;
                 const holClass =
-                  hol === 'mercantile' ? 'holiday-mercantile-roaster' : hol === 'poya' ? 'holiday-poya-roaster' : '';
+                  hol === 'mercantile'
+                    ? 'holiday-mercantile-roaster'
+                    : hol === 'poya'
+                      ? 'holiday-poya-roaster'
+                      : hol === 'special'
+                        ? 'holiday-special-roaster'
+                        : '';
                 const locked = !editableRows[employee.id];
                 let stateClass = '';
                 if (isLeave) {

@@ -217,6 +217,21 @@
   border: 1px solid #b91c1c;
 }
 
+.accept-monthly-legend .holiday-mercantile::before {
+  background: #92400e;
+  border: 1px solid #92400e;
+}
+
+.accept-monthly-legend .holiday-poya::before {
+  background: #7c3aed;
+  border: 1px solid #7c3aed;
+}
+
+.accept-monthly-legend .holiday-special::before {
+  background: #0f766e;
+  border: 1px solid #0f766e;
+}
+
 .accept-monthly-legend .filtered::before {
   background: #4f46e5;
   border: 1px solid #4f46e5;
@@ -414,4 +429,69 @@
   .accept-monthly-calendar-section .booking-calender-day {
     min-height: 90px;
   }
+}
+
+.accept-monthly-legend .hint {
+  opacity: 0.85;
+  font-style: italic;
+}
+
+.accept-monthly-legend .hint::before {
+  display: none;
+}
+
+.accept-monthly-context-menu {
+  position: fixed;
+  z-index: 1400;
+  min-width: 160px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+}
+
+.accept-monthly-context-item {
+  display: block;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.accept-monthly-context-item:hover {
+  background: #f0f7fb;
+  color: #003057;
+}
+
+.accept-monthly-change-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.accept-monthly-change-date-field label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.accept-monthly-change-date-field input[type='date'] {
+  max-width: 220px;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.accept-monthly-change-date-hint {
+  font-size: 12px;
+  color: #64748b;
 }

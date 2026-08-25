@@ -7,6 +7,14 @@ import {
   useDeactivateBookingPlanMutation,
 } from '../../../api/services NodeJs/bookingCreationApi';
 import { useGetDeactivateReasonsQuery } from '../../../api/services NodeJs/reasonsApi';
+import { useGetHrHolidayCalendarQuery } from '../../../api/services NodeJs/hrLeaveApi';
+import {
+  buildHolidayMetaByDate,
+  extractHolidayRows,
+  holidayCellClass,
+  holidayHoverText,
+  holidayTypeShortLabel,
+} from './bookingHolidayDisplay';
 import '../../../styles/bookingsCalender.css';
 import '../../../styles/updateservices.css';
 import '../../../styles/deactivateplan.css';
@@ -42,6 +50,12 @@ const BookingsCalender = ({
   const [selectedDeactivateReason, setSelectedDeactivateReason] = useState(null);
   const [deactivateBookingPlan] = useDeactivateBookingPlanMutation();
   const { data: deactivateReasons } = useGetDeactivateReasonsQuery({ include_inactive: false });
+  const yearMonth = format(currentMonth, 'yyyy-MM');
+  const { data: holidayResponse } = useGetHrHolidayCalendarQuery({ yearMonth });
+  const holidayMetaByDate = useMemo(
+    () => buildHolidayMetaByDate(extractHolidayRows(holidayResponse)),
+    [holidayResponse]
+  );
 
   const deactivateReasonOptions = useMemo(
     () =>
@@ -251,6 +265,12 @@ const BookingsCalender = ({
           </button>
         </div>
 
+        <div className="booking-calender-holiday-legend" aria-label="Holiday legend">
+          <span className="booking-calender-holiday-legend-item mercantile">Statutory</span>
+          <span className="booking-calender-holiday-legend-item poya">Poya</span>
+          <span className="booking-calender-holiday-legend-item special">Special</span>
+        </div>
+
         <div className="booking-calender-weekday-headers">
           {weekdayNames.map((day, index) => (
             <div key={index} className="booking-calender-weekday-header">
@@ -271,11 +291,24 @@ const BookingsCalender = ({
             const planCount = dayTasks.length;
             const isSelected = selectedDate && format(selectedDate, 'yyyy-MM-dd') === dayStr;
             const isSubmitting = submittingDate && format(submittingDate, 'yyyy-MM-dd') === dayStr;
+            const holidayMeta = holidayMetaByDate[dayStr];
+            const holidayTitle = holidayHoverText(holidayMeta);
+            const dayClassName = [
+              'booking-calender-day',
+              isSameMonth(day, currentMonth) ? '' : 'booking-calender-day-other-month',
+              isSelected ? 'booking-calender-day-selected' : '',
+              onDateClick ? 'booking-calender-day-clickable' : '',
+              isSubmitting ? 'booking-calender-day-submitting' : '',
+              holidayCellClass(holidayMeta?.type),
+            ]
+              .filter(Boolean)
+              .join(' ');
 
             return (
               <div
                 key={dayStr}
-                className={`booking-calender-day ${isSameMonth(day, currentMonth) ? '' : 'booking-calender-day-other-month'} ${isSelected ? 'booking-calender-day-selected' : ''} ${onDateClick ? 'booking-calender-day-clickable' : ''} ${isSubmitting ? 'booking-calender-day-submitting' : ''}`}
+                className={dayClassName}
+                title={holidayTitle || undefined}
                 onClick={onDateClick ? () => onDateClick(day) : undefined}
                 style={{ cursor: onDateClick ? 'pointer' : 'default' }}
               >
@@ -283,6 +316,14 @@ const BookingsCalender = ({
                   <div className="booking-calender-day-number">{getDayNumber(day)}</div>
                   {planCount > 0 && <div className="booking-calender-day-count">({planCount})</div>}
                 </div>
+                {holidayMeta ? (
+                  <div
+                    className={`booking-calender-holiday-badge booking-calender-holiday-badge-${holidayMeta.type}`}
+                    title={holidayTitle}
+                  >
+                    {holidayMeta.description || holidayTypeShortLabel(holidayMeta.type)}
+                  </div>
+                ) : null}
                 <div className="booking-calender-tasks">
                   {dayTasks.map((task, index) => (
                     <div

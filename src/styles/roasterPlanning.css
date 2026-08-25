@@ -416,6 +416,13 @@
     font-weight: 600;
 }
 
+.holiday-special-legend-roaster {
+    border-color: #5eead4;
+    background: #f0fdfa;
+    color: #0f766e;
+    font-weight: 600;
+}
+
 .day-header-roaster.holiday-mercantile-roaster {
     background: #faf5f0;
     border: 1px solid #c4a574;
@@ -444,6 +451,20 @@
     color: #7c3aed;
 }
 
+.day-header-roaster.holiday-special-roaster {
+    background: #f0fdfa;
+    border: 1px solid #5eead4;
+    color: #0f766e;
+}
+
+.day-header-roaster.holiday-special-roaster span {
+    color: #0f766e;
+}
+
+.day-header-roaster.holiday-special-roaster small {
+    color: #0f766e;
+}
+
 /* Holiday accent on cells: border-top works at fixed 32px height (inset shadow looked broken when cells were stretched). */
 .day-cell-roaster.holiday-mercantile-roaster {
     border-top: 3px solid #92400e;
@@ -452,6 +473,11 @@
 
 .day-cell-roaster.holiday-poya-roaster {
     border-top: 3px solid #6d28d9;
+    padding-top: 0;
+}
+
+.day-cell-roaster.holiday-special-roaster {
+    border-top: 3px solid #0f766e;
     padding-top: 0;
 }
 
@@ -639,6 +665,15 @@
     border-top-width: 3px;
     border-top-style: solid;
     border-top-color: #6d28d9;
+}
+
+.day-cell-roaster.leave.holiday-special-roaster,
+.day-cell-roaster.requested.holiday-special-roaster,
+.day-cell-roaster.attended.holiday-special-roaster,
+.day-cell-roaster.weekend.holiday-special-roaster {
+    border-top-width: 3px;
+    border-top-style: solid;
+    border-top-color: #0f766e;
 }
 
 .approval-dot-hit-roaster {
