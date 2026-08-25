@@ -147,6 +147,10 @@
   z-index: 9;
 }
 
+.booking-calender-container:has(.booking-calender-holiday-legend) .booking-calender-weekday-headers {
+  top: 97px;
+}
+
 .booking-calender-weekday-header {
   padding: 5px 2px;
   text-align: center;

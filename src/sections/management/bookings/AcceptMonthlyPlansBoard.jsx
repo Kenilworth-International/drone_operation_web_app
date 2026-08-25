@@ -451,9 +451,6 @@ export default function AcceptMonthlyPlansBoard({
           <span className="legend existing">Existing plan</span>
           <span className="legend pending">Pending request</span>
           <span className="legend rejected">Rejected</span>
-          <span className="legend holiday-mercantile">Statutory holiday</span>
-          <span className="legend holiday-poya">Poya holiday</span>
-          <span className="legend holiday-special">Special holiday</span>
           <span className="legend hint">Right-click pending → Change date</span>
         </div>
       </div>
@@ -465,125 +462,132 @@ export default function AcceptMonthlyPlansBoard({
       ) : null}
 
       <div className="calendar-section-bottom accept-monthly-calendar-section">
-        <div className="booking-calender-container">
-          <div className="booking-calender-header">
-            <button
-              type="button"
-              className="booking-calender-nav-btn"
-              onClick={() => onMonthChange(addMonths(currentMonth, -1))}
-              aria-label="Previous month"
-            >
-              ‹
-            </button>
-            <h2 className="booking-calender-title">{format(currentMonth, 'MMMM yyyy')}</h2>
-            <button
-              type="button"
-              className="booking-calender-nav-btn"
-              onClick={() => onMonthChange(addMonths(currentMonth, 1))}
-              aria-label="Next month"
-            >
-              ›
-            </button>
-          </div>
-          <div className="booking-calender-weekday-headers">
-            {weekDays.map((d) => (
-              <div key={d} className="booking-calender-weekday-header">
-                {d}
-              </div>
-            ))}
-          </div>
-          <div className="booking-calender-grid">
-            {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`pad-${i}`} className="booking-calender-day-empty" />
-            ))}
-            {calendarDays.map((day) => {
-              const dateKey = format(day, 'yyyy-MM-dd');
-              const existing = existingByDate.get(dateKey) || [];
-              const slots = sortSlotsForCellDisplay(slotsByDate.get(dateKey) || []);
-              const holidayMeta = holidayMetaByDate[dateKey];
-              const holidayTitle = holidayHoverText(holidayMeta);
-              const dayClasses = [
-                'booking-calender-day',
-                !isSameMonth(day, currentMonth) ? 'booking-calender-day-other-month' : '',
-                holidayCellClass(holidayMeta?.type),
-              ]
-                .filter(Boolean)
-                .join(' ');
-
-              return (
-                <div key={dateKey} className={dayClasses} title={holidayTitle || undefined}>
-                  <div className="booking-calender-day-header">
-                    <div className="booking-calender-day-number">{format(day, 'd')}</div>
-                    {(existing.length > 0 || slots.length > 0) && (
-                      <div className="booking-calender-day-count">
-                        ({existing.length + slots.length})
-                      </div>
-                    )}
-                  </div>
-                  {holidayMeta ? (
-                    <div
-                      className={`booking-calender-holiday-badge booking-calender-holiday-badge-${holidayMeta.type}`}
-                      title={holidayTitle}
-                    >
-                      {holidayMeta.description || holidayTypeShortLabel(holidayMeta.type)}
-                    </div>
-                  ) : null}
-                  <div className="booking-calender-tasks accept-monthly-tasks">
-                    {existing.map((plan) => (
-                      <div
-                        key={`ex-${plan.id}`}
-                        className="booking-calender-task accept-monthly-task-existing"
-                        title="Existing plan"
-                      >
-                        <span className="booking-calender-task-estate">
-                          {plan.estateName} - ID:{plan.id}
-                        </span>
-                      </div>
-                    ))}
-                    {slots.map((slot) => {
-                      const isSelected = selectedSlots.has(slot.slotKey);
-                      const isPending = slot.slotStatus === 'pending';
-                      const matches = slotMatchesFilters(slot, filters);
-                      const cls = [
-                        'booking-calender-task',
-                        'accept-monthly-task-requested',
-                        `accept-monthly-task-${slot.slotStatus || 'pending'}`,
-                        filtersActive && matches && isPending ? 'accept-monthly-task-filtered' : '',
-                        filtersActive && !matches && isPending ? 'accept-monthly-task-dimmed' : '',
-                        isSelected ? 'accept-monthly-task-selected' : '',
-                      ]
-                        .filter(Boolean)
-                        .join(' ');
-                      const slotLabel = `${slot.estateName} - ${slot.missionLabel}`;
-                      const slotTitle = isPending
-                        ? `Request #${slot.requestId} · ${slot.pickedDate} · Right-click to change date`
-                        : `Request #${slot.requestId} · ${slot.pickedDate}`;
-
-                      if (!isPending) {
-                        return (
-                          <div key={slot.slotKey} className={cls} title={slotTitle}>
-                            <span className="booking-calender-task-estate">{slotLabel}</span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <button
-                          key={slot.slotKey}
-                          type="button"
-                          className={cls}
-                          onClick={() => toggleSlot(slot)}
-                          onContextMenu={(e) => handlePendingContextMenu(e, slot)}
-                          title={slotTitle}
-                        >
-                          <span className="booking-calender-task-estate">{slotLabel}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+        <div className="booking-calender-wrapper">
+          <div className="booking-calender-container">
+            <div className="booking-calender-header">
+              <button
+                type="button"
+                className="booking-calender-nav-btn"
+                onClick={() => onMonthChange(addMonths(currentMonth, -1))}
+                aria-label="Previous month"
+              >
+                ‹
+              </button>
+              <h2 className="booking-calender-title">{format(currentMonth, 'MMMM yyyy')}</h2>
+              <button
+                type="button"
+                className="booking-calender-nav-btn"
+                onClick={() => onMonthChange(addMonths(currentMonth, 1))}
+                aria-label="Next month"
+              >
+                ›
+              </button>
+            </div>
+            <div className="booking-calender-holiday-legend" aria-label="Holiday legend">
+              <span className="booking-calender-holiday-legend-item mercantile">Statutory</span>
+              <span className="booking-calender-holiday-legend-item poya">Poya</span>
+              <span className="booking-calender-holiday-legend-item special">Special</span>
+            </div>
+            <div className="booking-calender-weekday-headers">
+              {weekDays.map((d) => (
+                <div key={d} className="booking-calender-weekday-header">
+                  {d}
                 </div>
-              );
-            })}
+              ))}
+            </div>
+            <div className="booking-calender-grid">
+              {Array.from({ length: firstDayOfWeek }).map((_, i) => (
+                <div key={`pad-${i}`} className="booking-calender-day-empty" />
+              ))}
+              {calendarDays.map((day) => {
+                const dateKey = format(day, 'yyyy-MM-dd');
+                const existing = existingByDate.get(dateKey) || [];
+                const slots = sortSlotsForCellDisplay(slotsByDate.get(dateKey) || []);
+                const holidayMeta = holidayMetaByDate[dateKey];
+                const holidayTitle = holidayHoverText(holidayMeta);
+                const dayClasses = [
+                  'booking-calender-day',
+                  !isSameMonth(day, currentMonth) ? 'booking-calender-day-other-month' : '',
+                  holidayCellClass(holidayMeta?.type),
+                ]
+                  .filter(Boolean)
+                  .join(' ');
+
+                return (
+                  <div key={dateKey} className={dayClasses} title={holidayTitle || undefined}>
+                    <div className="booking-calender-day-header">
+                      <div className="booking-calender-day-number">{format(day, 'd')}</div>
+                      {(existing.length > 0 || slots.length > 0) && (
+                        <div className="booking-calender-day-count">
+                          ({existing.length + slots.length})
+                        </div>
+                      )}
+                    </div>
+                    {holidayMeta ? (
+                      <div
+                        className={`booking-calender-holiday-badge booking-calender-holiday-badge-${holidayMeta.type}`}
+                        title={holidayTitle}
+                      >
+                        {holidayMeta.description || holidayTypeShortLabel(holidayMeta.type)}
+                      </div>
+                    ) : null}
+                    <div className="booking-calender-tasks accept-monthly-tasks">
+                      {existing.map((plan) => (
+                        <div
+                          key={`ex-${plan.id}`}
+                          className="booking-calender-task accept-monthly-task-existing"
+                          title="Existing plan"
+                        >
+                          <span className="booking-calender-task-estate">
+                            {plan.estateName} - ID: {plan.id}
+                          </span>
+                        </div>
+                      ))}
+                      {slots.map((slot) => {
+                        const isSelected = selectedSlots.has(slot.slotKey);
+                        const isPending = slot.slotStatus === 'pending';
+                        const matches = slotMatchesFilters(slot, filters);
+                        const cls = [
+                          'booking-calender-task',
+                          'accept-monthly-task-requested',
+                          `accept-monthly-task-${slot.slotStatus || 'pending'}`,
+                          filtersActive && matches && isPending ? 'accept-monthly-task-filtered' : '',
+                          filtersActive && !matches && isPending ? 'accept-monthly-task-dimmed' : '',
+                          isSelected ? 'accept-monthly-task-selected' : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ');
+                        const slotLabel = `${slot.estateName} - ${slot.missionLabel}`;
+                        const slotTitle = isPending
+                          ? `Request #${slot.requestId} · ${slot.pickedDate} · Right-click to change date`
+                          : `Request #${slot.requestId} · ${slot.pickedDate}`;
+
+                        if (!isPending) {
+                          return (
+                            <div key={slot.slotKey} className={cls} title={slotTitle}>
+                              <span className="booking-calender-task-estate">{slotLabel}</span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={slot.slotKey}
+                            type="button"
+                            className={cls}
+                            onClick={() => toggleSlot(slot)}
+                            onContextMenu={(e) => handlePendingContextMenu(e, slot)}
+                            title={slotTitle}
+                          >
+                            <span className="booking-calender-task-estate">{slotLabel}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

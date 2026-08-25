@@ -296,11 +296,15 @@
 .accept-monthly-calendar-section {
   flex: 1;
   min-height: 420px;
-  padding: 0;
+  padding: 15px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .accept-monthly-calendar-section .booking-calender-wrapper {
+  flex: 1;
+  min-height: 0;
   height: 100%;
   background: transparent;
   overflow-y: auto;
@@ -310,17 +314,9 @@
 .accept-monthly-calendar-section .booking-calender-container {
   height: auto;
   min-height: 100%;
-  display: flex;
-  flex-direction: column;
-  border: none;
-  border-radius: 0;
-}
-
-.accept-monthly-calendar-section .booking-calender-grid {
-  flex: 1;
-  min-height: 0;
-  align-content: start;
-  overflow: visible;
+  display: block;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
 }
 
 .accept-monthly-calendar-section .booking-calender-day {
@@ -343,6 +339,16 @@
   padding: 4px 6px;
   padding-right: 6px;
   border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.accept-monthly-calendar-section button.booking-calender-task {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 
 .accept-monthly-task-existing {
