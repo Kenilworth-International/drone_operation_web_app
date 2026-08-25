@@ -465,34 +465,36 @@ export default function AcceptMonthlyPlansBoard({
       ) : null}
 
       <div className="calendar-section-bottom accept-monthly-calendar-section">
-        <div className="booking-calender-header">
-          <button
-            type="button"
-            className="booking-calender-nav-btn"
-            onClick={() => onMonthChange(addMonths(currentMonth, -1))}
-          >
-            ‹
-          </button>
-          <h2>{format(currentMonth, 'MMMM yyyy')}</h2>
-          <button
-            type="button"
-            className="booking-calender-nav-btn"
-            onClick={() => onMonthChange(addMonths(currentMonth, 1))}
-          >
-            ›
-          </button>
-        </div>
-        <div className="booking-calender-grid">
-          <div className="booking-calender-weekdays">
+        <div className="booking-calender-container">
+          <div className="booking-calender-header">
+            <button
+              type="button"
+              className="booking-calender-nav-btn"
+              onClick={() => onMonthChange(addMonths(currentMonth, -1))}
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <h2 className="booking-calender-title">{format(currentMonth, 'MMMM yyyy')}</h2>
+            <button
+              type="button"
+              className="booking-calender-nav-btn"
+              onClick={() => onMonthChange(addMonths(currentMonth, 1))}
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+          <div className="booking-calender-weekday-headers">
             {weekDays.map((d) => (
-              <div key={d} className="booking-calender-weekday">
+              <div key={d} className="booking-calender-weekday-header">
                 {d}
               </div>
             ))}
           </div>
-          <div className="booking-calender-days">
+          <div className="booking-calender-grid">
             {Array.from({ length: firstDayOfWeek }).map((_, i) => (
-              <div key={`pad-${i}`} className="booking-calender-day empty" />
+              <div key={`pad-${i}`} className="booking-calender-day-empty" />
             ))}
             {calendarDays.map((day) => {
               const dateKey = format(day, 'yyyy-MM-dd');
@@ -502,7 +504,7 @@ export default function AcceptMonthlyPlansBoard({
               const holidayTitle = holidayHoverText(holidayMeta);
               const dayClasses = [
                 'booking-calender-day',
-                !isSameMonth(day, currentMonth) ? 'outside-month' : '',
+                !isSameMonth(day, currentMonth) ? 'booking-calender-day-other-month' : '',
                 holidayCellClass(holidayMeta?.type),
               ]
                 .filter(Boolean)
