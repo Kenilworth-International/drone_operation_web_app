@@ -384,7 +384,22 @@ const AuthControls = () => {
         }).unwrap();
       });
 
-      await Promise.all(pathUpdatePromises);
+      const navbarDeactivationPromises = !newValue
+        ? navbarDefinitions
+            .filter((feature) => (feature.category || 'Other') === category)
+            .map((feature) =>
+              upsertPermission({
+                feature_code: feature.feature_code,
+                job_role_id: jobRoleId,
+                permission_type: 'read',
+                is_active: 0,
+                category,
+                feature_name: feature.feature_name,
+              }).unwrap()
+            )
+        : [];
+
+      await Promise.all([...pathUpdatePromises, ...navbarDeactivationPromises]);
       // Mutation already invalidates tags, so RTK Query will automatically refetch
     } catch (error) {
       console.error('Error updating permissions:', error);

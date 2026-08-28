@@ -12,14 +12,50 @@ import {
   hasForecastWingAccess,
 } from '../config/wingHubDisplay';
 
+/** Collect every routable path declared under a navbar category (including sub-items). */
+export const collectCategoryPaths = (category) => {
+  const paths = [];
+  (category?.children || []).forEach((child) => {
+    if (child?.path) paths.push(child.path);
+    (child?.subItems || []).forEach((sub) => {
+      if (sub?.path) paths.push(sub.path);
+    });
+  });
+  return paths;
+};
+
+/**
+ * Wing/category visibility from explicit path grants (matches Access Control Navigation Bar tab).
+ * A wing is visible when the user has at least one granted path in that category.
+ */
+export const getCategoryVisibilityFromPaths = (pathPermissions = {}, categories = navbarCategories) => {
+  return categories.reduce((acc, cat) => {
+    const catPaths = collectCategoryPaths(cat);
+    acc[cat.title] = catPaths.some((p) => pathPermissions[p] === true);
+    return acc;
+  }, {});
+};
+
+/**
+ * True when every path in the category is explicitly granted (Entire Category checked in Auth Controls).
+ */
+export const getCategoryFullAccessFromPaths = (pathPermissions = {}, categories = navbarCategories) => {
+  return categories.reduce((acc, cat) => {
+    const catPaths = collectCategoryPaths(cat);
+    acc[cat.title] = catPaths.length > 0 && catPaths.every((p) => pathPermissions[p] === true);
+    return acc;
+  }, {});
+};
+
 /**
  * Get category visibility based on user data and permissions
  * @param {Object} userData - User data object from localStorage
  * @param {Object} permissions - Permissions object (can be from Redux state or backend API)
  * @param {Array} categories - Array of category objects with title property
+ * @param {Object} [pathPermissions] - When provided, path grants are the source of truth (Access Control)
  * @returns {Object} Object mapping category titles to boolean visibility
  */
-export const getCategoryVisibility = (userData, permissions, categories) => {
+export const getCategoryVisibility = (userData, permissions, categories, pathPermissions = null) => {
   const memberType = userData?.member_type || '';
   const userLevel = userData?.user_level || '';
   const jobRole = userData?.job_role || '';
@@ -34,6 +70,11 @@ export const getCategoryVisibility = (userData, permissions, categories) => {
       acc[title] = true;
       return acc;
     }, {});
+  }
+
+  // Path grants from Access Control are authoritative for wing visibility
+  if (pathPermissions && typeof pathPermissions === 'object') {
+    return getCategoryVisibilityFromPaths(pathPermissions, categories);
   }
 
   // For all other users (including internal non-developers), use backend permissions only
@@ -99,15 +140,6 @@ export const getCategoryVisibility = (userData, permissions, categories) => {
     Object.prototype.hasOwnProperty.call(result, 'ICT Wing')
   ) {
     result['ICT Wing'] = true;
-  }
-
-  // Legacy ACL: Corporate + Planning and Monitoring merged into strategic wing
-  if (
-    permissions &&
-    (permissions['Corporate'] === true || permissions['Planning and Monitoring'] === true) &&
-    Object.prototype.hasOwnProperty.call(result, 'Strategic Planning and Monitoring wing')
-  ) {
-    result['Strategic Planning and Monitoring wing'] = true;
   }
 
   // Legacy ACL: Central Operation Management renamed to Operation Digitalization & Digital Monitoring & Evaluation Wing
@@ -191,45 +223,6 @@ export const getAllowedPaths = (visibility = {}, pathPermissions = {}, userData 
     }
   });
 
-  // Strategic wing: any granted child (or category visibility) unlocks the full set, including Corporate Customer
-  const strategicTitle = 'Strategic Planning and Monitoring wing';
-  const strategicPaths = allCategoryPaths[strategicTitle] || [];
-  const hasStrategicAccess =
-    visibility[strategicTitle] === true ||
-    strategicPaths.some((p) => pathPermissions[p] === true);
-
-  if (hasStrategicAccess) {
-    strategicPaths.forEach((p) => {
-      if (!allowedPaths.includes(p)) allowedPaths.push(p);
-    });
-  }
-
-  // Administration wing: category visibility (or any child path) unlocks full wing nav, including incident reports
-  const administrationTitle = 'Administration Wing';
-  const administrationPaths = allCategoryPaths[administrationTitle] || [];
-  const hasAdministrationAccess =
-    visibility[administrationTitle] === true ||
-    administrationPaths.some((p) => pathPermissions[p] === true);
-
-  if (hasAdministrationAccess) {
-    administrationPaths.forEach((p) => {
-      if (!allowedPaths.includes(p)) allowedPaths.push(p);
-    });
-  }
-
-  const planActivatePath = '/home/planActivateRequests';
-  const planActivateApproverRoles = ['md', 'mgr', 'dops'];
-  const jobRole = String(userData?.job_role || '').toLowerCase();
-  const canSeePlanActivateRequests =
-    pathPermissions['/home/deactivatePlan'] === true ||
-    pathPermissions[planActivatePath] === true ||
-    hasStrategicAccess ||
-    (visibility[strategicTitle] === true && planActivateApproverRoles.includes(jobRole));
-
-  if (canSeePlanActivateRequests && !allowedPaths.includes(planActivatePath)) {
-    allowedPaths.push(planActivatePath);
-  }
-
   return allowedPaths;
 };
 
@@ -243,7 +236,7 @@ export const getAllowedPaths = (visibility = {}, pathPermissions = {}, userData 
  * @returns {boolean} True if user has access to the path
  */
 export const hasPathAccess = (path, userData, permissions, categories, pathPermissions = {}) => {
-  const visibility = getCategoryVisibility(userData, permissions, categories);
+  const visibility = getCategoryVisibility(userData, permissions, categories, pathPermissions);
   const allowedPaths = getAllowedPaths(visibility, pathPermissions, userData);
   return allowedPaths.includes(path);
 };

@@ -84,7 +84,7 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
   const userData = getUserData();
   const userType = userData.member_type_name || '';
 
-  const { categoryVisibility, allowedPaths } = useNavbarPermissions();
+  const { categoryVisibility, categoryFullAccess, allowedPaths } = useNavbarPermissions();
 
   const userId = userData?.id ?? userData?.user_id;
   const { data: fieldUnblockPendingPayload } = useGetFieldUnblockPendingCountQuery(undefined, {
@@ -267,15 +267,7 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
           </li>
         )}
         {categoriesToShow.map((category) => {
-          const isStrategicWing = category.title === 'Strategic Planning and Monitoring wing';
-          const isAdministrationWing = category.title === 'Administration Wing';
-          const childHasAllowedPath = (child) =>
-            allowedPaths.includes(child.path) ||
-            (child.subItems || []).some((sub) => allowedPaths.includes(sub.path));
-          const showAllCategoryChildren =
-            (isStrategicWing || isAdministrationWing) &&
-            (categoryVisibility[category.title] === true ||
-              category.children.some((c) => childHasAllowedPath(c)));
+          const showAllCategoryChildren = categoryFullAccess[category.title] === true;
           const visibleChildren = category.children.filter((child) => {
             // When Dashboard is pinned at top for Geo Spatial, hide the duplicate under the wing.
             if (showGeoDashboardFirst && child.path === GEO_SPATIAL_DASHBOARD_PATH) {
