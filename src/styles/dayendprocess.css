@@ -2142,3 +2142,113 @@
   font-weight: 600;
   cursor: pointer;
 }
+
+.plan-customization-loading-block-pl-cuz {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 16px;
+  color: #4a5568;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.plan-customization-spinner-pl-cuz {
+  width: 22px;
+  height: 22px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #003057;
+  border-radius: 50%;
+  animation: plan-customization-spin-pl-cuz 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes plan-customization-spin-pl-cuz {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.plan-customization-field-id-pl-cuz {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: #edf2f7;
+  color: #003057;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.plan-customization-fields-table-pl-cuz th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f7fafc;
+}
+
+.plan-customization-field-option-pl-cuz.is-selected-pl-cuz {
+  border-color: #003057;
+  background: #ebf8ff;
+  box-shadow: 0 0 0 1px rgba(0, 48, 87, 0.15);
+}
+
+.plan-customization-field-option-body-pl-cuz {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.plan-customization-field-name-pl-cuz {
+  font-weight: 600;
+  color: #1a202c;
+  font-size: 13px;
+}
+
+.plan-customization-field-area-pl-cuz {
+  font-size: 12px;
+  color: #718096;
+}
+
+.plan-customization-add-hint-pl-cuz {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: #f0f9ff;
+  border: 1px solid #bee3f8;
+  border-radius: 8px;
+  color: #2c5282;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.plan-customization-selection-count-pl-cuz {
+  font-size: 13px;
+  color: #4a5568;
+  font-weight: 600;
+}
+
+.plan-customization-modal-actions-pl-cuz {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.plan-customization-modal-actions-buttons-pl-cuz {
+  display: flex;
+  gap: 10px;
+}
+
+.plan-customization-modal-overlay-top-pl-cuz {
+  z-index: 1100;
+}
+
+.plan-customization-fields-grid-pl-cuz {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}

@@ -45,13 +45,18 @@ export const plantationEstateManagerApi = baseApi.injectEndpoints({
     getPlanEditContext: builder.query({
       queryFn: async (planId) => {
         const result = await nodeBackendBaseQuery(
-          { url: `/api/plantation-estate-manager/web-plan-edit-context/${planId}?skipDateRestriction=true&skipPlanSizeCheck=true&_t=${Date.now()}`, method: 'GET' },
+          {
+            url: `/api/plantation-estate-manager/web-plan-edit-context/${planId}?skipDateRestriction=true&skipPlanSizeCheck=true`,
+            method: 'GET',
+          },
           {},
           {}
         );
         return result;
       },
-      providesTags: ['PlantationEstateManager'],
+      providesTags: (result, error, planId) => [
+        { type: 'PlantationEstateManager', id: `edit-context-${planId}` },
+      ],
     }),
 
     getApprovePlanContext: builder.query({
@@ -87,7 +92,11 @@ export const plantationEstateManagerApi = baseApi.injectEndpoints({
         );
         return result;
       },
-      invalidatesTags: ['PlantationEstateManager'],
+      invalidatesTags: (result, error, { planId }) => [
+        'PlantationEstateManager',
+        'EmergencyMoving',
+        { type: 'PlantationEstateManager', id: `edit-context-${planId}` },
+      ],
     }),
 
     getManagerFieldRemoveReasons: builder.query({

@@ -1,10 +1,24 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
-import { FaCalendarAlt, FaArrowLeft, FaPlus, FaEye, FaMapMarkerAlt, FaRulerCombined, FaCheckCircle, FaTimesCircle, FaClock, FaClipboardList } from 'react-icons/fa';
+import {
+  FaCalendarAlt,
+  FaPlus,
+  FaEye,
+  FaMapMarkerAlt,
+  FaRulerCombined,
+  FaCheckCircle,
+  FaClock,
+  FaClipboardList,
+  FaHashtag,
+} from 'react-icons/fa';
 import { useGetPlansWithFieldsQuery } from '../../../api/services NodeJs/emergencyMovingApi';
-import { useGetPlanEditContextQuery, useSubmitPlanEditMutation, useGetWebPlanCustomizationLogQuery } from '../../../api/services NodeJs/plantationEstateManagerApi';
+import {
+  useGetPlanEditContextQuery,
+  useSubmitPlanEditMutation,
+  useGetWebPlanCustomizationLogQuery,
+} from '../../../api/services NodeJs/plantationEstateManagerApi';
 import '../../../styles/dayendprocess.css';
 
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
@@ -13,6 +27,21 @@ const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
     <FaCalendarAlt className="calendar-icon-pl-cuz" />
   </div>
 ));
+
+const LoadingBlock = ({ label = 'Loading…' }) => (
+  <div className="plan-customization-loading-block-pl-cuz" role="status" aria-live="polite">
+    <div className="plan-customization-spinner-pl-cuz" aria-hidden />
+    <span>{label}</span>
+  </div>
+);
+
+const resolveFieldAreaHa = (row) => {
+  const pdfArea = Number(row?.field_area);
+  if (Number.isFinite(pdfArea) && pdfArea > 0) return pdfArea;
+  const fieldArea = Number(row?.area);
+  if (Number.isFinite(fieldArea) && fieldArea > 0) return fieldArea;
+  return 0;
+};
 
 const PlanCustomization = () => {
   const navigate = useNavigate();
@@ -24,44 +53,29 @@ const PlanCustomization = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const dateString = selectedDate.toISOString().split('T')[0];
-  const { data: plansData = [], isLoading: plansLoading } = useGetPlansWithFieldsQuery(dateString);
-  const { data: editContext, isLoading: editContextLoading, error: editContextError, refetch: refetchEditContext } = useGetPlanEditContextQuery(selectedPlan?.id || 0, { skip: !selectedPlan?.id });
+  const { data: plansData = [], isLoading: plansLoading, isFetching: plansFetching } =
+    useGetPlansWithFieldsQuery(dateString);
+
+  const selectedPlanId = selectedPlan?.id || 0;
+  const {
+    data: editContext,
+    isLoading: editContextLoading,
+    isFetching: editContextFetching,
+    error: editContextError,
+    refetch: refetchEditContext,
+  } = useGetPlanEditContextQuery(selectedPlanId, {
+    skip: !selectedPlanId,
+    refetchOnMountOrArgChange: true,
+  });
+
   const [submitPlanEdit] = useSubmitPlanEditMutation();
-  const { data: logData } = useGetWebPlanCustomizationLogQuery(selectedPlan?.id || 0, { skip: !selectedPlan?.id });
+  const { data: logData, isLoading: logLoading } = useGetWebPlanCustomizationLogQuery(selectedPlanId, {
+    skip: !selectedPlanId,
+  });
 
   const plans = plansData || [];
-  const currentFields = selectedPlan?.fields || [];
   const editContextPayload = editContext?.data || editContext || {};
-  const availableFields = useMemo(() => {
-    if (!editContextPayload?.fields || !editContextPayload?.activePlanFieldIds) return [];
-    const currentFieldIds = new Set(editContextPayload.activePlanFieldIds.map((id) => Number(id)));
-    const available = editContextPayload.fields.filter((f) => !currentFieldIds.has(Number(f.id)));
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[PlanCustomization] estateId:', editContextPayload.estate?.id, 'estateName:', editContextPayload.estate?.estate, 'fields:', editContextPayload.fields.length, 'activePlanFieldIds:', editContextPayload.activePlanFieldIds.length, 'available:', available.length, 'editContextKeys:', Object.keys(editContext || {}));
-    }
-    return available;
-  }, [editContext]);
-
-  const enrichedCurrentFields = useMemo(() => {
-    const fieldMap = new Map();
-    (editContextPayload?.fields || []).forEach((f) => {
-      if (f?.id != null) {
-        fieldMap.set(Number(f.id), f);
-      }
-    });
-    return currentFields.map((field) => {
-      const source = fieldMap.get(Number(field.id));
-      if (source) {
-        return {
-          ...field,
-          division_name: source.division_name || field.division_name,
-          division_id: source.division_id || field.division_id,
-          division: source.division || field.division,
-        };
-      }
-      return field;
-    });
-  }, [currentFields, editContextPayload]);
+  const editContextBusy = editContextLoading || editContextFetching;
 
   const divisionNameMap = useMemo(() => {
     const map = {};
@@ -73,17 +87,55 @@ const PlanCustomization = () => {
     return map;
   }, [editContextPayload]);
 
-  const resolveDivisionName = (divisionId) => {
-    if (divisionId == null || divisionId === '' || divisionId === 0 || divisionId === '0') return 'Unassigned';
-    const name = divisionNameMap[String(divisionId)];
-    return name || `Division ${divisionId}`;
-  };
+  const resolveDivisionName = useCallback(
+    (divisionId) => {
+      if (divisionId == null || divisionId === '' || divisionId === 0 || divisionId === '0') {
+        return 'Unassigned';
+      }
+      const name = divisionNameMap[String(divisionId)];
+      return name || `Division ${divisionId}`;
+    },
+    [divisionNameMap]
+  );
 
-  const calculatedTotalArea = useMemo(() => {
-    return (currentFields || [])
-      .reduce((sum, f) => sum + (Number(f.field_area || f.area || 0)), 0)
-      .toFixed(2);
-  }, [currentFields]);
+  /** Authoritative current fields from plan_division_fields (correct fieldId + area). */
+  const currentPlanFields = useMemo(() => {
+    const rows = editContextPayload?.activePlanFields;
+    if (Array.isArray(rows) && rows.length > 0) {
+      return rows.map((row) => ({
+        fieldId: Number(row.fieldId),
+        field_name: row.field || '-',
+        short_name: row.short_name || '-',
+        areaHa: resolveFieldAreaHa(row),
+        division_id: row.division,
+        pilot_name: row.pilot_name || '-',
+        drone_serial: row.drone_serial || row.drone_tag || '-',
+        pdf_id: row.pdf_id,
+      }));
+    }
+    // Fallback while edit context loads — use field_id not task id
+    return (selectedPlan?.fields || []).map((row) => ({
+      fieldId: Number(row.field_id) || parseInt(String(row.field || ''), 10) || null,
+      field_name: row.field_name || row.field || '-',
+      short_name: row.field_short_name || row.short_name || '-',
+      areaHa: resolveFieldAreaHa(row),
+      division_id: row.division_id || row.division,
+      pilot_name: row.pilot_name || '-',
+      drone_serial: row.drone_serial || row.drone_tag || '-',
+      pdf_id: row.task_id || row.id,
+    }));
+  }, [editContextPayload, selectedPlan]);
+
+  const availableFields = useMemo(() => {
+    if (!editContextPayload?.fields || !editContextPayload?.activePlanFieldIds) return [];
+    const currentFieldIds = new Set(editContextPayload.activePlanFieldIds.map((id) => Number(id)));
+    return editContextPayload.fields.filter((f) => !currentFieldIds.has(Number(f.id)));
+  }, [editContextPayload]);
+
+  const calculatedTotalArea = useMemo(
+    () => currentPlanFields.reduce((sum, f) => sum + (Number(f.areaHa) || 0), 0).toFixed(2),
+    [currentPlanFields]
+  );
 
   const changeLog = useMemo(() => {
     if (!logData) return [];
@@ -95,6 +147,7 @@ const PlanCustomization = () => {
   const handlePlanSelect = (plan) => {
     setSelectedPlan(plan);
     setSelectedFieldIds([]);
+    setShowAddFieldModal(false);
   };
 
   const handleAddField = async () => {
@@ -102,15 +155,20 @@ const PlanCustomization = () => {
     setSubmitting(true);
     try {
       const currentFieldIds = (editContextPayload?.activePlanFieldIds || []).map((id) => Number(id));
-      const mergedFieldIds = Array.from(new Set([...currentFieldIds, ...selectedFieldIds.map((id) => Number(id))])).filter((id) => Number.isFinite(id) && id > 0);
+      const mergedFieldIds = Array.from(
+        new Set([...currentFieldIds, ...selectedFieldIds.map((id) => Number(id))])
+      ).filter((id) => Number.isFinite(id) && id > 0);
+
       await submitPlanEdit({
         planId: selectedPlan.id,
         fieldIds: mergedFieldIds,
         timeOfDayId: editContextPayload.timeOfDayId,
         chemicals: editContextPayload.chemicalLines || [],
       }).unwrap();
+
       setShowAddFieldModal(false);
       setSelectedFieldIds([]);
+      await refetchEditContext();
       alert('Fields added successfully');
     } catch (error) {
       alert(error?.data?.message || 'Failed to add fields');
@@ -122,9 +180,29 @@ const PlanCustomization = () => {
   const getStatusBadge = (plan) => {
     const approval = Number(plan.manager_approval);
     if (approval === 1) return <span className="status-badge-pl-cuz status-approved-pl-cuz">Manager Approved</span>;
-    if (plan.activated === 0 || plan.activated === '0') return <span className="status-badge-pl-cuz status-cancelled-pl-cuz">Cancelled</span>;
+    if (plan.activated === 0 || plan.activated === '0') {
+      return <span className="status-badge-pl-cuz status-cancelled-pl-cuz">Cancelled</span>;
+    }
     return <span className="status-badge-pl-cuz status-pending-pl-cuz">Pending</span>;
   };
+
+  const groupedCurrentFields = useMemo(() => {
+    return currentPlanFields.reduce((acc, field) => {
+      const divisionName = resolveDivisionName(field.division_id);
+      if (!acc[divisionName]) acc[divisionName] = [];
+      acc[divisionName].push(field);
+      return acc;
+    }, {});
+  }, [currentPlanFields, resolveDivisionName]);
+
+  const groupedAvailableFields = useMemo(() => {
+    return availableFields.reduce((acc, field) => {
+      const divisionName = resolveDivisionName(field.division || field.division_id);
+      if (!acc[divisionName]) acc[divisionName] = [];
+      acc[divisionName].push(field);
+      return acc;
+    }, {});
+  }, [availableFields, resolveDivisionName]);
 
   return (
     <div className="plan-customization-pl-cuz">
@@ -136,19 +214,24 @@ const PlanCustomization = () => {
       </div>
 
       <div className="plan-customization-date-picker-pl-cuz">
-        <label htmlFor="plan-customization-date-pl-cuz" className="date-label-pl-cuz">Plan Date:</label>
+        <label htmlFor="plan-customization-date-pl-cuz" className="date-label-pl-cuz">
+          Plan Date:
+        </label>
         <DatePicker
           id="plan-customization-date-pl-cuz"
           selected={selectedDate}
-          onChange={(date) => { setSelectedDate(date); setSelectedPlan(null); }}
+          onChange={(date) => {
+            setSelectedDate(date);
+            setSelectedPlan(null);
+            setShowAddFieldModal(false);
+          }}
           dateFormat="yyyy/MM/dd"
           customInput={<CustomDateInput />}
-          // no date restriction — future dates allowed in web plan customization
         />
       </div>
 
-      {plansLoading ? (
-        <div className="plan-customization-loading-pl-cuz">Loading plans...</div>
+      {plansLoading || plansFetching ? (
+        <LoadingBlock label="Loading plans for selected date…" />
       ) : (
         <div className="plan-customization-content-pl-cuz">
           <div className="plan-customization-section-pl-cuz">
@@ -186,17 +269,19 @@ const PlanCustomization = () => {
                   </tbody>
                 </table>
               </div>
-             )}
-           </div>
-         </div>
-       )}
+            )}
+          </div>
+        </div>
+      )}
 
-       {selectedPlan && (
+      {selectedPlan && (
         <div className="plan-customization-modal-overlay-pl-cuz">
           <div className="plan-customization-modal-pl-cuz plan-customization-modal-wide-pl-cuz">
             <div className="plan-customization-modal-title-pl-cuz">
               <span>Plan #{selectedPlan.id} Details</span>
-              <button className="plan-customization-modal-close-pl-cuz" onClick={() => setSelectedPlan(null)}>×</button>
+              <button className="plan-customization-modal-close-pl-cuz" onClick={() => setSelectedPlan(null)}>
+                ×
+              </button>
             </div>
             <div className="plan-customization-modal-body-pl-cuz">
               <div className="plan-customization-meta-pl-cuz">
@@ -204,57 +289,83 @@ const PlanCustomization = () => {
                   <FaMapMarkerAlt /> <strong>Estate:</strong> {selectedPlan.estate_name || '-'}
                 </div>
                 <div className="plan-customization-meta-item-pl-cuz">
-                  <FaRulerCombined /> <strong>Area:</strong> {Number(selectedPlan.totalExtent || 0).toFixed(2)} Ha
+                  <FaRulerCombined /> <strong>Plan area:</strong> {Number(selectedPlan.totalExtent || 0).toFixed(2)} Ha
                 </div>
                 <div className="plan-customization-meta-item-pl-cuz">
-                  <FaCheckCircle /> <strong>Manager Approval:</strong> {Number(selectedPlan.manager_approval) === 1 ? 'Yes' : 'No'}
+                  <FaRulerCombined /> <strong>Fields total:</strong>{' '}
+                  {editContextBusy ? '…' : `${calculatedTotalArea} Ha`}
                 </div>
                 <div className="plan-customization-meta-item-pl-cuz">
-                  <FaClock /> <strong>Status:</strong> {selectedPlan.activated === 0 || selectedPlan.activated === '0' ? 'Cancelled' : Number(selectedPlan.manager_approval) === 1 ? 'Approved' : 'Pending'}
+                  <FaCheckCircle /> <strong>Manager Approval:</strong>{' '}
+                  {Number(selectedPlan.manager_approval) === 1 ? 'Yes' : 'No'}
+                </div>
+                <div className="plan-customization-meta-item-pl-cuz">
+                  <FaClock /> <strong>Status:</strong>{' '}
+                  {selectedPlan.activated === 0 || selectedPlan.activated === '0'
+                    ? 'Cancelled'
+                    : Number(selectedPlan.manager_approval) === 1
+                      ? 'Approved'
+                      : 'Pending'}
                 </div>
               </div>
 
-               <h3 className="plan-customization-subtitle-pl-cuz">Current Fields</h3>
-               {enrichedCurrentFields.length === 0 ? (
-                 <p className="plan-customization-empty-pl-cuz">No fields assigned to this plan.</p>
-               ) : (
-                 <div className="plan-customization-table-wrap-pl-cuz">
-                   <table className="plan-customization-table-pl-cuz">
-                      <tbody>
-                        {Object.values(
-                          enrichedCurrentFields.reduce((acc, field) => {
-                            const divisionName = resolveDivisionName(field.division || field.division_id);
-                            if (!acc[divisionName]) acc[divisionName] = [];
-                            acc[divisionName].push(field);
-                            return acc;
-                          }, {})
-                        ).map((group, groupIdx) => (
-                          <React.Fragment key={groupIdx}>
-                            <tr className="division-group-header-pl-cuz">
-                              <td colSpan={7}>{group[0] ? resolveDivisionName(group[0].division || group[0].division_id) : 'Unknown Division'}</td>
+              <h3 className="plan-customization-subtitle-pl-cuz">Current Fields</h3>
+
+              {editContextBusy ? (
+                <LoadingBlock label="Loading field details…" />
+              ) : editContextError ? (
+                <div className="plan-customization-error-box-pl-cuz">
+                  <p className="plan-customization-status-text-pl-cuz">Failed to load field details.</p>
+                  <button className="plan-customization-retry-btn-pl-cuz" onClick={() => refetchEditContext()}>
+                    Retry
+                  </button>
+                </div>
+              ) : currentPlanFields.length === 0 ? (
+                <p className="plan-customization-empty-pl-cuz">No fields assigned to this plan.</p>
+              ) : (
+                <div className="plan-customization-table-wrap-pl-cuz">
+                  <table className="plan-customization-table-pl-cuz plan-customization-fields-table-pl-cuz">
+                    <thead>
+                      <tr>
+                        <th>Field ID</th>
+                        <th>Field Name</th>
+                        <th>Short Name</th>
+                        <th>Area (Ha)</th>
+                        <th>Pilot</th>
+                        <th>Drone</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(groupedCurrentFields).map(([divisionName, group]) => (
+                        <React.Fragment key={divisionName}>
+                          <tr className="division-group-header-pl-cuz">
+                            <td colSpan={6}>{divisionName}</td>
+                          </tr>
+                          {group.map((field) => (
+                            <tr key={field.pdf_id || field.fieldId}>
+                              <td>
+                                <span className="plan-customization-field-id-pl-cuz">
+                                  <FaHashtag aria-hidden /> {field.fieldId ?? '—'}
+                                </span>
+                              </td>
+                              <td>{field.field_name}</td>
+                              <td>{field.short_name}</td>
+                              <td>{Number(field.areaHa || 0).toFixed(2)}</td>
+                              <td>{field.pilot_name}</td>
+                              <td>{field.drone_serial}</td>
                             </tr>
-                            {group.map((field, idx) => (
-                              <tr key={field.id || idx}>
-                                <td></td>
-                                <td>{field.field || `#${field.id}`}</td>
-                                <td>{field.short_name || field.field_short_name || '-'}</td>
-                                <td>{Number(field.field_area || field.area || 0).toFixed(2)}</td>
-                                <td>{field.pilot_name || '-'}</td>
-                                <td>{field.drone_serial || field.drone_tag || '-'}</td>
-                                <td>{field.activated === 0 || field.activated === '0' ? 'Inactive' : 'Active'}</td>
-                              </tr>
-                            ))}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                   </table>
-                 </div>
-               )}
+                          ))}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {Number(selectedPlan.manager_approval) === 1 && (
                 <div className="plan-customization-add-availability-pl-cuz">
-                  {editContextLoading ? (
-                    <p className="plan-customization-status-text-pl-cuz">Loading available fields...</p>
+                  {editContextBusy ? (
+                    <LoadingBlock label="Loading available fields to add…" />
                   ) : editContextError ? (
                     <div className="plan-customization-error-box-pl-cuz">
                       <p className="plan-customization-status-text-pl-cuz">Failed to load available fields.</p>
@@ -263,23 +374,20 @@ const PlanCustomization = () => {
                       </button>
                     </div>
                   ) : availableFields.length === 0 ? (
-                    <div>
-                      <p className="plan-customization-status-text-pl-cuz">No more fields available to add for this estate.</p>
-                      {process.env.NODE_ENV !== 'production' && (
-                        <p className="plan-customization-status-text-pl-cuz" style={{ fontSize: 12, opacity: 0.8 }}>
-                          Diagnostics — estate: {editContextPayload?.estate?.id ?? 'unknown'}, total fields: {editContextPayload?.fields?.length ?? 0}, active fields: {editContextPayload?.activePlanFieldIds?.length ?? 0}
-                        </p>
-                      )}
-                    </div>
+                    <p className="plan-customization-status-text-pl-cuz">
+                      No more fields available to add for this estate.
+                    </p>
                   ) : (
                     <button className="plan-customization-add-btn-pl-cuz" onClick={() => setShowAddFieldModal(true)}>
-                      <FaPlus /> Add Field
+                      <FaPlus /> Add Field ({availableFields.length} available)
                     </button>
                   )}
                 </div>
               )}
 
-              {changeLog.length > 0 && (
+              {logLoading ? (
+                <LoadingBlock label="Loading change log…" />
+              ) : changeLog.length > 0 ? (
                 <div className="plan-customization-section-pl-cuz">
                   <h3 className="plan-customization-subtitle-pl-cuz">Change Log</h3>
                   <div className="plan-customization-table-wrap-pl-cuz">
@@ -305,62 +413,104 @@ const PlanCustomization = () => {
                     </table>
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       )}
 
       {showAddFieldModal && (
-        <div className="plan-customization-modal-overlay-pl-cuz">
+        <div className="plan-customization-modal-overlay-pl-cuz plan-customization-modal-overlay-top-pl-cuz">
           <div className="plan-customization-modal-pl-cuz plan-customization-modal-wide-pl-cuz">
             <div className="plan-customization-modal-title-pl-cuz">
               <span>Add Fields to Plan #{selectedPlan?.id}</span>
-              <button className="plan-customization-modal-close-pl-cuz" onClick={() => { setShowAddFieldModal(false); setSelectedFieldIds([]); }}>×</button>
+              <button
+                className="plan-customization-modal-close-pl-cuz"
+                onClick={() => {
+                  setShowAddFieldModal(false);
+                  setSelectedFieldIds([]);
+                }}
+              >
+                ×
+              </button>
             </div>
             <div className="plan-customization-modal-body-pl-cuz">
-              {editContextLoading ? (
-                <p>Loading fields...</p>
+              {editContextBusy ? (
+                <LoadingBlock label="Loading available fields…" />
               ) : (
-                <div className="plan-customization-available-fields-pl-cuz">
-                  {Object.values(
-                    availableFields.reduce((acc, field) => {
-                      const divisionName = resolveDivisionName(field.division || field.division_id);
-                      if (!acc[divisionName]) acc[divisionName] = [];
-                      acc[divisionName].push(field);
-                      return acc;
-                    }, {})
-                  ).map((group, groupIdx) => (
-                    <div key={groupIdx} className="plan-customization-division-group-pl-cuz">
-                      <div className="plan-customization-division-title-pl-cuz">{group[0] ? resolveDivisionName(group[0].division || group[0].division_id) : 'Unknown Division'}</div>
-                      <div className="plan-customization-fields-grid-pl-cuz">
-                        {group.map((field) => (
-                          <label key={field.id} className="plan-customization-field-option-pl-cuz">
-                            <input
-                              type="checkbox"
-                              checked={selectedFieldIds.includes(field.id)}
-                              onChange={(e) => {
-                                setSelectedFieldIds((prev) =>
-                                  e.target.checked ? [...prev, field.id] : prev.filter((id) => id !== field.id)
-                                );
-                              }}
-                            />
-                            <span>{field.short_name || field.field || `#${field.id}`} ({Number(field.area || 0).toFixed(2)} Ha)</span>
-                          </label>
-                        ))}
+                <>
+                  <p className="plan-customization-add-hint-pl-cuz">
+                    Select fields to add. Each row shows the <strong>Field ID</strong> from the master fields table.
+                  </p>
+                  <div className="plan-customization-available-fields-pl-cuz">
+                    {Object.entries(groupedAvailableFields).map(([divisionName, group]) => (
+                      <div key={divisionName} className="plan-customization-division-group-pl-cuz">
+                        <div className="plan-customization-division-title-pl-cuz">{divisionName}</div>
+                        <div className="plan-customization-fields-grid-pl-cuz">
+                          {group.map((field) => {
+                            const fieldId = Number(field.id);
+                            const areaHa = resolveFieldAreaHa(field);
+                            const isChecked = selectedFieldIds.includes(fieldId);
+                            return (
+                              <label
+                                key={fieldId}
+                                className={`plan-customization-field-option-pl-cuz${isChecked ? ' is-selected-pl-cuz' : ''}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    setSelectedFieldIds((prev) =>
+                                      e.target.checked
+                                        ? [...prev, fieldId]
+                                        : prev.filter((id) => id !== fieldId)
+                                    );
+                                  }}
+                                />
+                                <span className="plan-customization-field-option-body-pl-cuz">
+                                  <span className="plan-customization-field-id-pl-cuz">
+                                    <FaHashtag aria-hidden /> {fieldId}
+                                  </span>
+                                  <span className="plan-customization-field-name-pl-cuz">
+                                    {field.short_name || field.field || `Field ${fieldId}`}
+                                  </span>
+                                  <span className="plan-customization-field-area-pl-cuz">
+                                    {areaHa.toFixed(2)} Ha
+                                  </span>
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                </>
               )}
             </div>
             <div className="plan-customization-modal-actions-pl-cuz">
-              <button className="plan-customization-cancel-btn-pl-cuz" onClick={() => { setShowAddFieldModal(false); setSelectedFieldIds([]); }} disabled={submitting}>
-                Cancel
-              </button>
-              <button className="plan-customization-save-btn-pl-cuz" onClick={handleAddField} disabled={submitting || selectedFieldIds.length === 0}>
-                {submitting ? 'Saving...' : 'Add Selected'}
-              </button>
+              <span className="plan-customization-selection-count-pl-cuz">
+                {selectedFieldIds.length} field{selectedFieldIds.length === 1 ? '' : 's'} selected
+              </span>
+              <div className="plan-customization-modal-actions-buttons-pl-cuz">
+                <button
+                  className="plan-customization-cancel-btn-pl-cuz"
+                  onClick={() => {
+                    setShowAddFieldModal(false);
+                    setSelectedFieldIds([]);
+                  }}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="plan-customization-save-btn-pl-cuz"
+                  onClick={handleAddField}
+                  disabled={submitting || selectedFieldIds.length === 0 || editContextBusy}
+                >
+                  {submitting ? 'Saving…' : 'Add Selected'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
