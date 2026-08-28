@@ -877,13 +877,6 @@ const DayEndProcess = () => {
             customInput={<CustomDateInput />}
           />
         </div>
-        <button
-          className="dayendprocess-plan-customization-btn"
-          onClick={() => navigate('/home/planCustomization')}
-          title="Open Plan Customization"
-        >
-          Plan Customization
-        </button>
       </div>
       <div className="dayendprocess-content">
         <div className="left-dayend">
