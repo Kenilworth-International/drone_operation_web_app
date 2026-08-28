@@ -43,6 +43,32 @@ const resolveFieldAreaHa = (row) => {
   return 0;
 };
 
+const fieldAllowedForMission = (field, missionTypeId) => {
+  const mt = String(missionTypeId || '').toLowerCase();
+  if (mt === 'spy') return Number(field?.can_spray) === 1;
+  if (mt === 'spd') return Number(field?.can_spread) === 1;
+  return true;
+};
+
+const missionTypeLabel = (missionTypeId) => {
+  const mt = String(missionTypeId || '').toLowerCase();
+  if (mt === 'spy') return 'Spray';
+  if (mt === 'spd') return 'Spread';
+  return mt ? mt.toUpperCase() : 'Unknown';
+};
+
+const extractApiErrorMessage = (error, fallback = 'Request failed') => {
+  if (!error) return fallback;
+  if (typeof error === 'string') return error;
+  return (
+    error?.data?.message ||
+    error?.data?.error ||
+    error?.error?.data?.message ||
+    error?.message ||
+    fallback
+  );
+};
+
 const PlanCustomization = () => {
   const navigate = useNavigate();
   const today = new Date();
@@ -129,7 +155,10 @@ const PlanCustomization = () => {
   const availableFields = useMemo(() => {
     if (!editContextPayload?.fields || !editContextPayload?.activePlanFieldIds) return [];
     const currentFieldIds = new Set(editContextPayload.activePlanFieldIds.map((id) => Number(id)));
-    return editContextPayload.fields.filter((f) => !currentFieldIds.has(Number(f.id)));
+    const missionTypeId = editContextPayload?.plan?.missionTypeId;
+    return editContextPayload.fields.filter(
+      (f) => !currentFieldIds.has(Number(f.id)) && fieldAllowedForMission(f, missionTypeId)
+    );
   }, [editContextPayload]);
 
   const calculatedTotalArea = useMemo(
@@ -171,7 +200,7 @@ const PlanCustomization = () => {
       await refetchEditContext();
       alert('Fields added successfully');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to add fields');
+      alert(extractApiErrorMessage(error, 'Failed to add fields'));
     } finally {
       setSubmitting(false);
     }
@@ -440,7 +469,9 @@ const PlanCustomization = () => {
               ) : (
                 <>
                   <p className="plan-customization-add-hint-pl-cuz">
-                    Select fields to add. Each row shows the <strong>Field ID</strong> from the master fields table.
+                    Select fields to add for this plan (
+                    <strong>{missionTypeLabel(editContextPayload?.plan?.missionTypeId)}</strong> mission).
+                    Each card shows the master <strong>Field ID</strong>, short name, and area.
                   </p>
                   <div className="plan-customization-available-fields-pl-cuz">
                     {Object.entries(groupedAvailableFields).map(([divisionName, group]) => (
