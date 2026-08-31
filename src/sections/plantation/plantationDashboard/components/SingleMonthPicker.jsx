@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
 
-const SingleMonthPicker = ({ selectedMonth, onChange }) => {
+const SingleMonthPicker = ({ selectedMonth, onChange, monthsAhead = 0 }) => {
   const [showPicker, setShowPicker] = useState(false);
   const [currentYear, setCurrentYear] = useState(selectedMonth.getFullYear());
   const [pickerPosition, setPickerPosition] = useState({ top: 0, left: 0 });
@@ -56,10 +56,22 @@ const SingleMonthPicker = ({ selectedMonth, onChange }) => {
     return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   };
 
+  const maxSelectableMonth = useCallback(() => {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth() + monthsAhead, 1);
+  }, [monthsAhead]);
+
+  const isMonthSelectable = useCallback(
+    (year, monthIndex) => {
+      const candidate = new Date(year, monthIndex, 1);
+      return candidate <= maxSelectableMonth();
+    },
+    [maxSelectableMonth]
+  );
+
   const handleMonthSelect = (monthIndex) => {
     const newMonth = new Date(currentYear, monthIndex, 1);
-    const today = new Date();
-    if (newMonth <= today) {
+    if (isMonthSelectable(currentYear, monthIndex)) {
       onChange(newMonth);
       setShowPicker(false);
     }
@@ -127,7 +139,7 @@ const SingleMonthPicker = ({ selectedMonth, onChange }) => {
                 type="button"
                 className="plantation-month-picker-nav"
                 onClick={() => setCurrentYear(currentYear + 1)}
-                disabled={currentYear >= new Date().getFullYear()}
+                disabled={currentYear >= maxSelectableMonth().getFullYear()}
               >
                 <FaChevronRight />
               </button>
@@ -135,7 +147,7 @@ const SingleMonthPicker = ({ selectedMonth, onChange }) => {
             <div className="plantation-month-picker-grid">
               {months.map((month, index) => {
                 const isSelected = selectedMonth.getFullYear() === currentYear && selectedMonth.getMonth() === index;
-                const isDisabled = new Date(currentYear, index, 1) > new Date();
+                const isDisabled = !isMonthSelectable(currentYear, index);
                 return (
                   <button
                     key={index}

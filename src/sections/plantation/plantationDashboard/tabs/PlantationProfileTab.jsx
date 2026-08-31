@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { FaSignOutAlt, FaTrashAlt } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../../../../store/hooks';
 import { useQueryClient } from '@tanstack/react-query';
 import { logout } from '../../../../store/slices/authSlice';
@@ -12,6 +12,7 @@ import {
 } from '../../../../api/services/estatesApi';
 import { useGetUserJobRolesQuery } from '../../../../api/services NodeJs/jdManagementApi';
 import { useDeactivateAccountMutation } from '../../../../api/services NodeJs/accountApi';
+import PlantationPageLayout from '../components/PlantationPageLayout';
 import { usePlantationSession } from '../../hooks/usePlantationSession';
 import { getUserData } from '../../../../utils/authUtils';
 import '../../../../styles/plantationDashboard.css';
@@ -21,7 +22,7 @@ export default function PlantationProfileTab() {
   const dispatch = useAppDispatch();
   const queryClient = useQueryClient();
   const userData = getUserData();
-  const { session, refresh, isFetching } = usePlantationSession();
+  const { session } = usePlantationSession();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deactivate, { isLoading: deactivating }] = useDeactivateAccountMutation();
 
@@ -84,14 +85,21 @@ export default function PlantationProfileTab() {
     }
   };
 
+  const displayName = userData?.name || userData?.username || 'User';
+
   return (
-    <div className="plantation-profile-tab">
+    <PlantationPageLayout
+      title="Profile"
+      subtitle="Your account and organisation hierarchy"
+      className="plantation-profile-tab"
+      flush
+    >
       <div className="plantation-profile-header">
         <div className="plantation-profile-avatar">
-          {(userData?.name || userData?.username || 'U').charAt(0).toUpperCase()}
+          {displayName.charAt(0).toUpperCase()}
         </div>
         <div>
-          <h1>{userData?.name || userData?.username || 'User'}</h1>
+          <h1>{displayName}</h1>
           <p>{hierarchyLabels.designation}</p>
         </div>
       </div>
@@ -106,9 +114,6 @@ export default function PlantationProfileTab() {
           <div><dt>Role</dt><dd>{session?.jobRoleCode || '—'}</dd></div>
           <div><dt>Estate manager</dt><dd>{session?.isEstateManager ? 'Yes' : 'No'}</dd></div>
         </dl>
-        <button type="button" className="pd-refresh-btn" onClick={refresh} disabled={isFetching}>
-          Refresh hierarchy
-        </button>
       </div>
 
       <div className="plantation-profile-actions">
@@ -136,6 +141,6 @@ export default function PlantationProfileTab() {
           </div>
         )}
       </div>
-    </div>
+    </PlantationPageLayout>
   );
 }

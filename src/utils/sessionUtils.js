@@ -14,7 +14,7 @@ export function clearAuthSessionStorage() {
   localStorage.removeItem('leftnav_expanded_subitems');
 }
 
-function resolveLogoutReason(error) {
+export function resolveLogoutReason(error) {
   const payload = error?.data || {};
   const message = String(payload?.message || payload?.error || '').toLowerCase();
   if (payload?.code === 'ACCOUNT_DEACTIVATED' || message.includes('deactivat')) {
@@ -75,10 +75,6 @@ export function redirectToLogin(reason = 'session_expired', dispatch = null) {
  */
 export function forceLogoutFromApi(api, error) {
   if (forceLogoutInProgress || !isSessionExpiredError(error)) return false;
-  if (isWingHubLandingRoute()) {
-    // WingHubHome shows a message, then calls redirectToLogin.
-    return false;
-  }
   redirectToLogin(resolveLogoutReason(error), api?.dispatch);
   return true;
 }

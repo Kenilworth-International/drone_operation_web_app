@@ -105,10 +105,8 @@ const WingHubHome = () => {
 
   useEffect(() => {
     if (!sessionExpired) return undefined;
-    const timer = window.setTimeout(() => {
-      redirectToLogin('session_expired', dispatch);
-    }, 1200);
-    return () => window.clearTimeout(timer);
+    redirectToLogin('session_expired', dispatch);
+    return undefined;
   }, [sessionExpired, dispatch]);
 
   const handleConfirmLogout = () => {

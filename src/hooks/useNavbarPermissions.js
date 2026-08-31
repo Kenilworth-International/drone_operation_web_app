@@ -21,9 +21,16 @@ export function useNavbarPermissions() {
   const {
     data: backendPermissions = {},
     isLoading: loadingPermissions,
+    isFetching: fetchingPermissions,
+    isUninitialized: permissionsUninitialized,
     isError: permissionsError,
     error: permissionsFetchError,
-  } = useGetMyPermissionsQuery(undefined, { skip: !hasToken });
+  } = useGetMyPermissionsQuery(undefined, {
+    skip: !hasToken,
+    refetchOnMountOrArgChange: true,
+    refetchOnFocus: true,
+    refetchOnReconnect: true,
+  });
 
   const sessionExpired = useMemo(
     () => permissionsError && isSessionExpiredError(permissionsFetchError),
@@ -51,6 +58,9 @@ export function useNavbarPermissions() {
 
   const tokenCreatedAt = backendPermissions?.token_created_at || userData?.token_created_at || null;
 
+  const resolvingPermissions =
+    hasToken && (permissionsUninitialized || loadingPermissions || fetchingPermissions);
+
   return {
     categories,
     categoryVisibility,
@@ -58,7 +68,7 @@ export function useNavbarPermissions() {
     allowedPaths,
     userData,
     tokenCreatedAt,
-    loadingPermissions,
+    loadingPermissions: resolvingPermissions,
     sessionExpired,
     permissionsError,
     permissionsFetchError,

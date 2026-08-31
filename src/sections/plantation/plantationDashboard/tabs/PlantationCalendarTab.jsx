@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import PlantationCalendar from '../components/PlantationCalendar';
 import MonthlyRequestSection from '../components/MonthlyRequestSection';
+import PlantationPageLayout from '../components/PlantationPageLayout';
 import { usePlantationSession } from '../../hooks/usePlantationSession';
 import {
   getPlantationCalendarHierarchyLevel,
@@ -23,13 +24,13 @@ export default function PlantationCalendarTab() {
   const calendarScopeDescription = getPlantationCalendarScopeDescription(hierarchyLevel, userData);
   const enablePlanRequestUi = canRequestPlans;
 
-  return (
-    <div className="plantation-calendar-tab">
-      <h1 className="plantation-home-tab-title">Calendar</h1>
-      {calendarScopeDescription ? (
-        <p className="pd-calendar-scope">{calendarScopeDescription}</p>
-      ) : null}
+  const subtitle = useMemo(
+    () => calendarScopeDescription || 'View plans and submit mission requests',
+    [calendarScopeDescription]
+  );
 
+  return (
+    <PlantationPageLayout title="Calendar" subtitle={subtitle} className="plantation-calendar-tab">
       <div className="pd-calendar-segments">
         <button
           type="button"
@@ -71,6 +72,6 @@ export default function PlantationCalendarTab() {
           />
         </>
       )}
-    </div>
+    </PlantationPageLayout>
   );
 }

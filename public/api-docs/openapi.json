@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 794\n- **Route files:** 68\n- **Schema overlays applied:** 323\n- **Generated:** 2026-08-31T09:33:30.366Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 794\n- **Route files:** 68\n- **Schema overlays applied:** 323\n- **Generated:** 2026-08-31T10:24:20.957Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp`."
   },
   "servers": [
     {

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { getNodeBackendUrl, getToken } from '../api/services NodeJs/nodeBackendConfig';
-import { forceLogoutFromApi, isWingHubLandingRoute, redirectToLogin } from '../utils/sessionUtils';
+import { redirectToLogin, resolveLogoutReason } from '../utils/sessionUtils';
 
 const SESSION_CHECK_MS = 2 * 60 * 1000;
 
@@ -17,11 +17,13 @@ export default function SessionWatchdog() {
 
     const checkSession = async () => {
       if (cancelled) return;
+      const activeToken = getToken();
+      if (!activeToken) return;
       try {
         const response = await fetch(`${getNodeBackendUrl()}/api/feature-permissions/my-permissions`, {
           method: 'GET',
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${activeToken}`,
             'Content-Type': 'application/json',
           },
           cache: 'no-store',
@@ -29,11 +31,7 @@ export default function SessionWatchdog() {
 
         if (response.status === 401) {
           const data = await response.json().catch(() => ({}));
-          if (isWingHubLandingRoute()) {
-            window.setTimeout(() => redirectToLogin('session_expired', null), 1000);
-          } else {
-            forceLogoutFromApi(null, { status: 401, data });
-          }
+          redirectToLogin(resolveLogoutReason({ status: 401, data }), null);
         }
       } catch (_) {
         // network blips should not force logout
@@ -42,9 +40,16 @@ export default function SessionWatchdog() {
 
     checkSession();
     const intervalId = window.setInterval(checkSession, SESSION_CHECK_MS);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') checkSession();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
 

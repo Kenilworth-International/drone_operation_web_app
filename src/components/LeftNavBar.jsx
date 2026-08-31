@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   FaSignOutAlt,
@@ -485,18 +486,25 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
         </li>
       </ul>
 
-      {showLogoutDialog && (
-        <div className="logout-dialog-overlay">
-          <div className="logout-dialog">
-            <h3>Confirm Logout</h3>
-            <p>Are you sure you want to logout?</p>
-            <div className="dialog-buttons">
-              <button onClick={handleCancelLogout} className="cancel-btn">Cancel</button>
-              <button onClick={handleConfirmLogout} className="confirm-btn">Confirm</button>
+      {showLogoutDialog &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="logout-dialog-overlay" role="presentation">
+            <div className="logout-dialog" role="dialog" aria-modal="true" aria-labelledby="left-nav-logout-title">
+              <h3 id="left-nav-logout-title">Confirm Logout</h3>
+              <p>Are you sure you want to logout?</p>
+              <div className="dialog-buttons">
+                <button type="button" onClick={handleCancelLogout} className="cancel-btn">
+                  Cancel
+                </button>
+                <button type="button" onClick={handleConfirmLogout} className="confirm-btn">
+                  Confirm
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

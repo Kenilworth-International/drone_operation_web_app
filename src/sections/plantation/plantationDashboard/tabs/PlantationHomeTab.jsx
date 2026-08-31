@@ -2,21 +2,29 @@ import React from 'react';
 import { FaSync } from 'react-icons/fa';
 import PlantationDashboard from '../PlantationDashboard';
 import FieldAvailabilitySection from '../components/FieldAvailabilitySection';
+import PlantationPageLayout from '../components/PlantationPageLayout';
 import { usePlantationSession } from '../../hooks/usePlantationSession';
 import '../../../../styles/plantationDashboard.css';
 
 export default function PlantationHomeTab() {
-  const { refresh, isFetching } = usePlantationSession();
+  const { refresh, isFetching, jobRoleCode } = usePlantationSession();
   const basePath = '/home/plantation-dashboard';
 
+  const subtitle = jobRoleCode
+    ? `Mission overview and performance for your ${String(jobRoleCode).toUpperCase()} scope`
+    : 'Mission overview and performance for your estate';
+
   return (
-    <div className="plantation-home-tab">
-      <div className="plantation-home-tab-toolbar">
-        <h1 className="plantation-home-tab-title">Home</h1>
+    <PlantationPageLayout
+      title="Dashboard"
+      subtitle={subtitle}
+      actions={(
         <button type="button" className="pd-refresh-btn" onClick={refresh} disabled={isFetching}>
           <FaSync className={isFetching ? 'pd-spin' : ''} /> Refresh
         </button>
-      </div>
+      )}
+      flush
+    >
       <FieldAvailabilitySection basePath={basePath} />
       <PlantationDashboard
         basePath={basePath}
@@ -24,6 +32,6 @@ export default function PlantationHomeTab() {
         showTopHeader={false}
         embeddedInExternalShell
       />
-    </div>
+    </PlantationPageLayout>
   );
 }

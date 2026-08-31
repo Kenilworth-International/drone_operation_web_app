@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { format, parse } from 'date-fns';
 import { toast } from 'react-toastify';
 import {
@@ -14,57 +13,63 @@ import {
   useCreateManagerPlanRescheduleRequestMutation,
 } from '../../../../api/services NodeJs/plantationDashboardApi';
 import SingleMonthPicker from '../components/SingleMonthPicker';
+import PlantationPageLayout from '../components/PlantationPageLayout';
+import ManagerPlanCard from '../components/manager/ManagerPlanCard';
+import ManagerPlanDetailModal from '../components/manager/ManagerPlanDetailModal';
+import ManagerPlanApproveModal from '../components/manager/ManagerPlanApproveModal';
+import ManagerPlanEditModal from '../components/manager/ManagerPlanEditModal';
+import ManagerCancelModal from '../components/manager/ManagerCancelModal';
+import ManagerRescheduleModal from '../components/manager/ManagerRescheduleModal';
 import { Bars } from 'react-loader-spinner';
 import '../../../../styles/plantationDashboard.css';
 
-const BASE = '/home/plantation-dashboard';
-
-function missionLabel(id) {
-  const m = String(id || '').toLowerCase();
-  if (m === 'spy') return 'Spray';
-  if (m === 'spd') return 'Spread';
-  return id || '—';
+function normalizeList(raw) {
+  if (Array.isArray(raw?.data?.data)) return raw.data.data;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (Array.isArray(raw)) return raw;
+  return [];
 }
 
 export default function PlantationManagerTab() {
-  const navigate = useNavigate();
   const [subTab, setSubTab] = useState('pending');
   const [yearMonth, setYearMonth] = useState(format(new Date(), 'yyyy-MM'));
-  const [detailPlanId, setDetailPlanId] = useState(null);
+  const [viewPlan, setViewPlan] = useState(null);
+  const [approvePlanId, setApprovePlanId] = useState(null);
+  const [editPlanId, setEditPlanId] = useState(null);
   const [cancelPlanId, setCancelPlanId] = useState(null);
-  const [cancelReasonId, setCancelReasonId] = useState('');
   const [reschedulePlan, setReschedulePlan] = useState(null);
-  const [rescheduleDate, setRescheduleDate] = useState('');
-  const [rescheduleReasonId, setRescheduleReasonId] = useState('');
 
   const { data: pendingRaw, isLoading: pendingLoading, refetch: refetchPending } = useGetPendingManagerPlansQuery();
-  const pending = Array.isArray(pendingRaw?.data?.data)
-    ? pendingRaw.data.data
-    : Array.isArray(pendingRaw?.data)
-      ? pendingRaw.data
-      : Array.isArray(pendingRaw)
-        ? pendingRaw
-        : [];
+  const pending = useMemo(() => normalizeList(pendingRaw), [pendingRaw]);
 
   const { data: allRaw, isLoading: allLoading, refetch: refetchAll } = useGetAllManagerPlansQuery({ yearMonth });
   const allPlans = allRaw?.data?.plans || allRaw?.data?.data?.plans || allRaw?.plans || [];
 
-  const { data: detailRaw, isFetching: detailLoading } = useGetManagerPlanDetailQuery(detailPlanId, {
-    skip: !detailPlanId,
+  const { data: detailRaw, isFetching: detailLoading } = useGetManagerPlanDetailQuery(viewPlan?.id, {
+    skip: !viewPlan?.id,
   });
   const detail = detailRaw?.data || detailRaw;
 
-  const { data: cancelReasons = [] } = useGetManagerCancelReasonsQuery(undefined, { skip: !cancelPlanId });
-  const { data: rescheduleReasons = [] } = useGetManagerRescheduleReasonsQuery(undefined, { skip: !reschedulePlan });
+  const { data: cancelReasonsRaw, isLoading: cancelReasonsLoading } = useGetManagerCancelReasonsQuery(undefined, {
+    skip: !cancelPlanId,
+  });
+  const cancelReasons = cancelReasonsRaw?.data || cancelReasonsRaw || [];
+
+  const { data: rescheduleReasonsRaw, isLoading: rescheduleReasonsLoading } = useGetManagerRescheduleReasonsQuery(
+    undefined,
+    { skip: !reschedulePlan }
+  );
+  const rescheduleReasons = rescheduleReasonsRaw?.data || rescheduleReasonsRaw || [];
+
   const [cancelPlan, { isLoading: cancelling }] = useCancelManagerPlanMutation();
   const [rescheduleRequest, { isLoading: rescheduling }] = useCreateManagerPlanRescheduleRequestMutation();
 
   const monthDate = useMemo(() => parse(`${yearMonth}-01`, 'yyyy-MM-dd', new Date()), [yearMonth]);
 
-  const handleCancel = async () => {
-    if (!cancelPlanId || !cancelReasonId) return;
+  const handleCancel = async (reasonId) => {
+    if (!cancelPlanId || !reasonId) return;
     try {
-      await cancelPlan({ planId: cancelPlanId, managerCancelReasonId: Number(cancelReasonId) }).unwrap();
+      await cancelPlan({ planId: cancelPlanId, managerCancelReasonId: reasonId }).unwrap();
       toast.success('Plan cancelled.');
       setCancelPlanId(null);
       refetchPending();
@@ -74,13 +79,13 @@ export default function PlantationManagerTab() {
     }
   };
 
-  const handleReschedule = async () => {
-    if (!reschedulePlan?.id || !rescheduleDate || !rescheduleReasonId) return;
+  const handleReschedule = async ({ newDate, reasonId }) => {
+    if (!reschedulePlan?.id || !newDate || !reasonId) return;
     try {
       await rescheduleRequest({
         planId: reschedulePlan.id,
-        requestedPickedDate: rescheduleDate,
-        rescheduleReasonId: Number(rescheduleReasonId),
+        requestedPickedDate: newDate,
+        rescheduleReasonId: reasonId,
       }).unwrap();
       toast.success('Reschedule request submitted.');
       setReschedulePlan(null);
@@ -90,20 +95,38 @@ export default function PlantationManagerTab() {
     }
   };
 
+  const handleApproveSuccess = () => {
+    refetchPending();
+    refetchAll();
+  };
+
+  const handleEditSuccess = () => {
+    refetchAll();
+  };
+
   return (
-    <div className="plantation-manager-tab">
-      <h1 className="plantation-home-tab-title">Manager</h1>
-      <div className="pd-calendar-segments">
+    <PlantationPageLayout
+      title="Manager"
+      subtitle="Review, approve, and manage estate mission plans"
+      className="plantation-manager-tab"
+      flush
+    >
+      <div className="pd-mgr-segments" role="tablist" aria-label="Manager views">
         <button
           type="button"
-          className={`plantation-action-btn ${subTab === 'pending' ? 'active' : ''}`}
+          role="tab"
+          aria-selected={subTab === 'pending'}
+          className={`pd-mgr-segment${subTab === 'pending' ? ' pd-mgr-segment--active' : ''}`}
           onClick={() => setSubTab('pending')}
         >
-          Pending ({pending.length})
+          Pending
+          <span className="pd-mgr-segment-count">{pending.length}</span>
         </button>
         <button
           type="button"
-          className={`plantation-action-btn ${subTab === 'all' ? 'active' : ''}`}
+          role="tab"
+          aria-selected={subTab === 'all'}
+          className={`pd-mgr-segment${subTab === 'all' ? ' pd-mgr-segment--active' : ''}`}
           onClick={() => setSubTab('all')}
         >
           All plans
@@ -112,148 +135,106 @@ export default function PlantationManagerTab() {
 
       {subTab === 'pending' ? (
         pendingLoading ? (
-          <Bars height={32} width={48} color="#2d6a4f" />
+          <div className="pd-mgr-loading">
+            <Bars height={32} width={48} color="#1b5e40" />
+          </div>
         ) : pending.length === 0 ? (
-          <p className="pd-popup-empty">No plans waiting for approval.</p>
+          <div className="pd-mgr-empty">
+            <p>No plans waiting for approval.</p>
+          </div>
         ) : (
-          <div className="pd-manager-list">
+          <div className="pd-mgr-list">
             {pending.map((plan) => (
-              <div key={plan.id} className="pd-manager-card">
-                <div>
-                  <strong>{plan.pickedDate}</strong> · {missionLabel(plan.missionTypeId)} ·{' '}
-                  {parseFloat(plan.totalExtent || 0).toFixed(2)} Ha
-                </div>
-                {plan.approve_blocked_reason ? (
-                  <p className="pd-manager-blocked">{plan.approve_blocked_reason.replace(/_/g, ' ')}</p>
-                ) : null}
-                <div className="pd-manager-card-actions">
-                  {Number(plan.can_approve) === 1 ? (
-                    <button
-                      type="button"
-                      className="pd-calendar-btn"
-                      onClick={() => navigate(`${BASE}/manager/approve/${plan.id}`)}
-                    >
-                      Approve
-                    </button>
-                  ) : null}
-                  <button type="button" className="plantation-action-btn" onClick={() => setDetailPlanId(plan.id)}>
-                    View
-                  </button>
-                  <button type="button" className="plantation-action-btn" onClick={() => setCancelPlanId(plan.id)}>
-                    Cancel
-                  </button>
-                  <button type="button" className="plantation-action-btn" onClick={() => setReschedulePlan(plan)}>
-                    Reschedule
-                  </button>
-                </div>
-              </div>
+              <ManagerPlanCard
+                key={plan.id}
+                plan={plan}
+                mode="pending"
+                onApprove={(p) => setApprovePlanId(p.id)}
+                onView={setViewPlan}
+                onCancel={(p) => setCancelPlanId(p.id)}
+                onReschedule={setReschedulePlan}
+              />
             ))}
           </div>
         )
       ) : (
         <>
-          <div className="pd-manager-month-picker">
+          <div className="pd-mgr-month-toolbar">
             <SingleMonthPicker
               selectedMonth={monthDate}
               onChange={(d) => setYearMonth(format(d, 'yyyy-MM'))}
+              monthsAhead={1}
             />
           </div>
           {allLoading ? (
-            <Bars height={32} width={48} color="#2d6a4f" />
+            <div className="pd-mgr-loading">
+              <Bars height={32} width={48} color="#1b5e40" />
+            </div>
           ) : allPlans.length === 0 ? (
-            <p className="pd-popup-empty">No plans for this month.</p>
+            <div className="pd-mgr-empty">
+              <p>No plans for this month.</p>
+            </div>
           ) : (
-            <div className="pd-manager-list">
+            <div className="pd-mgr-list">
               {allPlans.map((plan) => (
-                <div key={plan.id} className="pd-manager-card">
-                  <div>
-                    <strong>{plan.pickedDate}</strong> · {missionLabel(plan.missionTypeId)} ·{' '}
-                    {parseFloat(plan.totalExtent || 0).toFixed(2)} Ha
-                  </div>
-                  <div className="pd-manager-card-actions">
-                    <button type="button" className="plantation-action-btn" onClick={() => setDetailPlanId(plan.id)}>
-                      View
-                    </button>
-                    {Number(plan.can_edit) === 1 ? (
-                      <button
-                        type="button"
-                        className="pd-calendar-btn"
-                        onClick={() => navigate(`${BASE}/manager/edit/${plan.id}`)}
-                      >
-                        Edit
-                      </button>
-                    ) : null}
-                  </div>
-                </div>
+                <ManagerPlanCard
+                  key={plan.id}
+                  plan={plan}
+                  mode="all"
+                  onView={setViewPlan}
+                  onEdit={(p) => setEditPlanId(p.id)}
+                />
               ))}
             </div>
           )}
         </>
       )}
 
-      {detailPlanId ? (
-        <div className="pd-popup-overlay" onClick={() => setDetailPlanId(null)}>
-          <div className="pd-popup" onClick={(e) => e.stopPropagation()}>
-            <div className="pd-popup-header">
-              <span className="pd-popup-title">Plan #{detailPlanId}</span>
-            </div>
-            <div className="pd-popup-body">
-              {detailLoading ? (
-                <Bars height={24} width={40} color="#2d6a4f" />
-              ) : detail ? (
-                <>
-                  <p>Date: {detail.plan?.pickedDate}</p>
-                  <p>Fields: {(detail.fields || []).length}</p>
-                  <p>Time: {detail.timeOfDayLabel || '—'}</p>
-                </>
-              ) : (
-                <p>Could not load plan.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ManagerPlanApproveModal
+        open={Boolean(approvePlanId)}
+        planId={approvePlanId}
+        onClose={() => setApprovePlanId(null)}
+        onSuccess={handleApproveSuccess}
+      />
 
-      {cancelPlanId ? (
-        <div className="pd-popup-overlay" onClick={() => setCancelPlanId(null)}>
-          <div className="pd-popup pd-popup--narrow" onClick={(e) => e.stopPropagation()}>
-            <div className="pd-popup-header"><span className="pd-popup-title">Cancel plan</span></div>
-            <div className="pd-popup-body">
-              <select value={cancelReasonId} onChange={(e) => setCancelReasonId(e.target.value)}>
-                <option value="">Select reason</option>
-                {(cancelReasons || []).map((r) => (
-                  <option key={r.id} value={r.id}>{r.recen || r.reason || r.id}</option>
-                ))}
-              </select>
-              <div className="pd-form-actions">
-                <button type="button" className="plantation-action-btn" onClick={() => setCancelPlanId(null)}>Close</button>
-                <button type="button" className="pd-calendar-btn" disabled={cancelling} onClick={handleCancel}>Confirm</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ManagerPlanEditModal
+        open={Boolean(editPlanId)}
+        planId={editPlanId}
+        onClose={() => setEditPlanId(null)}
+        onSuccess={handleEditSuccess}
+      />
 
-      {reschedulePlan ? (
-        <div className="pd-popup-overlay" onClick={() => setReschedulePlan(null)}>
-          <div className="pd-popup pd-popup--narrow" onClick={(e) => e.stopPropagation()}>
-            <div className="pd-popup-header"><span className="pd-popup-title">Reschedule plan</span></div>
-            <div className="pd-popup-body">
-              <label className="pd-form-label">New date<input type="date" value={rescheduleDate} onChange={(e) => setRescheduleDate(e.target.value)} /></label>
-              <select value={rescheduleReasonId} onChange={(e) => setRescheduleReasonId(e.target.value)}>
-                <option value="">Select reason</option>
-                {(rescheduleReasons || []).map((r) => (
-                  <option key={r.id} value={r.id}>{r.recen || r.reason || r.id}</option>
-                ))}
-              </select>
-              <div className="pd-form-actions">
-                <button type="button" className="plantation-action-btn" onClick={() => setReschedulePlan(null)}>Close</button>
-                <button type="button" className="pd-calendar-btn" disabled={rescheduling} onClick={handleReschedule}>Submit</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </div>
+      <ManagerPlanDetailModal
+        open={Boolean(viewPlan)}
+        planSummary={viewPlan}
+        detail={detail}
+        loading={detailLoading}
+        onClose={() => setViewPlan(null)}
+        onEdit={(planId) => {
+          setViewPlan(null);
+          setEditPlanId(planId);
+        }}
+      />
+
+      <ManagerCancelModal
+        open={Boolean(cancelPlanId)}
+        planId={cancelPlanId}
+        reasons={Array.isArray(cancelReasons) ? cancelReasons : []}
+        reasonsLoading={cancelReasonsLoading}
+        submitting={cancelling}
+        onClose={() => setCancelPlanId(null)}
+        onConfirm={handleCancel}
+      />
+
+      <ManagerRescheduleModal
+        open={Boolean(reschedulePlan)}
+        plan={reschedulePlan}
+        reasons={Array.isArray(rescheduleReasons) ? rescheduleReasons : []}
+        reasonsLoading={rescheduleReasonsLoading}
+        submitting={rescheduling}
+        onClose={() => setReschedulePlan(null)}
+        onConfirm={handleReschedule}
+      />
+    </PlantationPageLayout>
   );
 }

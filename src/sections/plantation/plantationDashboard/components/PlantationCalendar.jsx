@@ -96,6 +96,29 @@ function missionTypeOptionValue(m) {
   return '';
 }
 
+function contactPhone(contact) {
+  if (!contact) return '';
+  return contact.mobile || contact.mobile_no || contact.phone || contact.telephone || '';
+}
+
+function planAreaFromDetails(planDetails) {
+  if (!planDetails) return 0;
+  const fromApi = parseFloat(planDetails.area ?? planDetails.totalExtent ?? 0);
+  if (Number.isFinite(fromApi) && fromApi > 0) return fromApi;
+
+  const divisions = planDetails.divisions || planDetails.diviions || [];
+  let sum = 0;
+  for (const div of divisions) {
+    const fields = div.checkedFields || div.fields || [];
+    for (const f of fields) {
+      if (f.activated === 0) continue;
+      const fa = parseFloat(f.field_area ?? f.area ?? 0);
+      if (Number.isFinite(fa)) sum += fa;
+    }
+  }
+  return Math.round(sum * 100) / 100;
+}
+
 const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enablePlanRequestUi = false }) => {
   const dispatch = useAppDispatch();
   const [fetchPlanById] = useLazyGetPlantationPlanByIdQuery();
@@ -259,14 +282,15 @@ const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enable
   useEffect(() => {
     let cancelled = false;
     const loadEstate = async () => {
-      if (!selectedPlan?.estateId) {
+      if (!selectedPlan?.estateId && !planDetails?.estateId) {
         setEstateInfo(null);
         return;
       }
       setEstateLoading(true);
       setEstateError('');
       try {
-        const result = await dispatch(baseApi.endpoints.getEstateDetails.initiate(selectedPlan.estateId));
+        const estateId = selectedPlan.estateId ?? planDetails?.estateId;
+        const result = await dispatch(baseApi.endpoints.getEstateDetails.initiate(estateId));
         const details = result.data;
         if (!cancelled) setEstateInfo(details || null);
       } catch (e) {
@@ -277,7 +301,7 @@ const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enable
     };
     loadEstate();
     return () => { cancelled = true; };
-  }, [selectedPlan, dispatch]);
+  }, [selectedPlan, planDetails?.estateId, dispatch]);
 
   const openPilotModal = async () => {
     if (!selectedPlan) return;
@@ -587,8 +611,8 @@ const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enable
                                 <div className="plantation-plan-contact-primary">
                                   <div className="plantation-plan-contact-role">{primary.appointment || 'Manager'}</div>
                                   <div className="plantation-plan-contact-name">{primary.name || 'N/A'}</div>
-                                  <a className="plantation-plan-contact-phone" href={`tel:${primary.mobile || ''}`}>
-                                    {primary.mobile || 'N/A'}
+                                  <a className="plantation-plan-contact-phone" href={`tel:${contactPhone(primary)}`}>
+                                    {contactPhone(primary) || 'N/A'}
                                   </a>
                                 </div>
                               );
@@ -617,7 +641,7 @@ const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enable
                       {getMissionTypeDisplayName(planDetails.mission_type_name || planDetails.missionTypeId)}
                     </span>
                     <span className="plantation-plan-badge">
-                      Area: {parseFloat(planDetails.area || planDetails.totalExtent || 0).toFixed(2)} Ha
+                      Area: {planAreaFromDetails(planDetails).toFixed(2)} Ha
                     </span>
                     {planDetails.manager_approval ? (
                       <span className="plantation-plan-badge-success">Manager Approved</span>

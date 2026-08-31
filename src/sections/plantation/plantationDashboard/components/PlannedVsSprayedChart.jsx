@@ -267,6 +267,10 @@ const PlannedVsSprayedChart = ({
     );
   }
 
+  const chartMargin = basePath.includes('plantation-dashboard')
+    ? { top: 20, right: 56, left: 24, bottom: 24 }
+    : { top: 20, right: 30, left: 20, bottom: 20 };
+
   return (
     <div className="plantation-chart-card">
       <div className="plantation-chart-title-wrapper">
@@ -291,7 +295,7 @@ const PlannedVsSprayedChart = ({
         <ResponsiveContainer width="100%" height={400}>
           <ComposedChart
             data={chartData}
-            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+            margin={chartMargin}
             onClick={(data) => {
               if (data && data.activePayload && data.activePayload.length > 0) {
                 const clickedBar = data.activePayload[0];
