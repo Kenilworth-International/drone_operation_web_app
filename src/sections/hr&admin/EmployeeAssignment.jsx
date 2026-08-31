@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useSearchParams, useLocation } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { FaCalendarAlt } from 'react-icons/fa';
@@ -21,7 +21,6 @@ import {
   useGetEmpSubDivisionsQuery,
   useResolveEmpDesignationMutation,
 } from '../../api/services NodeJs/empOrgStructureApi';
-import { normalizeWingLabel } from './employeeProfile/employeeProfileUtils';
 import '../../styles/employeeAssignment.css';
 
 const EMPTY_LIST = [];
@@ -34,17 +33,29 @@ const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
   </div>
 ));
 
-function getWingFromUrl(searchParams, location) {
-  const fromParams = searchParams.get('wing');
-  if (fromParams) return fromParams;
-  const fromLocation = new URLSearchParams(location.search || '').get('wing');
-  if (fromLocation) return fromLocation;
-  const hash = window.location.hash || '';
-  const qIdx = hash.indexOf('?');
-  if (qIdx >= 0) {
-    return new URLSearchParams(hash.slice(qIdx + 1)).get('wing') || '';
+function employeeMatchesDepartment(employee, departmentId, departments) {
+  if (!departmentId) return true;
+
+  const targetId = Number(departmentId);
+  if (employee?.emp_department_id != null && Number(employee.emp_department_id) === targetId) {
+    return true;
   }
-  return '';
+
+  const dept = departments.find((row) => Number(row.id) === targetId);
+  const deptCode = String(dept?.dept_code || '').trim().toLowerCase();
+  const deptName = String(dept?.department_name || '').trim().toLowerCase();
+
+  const legacyRaw = String(employee?.department ?? '').trim();
+  if (legacyRaw) {
+    const legacyNum = Number(legacyRaw);
+    if (Number.isInteger(legacyNum) && legacyNum === targetId) return true;
+    if (deptCode && legacyRaw.toLowerCase() === deptCode) return true;
+  }
+
+  const employeeDeptName = String(employee?.departmentName || employee?.department_name || '').trim().toLowerCase();
+  if (employeeDeptName && deptName && employeeDeptName === deptName) return true;
+
+  return false;
 }
 
 function lookupLabel(list, id, labelKey) {
@@ -75,12 +86,13 @@ function buildAssignmentFromEmployee(employee, allDesignations, workLocations) {
 
 const EmployeeAssignment = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
-  const wingQuery = getWingFromUrl(searchParams, location);
   const employeeParam = searchParams.get('employee') || '';
 
   const [queueFilter, setQueueFilter] = useState('all');
+  const [departmentFilter, setDepartmentFilter] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [loadingEmployeeId, setLoadingEmployeeId] = useState(null);
+  const [isResolvingDesignation, setIsResolvingDesignation] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [showLetterModal, setShowLetterModal] = useState(false);
@@ -98,14 +110,19 @@ const EmployeeAssignment = () => {
     referenceNo: '',
   });
 
-  const { data: queueResponse, isLoading: loadingQueues, refetch: refetchQueues } = useGetEmployeeAssignmentQueuesQuery();
-  const { data: employeeListData } = useGetAllEmployeeRegistrationsQuery();
+  const { data: queueResponse, isLoading: loadingQueues, isFetching: fetchingQueues, error: queueError, refetch: refetchQueues } = useGetEmployeeAssignmentQueuesQuery();
+  const {
+    data: employeeListData,
+    isLoading: loadingEmployees,
+    isFetching: fetchingEmployees,
+    error: employeeListError,
+  } = useGetAllEmployeeRegistrationsQuery();
   const { data: departmentsData } = useGetEmpDepartmentsQuery();
   const { data: jobRolesData } = useGetEmpJobRolesQuery();
   const { data: chiefRolesData } = useGetEmpChiefJobRolesQuery();
   const { data: allDesignationsData } = useGetEmpDesignationsQuery(DESIGNATIONS_QUERY_ARG);
   const { data: workLocationsData } = useGetWorkLocationsQuery();
-  const { data: historyResponse, isLoading: loadingHistory, refetch: refetchHistory } = useGetEmployeeAssignmentHistoryQuery(
+  const { data: historyResponse, isLoading: loadingHistory, isFetching: fetchingHistory, refetch: refetchHistory } = useGetEmployeeAssignmentHistoryQuery(
     { employeeId: selectedEmployee?.id },
     { skip: !selectedEmployee?.id },
   );
@@ -113,6 +130,10 @@ const EmployeeAssignment = () => {
   const [resolveDesignation] = useResolveEmpDesignationMutation();
 
   const departments = departmentsData ?? EMPTY_LIST;
+  const activeDepartments = useMemo(
+    () => departments.filter((dept) => Number(dept.activated) !== 0),
+    [departments],
+  );
   const jobRoles = jobRolesData ?? EMPTY_LIST;
   const chiefRoles = chiefRolesData ?? EMPTY_LIST;
   const allDesignations = allDesignationsData ?? EMPTY_LIST;
@@ -125,8 +146,10 @@ const EmployeeAssignment = () => {
   }, [workLocationsData]);
 
   const allEmployees = useMemo(() => {
-    const raw = employeeListData?.data || employeeListData;
-    return Array.isArray(raw) ? raw : [];
+    const raw = employeeListData;
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    return [];
   }, [employeeListData]);
 
   const deptId = assignmentData.toEmpDepartmentId || '';
@@ -168,26 +191,70 @@ const EmployeeAssignment = () => {
       .sort((a, b) => Number(a.taskOrder || 0) - Number(b.taskOrder || 0));
   }, [jobDescriptionsData]);
 
-  const queues = queueResponse?.data || {};
-  const assignedEmployees = queues.assignedEmployees || [];
-  const nonAssignedEmployees = queues.nonAssignedEmployees || [];
+  const assignedEmployees = queueResponse?.assignedEmployees
+    || queueResponse?.data?.assignedEmployees
+    || [];
+  const nonAssignedEmployees = queueResponse?.nonAssignedEmployees
+    || queueResponse?.data?.nonAssignedEmployees
+    || [];
 
-  const wingNorm = wingQuery ? normalizeWingLabel(decodeURIComponent(wingQuery.replace(/\+/g, ' '))) : '';
+  const mergedEmployees = useMemo(() => {
+    const map = new Map();
+    [...assignedEmployees, ...nonAssignedEmployees, ...allEmployees].forEach((employee) => {
+      if (employee?.id == null) return;
+      const id = String(employee.id);
+      const existing = map.get(id);
+      map.set(id, existing ? { ...existing, ...employee } : employee);
+    });
+    return Array.from(map.values());
+  }, [assignedEmployees, nonAssignedEmployees, allEmployees]);
 
   const employeesToShow = useMemo(() => {
-    let list;
-    if (queueFilter === 'assigned') list = assignedEmployees;
-    else if (queueFilter === 'all') list = [...assignedEmployees, ...nonAssignedEmployees];
-    else list = nonAssignedEmployees;
-
-    if (!wingNorm) return list;
-
-    return list.filter((employee) => {
-      const deptName = normalizeWingLabel(employee.departmentName);
-      if (!deptName) return true;
-      return deptName === wingNorm || deptName.startsWith(wingNorm) || wingNorm.startsWith(deptName);
+    const queueMeta = new Map();
+    [...assignedEmployees, ...nonAssignedEmployees].forEach((employee) => {
+      queueMeta.set(String(employee.id), employee);
     });
-  }, [queueFilter, assignedEmployees, nonAssignedEmployees, wingNorm]);
+
+    const isAssigned = (employee) => {
+      const fromQueue = queueMeta.get(String(employee.id));
+      if (fromQueue) return fromQueue.assigned;
+      return Boolean(
+        employee.emp_designation_id ||
+        employee.emp_department_id ||
+        employee.workLocation ||
+        employee.reportofficer,
+      );
+    };
+
+    const enrich = (employee) => {
+      const fromQueue = queueMeta.get(String(employee.id));
+      return fromQueue ? { ...employee, ...fromQueue } : employee;
+    };
+
+    const baseSource = mergedEmployees;
+
+    const seen = new Set();
+    let list = [];
+    baseSource.forEach((employee) => {
+      const id = String(employee.id);
+      if (seen.has(id)) return;
+      if (!employeeMatchesDepartment(employee, departmentFilter, departments)) return;
+      seen.add(id);
+      list.push(employee);
+    });
+
+    if (queueFilter === 'assigned') list = list.filter(isAssigned);
+    else if (queueFilter === 'not_assigned') list = list.filter((employee) => !isAssigned(employee));
+
+    return list.map(enrich);
+  }, [queueFilter, departmentFilter, assignedEmployees, nonAssignedEmployees, mergedEmployees, departments]);
+
+  const isLoadingList = (loadingQueues || fetchingQueues || loadingEmployees || fetchingEmployees)
+    && employeesToShow.length === 0
+    && !queueError
+    && !employeeListError;
+
+  const listLoadError = queueError || employeeListError;
 
   const historyItems = historyResponse?.data || [];
 
@@ -240,42 +307,109 @@ const EmployeeAssignment = () => {
   ), [allEmployees, selectedEmployee?.id]);
 
   const selectEmployee = useCallback((employee) => {
-    const fullEmployee = allEmployees.find((emp) => String(emp.id) === String(employee.id)) || employee;
+    const employeeId = String(employee.id);
+    if (loadingEmployeeId) return;
+    if (selectedEmployee && String(selectedEmployee.id) === employeeId) return;
+
+    const fullEmployee = allEmployees.find((emp) => String(emp.id) === employeeId) || employee;
+    setLoadingEmployeeId(employeeId);
     setSelectedEmployee(fullEmployee);
     setAssignmentData(buildAssignmentFromEmployee(fullEmployee, allDesignations, workLocations));
     setResolvedDesignation(null);
     setMessage({ type: '', text: '' });
+    setSelectedHistoryItem(null);
 
-    const next = new URLSearchParams(searchParams);
-    next.set('employee', String(fullEmployee.id));
-    if (wingQuery) next.set('wing', wingQuery);
-    setSearchParams(next, { replace: true });
-  }, [allEmployees, allDesignations, workLocations, searchParams, setSearchParams, wingQuery]);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('employee', employeeId);
+      return next;
+    }, { replace: true });
+  }, [allEmployees, allDesignations, workLocations, loadingEmployeeId, selectedEmployee, setSearchParams]);
 
   useEffect(() => {
-    if (!employeeParam) return;
-    if (selectedEmployee && String(selectedEmployee.id) === String(employeeParam)) return;
+    if (!employeeParam || selectedEmployee) return;
+
+    const fromAll = allEmployees.find((e) => String(e.id) === String(employeeParam));
     const fromQueue = [...assignedEmployees, ...nonAssignedEmployees].find(
       (e) => String(e.id) === String(employeeParam),
     );
-    const fromAll = allEmployees.find((e) => String(e.id) === String(employeeParam));
     const target = fromAll || fromQueue;
-    if (target) selectEmployee(target);
+    if (!target) {
+      if (!loadingEmployees && !loadingQueues && !fetchingEmployees && !fetchingQueues) {
+        setSearchParams((prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete('employee');
+          return next;
+        }, { replace: true });
+      }
+      return;
+    }
+
+    const fullEmployee = fromAll || target;
+    setLoadingEmployeeId(String(fullEmployee.id));
+    setSelectedEmployee(fullEmployee);
+    setAssignmentData(buildAssignmentFromEmployee(fullEmployee, allDesignations, workLocations));
+    setResolvedDesignation(null);
+    setMessage({ type: '', text: '' });
   }, [
     employeeParam,
     selectedEmployee,
+    allEmployees,
     assignedEmployees,
     nonAssignedEmployees,
-    allEmployees,
-    selectEmployee,
+    allDesignations,
+    workLocations,
+    loadingEmployees,
+    loadingQueues,
+    fetchingEmployees,
+    fetchingQueues,
+    setSearchParams,
   ]);
+
+  const isLoadingEmployeeDetails = Boolean(
+    loadingEmployeeId
+    && selectedEmployee
+    && String(selectedEmployee.id) === loadingEmployeeId
+    && (
+      loadingHistory
+      || fetchingHistory
+      || (deptId && roleId && isResolvingDesignation)
+    ),
+  );
+
+  useEffect(() => {
+    if (!loadingEmployeeId) return;
+    if (!selectedEmployee || String(selectedEmployee.id) !== loadingEmployeeId) return;
+
+    const historyPending = loadingHistory || fetchingHistory;
+    const designationPending = Boolean(deptId && roleId && isResolvingDesignation);
+    if (!historyPending && !designationPending) {
+      setLoadingEmployeeId(null);
+    }
+  }, [
+    loadingEmployeeId,
+    selectedEmployee,
+    loadingHistory,
+    fetchingHistory,
+    deptId,
+    roleId,
+    isResolvingDesignation,
+  ]);
+
+  useEffect(() => {
+    if (!loadingEmployeeId) return undefined;
+    const timer = window.setTimeout(() => setLoadingEmployeeId(null), 10000);
+    return () => window.clearTimeout(timer);
+  }, [loadingEmployeeId]);
 
   useEffect(() => {
     if (!deptId || !roleId) {
       setResolvedDesignation(null);
+      setIsResolvingDesignation(false);
       return undefined;
     }
     let cancelled = false;
+    setIsResolvingDesignation(true);
     (async () => {
       try {
         const res = await resolveDesignation({
@@ -286,6 +420,8 @@ const EmployeeAssignment = () => {
         if (!cancelled) setResolvedDesignation(res || null);
       } catch {
         if (!cancelled) setResolvedDesignation(null);
+      } finally {
+        if (!cancelled) setIsResolvingDesignation(false);
       }
     })();
     return () => { cancelled = true; };
@@ -383,17 +519,8 @@ const EmployeeAssignment = () => {
   const currentLocation = selectedEmployee?.workLocationName || selectedEmployee?.workLocationCode || '—';
   const resolvedTitle = resolvedDesignation?.designation_title || '';
 
-  const wingLabel = wingQuery
-    ? decodeURIComponent(wingQuery.replace(/\+/g, ' '))
-    : null;
-
   return (
     <div className="employee-assignment-container-ea">
-      <div className="ea-header-ea">
-        <h1 className="ea-title-ea">Employee Assignment</h1>
-        {wingLabel && <span className="ea-wing-badge-ea">{wingLabel}</span>}
-      </div>
-
       <div className="ea-content-ea">
         <div className="ea-left-panel-ea">
           <div className="ea-panel-header-ea">
@@ -427,18 +554,42 @@ const EmployeeAssignment = () => {
                 Not assigned
               </button>
             </div>
+            <label className="ea-dept-filter-wrap-ea">
+              <span className="ea-dept-filter-label-ea">Department</span>
+              <select
+                className="ea-dept-filter-ea"
+                value={departmentFilter}
+                onChange={(e) => setDepartmentFilter(e.target.value)}
+              >
+                <option value="">All departments</option>
+                {activeDepartments.map((dept) => (
+                  <option key={dept.id} value={dept.id}>{dept.department_name}</option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="ea-employees-list-ea">
-            {loadingQueues && <div className="ea-empty-state-ea">Loading employee queue…</div>}
-            {!loadingQueues && employeesToShow.length === 0 && (
+            {isLoadingList && <div className="ea-empty-state-ea">Loading employees…</div>}
+            {listLoadError && !isLoadingList && (
+              <div className="ea-empty-state-ea ea-empty-state-ea--error">
+                {listLoadError?.data?.message || listLoadError?.message || 'Failed to load employees.'}
+              </div>
+            )}
+            {!isLoadingList && !listLoadError && employeesToShow.length === 0 && (
               <div className="ea-empty-state-ea">No employees found.</div>
             )}
-            {!loadingQueues && employeesToShow.map((employee) => (
+            {!isLoadingList && !listLoadError && employeesToShow.map((employee) => {
+              const deptLabel = employee.departmentName
+                || lookupLabel(departments, employee.emp_department_id, 'department_name')
+                || (employee.emp_department_id ? 'Department assigned' : '');
+              const isItemLoading = loadingEmployeeId === String(employee.id);
+              return (
               <button
                 key={employee.id}
                 type="button"
-                className={`ea-employee-item-ea ${selectedEmployee?.id === employee.id ? 'active-ea' : ''}`}
+                disabled={Boolean(loadingEmployeeId)}
+                className={`ea-employee-item-ea ${String(selectedEmployee?.id) === String(employee.id) ? 'active-ea' : ''}${isItemLoading ? ' ea-employee-item-ea--loading' : ''}`}
                 onClick={() => selectEmployee(employee)}
               >
                 <div className="ea-employee-info-ea">
@@ -446,12 +597,16 @@ const EmployeeAssignment = () => {
                   <span className="ea-employee-designation-ea">
                     {employee.designation_title || employee.designation || 'No designation'}
                   </span>
-                  {(employee.departmentName || employee.emp_department_id) && (
-                    <span className="ea-assigned-division-ea">{employee.departmentName || 'Department assigned'}</span>
+                  {deptLabel && (
+                    <span className="ea-assigned-division-ea">{deptLabel}</span>
                   )}
                 </div>
+                {isItemLoading && (
+                  <span className="ea-employee-item-spinner-ea" aria-hidden="true" />
+                )}
               </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -461,8 +616,15 @@ const EmployeeAssignment = () => {
           <div className="ea-form-container-ea">
             <h2 className="ea-form-title-ea">Assignment details</h2>
 
-            {selectedEmployee ? (
-              <>
+            {isLoadingEmployeeDetails && (
+              <div className="ea-details-loading-ea" aria-live="polite" aria-busy="true">
+                <span className="ea-details-loading-spinner-ea" aria-hidden="true" />
+                <p>Loading employee details…</p>
+              </div>
+            )}
+
+            {!isLoadingEmployeeDetails && selectedEmployee ? (
+              <div key={selectedEmployee.id}>
                 <div className="ea-current-division-header-ea">
                   <span className="ea-current-division-label-ea">Current department:</span>
                   <span className="ea-current-division-value-ea">{currentDeptName}</span>
@@ -714,12 +876,12 @@ const EmployeeAssignment = () => {
                     {isApplying ? 'Saving…' : 'Apply assignment'}
                   </button>
                 </div>
-              </>
-            ) : (
+              </div>
+            ) : !isLoadingEmployeeDetails ? (
               <div className="ea-no-selection-ea">
                 <p>Select an employee from the list to assign department, role, and location.</p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </div>

@@ -55,15 +55,15 @@ export const featurePermissionsApi = baseApi.injectEndpoints({
     // Get permissions for current user
     // Returns: { categories: { category: [featureCodes] }, paths: { path: true/false } }
     getMyPermissions: builder.query({
-      queryFn: async () => {
+      queryFn: async (_arg, api, _extraOptions) => {
         try {
           const result = await nodeBackendBaseQuery(
             {
               url: '/api/feature-permissions/my-permissions',
               method: 'GET',
             },
-            {},
-            {}
+            api,
+            _extraOptions
           );
           if (result.error) {
             return { error: result.error };

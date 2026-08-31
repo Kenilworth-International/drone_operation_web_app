@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 789\n- **Route files:** 68\n- **Schema overlays applied:** 323\n- **Generated:** 2026-08-28T09:09:45.900Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 794\n- **Route files:** 68\n- **Schema overlays applied:** 323\n- **Generated:** 2026-08-31T09:33:30.366Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp`."
   },
   "servers": [
     {
@@ -12527,6 +12527,48 @@
         ]
       }
     },
+    "/api/employee-registration/check-emp-no": {
+      "post": {
+        "summary": "Check Emp No",
+        "description": "Module: Employee Registration",
+        "tags": [
+          "Employee Registration"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/employee-profile/{section}/upload-file": {
       "post": {
         "summary": "Upload File",
@@ -23656,90 +23698,6 @@
         ]
       }
     },
-    "/api/system-maintenance/pm2/restart": {
-      "post": {
-        "summary": "Restart",
-        "description": "Module: System Maintenance",
-        "tags": [
-          "System Maintenance"
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response"
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "422": {
-            "description": "Validation error"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/system-maintenance/backup/trigger": {
-      "post": {
-        "summary": "Trigger",
-        "description": "Module: System Maintenance",
-        "tags": [
-          "System Maintenance"
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response"
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "422": {
-            "description": "Validation error"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
     "/api/system-maintenance/backup/status": {
       "post": {
         "summary": "Status",
@@ -23785,6 +23743,90 @@
     "/api/system-maintenance/actions/history": {
       "post": {
         "summary": "History",
+        "description": "Module: System Maintenance",
+        "tags": [
+          "System Maintenance"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/system-maintenance/pm2/restart": {
+      "post": {
+        "summary": "Restart",
+        "description": "Module: System Maintenance",
+        "tags": [
+          "System Maintenance"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/system-maintenance/backup/trigger": {
+      "post": {
+        "summary": "Trigger",
         "description": "Module: System Maintenance",
         "tags": [
           "System Maintenance"
@@ -33555,6 +33597,90 @@
         ]
       }
     },
+    "/api/hr/attendance/late-departure/request": {
+      "post": {
+        "summary": "Request",
+        "description": "Module: HR Mobile",
+        "tags": [
+          "HR Mobile"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/hr/attendance/late-departure/decide": {
+      "post": {
+        "summary": "Decide",
+        "description": "Module: HR Mobile",
+        "tags": [
+          "HR Mobile"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/hr/attendance/log": {
       "post": {
         "summary": "Attendance Log",
@@ -34992,6 +35118,90 @@
     "/api/hr-leave/holidays/save": {
       "post": {
         "summary": "Save",
+        "description": "Module: HR Leave",
+        "tags": [
+          "HR Leave"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/hr-leave/attendance/day-view": {
+      "post": {
+        "summary": "Day View",
+        "description": "Module: HR Leave",
+        "tags": [
+          "HR Leave"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/hr-leave/attendance/lieu-leave/accept": {
+      "post": {
+        "summary": "Accept",
         "description": "Module: HR Leave",
         "tags": [
           "HR Leave"

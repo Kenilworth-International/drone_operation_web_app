@@ -5,6 +5,7 @@ import {
   useGetCalendarPlansQuery,
   useCreatePlantationPlanRequestMutation,
   useGetPlantationPlanRequestMonthStatsQuery,
+  useLazyGetPlantationPlanByIdQuery,
 } from '../../../../api/services NodeJs/plantationDashboardApi';
 import { baseApi, useGetMissionTypesQuery, useGetCropTypesQuery } from '../../../../api/services/allEndpoints';
 import { getUserData, hasHierarchyForPlantationPlanRequest } from '../../../../utils/authUtils';
@@ -97,6 +98,7 @@ function missionTypeOptionValue(m) {
 
 const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enablePlanRequestUi = false }) => {
   const dispatch = useAppDispatch();
+  const [fetchPlanById] = useLazyGetPlantationPlanByIdQuery();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [planDetails, setPlanDetails] = useState(null);
   const [estateInfo, setEstateInfo] = useState(null);
@@ -238,28 +240,12 @@ const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enable
           setPlanLoading(true);
           setPlanError('');
           try {
-            const result = await dispatch(baseApi.endpoints.getPlanById.initiate(selectedPlan.id));
-            const data = result.data;
+            const result = await fetchPlanById(selectedPlan.id);
+            const normalized = result.data?.data ?? result.data;
             if (!cancelled) {
-              // Normalize API response
-              let normalized = null;
-              if (data && (data.status === 'true' || data.status === true)) {
-                const firstKey = Object.keys(data).find((k) => !isNaN(k));
-                if (firstKey !== undefined) {
-                  normalized = data[firstKey];
-                }
-              } else {
-                normalized = data;
-              }
-              
-              // Log the structure for debugging
-              console.log('[Plantation Calendar] Plan Details Response:', normalized);
-              console.log('[Plantation Calendar] Divisions:', normalized?.diviions || normalized?.divisions);
-              
               setPlanDetails(normalized || null);
             }
           } catch (e) {
-            console.error('[Plantation Calendar] Error loading plan details:', e);
             if (!cancelled) setPlanError('Failed to load plan details');
           } finally {
             if (!cancelled) setPlanLoading(false);
@@ -267,7 +253,7 @@ const PlantationCalendar = ({ currentMonth, setCurrentMonth, missionType, enable
         };
         loadPlanDetails();
         return () => { cancelled = true; };
-      }, [selectedPlan, dispatch]);
+      }, [selectedPlan, fetchPlanById]);
 
   // Fetch estate details when plan is selected
   useEffect(() => {

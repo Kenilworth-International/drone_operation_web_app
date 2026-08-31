@@ -670,6 +670,129 @@ export const plantationDashboardApi = baseApi.injectEndpoints({
       },
       invalidatesTags: ['PlantationMonthlyPlanRequests'],
     }),
+
+    getPlantationSessionContext: builder.query({
+      queryFn: async () => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-dashboard/session-context', method: 'POST', body: {} },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data };
+      },
+      providesTags: ['PlantationSession'],
+    }),
+
+    getFieldMissionAvailability: builder.query({
+      queryFn: async (body = {}) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/plantation-dashboard/field-mission-availability',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data };
+      },
+      providesTags: ['PlantationFieldAvailability'],
+    }),
+
+    getPlantationPlanById: builder.query({
+      queryFn: async (planId) => {
+        const result = await nodeBackendBaseQuery(
+          { url: `/api/plantation-dashboard/plan/${planId}`, method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data };
+      },
+      providesTags: (result, error, planId) => [{ type: 'PlantationPlans', id: planId }],
+    }),
+
+    getMonthlyEligibleMonths: builder.query({
+      queryFn: async () => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-monthly-plan-requests/eligible-months', method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data ?? [] };
+      },
+      providesTags: ['PlantationMonthlyPlanRequests'],
+    }),
+
+    getMyMonthlyPlanHistory: builder.query({
+      queryFn: async () => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-monthly-plan-requests/my-history', method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data ?? [] };
+      },
+      providesTags: ['PlantationMonthlyPlanRequests'],
+    }),
+
+    getMyMonthlyPlanHistoryDetail: builder.query({
+      queryFn: async (id) => {
+        const result = await nodeBackendBaseQuery(
+          { url: `/api/plantation-monthly-plan-requests/my-history/${id}`, method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data };
+      },
+      providesTags: ['PlantationMonthlyPlanRequests'],
+    }),
+
+    createMonthlyPlanRequest: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-monthly-plan-requests', method: 'POST', body },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['PlantationMonthlyPlanRequests', 'PlantationCalendarPlans'],
+    }),
+
+    getManagerRescheduleReasons: builder.query({
+      queryFn: async () => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-plan-reschedule-requests/manager/reschedule-reasons', method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data ?? [] };
+      },
+      providesTags: ['PlantationPlanRescheduleRequests'],
+    }),
+
+    createManagerPlanRescheduleRequest: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-plan-reschedule-requests', method: 'POST', body },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: [
+        'PlantationPlanRescheduleRequests',
+        'PlantationEstateManager',
+        'PlantationCalendarPlans',
+      ],
+    }),
   }),
 });
 
@@ -716,4 +839,16 @@ export const {
   useBulkRejectPlantationMonthlyPlanRequestsMutation,
   useChangePlantationMonthlyPlanLineDateMutation,
   useDeclinePlantationMonthlyPlanRequestMutation,
+  useGetPlantationSessionContextQuery,
+  useLazyGetPlantationSessionContextQuery,
+  useGetFieldMissionAvailabilityQuery,
+  useLazyGetFieldMissionAvailabilityQuery,
+  useGetPlantationPlanByIdQuery,
+  useLazyGetPlantationPlanByIdQuery,
+  useGetMonthlyEligibleMonthsQuery,
+  useGetMyMonthlyPlanHistoryQuery,
+  useGetMyMonthlyPlanHistoryDetailQuery,
+  useCreateMonthlyPlanRequestMutation,
+  useGetManagerRescheduleReasonsQuery,
+  useCreateManagerPlanRescheduleRequestMutation,
 } = plantationDashboardApi;

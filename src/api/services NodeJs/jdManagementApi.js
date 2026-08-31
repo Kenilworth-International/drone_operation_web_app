@@ -959,17 +959,22 @@ export const jdManagementApi = baseApi.injectEndpoints({
     }),
 
     getAllEmployeeRegistrations: builder.query({
-      queryFn: async () => {
+      queryFn: async (arg = {}) => {
         const result = await nodeBackendBaseQuery(
           {
             url: '/api/employee-registration/list',
             method: 'POST',
-            body: {},
+            body: arg?.full ? { full: 1 } : { light: 1 },
           },
           {},
           {}
         );
-        return result;
+        if (result.error) return result;
+        const payload = result.data;
+        const rows = Array.isArray(payload?.data)
+          ? payload.data
+          : (Array.isArray(payload) ? payload : []);
+        return { data: rows };
       },
       providesTags: ['EmployeeRegistrations'],
     }),
@@ -1006,6 +1011,24 @@ export const jdManagementApi = baseApi.injectEndpoints({
       providesTags: ['EmployeeRegistrations'],
     }),
 
+    checkEmpNo: builder.query({
+      queryFn: async ({ empNoSuffix, excludeEmployeeId } = {}) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/employee-registration/check-emp-no',
+            method: 'POST',
+            body: {
+              empNoSuffix,
+              excludeEmployeeId: excludeEmployeeId || null,
+            },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+    }),
+
     // =====================================================
     // EMPLOYEE ASSIGNMENT
     // =====================================================
@@ -1020,7 +1043,10 @@ export const jdManagementApi = baseApi.injectEndpoints({
           {},
           {}
         );
-        return result;
+        if (result.error) return result;
+        const payload = result.data;
+        const queues = payload?.data && typeof payload.data === 'object' ? payload.data : payload;
+        return { data: queues || { assignedEmployees: [], nonAssignedEmployees: [] } };
       },
       providesTags: ['EmployeeAssignment'],
     }),
@@ -1335,6 +1361,7 @@ export const {
   useGetAllEmployeeRegistrationsQuery,
   useGetEmployeeRegistrationByIdQuery,
   useGetLastEmpNoQuery,
+  useLazyCheckEmpNoQuery,
   useGetEmployeeAssignmentQueuesQuery,
   useGetEmployeeAssignmentHistoryQuery,
   useApplyEmployeeAssignmentMutation,

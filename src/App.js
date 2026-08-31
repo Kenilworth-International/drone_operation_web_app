@@ -64,7 +64,7 @@ import Employees from './sections/hr&admin/Employees';
 import JDManagement from './sections/hr&admin/JDManagement';
 import EmployeeAssignment from './sections/hr&admin/EmployeeAssignment';
 import MonthlyRoaster from './sections/hr&admin/roaster/MonthlyRoaster';
-import RoasterPlanning from './sections/hr&admin/roaster/RoasterPlanning';
+import AttendanceRoasterHub from './sections/hr&admin/roaster/AttendanceRoasterHub';
 import LeaveManagement from './sections/hr&admin/leave/LeaveManagement';
 import EmployeeKpiDashboard from './sections/hr&admin/kpi/EmployeeKpiDashboard';
 import SmartKpiTemplatesPage from './sections/hr&admin/kpi/SmartKpiTemplatesPage';
@@ -95,6 +95,14 @@ import AssetTransfer from './sections/stock-assets/AssetTransfer';
 import AssetRequest from './sections/stock-assets/AssetRequest';
 import MasterData from './sections/ict/masterData/MasterData';
 import PlantationDashboard from './sections/plantation/plantationDashboard/PlantationDashboard';
+import PlantationExternalShell from './sections/plantation/plantationDashboard/PlantationExternalShell';
+import PlantationHomeTab from './sections/plantation/plantationDashboard/tabs/PlantationHomeTab';
+import PlantationCalendarTab from './sections/plantation/plantationDashboard/tabs/PlantationCalendarTab';
+import PlantationProfileTab from './sections/plantation/plantationDashboard/tabs/PlantationProfileTab';
+import PlantationManagerTab from './sections/plantation/plantationDashboard/tabs/PlantationManagerTab';
+import FieldAvailabilityPage from './sections/plantation/plantationDashboard/pages/FieldAvailabilityPage';
+import ManagerPlanApprovePage from './sections/plantation/plantationDashboard/pages/ManagerPlanApprovePage';
+import ManagerPlanEditPage from './sections/plantation/plantationDashboard/pages/ManagerPlanEditPage';
 import PlantationChartsPage from './sections/plantation/plantationDashboard/pages/PlantationChartsPage';
 import PlantationCalendarPage from './sections/plantation/plantationDashboard/pages/PlantationCalendarPage';
 import PlantationUpcomingPage from './sections/plantation/plantationDashboard/pages/PlantationUpcomingPage';
@@ -801,7 +809,7 @@ function App() {
             path="attendance/roaster-planning"
             element={
               <ProtectedRoute>
-                <RoasterPlanning />
+                <AttendanceRoasterHub />
               </ProtectedRoute>
             }
           />
@@ -1078,50 +1086,22 @@ function App() {
             path="plantation-dashboard"
             element={
               <ProtectedRoute>
-                <PlantationDashboard />
+                <PlantationExternalShell />
               </ProtectedRoute>
             }
-          />
-          <Route
-            path="plantation-dashboard/charts"
-            element={
-              <ProtectedRoute>
-                <PlantationChartsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="plantation-dashboard/calendar"
-            element={
-              <ProtectedRoute>
-                <PlantationCalendarPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="plantation-dashboard/upcoming"
-            element={
-              <ProtectedRoute>
-                <PlantationUpcomingPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="plantation-dashboard/reports"
-            element={
-              <ProtectedRoute>
-                <PlantationReportsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="plantation-dashboard/chart-breakdown"
-            element={
-              <ProtectedRoute>
-                <ChartBreakdownPage />
-              </ProtectedRoute>
-            }
-          />
+          >
+            <Route index element={<PlantationHomeTab />} />
+            <Route path="calendar" element={<PlantationCalendarTab />} />
+            <Route path="profile" element={<PlantationProfileTab />} />
+            <Route path="manager" element={<PlantationManagerTab />} />
+            <Route path="field-availability" element={<FieldAvailabilityPage />} />
+            <Route path="manager/approve/:planId" element={<ManagerPlanApprovePage />} />
+            <Route path="manager/edit/:planId" element={<ManagerPlanEditPage />} />
+            <Route path="chart-breakdown" element={<ChartBreakdownPage basePath="/home/plantation-dashboard" />} />
+            <Route path="charts" element={<Navigate to="/home/plantation-dashboard" replace />} />
+            <Route path="upcoming" element={<Navigate to="/home/plantation-dashboard" replace />} />
+            <Route path="reports" element={<Navigate to="/home/plantation-dashboard" replace />} />
+          </Route>
         </Route>
       </Routes>
     </Router>

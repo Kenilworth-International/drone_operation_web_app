@@ -1,34 +1,19 @@
 import { baseApi } from '../baseApi';
 import { fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { forceLogoutFromApi } from '../../utils/sessionUtils';
+import { getNodeBackendUrl, getToken } from '../services NodeJs/nodeBackendUrl';
 
-// Node.js Backend Base URL Configuration
-const getNodeBackendUrl = () => {
-  const hostname = window.location.hostname;
-  
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
-    return 'https://dsms-web-api-dev.kenilworthinternational.com';
-  }
-  
-  if (hostname.includes('dev')) {
-    return 'https://dsms-web-api-dev.kenilworthinternational.com';
-  }
-  
-  if (hostname.includes('test')) {
-    return 'https://dsms-api-test.kenilworth.international.com';
-  }
-  
-  return 'https://dsms-web-api.kenilworthinternational.com';
-};
-
-// Helper function to get token
-const getToken = () => {
-  const storedUser = JSON.parse(localStorage.getItem('userData'));
-  return storedUser?.token || null;
-};
+// Node.js Backend Base URL Configuration — use shared resolver (localhost / dev / prod)
+const NODE_BACKEND_URL = getNodeBackendUrl();
 
 // Custom base query for Node.js backend
-const nodeBackendBaseQuery = fetchBaseQuery({
-  baseUrl: getNodeBackendUrl(),
+const rawNodeBackendBaseQuery = fetchBaseQuery({
+  baseUrl: NODE_BACKEND_URL,
+  fetchFn: (input, init) =>
+    fetch(input, {
+      ...init,
+      cache: 'no-store',
+    }),
   prepareHeaders: (headers) => {
     const token = getToken();
     if (token) {
@@ -38,6 +23,14 @@ const nodeBackendBaseQuery = fetchBaseQuery({
     return headers;
   },
 });
+
+const nodeBackendBaseQuery = async (args, api, extraOptions) => {
+  const result = await rawNodeBackendBaseQuery(args, api, extraOptions);
+  if (result.error) {
+    forceLogoutFromApi(api, result.error);
+  }
+  return result;
+};
 
 export const assetsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({

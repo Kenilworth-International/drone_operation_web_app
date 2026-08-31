@@ -16,7 +16,10 @@ import JenkinsPanel from './components/JenkinsPanel';
 import { FEATURE_CODES } from '../../../utils/featurePermissions';
 import { isInternalDeveloper } from '../../../utils/authUtils';
 import { useGetMyPermissionsQuery } from '../../../api/services NodeJs/featurePermissionsApi';
+import { useNavbarPermissions } from '../../../hooks/useNavbarPermissions';
 import '../../../styles/systemMaintenancePage.css';
+
+const SYSTEM_MAINTENANCE_PATH = '/home/ict/system-admin/system-maintenance';
 
 function formatCollectedAt(iso) {
   if (!iso) return '—';
@@ -42,10 +45,24 @@ function toneFromState(state) {
   return 'muted';
 }
 
+function isApiReachabilityError(error) {
+  return error?.status === 'FETCH_ERROR' || error?.status === 'PARSING_ERROR';
+}
+
+function formatMaintenanceLoadError(error) {
+  if (isApiReachabilityError(error)) {
+    return 'Could not reach the DSMS API. The server may be restarting, or the API process (dsms-api-prod) may be offline. Refresh in a moment or contact ICT if this continues.';
+  }
+  return error?.data?.message || error?.message || 'Unknown error';
+}
+
 const SystemMaintenancePage = () => {
   const userData = JSON.parse(localStorage.getItem('userData') || '{}');
   const userId = userData?.id || null;
   const isDeveloper = isInternalDeveloper(userData);
+  const { allowedPaths, loadingPermissions } = useNavbarPermissions();
+  const canAccessPage =
+    isDeveloper || allowedPaths.includes(SYSTEM_MAINTENANCE_PATH);
   const { data: featurePermissionsData = {} } = useGetMyPermissionsQuery(undefined, {
     skip: !userId,
   });
@@ -67,9 +84,11 @@ const SystemMaintenancePage = () => {
     return false;
   };
 
-  const canViewLogs = checkFeatureAccess(FEATURE_CODES.SYSTEM_MAINTENANCE_VIEW_LOGS);
-  const canRestart = checkFeatureAccess(FEATURE_CODES.SYSTEM_MAINTENANCE_RESTART);
-  const canRunBackup = checkFeatureAccess(FEATURE_CODES.SYSTEM_MAINTENANCE_RUN_BACKUP);
+  const canViewLogs = checkFeatureAccess(FEATURE_CODES.SYSTEM_MAINTENANCE_VIEW_LOGS) || canAccessPage;
+  const canRestart = isDeveloper;
+  const canRunBackup = isDeveloper;
+
+  const [pollingMs, setPollingMs] = useState(30000);
 
   const {
     data: overview,
@@ -78,8 +97,18 @@ const SystemMaintenancePage = () => {
     error,
     refetch,
   } = useGetSystemMaintenanceOverviewQuery(undefined, {
-    pollingInterval: 30000,
+    pollingInterval: pollingMs,
+    refetchOnReconnect: false,
+    refetchOnFocus: false,
   });
+
+  useEffect(() => {
+    if (isApiReachabilityError(error)) {
+      setPollingMs(0);
+    } else if (overview && pollingMs === 0) {
+      setPollingMs(30000);
+    }
+  }, [error, overview, pollingMs]);
 
   const { refetch: refetchBackupStatus } = useGetSystemMaintenanceBackupStatusQuery(undefined, {
     skip: true,
@@ -110,7 +139,7 @@ const SystemMaintenancePage = () => {
 
   const handleRestart = useCallback(async (appName, confirmName, onDone) => {
     if (!canRestart) {
-      setActionMessage('Access denied. Ask ICT to enable Restart under Auth Controls → Features.');
+      setActionMessage('PM2 restart is restricted to internal developers.');
       return;
     }
     try {
@@ -133,7 +162,7 @@ const SystemMaintenancePage = () => {
 
   const handleTriggerBackup = useCallback(async (confirmAction) => {
     if (!canRunBackup) {
-      setActionMessage('Access denied. Ask ICT to enable Run backup now under Auth Controls → Features.');
+      setActionMessage('Manual backup is restricted to internal developers.');
       return { ok: false };
     }
     try {
@@ -183,6 +212,26 @@ const SystemMaintenancePage = () => {
     return () => window.clearTimeout(id);
   }, [overview, isFetching, refetch]);
 
+  if (!loadingPermissions && !canAccessPage) {
+    return (
+      <div
+        className="page-sysmaint page-sysmaint--glass"
+        style={{ '--sysmaint-bg-url': `url(${process.env.PUBLIC_URL || ''}/assets/images/bg.jpg)` }}
+      >
+        <div className="sysmaint-bg-layer" />
+        <div className="sysmaint-shell">
+          <div className="sysmaint-unavailable">
+            <FaExclamationTriangle />
+            <h2>Access denied</h2>
+            <p>
+              You do not have navigation access to System Maintenance. Ask ICT to grant the Dashboard path under Auth Controls.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div
@@ -202,9 +251,9 @@ const SystemMaintenancePage = () => {
 
   if (isDisabled) {
     const msg =
-      error?.status === 403
-        ? 'You do not have permission to view System Maintenance.'
-        : 'System Maintenance is only available on the DSMS Windows server environment (enable SYSTEM_MAINTENANCE_ENABLED on the API).';
+      error?.status === 503
+        ? 'System Maintenance is only available on the DSMS Windows server environment (enable SYSTEM_MAINTENANCE_ENABLED on the API).'
+        : error?.data?.message || error?.message || 'Failed to load System Maintenance.';
     return (
       <div
         className="page-sysmaint page-sysmaint--glass"
@@ -233,7 +282,7 @@ const SystemMaintenancePage = () => {
           <div className="sysmaint-unavailable">
             <FaExclamationTriangle />
             <h2>Failed to load System Maintenance</h2>
-            <p>{error?.data?.message || error?.message || 'Unknown error'}</p>
+            <p>{formatMaintenanceLoadError(error)}</p>
             <button type="button" className="sysmaint-btn-secondary" onClick={() => refetch()}>
               <FaSync /> Retry
             </button>

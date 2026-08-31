@@ -14,6 +14,27 @@ function wingLabelsMatch(a, b) {
   return a === b || a.startsWith(b) || b.startsWith(a);
 }
 
+function isHumanResourceText(value) {
+  const text = normalizeWingLabel(value);
+  return text.includes('human resource') || text === 'hrm' || text === 'hrmw' || text === 'hr';
+}
+
+function isHumanResourceWingQuery(wingNorm) {
+  return wingNorm.includes('human resource')
+    || wingNorm.includes('hr and admin')
+    || wingNorm === 'hr'
+    || wingNorm === 'hrm'
+    || wingNorm === 'hrmw';
+}
+
+function addDeptToContext(dept, deptIds, deptCodes, normalizedLabels) {
+  if (dept.id != null) deptIds.add(Number(dept.id));
+  const code = String(dept.dept_code || dept.deptCode || '').trim().toLowerCase();
+  if (code) deptCodes.add(code);
+  const name = normalizeWingLabel(dept.department_name || dept.departmentName);
+  if (name) normalizedLabels.add(name);
+}
+
 /**
  * Resolve ?wing= query to emp department ids/codes and normalized labels.
  */
@@ -29,10 +50,7 @@ export function buildWingFilterContext(wingQuery, empDepartments = [], wings = [
   empDepartments.forEach((dept) => {
     const name = normalizeWingLabel(dept.department_name || dept.departmentName);
     if (wingLabelsMatch(name, wingNorm)) {
-      if (dept.id != null) deptIds.add(Number(dept.id));
-      const code = String(dept.dept_code || dept.deptCode || '').trim().toLowerCase();
-      if (code) deptCodes.add(code);
-      if (name) normalizedLabels.add(name);
+      addDeptToContext(dept, deptIds, deptCodes, normalizedLabels);
     }
   });
 
@@ -45,7 +63,28 @@ export function buildWingFilterContext(wingQuery, empDepartments = [], wings = [
     }
   });
 
-  return { wingNorm, deptIds, deptCodes, normalizedLabels };
+  const isHumanResource = isHumanResourceWingQuery(wingNorm);
+  if (isHumanResource) {
+    deptCodes.add('hrmw');
+    deptCodes.add('hr');
+    empDepartments.forEach((dept) => {
+      const name = normalizeWingLabel(dept.department_name || dept.departmentName);
+      const code = String(dept.dept_code || dept.deptCode || '').trim().toLowerCase();
+      if (isHumanResourceText(name) || code === 'hrmw' || code === 'hr') {
+        addDeptToContext(dept, deptIds, deptCodes, normalizedLabels);
+      }
+    });
+    wings.forEach((wing) => {
+      const code = String(wing.wingsCode || wing.wingCode || '').trim().toLowerCase();
+      if (code === 'hrmw' || code === 'hr') {
+        deptCodes.add(code);
+        const name = normalizeWingLabel(wing.wing);
+        if (name) normalizedLabels.add(name);
+      }
+    });
+  }
+
+  return { wingNorm, deptIds, deptCodes, normalizedLabels, isHumanResource };
 }
 
 export function employeeInWing(employee, wingContext) {
@@ -54,8 +93,15 @@ export function employeeInWing(employee, wingContext) {
   const empDeptId = employee?.emp_department_id != null ? Number(employee.emp_department_id) : null;
   if (empDeptId && wingContext.deptIds.has(empDeptId)) return true;
 
-  const deptCode = String(employee?.department || '').trim().toLowerCase();
-  if (deptCode && wingContext.deptCodes.has(deptCode)) return true;
+  const legacyDeptRaw = String(employee?.department ?? '').trim();
+  if (legacyDeptRaw) {
+    const legacyNum = Number(legacyDeptRaw);
+    if (Number.isInteger(legacyNum) && legacyNum > 0 && wingContext.deptIds.has(legacyNum)) {
+      return true;
+    }
+    const code = legacyDeptRaw.toLowerCase();
+    if (wingContext.deptCodes.has(code)) return true;
+  }
 
   const deptName = normalizeWingLabel(employee?.departmentName || employee?.department_name);
   if (deptName) {
@@ -63,6 +109,11 @@ export function employeeInWing(employee, wingContext) {
     for (const label of wingContext.normalizedLabels) {
       if (wingLabelsMatch(deptName, label)) return true;
     }
+  }
+
+  if (wingContext.isHumanResource) {
+    if (isHumanResourceText(employee?.departmentName || employee?.department_name)) return true;
+    if (isHumanResourceText(employee?.department)) return true;
   }
 
   return false;

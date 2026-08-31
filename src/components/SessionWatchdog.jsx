@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { getNodeBackendUrl, getToken } from '../api/services NodeJs/nodeBackendConfig';
-import { forceLogoutFromApi } from '../utils/sessionUtils';
+import { forceLogoutFromApi, isWingHubLandingRoute, redirectToLogin } from '../utils/sessionUtils';
 
 const SESSION_CHECK_MS = 2 * 60 * 1000;
 
@@ -29,7 +29,11 @@ export default function SessionWatchdog() {
 
         if (response.status === 401) {
           const data = await response.json().catch(() => ({}));
-          forceLogoutFromApi(null, { status: 401, data });
+          if (isWingHubLandingRoute()) {
+            window.setTimeout(() => redirectToLogin('session_expired', null), 1000);
+          } else {
+            forceLogoutFromApi(null, { status: 401, data });
+          }
         }
       } catch (_) {
         // network blips should not force logout

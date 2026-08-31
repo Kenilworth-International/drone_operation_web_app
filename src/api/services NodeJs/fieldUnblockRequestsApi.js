@@ -66,7 +66,43 @@ export const fieldUnblockRequestsApi = baseApi.injectEndpoints({
           {}
         );
       },
-      invalidatesTags: ['FieldUnblockRequests'],
+      invalidatesTags: ['FieldUnblockRequests', 'PlantationFieldAvailability'],
+    }),
+
+    getFieldUnblockCategories: builder.query({
+      queryFn: async () => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/field-unblock-requests/categories', method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data ?? [] };
+      },
+      providesTags: ['FieldUnblockRequests'],
+    }),
+
+    submitFieldUnblockRequest: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/field-unblock-requests/submit', method: 'POST', body },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['FieldUnblockRequests', 'PlantationFieldAvailability'],
+    }),
+
+    cancelFieldUnblockRequest: builder.mutation({
+      queryFn: async (requestId) => {
+        return nodeBackendBaseQuery(
+          { url: `/api/field-unblock-requests/${requestId}/cancel`, method: 'POST', body: {} },
+          {},
+          {}
+        );
+      },
+      invalidatesTags: ['FieldUnblockRequests', 'PlantationFieldAvailability'],
     }),
   }),
 });
@@ -76,4 +112,7 @@ export const {
   useGetFieldUnblockRequestsListQuery,
   useApproveFieldUnblockRequestMutation,
   useDeclineFieldUnblockRequestMutation,
+  useGetFieldUnblockCategoriesQuery,
+  useSubmitFieldUnblockRequestMutation,
+  useCancelFieldUnblockRequestMutation,
 } = fieldUnblockRequestsApi;

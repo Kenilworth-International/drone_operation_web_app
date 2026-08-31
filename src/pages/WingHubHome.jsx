@@ -15,6 +15,7 @@ import { OD_WING_OPERATION_DIGITALIZATION_TITLE } from '../config/odWingShell';
 import { isInternalDeveloper } from '../utils/authUtils';
 import { ensureHttps } from '../utils/urlUtils';
 import { getGroupLogoBaseUrl } from '../utils/resourceUrls';
+import { redirectToLogin } from '../utils/sessionUtils';
 import '../styles/wingHub.css';
 import TargetCursor from '../components/TargetCursor';
 
@@ -45,6 +46,19 @@ function resolveJobRoleLabel(userData, jobRoles = []) {
   return match?.designation || code;
 }
 
+function formatLastLoggedIn(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-LK', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 function resolveGroupLogoSrc(userData, logoErrorCount) {
   const groupLogoBase = getGroupLogoBaseUrl();
   const rawGroupId = userData?.group ?? userData?.group_id ?? userData?.user_group_id ?? null;
@@ -66,12 +80,21 @@ const WingHubHome = () => {
   const queryClient = useQueryClient();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [avatarStage, setAvatarStage] = useState('profile');
-  const { categories, categoryVisibility, allowedPaths, userData, loadingPermissions } = useNavbarPermissions();
+  const {
+    categories,
+    categoryVisibility,
+    allowedPaths,
+    userData,
+    tokenCreatedAt,
+    loadingPermissions,
+    sessionExpired,
+  } = useNavbarPermissions();
   const { data: userJobRolesData } = useGetUserJobRolesQuery(undefined, { skip: !userData?.id });
   const userJobRoles = userJobRolesData?.data || [];
 
   const userDisplayName = String(userData?.name || '').trim() || 'User';
   const userJobRoleLabel = resolveJobRoleLabel(userData, userJobRoles);
+  const lastLoggedInLabel = formatLastLoggedIn(tokenCreatedAt || userData?.token_created_at);
   const userProfileImage = userData?.image ? ensureHttps(userData.image) : null;
   const groupLogoSrc = resolveGroupLogoSrc(userData, 0);
   const groupLogoFallbackSrc = resolveGroupLogoSrc(userData, 1);
@@ -79,6 +102,14 @@ const WingHubHome = () => {
   useEffect(() => {
     setAvatarStage(userProfileImage ? 'profile' : 'group');
   }, [userProfileImage, userData?.id]);
+
+  useEffect(() => {
+    if (!sessionExpired) return undefined;
+    const timer = window.setTimeout(() => {
+      redirectToLogin('session_expired', dispatch);
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [sessionExpired, dispatch]);
 
   const handleConfirmLogout = () => {
     dispatch(baseApi.util.resetApiState());
@@ -180,6 +211,11 @@ const WingHubHome = () => {
                 {userJobRoleLabel ? (
                   <span className="wing-hub-user-role wing-hub-user-role--header">{userJobRoleLabel}</span>
                 ) : null}
+                {lastLoggedInLabel ? (
+                  <span className="wing-hub-user-last-login wing-hub-user-last-login--header">
+                    Logged in at: {lastLoggedInLabel}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -228,7 +264,14 @@ const WingHubHome = () => {
       )}
 
       <div className="wing-hub-body">
-        {loadingPermissions ? (
+        {sessionExpired ? (
+          <div className="wing-hub-session-expired" role="alert">
+            <p className="wing-hub-session-expired-title">Session expired</p>
+            <p className="wing-hub-session-expired-message">
+              Your session has expired. Redirecting to login…
+            </p>
+          </div>
+        ) : loadingPermissions ? (
           <p className="wing-hub-loading">Loading access…</p>
         ) : visibleWings.length === 0 ? (
           <p className="wing-hub-empty">No wings available for your account.</p>

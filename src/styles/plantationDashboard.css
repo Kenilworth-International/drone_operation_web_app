@@ -5216,3 +5216,280 @@
 .container-class-breakdown--internal .cbd-map-error-link {
   color: #004b71;
 }
+
+/* External plantation shell extensions */
+.plantation-dashboard-container--embedded {
+  padding: 0;
+  min-height: auto;
+  background: transparent;
+}
+
+.plantation-home-tab-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.plantation-home-tab-title {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #1e293b;
+}
+
+.pd-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pd-spin {
+  animation: pd-spin-keyframes 0.8s linear infinite;
+}
+
+@keyframes pd-spin-keyframes {
+  to { transform: rotate(360deg); }
+}
+
+.pd-field-avail-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.pd-field-avail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.pd-field-avail-title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pd-field-avail-sub {
+  margin: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.pd-field-avail-link {
+  border: none;
+  background: none;
+  color: #2d6a4f;
+  font-size: 13px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pd-field-avail-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pd-field-avail-stat {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.pd-field-avail-stat-val {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.pd-field-avail-stat-lbl {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.pd-field-avail-stat--ok .pd-field-avail-stat-val { color: #15803d; }
+.pd-field-avail-stat--warn .pd-field-avail-stat-val { color: #b45309; }
+
+.pd-page-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pd-back-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.pd-field-avail-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+
+.pd-field-avail-node,
+.pd-field-avail-blocked-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
+.pd-field-avail-node {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.pd-calendar-segments,
+.pd-calendar-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.pd-monthly-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.pd-monthly-draft-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(36px, 1fr));
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.pd-monthly-day {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  border-radius: 6px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.pd-monthly-day--selected {
+  background: #dcfce7;
+  border-color: #2d6a4f;
+}
+
+.pd-monthly-day--empty {
+  border: none;
+  background: transparent;
+}
+
+.pd-monthly-line {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 80px;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.pd-manager-list { display: flex; flex-direction: column; gap: 10px; }
+
+.pd-manager-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.pd-manager-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.plantation-profile-tab { max-width: 720px; }
+
+.plantation-profile-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.plantation-profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #2d6a4f;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.plantation-profile-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.plantation-profile-dl div {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.plantation-profile-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.plantation-profile-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.plantation-profile-btn--danger {
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.pd-wizard-page { max-width: 900px; }
+.pd-wizard-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; }
+.pd-wizard-check { display: block; margin-bottom: 8px; }
+.pd-wizard-chem-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.pd-wizard-steps { display: flex; gap: 8px; margin: 12px 0; }
+.pd-wizard-step { padding: 4px 10px; border-radius: 999px; background: #f1f5f9; font-size: 12px; }
+.pd-wizard-step.active { background: #dcfce7; color: #166534; }
+.pd-form-label { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; font-size: 13px; }
+.pd-form-label select,
+.pd-form-label textarea,
+.pd-form-label input { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+.pd-form-actions { display: flex; gap: 8px; margin-top: 12px; }
+.pd-popup--narrow { max-width: 420px; }

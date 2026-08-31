@@ -27,9 +27,7 @@ import {
 } from '../../../api/services/estatesApi';
 import { useGetUserJobRolesQuery } from '../../../api/services NodeJs/jdManagementApi';
 import { useGetDashboardSummaryQuery, useGetCompletedMissionReportsQuery } from '../../../api/services NodeJs/plantationDashboardApi';
-import PlannedVsTeaRevenueChart from './components/PlannedVsTeaRevenueChart';
-import PlannedVsSprayedChart from './components/PlannedVsSprayedChart';
-import MonthRangePicker from './components/MonthRangePicker';
+import PlantationChartsPanel from './components/PlantationChartsPanel';
 import { format } from 'date-fns';
 import { Bars } from 'react-loader-spinner';
 import '../../../styles/plantationDashboard.css';
@@ -39,6 +37,7 @@ const PlantationDashboard = ({
   basePath = '/home/plantation-dashboard',
   showUserHierarchy = true,
   showTopHeader = undefined,
+  embeddedInExternalShell = false,
 } = {}) => {
   const shouldShowTopHeader = showTopHeader ?? basePath !== '/home/dashboard';
   const isInternalDashboard =
@@ -345,7 +344,7 @@ const PlantationDashboard = ({
 
   return (
     <div
-      className={`plantation-dashboard-container${isInternalDashboard ? ' plantation-dashboard-container--internal' : ''}`}
+      className={`plantation-dashboard-container${isInternalDashboard ? ' plantation-dashboard-container--internal' : ''}${embeddedInExternalShell ? ' plantation-dashboard-container--embedded' : ''}`}
     >
       {/* Header */}
       {shouldShowTopHeader && (
@@ -420,7 +419,7 @@ const PlantationDashboard = ({
                 Spread
               </button>
             </div>
-            {basePath !== '/home/dashboard' && (
+            {basePath !== '/home/dashboard' && !embeddedInExternalShell && (
               <button
                 className="pd-calendar-btn"
                 onClick={() => navigate(`${basePath}/calendar`)}
@@ -462,40 +461,14 @@ const PlantationDashboard = ({
           ))}
         </div>
 
-        {/* Month Range Controls (above charts) */}
-        <div className="plantation-charts-controls-section">
-          <div className="plantation-charts-controls-row">
-            <div className="plantation-charts-control-group">
-              <span className="plantation-charts-control-label">Month Range:</span>
-              <MonthRangePicker
-                startMonth={chartMonthRange.start}
-                endMonth={chartMonthRange.end}
-                onChange={setChartMonthRange}
-                maxMonths={6}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Charts */}
-        <div className="plantation-charts-section">
-          <PlannedVsTeaRevenueChart
-            missionType={missionType}
-            months={chartMonths}
-            startMonth={`${chartMonthRange.start.getFullYear()}-${String(chartMonthRange.start.getMonth() + 1).padStart(2, '0')}`}
-            endMonth={`${chartMonthRange.end.getFullYear()}-${String(chartMonthRange.end.getMonth() + 1).padStart(2, '0')}`}
-            basePath={basePath}
-            completedPlansOnly={completedPlansOnly}
-          />
-          <PlannedVsSprayedChart
-            missionType={missionType}
-            months={chartMonths}
-            startMonth={`${chartMonthRange.start.getFullYear()}-${String(chartMonthRange.start.getMonth() + 1).padStart(2, '0')}`}
-            endMonth={`${chartMonthRange.end.getFullYear()}-${String(chartMonthRange.end.getMonth() + 1).padStart(2, '0')}`}
-            basePath={basePath}
-            completedPlansOnly={completedPlansOnly}
-          />
-        </div>
+        <PlantationChartsPanel
+          missionType={missionType}
+          chartMonths={chartMonths}
+          chartMonthRange={chartMonthRange}
+          setChartMonthRange={setChartMonthRange}
+          basePath={basePath}
+          completedPlansOnly={completedPlansOnly}
+        />
       </div>
 
       {/* Cancelled Fields Popup */}

@@ -15,6 +15,7 @@ import {
   useGetEmpRoleMaxLimitsQuery,
   useSaveEmpRoleMaxLimitMutation,
 } from '../../../api/services NodeJs/empOrgStructureApi';
+import { useGetAllEmployeeRegistrationsQuery } from '../../../api/services NodeJs/jdManagementApi';
 import ChiefJobRoleTab from './ChiefJobRoleTab';
 import {
   clampPowerToLayer,
@@ -35,7 +36,7 @@ const TABS = [
 ];
 
 const EMPTY = {
-  dept: { dept_code: '', department_name: '', sort_order: 0, activated: 1 },
+  dept: { dept_code: '', department_name: '', hod_employee_id: '', sort_order: 0, activated: 1 },
   sub: { sub_division_name: '', sub_div_code: '', sort_order: 0, activated: 1 },
   role: { dept_id: '', jr_code: '', job_role: '', mgt_layer_id: '', power: 0, sort_order: 0, activated: 1 },
   spec: { dept_id: '', job_role_id: '', specialization: '', activated: 1 },
@@ -140,6 +141,20 @@ export default function EmpOrgMasterPanel() {
   const [selectedLimitDeptId, setSelectedLimitDeptId] = useState('');
 
   const { data: departments = [], refetch: refetchDepts } = useGetEmpDepartmentsQuery();
+  const { data: employeesData } = useGetAllEmployeeRegistrationsQuery();
+  const employees = useMemo(() => {
+    if (!employeesData) return [];
+    if (Array.isArray(employeesData)) return employeesData;
+    if (Array.isArray(employeesData.data)) return employeesData.data;
+    return [];
+  }, [employeesData]);
+  const employeeNameById = useMemo(() => {
+    const map = new Map();
+    employees.forEach((emp) => {
+      map.set(Number(emp.id), emp.employeeName || emp.preferredName || emp.empNo || `Employee ${emp.id}`);
+    });
+    return map;
+  }, [employees]);
   const { data: layers = [], refetch: refetchLayers } = useGetEmpManagementLayersQuery();
   const { data: jobRoles = [], refetch: refetchRoles } = useGetEmpJobRolesQuery();
   const { data: designations = [], refetch: refetchDes } = useGetEmpDesignationsQuery({});
@@ -279,6 +294,7 @@ export default function EmpOrgMasterPanel() {
         id: row.id,
         dept_code: row.dept_code || '',
         department_name: row.department_name || '',
+        hod_employee_id: row.hod_employee_id ? String(row.hod_employee_id) : '',
         sort_order: row.sort_order ?? 0,
         activated: row.activated ?? 1,
       });
@@ -334,7 +350,10 @@ export default function EmpOrgMasterPanel() {
     setSaving(true);
     try {
       if (modal.type === 'dept') {
-        await saveDept(form).unwrap();
+        await saveDept({
+          ...form,
+          hod_employee_id: form.hod_employee_id ? Number(form.hod_employee_id) : null,
+        }).unwrap();
         refetchDepts();
         refetchDes();
       } else if (modal.type === 'sub') {
@@ -442,12 +461,13 @@ export default function EmpOrgMasterPanel() {
         <div className="emp-org-panel">
           {panelActions('dept', '+ Add department')}
           <table className="emp-org-table">
-            <thead><tr><th>Code</th><th>Name</th><th>Sort</th><th>Active</th><th /></tr></thead>
+            <thead><tr><th>Code</th><th>Name</th><th>HOD</th><th>Sort</th><th>Active</th><th /></tr></thead>
             <tbody>
               {departments.map((d) => (
                 <tr key={d.id}>
                   <td>{d.dept_code}</td>
                   <td>{d.department_name}</td>
+                  <td>{d.hod_employee_id ? (employeeNameById.get(Number(d.hod_employee_id)) || d.hod_employee_id) : '—'}</td>
                   <td>{d.sort_order}</td>
                   <td>{Number(d.activated) === 1 ? 'Yes' : 'No'}</td>
                   <td>{editBtn('dept', d)}</td>
@@ -722,6 +742,19 @@ export default function EmpOrgMasterPanel() {
           />
           <Field label="Department name *">
             <input value={form.department_name} onChange={(e) => setForm({ ...form, department_name: e.target.value })} required />
+          </Field>
+          <Field label="Head of Department (HOD)">
+            <select
+              value={form.hod_employee_id || ''}
+              onChange={(e) => setForm({ ...form, hod_employee_id: e.target.value })}
+            >
+              <option value="">Not set</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.employeeName || emp.preferredName || emp.empNo || `Employee ${emp.id}`}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Sort order">
             <input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />

@@ -134,6 +134,70 @@ export const plantationEstateManagerApi = baseApi.injectEndpoints({
       },
       providesTags: ['PlantationEstateManager'],
     }),
+
+    getManagerPlanEditContext: builder.query({
+      queryFn: async (planId) => {
+        const result = await nodeBackendBaseQuery(
+          { url: `/api/plantation-estate-manager/plan-edit-context/${planId}`, method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data };
+      },
+      providesTags: (result, error, planId) => [
+        { type: 'PlantationEstateManager', id: `mgr-edit-context-${planId}` },
+      ],
+    }),
+
+    submitManagerPlanEdit: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-estate-manager/plan-edit', method: 'POST', body },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['PlantationEstateManager', 'PlantationCalendarPlans', 'PlantationPlans'],
+    }),
+
+    submitPlanApproval: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-estate-manager/approve-plan', method: 'POST', body },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['PlantationEstateManager', 'PlantationCalendarPlans', 'PlantationDashboardSummary'],
+    }),
+
+    cancelManagerPlan: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-estate-manager/cancel-plan', method: 'POST', body },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['PlantationEstateManager', 'PlantationCalendarPlans'],
+    }),
+
+    getManagerCancelReasons: builder.query({
+      queryFn: async () => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-estate-manager/manager-cancel-reasons', method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data ?? result.data ?? [] };
+      },
+      providesTags: ['PlantationEstateManager'],
+    }),
   }),
 });
 
@@ -147,4 +211,9 @@ export const {
   useGetManagerFieldRemoveReasonsQuery,
   useGetPlanCustomizationLogQuery,
   useGetWebPlanCustomizationLogQuery,
+  useGetManagerPlanEditContextQuery,
+  useSubmitManagerPlanEditMutation,
+  useSubmitPlanApprovalMutation,
+  useCancelManagerPlanMutation,
+  useGetManagerCancelReasonsQuery,
 } = plantationEstateManagerApi;

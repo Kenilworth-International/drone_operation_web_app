@@ -82,7 +82,7 @@ export const baseApi = createApi({
     // HR Employee Profile (Phases 2-7)
     'EmployeeProfile', 'EmployeeDocuments', 'Organization',
     // Plantation Dashboard
-    'PlantationCalendarPlans', 'PlantationUpcomingPlans', 'PlantationCharts', 'PlantationMissionReports', 'PlantationPlanRequests', 'PlantationPlanRescheduleRequests', 'PlantationMonthlyPlanRequests', 'FieldUnblockRequests', 'PlanActivateRequests',
+    'PlantationCalendarPlans', 'PlantationUpcomingPlans', 'PlantationCharts', 'PlantationMissionReports', 'PlantationDashboardSummary', 'PlantationPlanRequests', 'PlantationPlanRescheduleRequests', 'PlantationMonthlyPlanRequests', 'PlantationEstateManager', 'PlantationSession', 'PlantationFieldAvailability', 'PlantationPlans', 'FieldUnblockRequests', 'PlanActivateRequests',
     // Field Size Adjustments
     'FieldSizeAdjustments',
     // Field History

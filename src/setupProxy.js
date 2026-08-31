@@ -17,6 +17,8 @@ module.exports = function setupProxy(app) {
       target: nodeTarget,
       changeOrigin: true,
       secure: true,
+      timeout: 120000,
+      proxyTimeout: 120000,
       logLevel: process.env.REACT_APP_PROXY_DEBUG === '1' ? 'debug' : 'warn',
     })
   );

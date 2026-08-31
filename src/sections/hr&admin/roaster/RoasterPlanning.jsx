@@ -4,6 +4,12 @@ import { Bars } from 'react-loader-spinner';
 import '../../../styles/roasterPlanning.css';
 import { useGetHrRosterPlanQuery, useSaveHrRosterPlanMutation } from '../../../api/services NodeJs/hrLeaveApi';
 import { useGetAllEmployeeRegistrationsQuery } from '../../../api/services NodeJs/jdManagementApi';
+import {
+  leaveStatusLabel,
+  locationValidLabel,
+  overlookingStatusLabel,
+  requestModeLabel,
+} from '../../../utils/hrStatusLabels';
 
 const formatDate = (year, month, day) => {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -49,7 +55,7 @@ const buildApprovalDetailLines = (item) => {
   if (s === 'approved') lines.push('Status: Fully approved');
   else if (s === 'pending_l2') lines.push('Status: Awaiting department head');
   else if (s === 'pending_l1') lines.push('Status: Awaiting reporting officer');
-  else lines.push(`Status: ${s || 'Unknown'}`);
+  else lines.push(`Status: ${leaveStatusLabel(item.currentStatus)}`);
 
   if (item.level1Action === 'approved') {
     lines.push(`Reporting officer (${l1name}): Approved`);
@@ -74,8 +80,7 @@ const buildApprovalDetailLines = (item) => {
   }
 
   if (item.overlookingOfficerName) {
-    const overStatus = String(item.overlookingStatus || 'pending').toLowerCase();
-    const overLabel = overStatus === 'accepted' ? 'Accepted' : overStatus === 'declined' ? 'Declined' : 'Pending';
+    const overLabel = overlookingStatusLabel(item.overlookingStatus);
     lines.push(`Overlooking officer (${item.overlookingOfficerName}): ${overLabel}`);
   }
 
@@ -135,11 +140,8 @@ const buildServerLeaveSetById = (rows) => {
 
 const normalizeFilterText = (value) => String(value || '').trim().toLowerCase();
 const attendanceKey = (employeeId, dateKey) => `${Number(employeeId)}|${dateKey}`;
-const toBoolText = (value) => {
-  if (value === 1 || value === '1' || value === true) return 'Valid';
-  if (value === 0 || value === '0' || value === false) return 'Not valid';
-  return 'N/A';
-};
+const toBoolText = (value) => locationValidLabel(value);
+const statusLabel = (status) => leaveStatusLabel(status);
 const formatTimeOnly = (value) => {
   if (!value) return '-';
   const dt = new Date(String(value).replace(' ', 'T'));
@@ -159,14 +161,6 @@ const formatWorkedHours = (minutesRaw) => {
 const buildMapUrl = (lat, lng) => {
   if (lat == null || lng == null) return '';
   return `https://www.google.com/maps?q=${lat},${lng}`;
-};
-const statusLabel = (status) => {
-  const s = String(status || '').toLowerCase();
-  if (s === 'approved') return 'Approved';
-  if (s === 'pending_l2') return 'Pending L2';
-  if (s === 'pending_l1') return 'Pending L1';
-  if (s === 'rejected') return 'Rejected';
-  return s || '-';
 };
 const getEmployeeWorkLocation = (empLike = {}) => {
   return (
@@ -196,7 +190,7 @@ const getMonthDays = (monthValue) => {
   });
 };
 
-const RoasterPlanning = () => {
+const RoasterPlanning = ({ embedded = false }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
   const [editableRows, setEditableRows] = useState({});
   const [saveStatus, setSaveStatus] = useState('');
@@ -788,7 +782,7 @@ const RoasterPlanning = () => {
   };
 
   return (
-    <div className="roaster-planning-page">
+    <div className={`roaster-planning-page${embedded ? ' roaster-planning-embedded' : ''}`}>
       <section className="planning-controls-roaster">
         <div className="control-field-roaster planning-month-field-roaster">
           <label htmlFor="planning-month">Planning Month</label>

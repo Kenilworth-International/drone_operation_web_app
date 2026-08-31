@@ -233,7 +233,6 @@ const MasterData = ({ mode = 'full' }) => {
 
   const [newWingName, setNewWingName] = useState('');
   const [newWingCode, setNewWingCode] = useState('');
-  const [newWingHod, setNewWingHod] = useState('');
   const [newWorkLocationName, setNewWorkLocationName] = useState('');
   const [newWorkLocationCode, setNewWorkLocationCode] = useState('');
   const [newWorkLocationMapLink, setNewWorkLocationMapLink] = useState('');
@@ -368,14 +367,12 @@ const MasterData = ({ mode = 'full' }) => {
   const openAddWingModal = () => {
     setNewWingName('');
     setNewWingCode('');
-    setNewWingHod('');
     setAddWingOpen(true);
   };
   const closeAddWingModal = () => {
     setAddWingOpen(false);
     setNewWingName('');
     setNewWingCode('');
-    setNewWingHod('');
   };
   const saveAddWingModal = async () => {
     const wing = String(newWingName || '').trim();
@@ -389,7 +386,7 @@ const MasterData = ({ mode = 'full' }) => {
       return;
     }
     await handleQuickSave(async () => {
-      await saveWing({ wing, wingsCode: code, hod: newWingHod || null, activated: 1 }).unwrap();
+      await saveWing({ wing, wingsCode: code, activated: 1 }).unwrap();
       await refetchWings();
       closeAddWingModal();
     });
@@ -584,7 +581,7 @@ const MasterData = ({ mode = 'full' }) => {
         finance_category: String(item.finance_category || selectedFinanceCategoryId || '1'),
       });
     }
-    if (type === 'wing') setModalDraft({ wing: item.wing || '', wingsCode: item.wingsCode || '', hod: item.hod ? String(item.hod) : '' });
+    if (type === 'wing') setModalDraft({ wing: item.wing || '', wingsCode: item.wingsCode || '' });
     if (type === 'workLocation') {
       setModalDraft({
         locationName: item.locationName || '',
@@ -788,7 +785,6 @@ const MasterData = ({ mode = 'full' }) => {
           id: editModal.item.id,
           wing: modalDraft.wing,
           wingsCode: modalDraft.wingsCode,
-          hod: modalDraft.hod || null,
           activated: editModal.item.activated ?? 1,
         }).unwrap();
         refetchWings();
@@ -1110,23 +1106,17 @@ const MasterData = ({ mode = 'full' }) => {
                   </button>
                 </div>
                 <div className="master-list-master-data" style={{ marginTop: 12 }}>
-                  {wings.map((w) => {
-                    const hodEmployee = employees.find((emp) => String(emp.id) === String(w.hod || ''));
-                    const hodLabel = hodEmployee
-                      ? `${hodEmployee.employeeName || hodEmployee.preferredName || hodEmployee.empNo || 'Employee'} (${hodEmployee.id})`
-                      : (w.hod || '-');
-                    return (
-                      <div key={w.id} className="master-row-master-data">
-                        <div style={{ flex: 1 }}>
-                          <span className="master-label-master-data">{w.wing}</span>
-                          <span style={{ marginLeft: 8, fontSize: '0.82em', color: '#555' }}>[{w.wingsCode || '-'}] HOD: {hodLabel}</span>
-                        </div>
-                        <div className="master-actions-master-data">
-                          <button className="action-btn-master-data neutral-master-data" onClick={() => openEditModal('wing', w)}>Edit</button>
-                        </div>
+                  {wings.map((w) => (
+                    <div key={w.id} className="master-row-master-data">
+                      <div style={{ flex: 1 }}>
+                        <span className="master-label-master-data">{w.wing}</span>
+                        <span style={{ marginLeft: 8, fontSize: '0.82em', color: '#555' }}>[{w.wingsCode || '-'}]</span>
                       </div>
-                    );
-                  })}
+                      <div className="master-actions-master-data">
+                        <button className="action-btn-master-data neutral-master-data" onClick={() => openEditModal('wing', w)}>Edit</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -2029,18 +2019,6 @@ const MasterData = ({ mode = 'full' }) => {
                   onChange={(e) => setModalDraft((p) => ({ ...p, wingsCode: e.target.value }))}
                   placeholder="Wing code"
                 />
-                <select
-                  className="master-edit-input-master-data"
-                  value={modalDraft.hod || ''}
-                  onChange={(e) => setModalDraft((p) => ({ ...p, hod: e.target.value }))}
-                >
-                  <option value="">HOD (Employee ID)</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.id} - {emp.employeeName || emp.preferredName || emp.empNo || 'Employee'}
-                    </option>
-                  ))}
-                </select>
               </div>
             )}
             {editModal.type === 'workLocation' && (
@@ -2454,22 +2432,6 @@ const MasterData = ({ mode = 'full' }) => {
                   placeholder="Wing code"
                   autoComplete="off"
                 />
-              </div>
-              <div className="master-edit-field-master-data master-edit-field-span2-master-data">
-                <label htmlFor="master-add-wing-hod">HOD (Employee)</label>
-                <select
-                  id="master-add-wing-hod"
-                  className="master-edit-input-master-data"
-                  value={newWingHod}
-                  onChange={(e) => setNewWingHod(e.target.value)}
-                >
-                  <option value="">None (optional)</option>
-                  {employees.map((emp) => (
-                    <option key={emp.id} value={emp.id}>
-                      {emp.id} - {emp.employeeName || emp.preferredName || emp.empNo || 'Employee'}
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
             <div className="update-popup-actions-master-data">

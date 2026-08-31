@@ -1,0 +1,93 @@
+.plantation-ext-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 48px);
+  background: #f4f7f5;
+}
+
+.plantation-ext-shell--loading,
+.plantation-ext-shell--error {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px 24px;
+  color: #475569;
+}
+
+.plantation-ext-main {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 16px 88px;
+}
+
+.plantation-ext-shell--full .plantation-ext-main {
+  padding-bottom: 16px;
+}
+
+.plantation-ext-tabs {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  background: #fff;
+  border-top: 1px solid #dce3de;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.06);
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.plantation-ext-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 6px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #64748b;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.plantation-ext-tab svg {
+  font-size: 18px;
+}
+
+.plantation-ext-tab.active {
+  color: #2d6a4f;
+}
+
+@media (min-width: 900px) {
+  .plantation-ext-shell {
+    flex-direction: row;
+  }
+
+  .plantation-ext-tabs {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    left: auto;
+    right: auto;
+    flex-direction: column;
+    width: 88px;
+    min-height: calc(100vh - 48px);
+    border-top: none;
+    border-right: 1px solid #dce3de;
+    box-shadow: none;
+    order: -1;
+  }
+
+  .plantation-ext-tab {
+    flex: 0;
+    padding: 16px 8px;
+  }
+
+  .plantation-ext-main {
+    padding: 24px 28px 24px;
+  }
+}

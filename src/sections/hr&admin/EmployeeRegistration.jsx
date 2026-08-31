@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useGetUserMemberTypesQuery, useGetUserJobRolesQuery, useGetUserLevelsQuery, useGetDrivingLicenseTypesQuery, useGetWorkLocationsQuery, useGetDSCSQuery, useGetProvincesQuery, useGetDistrictsQuery, useGetASCSQuery, useCreateEmployeeRegistrationMutation, useUpdateEmployeeRegistrationMutation, useGetEmployeeRegistrationByIdQuery, useGetLastEmpNoQuery, useGetAllEmployeeRegistrationsQuery } from '../../api/services NodeJs/jdManagementApi';
+import { useGetUserMemberTypesQuery, useGetUserJobRolesQuery, useGetUserLevelsQuery, useGetDrivingLicenseTypesQuery, useGetWorkLocationsQuery, useGetDSCSQuery, useGetProvincesQuery, useGetDistrictsQuery, useGetASCSQuery, useCreateEmployeeRegistrationMutation, useUpdateEmployeeRegistrationMutation, useGetEmployeeRegistrationByIdQuery, useGetLastEmpNoQuery, useLazyCheckEmpNoQuery, useGetAllEmployeeRegistrationsQuery } from '../../api/services NodeJs/jdManagementApi';
 import { useGetEmpDepartmentsQuery } from '../../api/services NodeJs/empOrgStructureApi';
 import { parseNic } from '../../utils/nic';
 import '../../styles/employeeRegistration.css';
@@ -20,6 +20,16 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
   const sanitizePhone9 = (value) => {
     const digits = String(value || '').replace(/\D/g, '').slice(0, 9);
     return digits.startsWith('0') ? digits.slice(1) : digits;
+  };
+
+  const parseEmpNoSuffix = (empNo) => {
+    const match = String(empNo || '').trim().toUpperCase().match(/^EMP(\d+)$/);
+    return match ? String(Number(match[1])) : '';
+  };
+
+  const formatEmpNoPreview = (suffix) => {
+    if (!suffix || !/^\d+$/.test(String(suffix))) return '';
+    return `EMP${String(Number(suffix)).padStart(3, '0')}`;
   };
 
   // Fetch User Member Types for Employee Type dropdown
@@ -177,8 +187,12 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
   
   // Fetch last EMP NO for estimation
   const { data: lastEmpNoData, isLoading: loadingLastEmpNo } = useGetLastEmpNoQuery();
-  // Extract nextEmpNo from response - handle both possible response structures
-  const estimatedEmpNo = lastEmpNoData?.data?.nextEmpNo || lastEmpNoData?.nextEmpNo || '';
+  const nextEmpNumber = lastEmpNoData?.data?.nextNumber ?? lastEmpNoData?.nextNumber ?? null;
+  const [empNoSuffix, setEmpNoSuffix] = useState('');
+  const [empNoSuffixInitialized, setEmpNoSuffixInitialized] = useState(false);
+  const [empNoConflict, setEmpNoConflict] = useState(null);
+  const [checkingEmpNo, setCheckingEmpNo] = useState(false);
+  const [checkEmpNo] = useLazyCheckEmpNoQuery();
 
   // Fetch Provinces for Province dropdown
   const { data: provincesData, isLoading: loadingProvinces } = useGetProvincesQuery();
@@ -317,6 +331,11 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
     }
   };
 
+  const handleEmpNoSuffixChange = (e) => {
+    const digits = String(e.target.value || '').replace(/\D/g, '');
+    setEmpNoSuffix(digits);
+  };
+
   // Handle date input click - make entire field clickable to open calendar
   const handleDateInputClick = (e) => {
     const input = e.target;
@@ -380,6 +399,53 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
       }));
     }
   }, [userMemberTypes, formData.employeeType, isEditMode]);
+
+  useEffect(() => {
+    if (isEditMode || empNoSuffixInitialized) return;
+    if (loadingLastEmpNo) return;
+    if (nextEmpNumber != null) {
+      setEmpNoSuffix(String(nextEmpNumber));
+      setEmpNoSuffixInitialized(true);
+    }
+  }, [isEditMode, loadingLastEmpNo, nextEmpNumber, empNoSuffixInitialized]);
+
+  useEffect(() => {
+    if (!isEditMode || !editEmployee?.empNo) return;
+    const suffix = parseEmpNoSuffix(editEmployee.empNo);
+    if (suffix) {
+      setEmpNoSuffix(suffix);
+      setEmpNoSuffixInitialized(true);
+    }
+  }, [isEditMode, editEmployee?.empNo]);
+
+  useEffect(() => {
+    if (!empNoSuffix || !/^\d+$/.test(empNoSuffix)) {
+      setEmpNoConflict(null);
+      return undefined;
+    }
+
+    const timer = setTimeout(async () => {
+      setCheckingEmpNo(true);
+      try {
+        const res = await checkEmpNo({
+          empNoSuffix,
+          excludeEmployeeId: isEditMode ? employeeId : null,
+        }).unwrap();
+        const data = res?.data || res;
+        if (data && data.available === false && data.holder) {
+          setEmpNoConflict(data.holder);
+        } else {
+          setEmpNoConflict(null);
+        }
+      } catch {
+        setEmpNoConflict(null);
+      } finally {
+        setCheckingEmpNo(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [empNoSuffix, isEditMode, employeeId, checkEmpNo]);
 
   // Edit mode: prefill the form from the loaded employee record.
   // Codes stored in `employees` are mapped back to dropdown IDs.
@@ -597,6 +663,22 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
       }
     }
 
+    if (!empNoSuffix || !/^\d+$/.test(empNoSuffix)) {
+      setSubmitMessage({
+        type: 'error',
+        text: 'Please enter a valid employee number (digits only).',
+      });
+      return;
+    }
+    if (empNoConflict) {
+      const holderName = empNoConflict.employeeName || empNoConflict.preferredName || 'another employee';
+      setSubmitMessage({
+        type: 'error',
+        text: `Employee number ${formatEmpNoPreview(empNoSuffix)} is already assigned to ${holderName}.`,
+      });
+      return;
+    }
+
     // Reset message
     setSubmitMessage({ type: '', text: '' });
     setIsSubmitting(true);
@@ -633,7 +715,7 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
           return;
         }
         
-        // Skip empNo - it will be auto-generated
+        // Skip empNo — sent via empNoSuffix
         if (key === 'empNo') {
           return;
         }
@@ -645,6 +727,8 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
           formDataToSend.append(key, value);
         }
       });
+
+      formDataToSend.append('empNoSuffix', empNoSuffix);
       
       // Add files
       if (formData.educationCertificates) {
@@ -698,7 +782,7 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
       if (result.status) {
         // Success - show success message with created EMP NO
         // The empNo should be in result.data.empNo (not result.data.id)
-        const createdEmpNo = result.data?.empNo || result.data?.data?.empNo || estimatedEmpNo || 'N/A';
+        const createdEmpNo = result.data?.empNo || result.data?.data?.empNo || formatEmpNoPreview(empNoSuffix) || 'N/A';
         
         // Debug: Log to verify we're getting the right field
         if (!createdEmpNo || createdEmpNo === 'N/A' || createdEmpNo.toString().match(/^\d+$/)) {
@@ -710,6 +794,9 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
           text: `Employee registration created successfully! Employee Number: ${createdEmpNo}` 
         });
         if (onSaved) onSaved(result.data);
+        
+        setEmpNoSuffixInitialized(false);
+        setEmpNoConflict(null);
         
         // Clear form data
         setFormData({
@@ -814,7 +901,11 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
         // Check for specific error codes from backend
         const errorCode = error?.data?.code || error?.error?.data?.code;
         if (errorCode === 'DUPLICATE_EMP_NO') {
-          errorMessage = 'An employee with this employee number already exists.';
+          errorMessage = error?.data?.message || error?.error?.data?.message || errorMessage;
+          const holder = error?.data?.details?.holder || error?.error?.data?.details?.holder;
+          if (holder) {
+            setEmpNoConflict(holder);
+          }
         } else if (errorCode === 'DUPLICATE_MOBILE') {
           errorMessage = 'An employee with this mobile number already exists. Please use a different mobile number.';
         } else if (errorCode === 'DUPLICATE_NIC') {
@@ -1805,15 +1896,32 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
             <div className="form-row-emp-reg">
               <div className="form-group-emp-reg">
                 <label>EMP NO:</label>
-                <input
-                  type="text"
-                  name="empNo"
-                  value={isEditMode ? (editEmployee?.empNo || '') : (estimatedEmpNo || (loadingLastEmpNo ? 'Loading...' : 'Auto-generated on save'))}
-                  onChange={handleInputChange}
-                  disabled={true}
-                  style={{ backgroundColor: '#f5f5f5', cursor: 'not-allowed' }}
-                  placeholder="Will be auto-generated (EMP001, EMP002, etc.)"
-                />
+                <div className="emp-no-input-group-emp-reg">
+                  <span className="emp-no-prefix-emp-reg">EMP</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    name="empNoSuffix"
+                    value={empNoSuffix}
+                    onChange={handleEmpNoSuffixChange}
+                    placeholder={loadingLastEmpNo ? 'Loading...' : '1'}
+                    className="emp-no-suffix-input-emp-reg"
+                  />
+                </div>
+                {checkingEmpNo && (
+                  <small className="emp-no-hint-emp-reg">Checking availability...</small>
+                )}
+                {!checkingEmpNo && empNoConflict && (
+                  <small className="emp-no-error-emp-reg">
+                    Already assigned to {empNoConflict.employeeName || empNoConflict.preferredName || 'another employee'}
+                  </small>
+                )}
+                {!checkingEmpNo && !empNoConflict && empNoSuffix && (
+                  <small className="emp-no-success-emp-reg">
+                    Will be saved as {formatEmpNoPreview(empNoSuffix)}
+                  </small>
+                )}
               </div>
               <div className="form-group-emp-reg">
                 <label>User Level:</label>

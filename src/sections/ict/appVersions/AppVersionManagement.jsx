@@ -27,6 +27,7 @@ const emptyForm = {
   maintenance: 0,
   maintenance_message: '',
   otp_bypass_mobile: '',
+  block_developer_mode: 0,
 };
 
 /** API / MySQL may send 0/1 as strings; JS treats non-empty strings as truthy — normalize for toggles and badges. */
@@ -97,6 +98,7 @@ export default function AppVersionManagement() {
       maintenance: toBit(row.maintenance, 0),
       maintenance_message: row.maintenance_message || '',
       otp_bypass_mobile: row.otp_bypass_mobile || '',
+      block_developer_mode: toBit(row.block_developer_mode, 0),
     });
     setShowModal(true);
   };
@@ -186,6 +188,7 @@ export default function AppVersionManagement() {
                 <th>Latest Version</th>
                 <th>Force Update</th>
                 <th>Maintenance</th>
+                <th>Block Dev Mode</th>
                 <th>OTP Bypass</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -207,6 +210,11 @@ export default function AppVersionManagement() {
                   <td>
                     <span className={`avm-badge ${toBit(row.maintenance, 0) ? 'badge-maintenance' : 'badge-normal'}`}>
                       {toBit(row.maintenance, 0) ? 'On' : 'Off'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`avm-badge ${toBit(row.block_developer_mode, 0) ? 'badge-force' : 'badge-soft'}`}>
+                      {toBit(row.block_developer_mode, 0) ? 'Yes' : 'No'}
                     </span>
                   </td>
                   <td className="avm-cell-id">{row.otp_bypass_mobile || '—'}</td>
@@ -233,7 +241,9 @@ export default function AppVersionManagement() {
       {filtered.length > 0 && (
         <div className="avm-info-note">
           <strong>Tip:</strong> Turning <strong>Maintenance</strong> ON blocks the mobile app for <strong>all users</strong> on
-          every platform until you turn it OFF (message shown is <strong>Maintenance Message</strong>). Raising{' '}
+          every platform until you turn it OFF (message shown is <strong>Maintenance Message</strong>).{' '}
+          <strong>Block Dev Mode</strong> blocks Android users who have <strong>Developer Options</strong> enabled
+          (turn OFF for internal testing). Raising{' '}
           <em>min_version</em> above an installed version shows the update screen; the open button uses <strong>Store URL</strong>{' '}
           if set, otherwise a default listing URL from <strong>App ID</strong>.
         </div>
@@ -361,6 +371,26 @@ export default function AppVersionManagement() {
                     <span className="avm-toggle-slider" />
                     <span className="avm-toggle-label">{toBit(form.is_active, 1) ? 'Active' : 'Inactive'}</span>
                   </label>
+                </div>
+
+                <div className="avm-field avm-field-toggle">
+                  <label>Block Developer Mode</label>
+                  <label className="avm-toggle">
+                    <input
+                      type="checkbox"
+                      checked={toBit(form.block_developer_mode, 0) === 1}
+                      onChange={(e) => handleChange('block_developer_mode', e.target.checked ? 1 : 0)}
+                    />
+                    <span className="avm-toggle-slider avm-toggle-slider-orange" />
+                    <span className="avm-toggle-label">
+                      {toBit(form.block_developer_mode, 0)
+                        ? 'Yes — block Android when Developer Options are on'
+                        : 'No — allow testing with Developer Options'}
+                    </span>
+                  </label>
+                  <p className="avm-field-hint">
+                    Applies to Android only. iOS has no Developer Options equivalent; this flag is ignored on iPhone.
+                  </p>
                 </div>
 
                 {/* ── Maintenance Section ── */}

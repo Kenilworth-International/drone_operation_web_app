@@ -78,7 +78,17 @@ export const hrLeaveApi = baseApi.injectEndpoints({
     saveHrHolidayMark: builder.mutation({
       queryFn: async (body) =>
         nodeBackendBaseQuery({ url: '/api/hr-leave/holidays/save', method: 'POST', body }, {}, {}),
-      invalidatesTags: ['HrHoliday', 'HrRoster'],
+      invalidatesTags: ['HrHoliday', 'HrRoster', 'HrAttendance'],
+    }),
+    getHrAttendanceDayView: builder.query({
+      queryFn: async (body = {}) =>
+        nodeBackendBaseQuery({ url: '/api/hr-leave/attendance/day-view', method: 'POST', body }, {}, {}),
+      providesTags: ['HrAttendance'],
+    }),
+    acceptHrLieuLeave: builder.mutation({
+      queryFn: async (body) =>
+        nodeBackendBaseQuery({ url: '/api/hr-leave/attendance/lieu-leave/accept', method: 'POST', body }, {}, {}),
+      invalidatesTags: ['HrAttendance', 'HrLeave'],
     }),
     listHrLeaveAdminTypes: builder.query({
       queryFn: async (body = {}) =>
@@ -138,6 +148,8 @@ export const {
   useGetHrRosterPlanQuery,
   useGetHrHolidayCalendarQuery,
   useSaveHrHolidayMarkMutation,
+  useGetHrAttendanceDayViewQuery,
+  useAcceptHrLieuLeaveMutation,
   useListHrLeaveAdminTypesQuery,
   useSaveHrLeaveAdminTypeMutation,
   useSetHrLeaveAdminTypeStatusMutation,
