@@ -31,7 +31,7 @@ export default function PlantationCalendarTab() {
 
   return (
     <PlantationPageLayout title="Calendar" subtitle={subtitle} className="plantation-calendar-tab">
-      <div className="pd-calendar-segments">
+      <div className="pd-calendar-segments pd-mission-segment">
         <button
           type="button"
           className={`plantation-action-btn ${segment === 'monthly' ? 'active' : ''}`}
@@ -52,7 +52,7 @@ export default function PlantationCalendarTab() {
         <MonthlyRequestSection />
       ) : (
         <>
-          <div className="plantation-charts-control-group pd-calendar-filters">
+          <div className="plantation-charts-control-group pd-calendar-filters pd-mission-segment">
             {['All', 'Spray', 'Spread'].map((action) => (
               <button
                 key={action}

@@ -246,8 +246,9 @@ const GlobalChartBreakdownPage = ({ basePath = '/home/dataViewer' } = {}) => {
     return (
       <div className="container-class-breakdown">
         <div className="header-class-breakdown header-class-breakdown--dataviewer">
-          <button className="back-btn-class-breakdown" onClick={() => navigate(basePath)}>
-            <FaArrowLeft /> Back
+          <button type="button" className="back-btn-class-breakdown" aria-label="Back" onClick={() => navigate(basePath)}>
+            <FaArrowLeft aria-hidden="true" />
+            <span className="back-btn-label-class-breakdown">Back</span>
           </button>
           <h1 className="title-class-breakdown">Chart Breakdown</h1>
         </div>
@@ -261,8 +262,9 @@ const GlobalChartBreakdownPage = ({ basePath = '/home/dataViewer' } = {}) => {
   return (
     <div className="container-class-breakdown">
       <div className="header-class-breakdown header-class-breakdown--dataviewer">
-        <button className="back-btn-class-breakdown" onClick={() => navigate(basePath)}>
-          <FaArrowLeft /> Back to Infographics
+        <button type="button" className="back-btn-class-breakdown" aria-label="Back" onClick={() => navigate(basePath)}>
+          <FaArrowLeft aria-hidden="true" />
+          <span className="back-btn-label-class-breakdown">Back to Infographics</span>
         </button>
         <h1 className="title-class-breakdown">
           Chart Details — All Data — {monthName || month}

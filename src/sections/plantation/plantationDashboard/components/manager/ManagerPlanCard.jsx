@@ -68,28 +68,28 @@ export default function ManagerPlanCard({
         <div className="pd-mgr-card-actions">
           {mode === 'pending' ? (
             <>
+              <button type="button" className="pd-mgr-btn pd-mgr-btn--secondary pd-mgr-btn--sm" onClick={() => onView?.(plan)}>
+                View
+              </button>
+              <button type="button" className="pd-mgr-btn pd-mgr-btn--danger pd-mgr-btn--sm" onClick={() => onCancel?.(plan)}>
+                Cancel
+              </button>
+              <button type="button" className="pd-mgr-btn pd-mgr-btn--secondary pd-mgr-btn--sm" onClick={() => onReschedule?.(plan)}>
+                Reschedule
+              </button>
               {approvable ? (
-                <button type="button" className="pd-mgr-btn pd-mgr-btn--primary" onClick={() => onApprove?.(plan)}>
+                <button type="button" className="pd-mgr-btn pd-mgr-btn--primary pd-mgr-btn--sm pd-mgr-btn--approve" onClick={() => onApprove?.(plan)}>
                   Approve
                 </button>
               ) : null}
-              <button type="button" className="pd-mgr-btn pd-mgr-btn--secondary" onClick={() => onView?.(plan)}>
-                View
-              </button>
-              <button type="button" className="pd-mgr-btn pd-mgr-btn--danger" onClick={() => onCancel?.(plan)}>
-                Cancel
-              </button>
-              <button type="button" className="pd-mgr-btn pd-mgr-btn--secondary" onClick={() => onReschedule?.(plan)}>
-                Reschedule
-              </button>
             </>
           ) : (
             <>
-              <button type="button" className="pd-mgr-btn pd-mgr-btn--secondary" onClick={() => onView?.(plan)}>
+              <button type="button" className="pd-mgr-btn pd-mgr-btn--secondary pd-mgr-btn--sm" onClick={() => onView?.(plan)}>
                 View
               </button>
               {Number(plan.can_edit) === 1 ? (
-                <button type="button" className="pd-mgr-btn pd-mgr-btn--primary" onClick={() => onEdit?.(plan)}>
+                <button type="button" className="pd-mgr-btn pd-mgr-btn--primary pd-mgr-btn--sm" onClick={() => onEdit?.(plan)}>
                   Edit
                 </button>
               ) : null}

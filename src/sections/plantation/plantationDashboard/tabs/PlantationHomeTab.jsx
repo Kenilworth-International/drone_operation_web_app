@@ -19,8 +19,14 @@ export default function PlantationHomeTab() {
       title="Dashboard"
       subtitle={subtitle}
       actions={(
-        <button type="button" className="pd-refresh-btn" onClick={refresh} disabled={isFetching}>
-          <FaSync className={isFetching ? 'pd-spin' : ''} /> Refresh
+        <button
+          type="button"
+          className="pd-refresh-btn pd-refresh-btn--icon"
+          onClick={refresh}
+          disabled={isFetching}
+          aria-label="Refresh"
+        >
+          <FaSync className={isFetching ? 'pd-spin' : ''} aria-hidden="true" />
         </button>
       )}
       flush

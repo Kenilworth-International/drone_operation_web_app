@@ -17,11 +17,13 @@ export default function PlantationPageLayout({
     <div className={`plantation-ext-page${className ? ` ${className}` : ''}`}>
       {hasHeader ? (
         <header className="plantation-ext-page-header">
-          <div className="plantation-ext-page-heading">
-            {title ? <h1 className="plantation-ext-page-title">{title}</h1> : null}
-            {subtitle ? <p className="plantation-ext-page-subtitle">{subtitle}</p> : null}
-          </div>
-          {actions ? <div className="plantation-ext-page-actions">{actions}</div> : null}
+          {(title || actions) ? (
+            <div className="plantation-ext-page-header-row">
+              {title ? <h1 className="plantation-ext-page-title">{title}</h1> : null}
+              {actions ? <div className="plantation-ext-page-actions">{actions}</div> : null}
+            </div>
+          ) : null}
+          {subtitle ? <p className="plantation-ext-page-subtitle">{subtitle}</p> : null}
         </header>
       ) : null}
       <div className={`plantation-ext-page-body${flush ? ' plantation-ext-page-body--flush' : ''}`}>

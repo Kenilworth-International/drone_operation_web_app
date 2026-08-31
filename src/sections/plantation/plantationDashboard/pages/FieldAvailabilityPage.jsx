@@ -49,7 +49,7 @@ export default function FieldAvailabilityPage({ basePath = '/home/plantation-das
         <h1>Field availability</h1>
       </div>
 
-      <div className="pd-field-avail-tabs">
+      <div className="pd-field-avail-tabs pd-mission-segment">
         <button
           type="button"
           className={`plantation-action-btn ${missionTab === 'spy' ? 'active' : ''}`}

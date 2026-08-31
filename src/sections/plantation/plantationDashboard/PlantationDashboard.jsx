@@ -405,7 +405,7 @@ const PlantationDashboard = ({
             )}
           </h2>
           <div className="pd-summary-bar-actions">
-            <div className="plantation-charts-control-group">
+            <div className="plantation-charts-control-group pd-mission-segment">
               <button
                 className={`plantation-action-btn ${selectedAction === 'Spray' ? 'active' : ''}`}
                 onClick={() => setSelectedAction('Spray')}

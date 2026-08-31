@@ -23,6 +23,8 @@ import * as XLSX from 'xlsx';
 import { plantationDashboardApi } from '../../../../api/services NodeJs/plantationDashboardApi';
 import { useAppDispatch } from '../../../../store/hooks';
 import { appendShellParams } from '../../../../utils/shellSearchParams';
+import { usePlantationChartLayout } from './chartLayoutUtils';
+import ChartCompactLegend from './ChartCompactLegend';
 
 const PlannedVsSprayedChart = ({
   missionType,
@@ -69,6 +71,7 @@ const PlannedVsSprayedChart = ({
   const userData = getUserData();
   const dispatch = useAppDispatch();
   const [isExporting, setIsExporting] = useState(false);
+  const chartLayout = usePlantationChartLayout();
 
   // Determine available breakdown levels based on user hierarchy (for Excel export)
   const getAvailableBreakdownLevels = () => {
@@ -267,22 +270,35 @@ const PlannedVsSprayedChart = ({
     );
   }
 
-  const chartMargin = basePath.includes('plantation-dashboard')
-    ? { top: 20, right: 56, left: 24, bottom: 24 }
-    : { top: 20, right: 30, left: 20, bottom: 20 };
+  const chartMargin = chartLayout.isMobile
+    ? chartLayout.margin
+    : basePath.includes('plantation-dashboard')
+      ? { top: 20, right: 56, left: 24, bottom: 24 }
+      : chartLayout.margin;
+
+  const legendExtras = shouldShowMinimumLine
+    ? [
+        { type: 'line', color: '#dc2626', label: 'Minimum (pilot×7Ha)' },
+        { type: 'line', color: '#2563eb', label: 'Average (pilot×15Ha)' },
+      ]
+    : [];
 
   return (
     <div className="plantation-chart-card">
       <div className="plantation-chart-title-wrapper">
         <h3 className="plantation-chart-title">Planned vs Executed (Ha)</h3>
         <button
+          type="button"
           className="plantation-chart-excel-btn"
           onClick={handleExportToExcel}
           disabled={isExporting || !chartData || chartData.length === 0}
           title="Export to Excel"
+          aria-label={isExporting ? 'Exporting…' : 'Export to Excel'}
         >
-          <FaFileExcel />
-          {isExporting ? 'Exporting...' : ''}
+          <FaFileExcel aria-hidden />
+          <span className="plantation-chart-excel-label">
+            {isExporting ? 'Exporting...' : 'Excel'}
+          </span>
         </button>
       </div>
       <div className="plantation-chart-container plantation-chart-container--loadable">
@@ -292,10 +308,13 @@ const PlannedVsSprayedChart = ({
             <span>Updating chart...</span>
           </div>
         )}
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={chartLayout.height}>
           <ComposedChart
             data={chartData}
             margin={chartMargin}
+            barCategoryGap={chartLayout.barCategoryGap}
+            barGap={chartLayout.barGap}
+            maxBarSize={chartLayout.maxBarSize}
             onClick={(data) => {
               if (data && data.activePayload && data.activePayload.length > 0) {
                 const clickedBar = data.activePayload[0];
@@ -327,36 +346,23 @@ const PlannedVsSprayedChart = ({
             <XAxis 
               dataKey="monthName" 
               stroke="#64748b"
-              style={{ fontSize: '12px' }}
+              {...chartLayout.xAxis}
             />
             <YAxis 
               stroke="#64748b"
-              style={{ fontSize: '12px' }}
-              label={{ value: 'Hectares (Ha)', angle: -90, position: 'insideLeft', style: { fill: '#64748b' } }}
+              width={chartLayout.yAxis.width}
+              tick={chartLayout.yAxis.tick}
+              label={chartLayout.yAxis.label}
             />
             <Tooltip content={<CustomChartTooltip />} />
             <Legend
+              verticalAlign="bottom"
               content={({ payload }) => (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px', justifyContent: 'center', padding: '8px 0', fontSize: 13 }}>
-                  {payload && payload.map((entry, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: entry.color, display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ color: '#555' }}>{entry.value}</span>
-                    </div>
-                  ))}
-                  {shouldShowMinimumLine && (
-                    <>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 14, height: 3, borderRadius: 1, backgroundColor: '#dc2626', display: 'inline-block', flexShrink: 0 }} />
-                        <span style={{ color: '#555' }}>Minimum (deployed pilot×7Ha)</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ width: 14, height: 3, borderRadius: 1, backgroundColor: '#2563eb', display: 'inline-block', flexShrink: 0 }} />
-                        <span style={{ color: '#555' }}>Average (deployed pilot×15Ha)</span>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <ChartCompactLegend
+                  payload={payload}
+                  extraItems={legendExtras}
+                  isMobile={chartLayout.isMobile}
+                />
               )}
             />
             {/* Stacked Bar 1: Executed (bottom, dark green) + Remaining Approved (top, light green) */}
@@ -418,10 +424,13 @@ const PlannedVsSprayedChart = ({
         </ResponsiveContainer>
       </div>
       <div className="plantation-chart-footer">
-        <p className="plantation-chart-description">
+        <p className="plantation-chart-description plantation-chart-description--desktop">
           Estate Approved Extent vs Executed, with Covered Spraying and Spreading extents shown separately.
           <br />
-          <span style={{ fontSize: '12px', color: '#666' }}>Click on any bar to view detailed breakdown.</span>
+          <span className="plantation-chart-hint">Click on any bar to view detailed breakdown.</span>
+        </p>
+        <p className="plantation-chart-description plantation-chart-description--mobile">
+          Tap a bar for breakdown.
         </p>
       </div>
     </div>

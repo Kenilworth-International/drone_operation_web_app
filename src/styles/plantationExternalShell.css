@@ -320,11 +320,17 @@
 
 .plantation-ext-page-header {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.plantation-ext-page-header-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
+  min-width: 0;
 }
 
 .plantation-ext-page-title {
@@ -333,6 +339,8 @@
   font-weight: 700;
   color: var(--pe-text);
   line-height: 1.25;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .plantation-ext-page-subtitle {
@@ -363,6 +371,7 @@
 .plantation-ext-shell .pd-refresh-btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   border: 1px solid var(--pe-border);
   background: var(--pe-surface);
@@ -370,14 +379,27 @@
   padding: 8px 14px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--pe-text);
+  color: var(--pe-text-muted);
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+
+.plantation-ext-shell .pd-refresh-btn--icon {
+  padding: 8px;
+  min-width: 36px;
+  min-height: 36px;
+  gap: 0;
+  color: var(--pe-green-700);
+}
+
+.plantation-ext-shell .pd-refresh-btn--icon svg {
+  font-size: 15px;
 }
 
 .plantation-ext-shell .pd-refresh-btn:hover:not(:disabled) {
   border-color: var(--pe-green-600);
   box-shadow: var(--pe-shadow-sm);
+  color: var(--pe-green-800);
 }
 
 .plantation-ext-shell .pd-refresh-btn:disabled {
@@ -426,6 +448,42 @@
   color: #fff;
 }
 
+.plantation-ext-shell .pd-mission-segment {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  padding: 3px;
+  background: var(--pe-green-50);
+  border: 1px solid var(--pe-border);
+  border-radius: 999px;
+  flex-wrap: nowrap;
+}
+
+.plantation-ext-shell .pd-mission-segment .plantation-action-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pe-text-muted);
+  box-shadow: none;
+}
+
+.plantation-ext-shell .pd-mission-segment .plantation-action-btn:hover {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--pe-green-800);
+  border-color: transparent;
+}
+
+.plantation-ext-shell .pd-mission-segment .plantation-action-btn.active {
+  background: var(--pe-green-800);
+  border-color: var(--pe-green-800);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(15, 61, 46, 0.15);
+}
+
 .plantation-ext-shell .pd-calendar-btn {
   display: inline-flex;
   align-items: center;
@@ -457,8 +515,13 @@
 .plantation-ext-shell .pd-field-avail-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.plantation-ext-shell .pd-field-avail-header > div:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .plantation-ext-shell .pd-field-avail-title {
@@ -480,14 +543,16 @@
 .plantation-ext-shell .pd-field-avail-link {
   border: none;
   background: none;
-  color: var(--pe-green-800);
-  font-size: 13px;
+  color: var(--pe-green-700);
+  font-size: 11px;
   font-weight: 500;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 0;
+  gap: 3px;
+  padding: 2px 0;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .plantation-ext-shell .pd-field-avail-stats {
@@ -665,20 +730,49 @@
 }
 
 .plantation-ext-shell .plantation-chart-title-wrapper {
-  flex-wrap: wrap;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
 }
 
 .plantation-ext-shell .plantation-chart-container {
-  overflow-x: auto;
-  overflow-y: visible;
-  margin-right: 4px;
-  padding-bottom: 4px;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+  margin-right: 0;
+  padding-bottom: 0;
+}
+
+.plantation-ext-shell .plantation-chart-container .recharts-responsive-container,
+.plantation-ext-shell .plantation-chart-container .recharts-wrapper {
+  width: 100% !important;
+}
+
+.plantation-ext-shell .plantation-chart-excel-btn {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: fit-content;
+}
+
+.plantation-ext-shell .pd-chart-legend-label {
+  color: var(--pe-text-muted);
+}
+
+.plantation-ext-shell .plantation-chart-description--mobile {
+  color: var(--pe-text-muted);
 }
 
 .plantation-ext-shell .plantation-chart-title {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
   color: var(--pe-green-800);
   font-size: 15px;
+  line-height: 1.35;
 }
 
 /* Charts month-range bar */
@@ -842,7 +936,7 @@
 .plantation-ext-shell .pd-mgr-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .plantation-ext-shell .pd-mgr-loading,
@@ -893,7 +987,7 @@
 .plantation-ext-shell .pd-mgr-card-body {
   flex: 1;
   min-width: 0;
-  padding: 14px 16px;
+  padding: 12px 14px;
 }
 
 .plantation-ext-shell .pd-mgr-card-header {
@@ -955,12 +1049,16 @@
 }
 
 .plantation-ext-shell .pd-mgr-card-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid var(--pe-border);
+}
+
+.plantation-ext-shell .pd-mgr-card-actions .pd-mgr-btn--approve {
+  margin-left: 0;
 }
 
 .plantation-ext-shell .pd-mgr-badge {
@@ -995,11 +1093,15 @@
 
 .plantation-ext-shell .pd-mgr-btn {
   border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: 7px;
+  padding: 6px 12px;
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
@@ -1048,6 +1150,14 @@
 .plantation-ext-shell .pd-mgr-btn--block {
   width: 100%;
   justify-content: center;
+}
+
+.plantation-ext-shell .pd-mgr-btn--sm {
+  padding: 7px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  justify-content: center;
+  width: 100%;
 }
 
 /* Manager modals (portaled) */
@@ -1848,16 +1958,84 @@
   }
 }
 
+@media (max-width: 768px) {
+  .plantation-ext-shell .pd-summary-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .plantation-ext-shell .pd-summary-title {
+    width: 100%;
+  }
+
+  .plantation-ext-shell .pd-summary-bar-actions {
+    width: 100%;
+  }
+
+  .plantation-ext-shell .pd-mission-segment {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .plantation-ext-shell .pd-calendar-segments.pd-mission-segment,
+  .plantation-ext-shell .pd-calendar-filters.pd-mission-segment,
+  .plantation-ext-shell .pd-field-avail-tabs.pd-mission-segment {
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .plantation-ext-shell .plantation-chart-card {
+    padding: 14px 12px;
+  }
+
+  .plantation-ext-shell .plantation-chart-title {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  .plantation-ext-shell .plantation-chart-excel-btn {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: fit-content;
+    padding: 8px;
+    min-width: 36px;
+    min-height: 36px;
+    justify-content: center;
+  }
+
+  .plantation-ext-shell .plantation-chart-excel-label {
+    display: none;
+  }
+
+  .plantation-ext-shell .plantation-chart-description--desktop {
+    display: none;
+  }
+
+  .plantation-ext-shell .plantation-chart-description--mobile {
+    display: block;
+  }
+}
+
+@media (max-width: 768px) {
+  .plantation-ext-shell .container-class-breakdown {
+    padding: 10px 10px 20px;
+  }
+
+  .plantation-ext-shell .header-class-breakdown {
+    margin-bottom: 8px;
+  }
+
+  .plantation-ext-shell .card-class-breakdown {
+    border-radius: 10px;
+  }
+
+  .plantation-ext-shell .cbd-plan-count-badge {
+    font-size: 11px;
+  }
+}
+
 @media (max-width: 640px) {
-  .plantation-ext-shell .pd-mgr-card-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .plantation-ext-shell .pd-mgr-card-actions .pd-mgr-btn--primary {
-    grid-column: 1 / -1;
-  }
-
   .plantation-ext-shell .pd-mgr-wizard-steps {
     flex-direction: column;
   }
@@ -2178,10 +2356,32 @@
 }
 
 .plantation-ext-shell .container-class-breakdown {
-  padding: 16px 20px 24px;
+  padding: 12px 12px calc(40px + env(safe-area-inset-bottom, 16px));
   box-sizing: border-box;
   min-width: 0;
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  background: var(--pe-bg);
+}
+
+.plantation-ext-shell .header-class-breakdown {
+  background: linear-gradient(135deg, var(--pe-green-900) 0%, var(--pe-green-800) 100%);
+  border-radius: var(--pe-radius);
+  box-shadow: var(--pe-shadow-md);
+}
+
+.plantation-ext-shell .card-class-breakdown {
+  background: var(--pe-surface);
+  border: 1px solid var(--pe-border);
+  border-radius: var(--pe-radius);
+  box-shadow: var(--pe-shadow-sm);
+}
+
+.plantation-ext-shell .metric-card-class-breakdown {
+  background: var(--pe-surface);
+  border: 1px solid var(--pe-border);
+  box-shadow: var(--pe-shadow-sm);
 }
 
 .plantation-ext-shell .table-wrapper-class-breakdown {

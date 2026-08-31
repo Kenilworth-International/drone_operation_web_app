@@ -21,6 +21,8 @@ import * as XLSX from 'xlsx';
 import { plantationDashboardApi } from '../../../../api/services NodeJs/plantationDashboardApi';
 import { useAppDispatch } from '../../../../store/hooks';
 import { appendShellParams } from '../../../../utils/shellSearchParams';
+import { usePlantationChartLayout } from './chartLayoutUtils';
+import ChartCompactLegend from './ChartCompactLegend';
 
 const PlannedVsTeaRevenueChart = ({
   missionType,
@@ -43,6 +45,7 @@ const PlannedVsTeaRevenueChart = ({
   const userData = getUserData();
   const dispatch = useAppDispatch();
   const [isExporting, setIsExporting] = useState(false);
+  const chartLayout = usePlantationChartLayout();
 
 
   // Determine available breakdown levels based on user hierarchy
@@ -279,22 +282,28 @@ const PlannedVsTeaRevenueChart = ({
     return null;
   };
 
-  const chartMargin = basePath.includes('plantation-dashboard')
-    ? { top: 20, right: 56, left: 24, bottom: 24 }
-    : { top: 20, right: 30, left: 20, bottom: 20 };
+  const chartMargin = chartLayout.isMobile
+    ? chartLayout.margin
+    : basePath.includes('plantation-dashboard')
+      ? { top: 20, right: 56, left: 24, bottom: 24 }
+      : chartLayout.margin;
 
   return (
     <div className="plantation-chart-card">
       <div className="plantation-chart-title-wrapper">
         <h3 className="plantation-chart-title">Tea Revenue Extent vs Planned (Ha)</h3>
         <button
+          type="button"
           className="plantation-chart-excel-btn"
           onClick={handleExportToExcel}
           disabled={isExporting || !chartData || chartData.length === 0}
           title="Export to Excel"
+          aria-label={isExporting ? 'Exporting…' : 'Export to Excel'}
         >
-          <FaFileExcel />
-          {isExporting ? 'Exporting...' : ''}
+          <FaFileExcel aria-hidden />
+          <span className="plantation-chart-excel-label">
+            {isExporting ? 'Exporting...' : 'Excel'}
+          </span>
         </button>
       </div>
       <div className="plantation-chart-container plantation-chart-container--loadable">
@@ -304,10 +313,13 @@ const PlannedVsTeaRevenueChart = ({
             <span>Updating chart...</span>
           </div>
         )}
-        <ResponsiveContainer width="100%" height={400}>
+        <ResponsiveContainer width="100%" height={chartLayout.height}>
           <BarChart 
             data={chartData} 
             margin={chartMargin}
+            barCategoryGap={chartLayout.barCategoryGap}
+            barGap={chartLayout.barGap}
+            maxBarSize={chartLayout.maxBarSize}
             onClick={(data) => {
               if (data && data.activePayload && data.activePayload.length > 0) {
                 const clickedBar = data.activePayload[0];
@@ -346,15 +358,21 @@ const PlannedVsTeaRevenueChart = ({
             <XAxis 
               dataKey="monthName" 
               stroke="#64748b"
-              style={{ fontSize: '12px' }}
+              {...chartLayout.xAxis}
             />
             <YAxis 
               stroke="#64748b"
-              style={{ fontSize: '12px' }}
-              label={{ value: 'Hectares (Ha)', angle: -90, position: 'insideLeft', style: { fill: '#64748b' } }}
+              width={chartLayout.yAxis.width}
+              tick={chartLayout.yAxis.tick}
+              label={chartLayout.yAxis.label}
             />
             <Tooltip content={<CustomChartTooltip />} />
-            <Legend />
+            <Legend
+              verticalAlign="bottom"
+              content={({ payload }) => (
+                <ChartCompactLegend payload={payload} isMobile={chartLayout.isMobile} />
+              )}
+            />
             <Bar 
               dataKey="teaRevenueExtent" 
               name="Tea Revenue Extent" 
@@ -389,10 +407,13 @@ const PlannedVsTeaRevenueChart = ({
         </ResponsiveContainer>
       </div>
       <div className="plantation-chart-footer">
-        <p className="plantation-chart-description">
+        <p className="plantation-chart-description plantation-chart-description--desktop">
           Tea Revenue Extent (total available area) vs Planned Spraying and Spreading Extent (plan count × 15 Ha estimated).
           <br />
-          <span style={{ fontSize: '12px', color: '#666' }}>Click on any bar to view detailed breakdown.</span>
+          <span className="plantation-chart-hint">Click on any bar to view detailed breakdown.</span>
+        </p>
+        <p className="plantation-chart-description plantation-chart-description--mobile">
+          Tap a bar for breakdown.
         </p>
       </div>
     </div>

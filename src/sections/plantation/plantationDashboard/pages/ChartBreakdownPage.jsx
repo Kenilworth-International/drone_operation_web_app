@@ -45,13 +45,11 @@ function getFieldWorkflowStatus(field) {
   if (isCancelled) {
     return { label: 'Cancelled', variant: 'cancelled' };
   }
-  if (planned <= 0) {
-    return { label: 'Planned', variant: 'planned' };
-  }
   if (covered > 0) {
     return { label: 'Completed', variant: 'completed' };
   }
-  return { label: 'Planned', variant: 'planned' };
+  // Not yet executed — awaiting spray/spread
+  return { label: 'Pending', variant: 'planned' };
 }
 
 const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) => {
@@ -527,10 +525,18 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
               'Estate Approved Extent (Ha)': parseFloat(summaryData?.estateApprovedExtent || 0).toFixed(2),
               'Executed Extent (Ha)': parseFloat(summaryData?.executedExtent || 0).toFixed(2),
               'Covered Extent (Ha)': parseFloat(summaryData?.coveredExtent || 0).toFixed(2),
-              'Partially Completed (Ha)': parseFloat(summaryData?.partiallyCompletedExtent || 0).toFixed(2),
+              ...(isInternalDashboard
+                ? {
+                    'Partially Completed (Ha)': parseFloat(summaryData?.partiallyCompletedExtent || 0).toFixed(2),
+                  }
+                : {}),
               'Cancelled Before Execution (Ha)': parseFloat(summaryData?.cancelledExtent || 0).toFixed(2),
               'Pilot Not Sprayed Extent (Ha)': parseFloat(summaryData?.pilotNotSprayedExtent || 0).toFixed(2),
-              'DayEnd Incomplete Extent (Ha)': parseFloat(summaryData?.dayEndIncompleteExtent || 0).toFixed(2),
+              ...(isInternalDashboard
+                ? {
+                    'DayEnd Incomplete Extent (Ha)': parseFloat(summaryData?.dayEndIncompleteExtent || 0).toFixed(2),
+                  }
+                : {}),
             },
           ];
       const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
@@ -566,7 +572,11 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                 Field: f.field_name || '',
                 'Planned (Ha)': planned.toFixed(2),
                 'Covered Area (Ha)': sprayed.toFixed(2),
-                'DayEnd Incomplete (Ha)': parseFloat(f.day_end_incomplete_extent || 0).toFixed(2),
+                ...(isInternalDashboard
+                  ? {
+                      'DayEnd Incomplete (Ha)': parseFloat(f.day_end_incomplete_extent || 0).toFixed(2),
+                    }
+                  : {}),
                 'Completion (%)': completionPct,
                 Status: getFieldWorkflowStatus(f).label,
                 'Cancel Reason': f.is_cancelled && f.cancel_reason ? f.cancel_reason : '',
@@ -721,10 +731,13 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
       <div className={containerClassName}>
         <div className="header-class-breakdown">
           <button
+            type="button"
             className="back-btn-class-breakdown"
+            aria-label="Back"
             onClick={backToDashboard}
           >
-            <FaArrowLeft /> Back
+            <FaArrowLeft aria-hidden="true" />
+            <span className="back-btn-label-class-breakdown">Back</span>
           </button>
           <h1 className="title-class-breakdown">Chart Breakdown</h1>
         </div>
@@ -740,10 +753,13 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
       {/* Header */}
       <div className="header-class-breakdown">
         <button
+          type="button"
           className="back-btn-class-breakdown"
+          aria-label="Back"
           onClick={backToDashboard}
         >
-          <FaArrowLeft /> Back
+          <FaArrowLeft aria-hidden="true" />
+          <span className="back-btn-label-class-breakdown">Back</span>
         </button>
         <h1 className="title-class-breakdown">
           Chart Details - {effectiveMonthName || month}
@@ -758,7 +774,7 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
             </h3>
           </div>
           <div className="card-body-class-breakdown">
-            <div className="global-charts-filters-dataviewer">
+            <div className="global-charts-filters-dataviewer cbd-filters-grid">
               <input
                 type="date"
                 value={dateFrom}
@@ -823,17 +839,18 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
             </h3>
             <button
               type="button"
-              className="plantation-chart-excel-btn"
+              className="plantation-chart-excel-btn cbd-summary-excel-btn"
               onClick={handleExportToExcel}
               disabled={isExporting}
               title="Export this month to Excel (Summary + Field-wise)"
+              aria-label={isExporting ? 'Exporting…' : 'Export to Excel'}
             >
               {isExporting ? (
                 <Bars height={18} width={18} color="#fff" />
               ) : (
                 <FaFileExcel />
               )}
-              <span>{isExporting ? 'Exporting...' : 'Excel'}</span>
+              <span className="cbd-excel-btn-label">{isExporting ? 'Exporting...' : 'Excel'}</span>
             </button>
           </div>
           <div className="card-body-class-breakdown">
@@ -1000,6 +1017,7 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                       Field extent flown vs DJI-reported area (Executed − Covered)
                     </div>
                   </div>
+                  {isInternalDashboard && (
                   <div
                     className="metric-card-class-breakdown"
                     role="button"
@@ -1033,6 +1051,7 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                       View Details <FaChevronRight />
                     </button>
                   </div>
+                  )}
                   {!isInternalDashboard && summaryData?.sprayPlanCount !== undefined && (
                     <div className="metric-card-class-breakdown">
                       <div className="metric-label-class-breakdown">Spray Plans</div>
@@ -1415,13 +1434,13 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                   <tbody>
                     {breakdownDetailRows.cancelled.map((f) => (
                       <tr key={f.key}>
-                        <td>{f.planId}</td>
-                        <td>{f.pickedDate}</td>
-                        <td>{f.estateName}</td>
-                        <td>{f.fieldName}</td>
-                        <td style={{ textAlign: 'center' }}>{f.fieldArea.toFixed(2)}</td>
-                        <td>{f.pilotName}</td>
-                        <td>
+                        <td data-label="Plan ID">{f.planId}</td>
+                        <td data-label="Date">{f.pickedDate}</td>
+                        <td data-label="Estate">{f.estateName}</td>
+                        <td data-label="Field">{f.fieldName}</td>
+                        <td data-label="Area (Ha)" style={{ textAlign: 'center' }}>{f.fieldArea.toFixed(2)}</td>
+                        <td data-label="Pilot">{f.pilotName}</td>
+                        <td data-label="Reason">
                           <span className="pd-cancel-reason">{f.cancelReason}</span>
                         </td>
                       </tr>
@@ -1486,16 +1505,16 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                   <tbody>
                     {breakdownDetailRows.executed.map((f) => (
                       <tr key={f.key}>
-                        <td>{f.planId}</td>
-                        <td>{f.pickedDate}</td>
-                        <td>{f.estateName}</td>
-                        <td>{f.fieldName}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                        <td data-label="Plan ID">{f.planId}</td>
+                        <td data-label="Date">{f.pickedDate}</td>
+                        <td data-label="Estate">{f.estateName}</td>
+                        <td data-label="Field">{f.fieldName}</td>
+                        <td data-label="Executed (Ha)" style={{ textAlign: 'center', fontWeight: 700 }}>
                           {f.executedHa.toFixed(2)}
                         </td>
-                        <td style={{ textAlign: 'center' }}>{f.coveredHa.toFixed(2)}</td>
-                        <td>{f.pilotName}</td>
-                        <td>{f.opsRoomOperatorName}</td>
+                        <td data-label="Covered (Ha)" style={{ textAlign: 'center' }}>{f.coveredHa.toFixed(2)}</td>
+                        <td data-label="Pilot">{f.pilotName}</td>
+                        <td data-label="Ops operator">{f.opsRoomOperatorName}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1563,15 +1582,15 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                       const pct = f.fieldArea > 0 ? ((f.completedArea / f.fieldArea) * 100).toFixed(1) : '0.0';
                       return (
                         <tr key={f.key}>
-                          <td>{f.planId}</td>
-                          <td>{f.pickedDate}</td>
-                          <td>{f.estateName}</td>
-                          <td>{f.fieldName}</td>
-                          <td style={{ textAlign: 'center' }}>{f.fieldArea.toFixed(2)}</td>
-                          <td style={{ textAlign: 'center', color: '#ea580c' }}>
+                          <td data-label="Plan ID">{f.planId}</td>
+                          <td data-label="Date">{f.pickedDate}</td>
+                          <td data-label="Estate">{f.estateName}</td>
+                          <td data-label="Field">{f.fieldName}</td>
+                          <td data-label="Size (Ha)" style={{ textAlign: 'center' }}>{f.fieldArea.toFixed(2)}</td>
+                          <td data-label="Completed" style={{ textAlign: 'center', color: '#ea580c' }}>
                             {f.completedArea.toFixed(2)}
                           </td>
-                          <td style={{ textAlign: 'center' }}>
+                          <td data-label="%">
                             <span
                               className={`plantation-completion-badge ${
                                 parseFloat(pct) >= 100 ? 'complete' : parseFloat(pct) >= 50 ? 'good' : 'low'
@@ -1580,8 +1599,8 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                               {pct}%
                             </span>
                           </td>
-                          <td>{f.pilotName}</td>
-                          <td>
+                          <td data-label="Pilot">{f.pilotName}</td>
+                          <td data-label="Reason">
                             <span className="pd-partial-reason">{f.partialReason}</span>
                           </td>
                         </tr>
@@ -1609,7 +1628,7 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
         </div>
       )}
 
-      {!isTeaRevenueChart && detailPopup === 'dayEnd' && (
+      {!isTeaRevenueChart && isInternalDashboard && detailPopup === 'dayEnd' && (
         <div className="pd-popup-overlay" onClick={closeDetailPopup}>
           <div className="pd-popup pd-popup--wide" onClick={(e) => e.stopPropagation()}>
             <div className="pd-popup-header pd-popup-header--amber">
@@ -1647,14 +1666,14 @@ const ChartBreakdownPage = ({ basePath = '/home/plantation-dashboard' } = {}) =>
                   <tbody>
                     {breakdownDetailRows.dayEnd.map((f) => (
                       <tr key={f.key}>
-                        <td>{f.planId}</td>
-                        <td>{f.pickedDate}</td>
-                        <td>{f.estateName}</td>
-                        <td>{f.fieldName}</td>
-                        <td style={{ textAlign: 'center' }}>{f.plannedHa.toFixed(2)}</td>
-                        <td style={{ textAlign: 'center' }}>{f.coveredHa.toFixed(2)}</td>
-                        <td>{f.pilotName}</td>
-                        <td>{f.opsRoomOperatorName}</td>
+                        <td data-label="Plan ID">{f.planId}</td>
+                        <td data-label="Date">{f.pickedDate}</td>
+                        <td data-label="Estate">{f.estateName}</td>
+                        <td data-label="Field">{f.fieldName}</td>
+                        <td data-label="Planned (Ha)" style={{ textAlign: 'center' }}>{f.plannedHa.toFixed(2)}</td>
+                        <td data-label="Covered (Ha)" style={{ textAlign: 'center' }}>{f.coveredHa.toFixed(2)}</td>
+                        <td data-label="Pilot">{f.pilotName}</td>
+                        <td data-label="Ops operator">{f.opsRoomOperatorName}</td>
                       </tr>
                     ))}
                   </tbody>
