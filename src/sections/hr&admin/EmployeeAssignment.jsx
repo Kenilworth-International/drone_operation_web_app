@@ -297,14 +297,16 @@ const EmployeeAssignment = () => {
     && Number(selectedRoleLimit.current_count ?? 0) >= Number(selectedRoleLimit.max_limit),
   );
 
-  const reportingOfficerOptions = useMemo(() => (
-    allEmployees
-      .filter((emp) => String(emp.id) !== String(selectedEmployee?.id))
+  const reportingOfficerOptions = useMemo(() => {
+    const empId = selectedEmployee?.id;
+    const isDepartmentHead = departments.some((dept) => Number(dept.hod_employee_id) === Number(empId));
+    return allEmployees
+      .filter((emp) => String(emp.id) !== String(empId) || isDepartmentHead)
       .map((emp) => ({
         value: emp.id,
         label: `${emp.empNo || emp.id} — ${emp.employeeName || emp.preferredName || 'Employee'}`,
-      }))
-  ), [allEmployees, selectedEmployee?.id]);
+      }));
+  }, [allEmployees, selectedEmployee?.id, departments]);
 
   const selectEmployee = useCallback((employee) => {
     const employeeId = String(employee.id);

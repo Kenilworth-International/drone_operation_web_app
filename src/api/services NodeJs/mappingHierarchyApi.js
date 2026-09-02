@@ -734,6 +734,31 @@ export const mappingHierarchyApi = baseApi.injectEndpoints({
       invalidatesTags: ['Estates'],
     }),
 
+    setMappingHierarchyMapImage: builder.mutation({
+      queryFn: async ({ level, id, map_image }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/set-map-image',
+            method: 'POST',
+            body: { level, id, map_image },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: (result, error, { level }) => {
+        const tagByLevel = {
+          group: ['Groups'],
+          plantation: ['Plantations'],
+          region: ['Regions'],
+          estate: ['Estates'],
+          division: ['Divisions'],
+        };
+        return tagByLevel[level] || [];
+      },
+    }),
+
     toggleMappingDivisionActivation: builder.mutation({
       queryFn: async (id) => {
         const result = await nodeBackendBaseQuery(
@@ -804,6 +829,7 @@ export const {
   useToggleMappingEstateActivationMutation,
   useSetMappingEstateFinalizedMutation,
   useSetMappingEstatePlanSizesMutation,
+  useSetMappingHierarchyMapImageMutation,
   // Divisions
   useGetMappingDivisionsQuery,
   useGetMappingDivisionsByEstateQuery,

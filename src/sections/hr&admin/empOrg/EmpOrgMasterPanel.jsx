@@ -755,6 +755,7 @@ export default function EmpOrgMasterPanel() {
                 </option>
               ))}
             </select>
+            <span className="emp-org-field-hint">The department head may also be set as reporting officer for employees (including themselves when they are the top approver).</span>
           </Field>
           <Field label="Sort order">
             <input type="number" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })} />

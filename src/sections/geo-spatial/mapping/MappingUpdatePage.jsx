@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  FaMapMarkedAlt, FaPlus, FaEdit, FaSave, FaTimes, FaToggleOn, FaToggleOff,
-  FaSearch, FaChevronRight, FaChevronDown, FaLayerGroup, FaSeedling, FaMap, FaSlidersH, FaMapMarkerAlt, FaCheck, FaTimesCircle,
-  FaGlobeAmericas, FaBuilding, FaProjectDiagram, FaLeaf, FaCheckCircle,
-  FaSpinner, FaInbox, FaCubes, FaFileExcel
+  FaPlus, FaEdit, FaSave, FaTimes, FaMap, FaImage, FaExpand,
+  FaLayerGroup, FaSeedling, FaGlobeAmericas, FaBuilding, FaProjectDiagram,
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
-import * as XLSX from 'xlsx';
+import { downloadMappingFieldsExcel } from './mappingFieldsExcelExport';
 import { CircleMarker, MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../../../styles/mappingUpdatePage.css';
@@ -34,6 +31,7 @@ import {
   useToggleMappingEstateActivationMutation,
   useSetMappingEstateFinalizedMutation,
   useSetMappingEstatePlanSizesMutation,
+  useSetMappingHierarchyMapImageMutation,
   useToggleMappingDivisionActivationMutation,
   useToggleMappingFieldActivationMutation,
   useLazyGetMappingAllFieldsReportQuery,
@@ -45,6 +43,10 @@ import {
 import { FEATURE_CODES } from '../../../utils/featurePermissions';
 import { isInternalDeveloper } from '../../../utils/authUtils';
 import { useGetMyPermissionsQuery } from '../../../api/services NodeJs/featurePermissionsApi';
+import { getResourceUrl } from '../../../utils/resourceUrls';
+import MappingHierarchyNav from './MappingHierarchyNav';
+import MappingHierarchyCardGrid from './MappingHierarchyCardGrid';
+import MappingFieldsPanel from './MappingFieldsPanel';
 
 const HIERARCHY_LEVELS = [
   { key: 'group', label: 'Group', icon: FaLayerGroup, nameField: 'group' },
@@ -54,27 +56,7 @@ const HIERARCHY_LEVELS = [
   { key: 'division', label: 'Division', icon: FaProjectDiagram, nameField: 'division' },
 ];
 
-const LoadingSpinner = ({ text = 'Loading...' }) => (
-  <div className="loading-map-update">
-    <FaSpinner className="spinner-icon-map-update" />
-    <span>{text}</span>
-  </div>
-);
-
-const EmptyState = ({ icon: Icon = FaInbox, title, description }) => (
-  <div className="empty-state-map-update">
-    <Icon className="empty-icon-map-update" />
-    <p className="empty-title-map-update">{title}</p>
-    {description && <p className="empty-desc-map-update">{description}</p>}
-  </div>
-);
-
-const StatusBadge = ({ active, label }) => (
-  <span className={`badge-map-update ${active ? 'badge-active-map-update' : 'badge-inactive-map-update'}`}>
-    {active ? <FaCheckCircle /> : <FaTimesCircle />}
-    {label || (active ? 'Active' : 'Inactive')}
-  </span>
-);
+const EMPTY_LIST = [];
 
 function formatPlanSizeDisplay(value) {
   if (value === null || value === undefined || value === '') return '—';
@@ -137,65 +119,12 @@ function estateCoordinatesMissing(estate) {
   return lat === null || lat === undefined || lat === '' || lon === null || lon === undefined || lon === '';
 }
 
-function fieldBlockReasonLabel(field, type, missionReasons) {
-  if (type === 'spread') {
-    if (field.spread_reason_name) return field.spread_reason_name;
-    if (Number(field.can_spread) === 1) return null;
-    const id = field.can_spread_text;
-    return missionReasons.find((r) => String(r.id) === String(id))?.reason || null;
-  }
-  if (field.spray_reason_name) return field.spray_reason_name;
-  if (Number(field.can_spray) === 1) return null;
-  const id = field.can_spray_text;
-  return missionReasons.find((r) => String(r.id) === String(id))?.reason || null;
-}
-
-const AvailabilityCell = ({ field, type, missionReasons, onEdit, canEdit = true }) => {
-  const can = type === 'spread' ? Number(field.can_spread) === 1 : Number(field.can_spray) === 1;
-  const reason = fieldBlockReasonLabel(field, type, missionReasons);
-  const hoverTitle = can
-    ? canEdit
-      ? 'Available — click to update'
-      : 'Available'
-    : reason
-      ? reason
-      : canEdit
-        ? 'No block reason set — click to set'
-        : 'No block reason set';
-
-  if (!canEdit) {
-    return (
-      <span
-        className={`availability-cell-map-update availability-cell--readonly-map-update ${!can && !reason ? 'availability-cell--missing-reason-map-update' : ''}`}
-        title={hoverTitle}
-      >
-        <span className={`yn-badge-map-update ${can ? 'yn-yes-map-update' : 'yn-no-map-update'}`}>
-          {can ? 'Yes' : 'No'}
-        </span>
-      </span>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      className={`availability-cell-map-update ${!can && !reason ? 'availability-cell--missing-reason-map-update' : ''}`}
-      onClick={() => onEdit(field, type)}
-      title={hoverTitle}
-    >
-      <span className={`yn-badge-map-update ${can ? 'yn-yes-map-update' : 'yn-no-map-update'}`}>
-        {can ? 'Yes' : 'No'}
-      </span>
-    </button>
-  );
-};
 
 const DEFAULT_MAP_CENTER = [7.6140783, 80.6616211];
 const SRI_LANKA_BOUNDS = [
-  [5.7, 79.4],   // south-west
-  [10.1, 82.1],  // north-east
+  [5.7, 79.4],
+  [10.1, 82.1],
 ];
-
 const MAP_STREET_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const MAP_SATELLITE_URL =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
@@ -278,8 +207,23 @@ const EstateCoordinateMapPicker = ({ latitude, longitude, onPick }) => {
   );
 };
 
+const HIERARCHY_NAME_FIELDS = {
+  group: 'group',
+  plantation: 'plantation',
+  region: 'region',
+  estate: 'estate',
+  division: 'division',
+};
+
+const HIERARCHY_LEVEL_LABELS = {
+  group: 'Group',
+  plantation: 'Plantation',
+  region: 'Region',
+  estate: 'Estate',
+  division: 'Division',
+};
+
 const MappingUpdatePage = () => {
-  const navigate = useNavigate();
 
   const userData = JSON.parse(localStorage.getItem('userData') || '{}');
   const userId = userData?.id || null;
@@ -328,20 +272,15 @@ const MappingUpdatePage = () => {
 
   const [newItem, setNewItem] = useState({});
   const [activeCreateLevel, setActiveCreateLevel] = useState(null);
-  const [estateContextMenu, setEstateContextMenu] = useState(null);
-  const [estateMenuPosition, setEstateMenuPosition] = useState({ left: 0, top: 0 });
-  const estateMenuRef = useRef(null);
   const [estatePlanSizeModal, setEstatePlanSizeModal] = useState(null);
   const [estateCoordinateModal, setEstateCoordinateModal] = useState(null);
   const [estatePlanSizeSaving, setEstatePlanSizeSaving] = useState(false);
   const [estateCoordinateSaving, setEstateCoordinateSaving] = useState(false);
-  const [divisionContextMenu, setDivisionContextMenu] = useState(null);
-  const [divisionMenuPosition, setDivisionMenuPosition] = useState({ left: 0, top: 0 });
-  const divisionMenuRef = useRef(null);
   const [divisionCoordinateModal, setDivisionCoordinateModal] = useState(null);
   const [divisionCoordinateSaving, setDivisionCoordinateSaving] = useState(false);
-
-  const [expandedLevels, setExpandedLevels] = useState({ group: true });
+  const [hierarchyMapImageModal, setHierarchyMapImageModal] = useState(null);
+  const [hierarchyMapImageSaving, setHierarchyMapImageSaving] = useState(false);
+  const [mapImageFullscreen, setMapImageFullscreen] = useState(false);
 
   const { data: groupsResponse = [], isLoading: groupsLoading } = useGetMappingGroupsQuery();
   const { data: plantationsResponse = [], isLoading: plantationsLoading } = useGetMappingPlantationsByGroupQuery(selectedGroup, { skip: !selectedGroup });
@@ -355,13 +294,13 @@ const MappingUpdatePage = () => {
   });
   const [saveMissionPartialReason, { isLoading: savingReason }] = useSaveMissionPartialReasonMutation();
 
-  const groups = groupsResponse?.data || [];
-  const plantations = plantationsResponse?.data || [];
-  const regions = regionsResponse?.data || [];
-  const estates = estatesResponse?.data || [];
-  const divisions = divisionsResponse?.data || [];
-  const fieldsData = fieldsResponse?.data || [];
-  const missionReasons = missionReasonsResponse?.data || [];
+  const groups = groupsResponse?.data ?? EMPTY_LIST;
+  const plantations = plantationsResponse?.data ?? EMPTY_LIST;
+  const regions = regionsResponse?.data ?? EMPTY_LIST;
+  const estates = estatesResponse?.data ?? EMPTY_LIST;
+  const divisions = divisionsResponse?.data ?? EMPTY_LIST;
+  const fieldsData = fieldsResponse?.data;
+  const missionReasons = missionReasonsResponse?.data ?? EMPTY_LIST;
 
   const [createGroup] = useCreateMappingGroupMutation();
   const [createPlantation] = useCreateMappingPlantationMutation();
@@ -375,6 +314,7 @@ const MappingUpdatePage = () => {
   const [toggleFieldActivation] = useToggleMappingFieldActivationMutation();
   const [setEstateFinalized] = useSetMappingEstateFinalizedMutation();
   const [setEstatePlanSizes] = useSetMappingEstatePlanSizesMutation();
+  const [setHierarchyMapImage] = useSetMappingHierarchyMapImageMutation();
   const [toggleGroupActivation] = useToggleMappingGroupActivationMutation();
   const [togglePlantationActivation] = useToggleMappingPlantationActivationMutation();
   const [toggleRegionActivation] = useToggleMappingRegionActivationMutation();
@@ -383,18 +323,12 @@ const MappingUpdatePage = () => {
   const [triggerAllFieldsReport, { isFetching: allFieldsLoading }] = useLazyGetMappingAllFieldsReportQuery();
 
   useEffect(() => {
-    if (selectedDivision) {
-      setFields(fieldsData || []);
-    } else {
-      setFields([]);
+    if (!selectedDivision) {
+      setFields(EMPTY_LIST);
+      return;
     }
-  }, [selectedDivision]);
-
-  useEffect(() => {
-    if (selectedDivision && fieldsData) {
-      setFields(fieldsData);
-    }
-  }, [fieldsData]);
+    setFields(Array.isArray(fieldsData) ? fieldsData : EMPTY_LIST);
+  }, [selectedDivision, fieldsData]);
 
   const selectedNames = useMemo(() => {
     const names = {};
@@ -416,13 +350,28 @@ const MappingUpdatePage = () => {
     return crumbs;
   }, [selectedNames]);
 
+  // Derives what level of cards to show based on selection depth.
+  // 'fields' means a division is selected → show fields table instead of cards.
+  const currentViewLevel = useMemo(() => {
+    if (selectedDivision) return 'fields';
+    if (selectedEstate) return 'division';
+    if (selectedRegion) return 'estate';
+    if (selectedPlantation) return 'region';
+    if (selectedGroup) return 'plantation';
+    return 'group';
+  }, [selectedGroup, selectedPlantation, selectedRegion, selectedEstate, selectedDivision]);
+
+  const currentLevelConfig = useMemo(
+    () => HIERARCHY_LEVELS.find(l => l.key === currentViewLevel) || null,
+    [currentViewLevel]
+  );
+
   const handleGroupSelect = (groupId) => {
     setSelectedGroup(groupId);
     setSelectedPlantation(null);
     setSelectedRegion(null);
     setSelectedEstate(null);
     setSelectedDivision(null);
-    setExpandedLevels(prev => ({ ...prev, plantation: true }));
   };
 
   const handlePlantationSelect = (plantationId) => {
@@ -430,20 +379,17 @@ const MappingUpdatePage = () => {
     setSelectedRegion(null);
     setSelectedEstate(null);
     setSelectedDivision(null);
-    setExpandedLevels(prev => ({ ...prev, region: true }));
   };
 
   const handleRegionSelect = (regionId) => {
     setSelectedRegion(regionId);
     setSelectedEstate(null);
     setSelectedDivision(null);
-    setExpandedLevels(prev => ({ ...prev, estate: true }));
   };
 
   const handleEstateSelect = (estateId) => {
     setSelectedEstate(estateId);
     setSelectedDivision(null);
-    setExpandedLevels(prev => ({ ...prev, division: true }));
   };
 
   const handleDivisionSelect = (divisionId) => {
@@ -456,6 +402,42 @@ const MappingUpdatePage = () => {
     region: handleRegionSelect,
     estate: handleEstateSelect,
     division: handleDivisionSelect,
+  };
+
+  // Navigate back to a specific breadcrumb level by clearing everything below it.
+  // Clicking "Group" breadcrumb clears plantation/region/estate/division → shows Plantations.
+  // Clicking "Plantation" clears region/estate/division → shows Regions. And so on.
+  const handleBreadcrumbClick = (key) => {
+    const levelOrder = ['group', 'plantation', 'region', 'estate', 'division'];
+    const idx = levelOrder.indexOf(key);
+    if (idx < 0) return;
+    if (idx < 4) setSelectedDivision(null);
+    if (idx < 3) setSelectedEstate(null);
+    if (idx < 2) setSelectedRegion(null);
+    if (idx < 1) setSelectedPlantation(null);
+  };
+
+  const handleRootClick = () => {
+    setSelectedGroup(null);
+    setSelectedPlantation(null);
+    setSelectedRegion(null);
+    setSelectedEstate(null);
+    setSelectedDivision(null);
+  };
+
+  const getLevelData = (key) => {
+    const map = { group: groups, plantation: plantations, region: regions, estate: estates, division: divisions };
+    return map[key] || [];
+  };
+
+  const getLevelLoading = (key) => {
+    const map = { group: groupsLoading, plantation: plantationsLoading, region: regionsLoading, estate: estatesLoading, division: divisionsLoading };
+    return map[key] || false;
+  };
+
+  const getSelectedId = (key) => {
+    const map = { group: selectedGroup, plantation: selectedPlantation, region: selectedRegion, estate: selectedEstate, division: selectedDivision };
+    return map[key];
   };
 
   const handleCreate = async (level) => {
@@ -495,21 +477,11 @@ const MappingUpdatePage = () => {
       }
 
       switch (level) {
-        case 'group':
-          result = await createGroup(createData).unwrap();
-          break;
-        case 'plantation':
-          result = await createPlantation(createData).unwrap();
-          break;
-        case 'region':
-          result = await createRegion(createData).unwrap();
-          break;
-        case 'estate':
-          result = await createEstate(createData).unwrap();
-          break;
-        case 'division':
-          result = await createDivision(createData).unwrap();
-          break;
+        case 'group': result = await createGroup(createData).unwrap(); break;
+        case 'plantation': result = await createPlantation(createData).unwrap(); break;
+        case 'region': result = await createRegion(createData).unwrap(); break;
+        case 'estate': result = await createEstate(createData).unwrap(); break;
+        case 'division': result = await createDivision(createData).unwrap(); break;
         case 'field':
           result = await createField(createData).unwrap();
           refetchFields();
@@ -650,35 +622,6 @@ const MappingUpdatePage = () => {
     field.short_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const toggleLevel = (levelKey) => {
-    setExpandedLevels(prev => ({ ...prev, [levelKey]: !prev[levelKey] }));
-  };
-
-  const getLevelData = (key) => {
-    const map = { group: groups, plantation: plantations, region: regions, estate: estates, division: divisions };
-    return map[key] || [];
-  };
-
-  const getLevelLoading = (key) => {
-    const map = { group: groupsLoading, plantation: plantationsLoading, region: regionsLoading, estate: estatesLoading, division: divisionsLoading };
-    return map[key] || false;
-  };
-
-  const getSelectedId = (key) => {
-    const map = { group: selectedGroup, plantation: selectedPlantation, region: selectedRegion, estate: selectedEstate, division: selectedDivision };
-    return map[key];
-  };
-
-  const isLevelVisible = (key) => {
-    const prereqs = { group: true, plantation: !!selectedGroup, region: !!selectedPlantation, estate: !!selectedRegion, division: !!selectedEstate };
-    return prereqs[key];
-  };
-
-  const getStepNumber = (key) => {
-    const idx = HIERARCHY_LEVELS.findIndex(l => l.key === key);
-    return idx + 1;
-  };
-
   const openAvailabilityModal = (field, type) => {
     const can = type === 'spread' ? Number(field.can_spread) : Number(field.can_spray);
     const textCol = type === 'spread' ? field.can_spread_text : field.can_spray_text;
@@ -784,11 +727,11 @@ const MappingUpdatePage = () => {
     setActiveCreateLevel(null);
     setNewItem({});
     setEditingField(null);
-    setEstateContextMenu(null);
     setEstatePlanSizeModal(null);
     setEstateCoordinateModal(null);
-    setDivisionContextMenu(null);
     setDivisionCoordinateModal(null);
+    setHierarchyMapImageModal(null);
+    setMapImageFullscreen(false);
     setAvailabilityModal(null);
     setReasonManageOpen(false);
     setEditingReasonRow(null);
@@ -799,12 +742,9 @@ const MappingUpdatePage = () => {
     setEstatePlanSizeModal({
       estateId,
       estateName: est?.estate || `Estate #${estateId}`,
-      min_plan_size:
-        est?.min_plan_size != null && est?.min_plan_size !== '' ? String(est.min_plan_size) : '',
-      max_plan_size:
-        est?.max_plan_size != null && est?.max_plan_size !== '' ? String(est.max_plan_size) : '',
+      min_plan_size: est?.min_plan_size != null && est?.min_plan_size !== '' ? String(est.min_plan_size) : '',
+      max_plan_size: est?.max_plan_size != null && est?.max_plan_size !== '' ? String(est.max_plan_size) : '',
     });
-    setEstateContextMenu(null);
   };
 
   const openEstateCoordinateModal = (estateId) => {
@@ -816,7 +756,6 @@ const MappingUpdatePage = () => {
       longitude: est?.longitude != null && est?.longitude !== '' ? String(est.longitude) : '',
       showMap: false,
     });
-    setEstateContextMenu(null);
   };
 
   const openDivisionCoordinateModal = (divisionId) => {
@@ -828,8 +767,82 @@ const MappingUpdatePage = () => {
       longitude: div?.longitude != null && div?.longitude !== '' ? String(div.longitude) : '',
       showMap: false,
     });
-    setDivisionContextMenu(null);
   };
+
+  const openHierarchyMapImageModal = (level, entityId) => {
+    const data = getLevelData(level);
+    const item = data.find((entry) => entry.id === entityId);
+    const nameField = HIERARCHY_NAME_FIELDS[level] || level;
+    setHierarchyMapImageModal({
+      level,
+      entityId,
+      entityName: item?.[nameField] || `${HIERARCHY_LEVEL_LABELS[level] || level} #${entityId}`,
+      map_image: item?.map_image || '',
+      previewDataUri: '',
+      selectedFileName: '',
+    });
+  };
+
+  const handleHierarchyMapImageFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file (JPG, PNG, or WebP)');
+      event.target.value = '';
+      return;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error('Map image must be 15 MB or smaller');
+      event.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setHierarchyMapImageModal((prev) => ({
+        ...prev,
+        previewDataUri: reader.result,
+        selectedFileName: file.name,
+      }));
+    };
+    reader.onerror = () => toast.error('Failed to read the selected image');
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveHierarchyMapImage = async () => {
+    if (!hierarchyMapImageModal) return;
+    const uploadPayload = hierarchyMapImageModal.previewDataUri;
+    if (!uploadPayload || !String(uploadPayload).startsWith('data:')) {
+      toast.error('Select a new map image to upload or update');
+      return;
+    }
+    setHierarchyMapImageSaving(true);
+    try {
+      const result = await setHierarchyMapImage({
+        level: hierarchyMapImageModal.level,
+        id: hierarchyMapImageModal.entityId,
+        map_image: uploadPayload,
+      }).unwrap();
+      if (result?.status) {
+        toast.success(result.message || 'Map image updated');
+        setHierarchyMapImageModal(null);
+      } else {
+        toast.error(result?.message || 'Failed to update map image');
+      }
+    } catch (error) {
+      toast.error(error?.data?.message || error?.message || 'Failed to update map image');
+    } finally {
+      setHierarchyMapImageSaving(false);
+    }
+  };
+
+  const hierarchyMapImagePreviewUrl = useMemo(() => {
+    if (!hierarchyMapImageModal) return null;
+    if (hierarchyMapImageModal.previewDataUri) return hierarchyMapImageModal.previewDataUri;
+    if (hierarchyMapImageModal.map_image) {
+      return getResourceUrl('HIERARCHY_MAP_IMAGE', hierarchyMapImageModal.map_image);
+    }
+    return null;
+  }, [hierarchyMapImageModal]);
 
   const handleSaveDivisionCoordinates = async () => {
     if (!divisionCoordinateModal) return;
@@ -842,14 +855,9 @@ const MappingUpdatePage = () => {
     }
     const latitude = parseOptionalCoordinateInput(latRaw, -90, 90);
     const longitude = parseOptionalCoordinateInput(lonRaw, -180, 180);
-
     setDivisionCoordinateSaving(true);
     try {
-      const result = await updateDivision({
-        id: divisionCoordinateModal.divisionId,
-        latitude,
-        longitude,
-      }).unwrap();
+      const result = await updateDivision({ id: divisionCoordinateModal.divisionId, latitude, longitude }).unwrap();
       if (result?.status) {
         toast.success(result.message || 'Division coordinates updated');
         setDivisionCoordinateModal(null);
@@ -876,11 +884,7 @@ const MappingUpdatePage = () => {
     const maxVal = parseOptionalPlanSizeInput(maxRaw);
     setEstatePlanSizeSaving(true);
     try {
-      const result = await setEstatePlanSizes({
-        id: estatePlanSizeModal.estateId,
-        min_plan_size: minVal,
-        max_plan_size: maxVal,
-      }).unwrap();
+      const result = await setEstatePlanSizes({ id: estatePlanSizeModal.estateId, min_plan_size: minVal, max_plan_size: maxVal }).unwrap();
       if (result?.status) {
         toast.success(result.message || 'Plan size limits updated');
         setEstatePlanSizeModal(null);
@@ -905,7 +909,6 @@ const MappingUpdatePage = () => {
     } catch (error) {
       toast.error(error?.data?.message || error?.message || 'Failed to update finalized status');
     }
-    setEstateContextMenu(null);
   };
 
   const handleSaveEstateCoordinates = async () => {
@@ -919,14 +922,9 @@ const MappingUpdatePage = () => {
     }
     const latitude = parseOptionalCoordinateInput(latRaw, -90, 90);
     const longitude = parseOptionalCoordinateInput(lonRaw, -180, 180);
-
     setEstateCoordinateSaving(true);
     try {
-      const result = await updateEstate({
-        id: estateCoordinateModal.estateId,
-        latitude,
-        longitude,
-      }).unwrap();
+      const result = await updateEstate({ id: estateCoordinateModal.estateId, latitude, longitude }).unwrap();
       if (result?.status) {
         toast.success(result.message || 'Estate coordinates updated');
         setEstateCoordinateModal(null);
@@ -940,76 +938,21 @@ const MappingUpdatePage = () => {
     }
   };
 
-  useLayoutEffect(() => {
-    if (!estateContextMenu || !estateMenuRef.current) return;
-    const rect = estateMenuRef.current.getBoundingClientRect();
-    const padding = 8;
-    let left = estateContextMenu.x;
-    let top = estateContextMenu.y;
-    if (left + rect.width + padding > window.innerWidth) left = window.innerWidth - rect.width - padding;
-    if (top + rect.height + padding > window.innerHeight) top = window.innerHeight - rect.height - padding;
-    if (left < padding) left = padding;
-    if (top < padding) top = padding;
-    setEstateMenuPosition({ left, top });
-  }, [estateContextMenu]);
-
-  useLayoutEffect(() => {
-    if (!divisionContextMenu || !divisionMenuRef.current) return;
-    const rect = divisionMenuRef.current.getBoundingClientRect();
-    const padding = 8;
-    let left = divisionContextMenu.x;
-    let top = divisionContextMenu.y;
-    if (left + rect.width + padding > window.innerWidth) left = window.innerWidth - rect.width - padding;
-    if (top + rect.height + padding > window.innerHeight) top = window.innerHeight - rect.height - padding;
-    if (left < padding) left = padding;
-    if (top < padding) top = padding;
-    setDivisionMenuPosition({ left, top });
-  }, [divisionContextMenu]);
-
-  useEffect(() => {
-    if (!estateContextMenu) return;
-    const close = () => setEstateContextMenu(null);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, [estateContextMenu]);
-
-  useEffect(() => {
-    if (!divisionContextMenu) return;
-    const close = () => setDivisionContextMenu(null);
-    window.addEventListener('click', close);
-    return () => window.removeEventListener('click', close);
-  }, [divisionContextMenu]);
-
   const handleDownloadExcel = () => {
     if (!filteredFields.length) return;
 
-    const data = filteredFields.map(field => ({
-      'Field Name': field.field || '',
-      'Short Name': field.short_name || '',
-      'Area': field.area || '',
-      'Status': field.activated ? 'Active' : 'Inactive',
-      'Can Spread': field.can_spread ? 'Yes' : 'No',
-      'Spread Reason': field.can_spread === 0 && field.can_spread_text
-        ? missionReasons.find(r => r.id == field.can_spread_text)?.reason || ''
-        : '',
-      'Can Spray': field.can_spray ? 'Yes' : 'No',
-      'Spray Reason': field.can_spray === 0 && field.can_spray_text
-        ? missionReasons.find(r => r.id == field.can_spray_text)?.reason || ''
-        : '',
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(data);
-    const colWidths = [
-      { wch: 22 }, { wch: 18 }, { wch: 10 }, { wch: 10 },
-      { wch: 12 }, { wch: 20 }, { wch: 12 }, { wch: 20 },
-    ];
-    ws['!cols'] = colWidths;
-
-    const wb = XLSX.utils.book_new();
     const divisionName = selectedNames.division || 'Fields';
-    XLSX.utils.book_append_sheet(wb, ws, divisionName.substring(0, 31));
-    XLSX.writeFile(wb, `${divisionName}_fields.xlsx`);
-    toast.success('Fields data downloaded successfully');
+    downloadMappingFieldsExcel({
+      fields: filteredFields,
+      missionReasons,
+      hierarchy: selectedNames,
+      searchTerm,
+      filename: `${divisionName}_fields.xlsx`,
+      detailSheetName: divisionName,
+      title: 'Mapping Update — Division Fields Report',
+      includeHierarchy: true,
+    });
+    toast.success('Fields report downloaded successfully');
   };
 
   const handleDownloadAllFieldsReport = async () => {
@@ -1021,447 +964,96 @@ const MappingUpdatePage = () => {
         return;
       }
 
-      const data = allFields.map(field => ({
-        'Group': field.group_name || '',
-        'Plantation': field.plantation_name || '',
-        'Region': field.region_name || '',
-        'Estate': field.estate_name || '',
-        'Division': field.division_name || '',
-        'Field Name': field.field || '',
-        'Short Name': field.short_name || '',
-        'Area': field.area || '',
-        'Status': field.activated ? 'Active' : 'Inactive',
-        'Can Spread': field.can_spread ? 'Yes' : 'No',
-        'Spread Reason': field.spread_reason_name || '',
-        'Can Spray': field.can_spray ? 'Yes' : 'No',
-        'Spray Reason': field.spray_reason_name || '',
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(data);
-      ws['!cols'] = [
-        { wch: 20 }, { wch: 22 }, { wch: 18 }, { wch: 18 }, { wch: 20 },
-        { wch: 22 }, { wch: 18 }, { wch: 10 }, { wch: 10 },
-        { wch: 12 }, { wch: 22 }, { wch: 12 }, { wch: 22 },
-      ];
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'All Fields');
-      XLSX.writeFile(wb, `All_Fields_Report.xlsx`);
+      downloadMappingFieldsExcel({
+        fields: allFields,
+        missionReasons: [],
+        hierarchy: {
+          group: 'All',
+          plantation: 'All',
+          region: 'All',
+          estate: 'All',
+          division: 'All divisions',
+        },
+        searchTerm: '',
+        filename: 'All_Fields_Report.xlsx',
+        detailSheetName: 'All Fields',
+        title: 'Mapping Update — All Fields Report',
+        includeHierarchy: true,
+      });
       toast.success('All fields report downloaded successfully');
     } catch (error) {
       toast.error('Failed to download all fields report');
     }
   };
 
-  const renderHierarchyLevel = (levelConfig, index) => {
-    const { key, label, icon: Icon, nameField } = levelConfig;
-
-    if (!isLevelVisible(key)) return null;
-
-    const data = getLevelData(key);
-    const loading = getLevelLoading(key);
-    const selectedId = getSelectedId(key);
-    const expanded = expandedLevels[key] !== false;
-    const stepNum = getStepNumber(key);
-    const isCompleted = !!selectedId;
-
-    return (
-      <div key={key} className={`level-map-update ${isCompleted ? 'level-completed-map-update' : ''}`}>
-        <div
-          role="button"
-          tabIndex={0}
-          className={`level-header-map-update ${expanded ? 'level-header-expanded-map-update' : ''}`}
-          onClick={() => toggleLevel(key)}
-          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleLevel(key); } }}
-        >
-          <div className="level-header-left-map-update">
-            <span className={`step-num-map-update ${isCompleted ? 'step-num-done-map-update' : ''}`}>
-              {isCompleted ? <FaCheckCircle /> : stepNum}
-            </span>
-            <Icon className="level-icon-map-update" />
-            <span className="level-label-map-update">{label}s</span>
-          </div>
-          <div className="level-header-right-map-update">
-            {isCompleted && (
-              <span className="level-selected-name-map-update">{selectedNames[key]}</span>
-            )}
-            {hasAddFeature ? (
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setActiveCreateLevel(key); setNewItem({}); }}
-                className="btn-icon-add-map-update"
-                title={`Add ${label}`}
-              >
-                <FaPlus />
-              </button>
-            ) : null}
-            {expanded ? <FaChevronDown className="level-chevron-map-update" /> : <FaChevronRight className="level-chevron-map-update" />}
-          </div>
-        </div>
-
-        {expanded && (
-          <div className="level-body-map-update">
-            {loading ? (
-              <LoadingSpinner text={`Loading ${label.toLowerCase()}s...`} />
-            ) : data.length === 0 ? (
-              <EmptyState
-                icon={Icon}
-                title={`No ${label.toLowerCase()}s found`}
-                description={
-                  hasAddFeature
-                    ? `Click + to create a new ${label.toLowerCase()}`
-                    : `No ${label.toLowerCase()}s available to view.`
-                }
-              />
-            ) : (
-              <div className="item-list-map-update">
-                {data.map(item => (
-                  <div
-                    key={item.id}
-                    className={`item-map-update ${selectedId === item.id ? 'item-selected-map-update' : ''} ${!item.activated ? 'item-disabled-map-update' : ''} ${key === 'estate' ? (item.finalized === 1 ? 'item-estate-finalized-map-update' : 'item-estate-not-finalized-map-update') : ''} ${key === 'estate' && estateCoordinatesMissing(item) ? 'item-estate-missing-coords-map-update' : ''} ${key === 'division' && estateCoordinatesMissing(item) ? 'item-division-missing-coords-map-update' : ''}`}
-                    onClick={() => selectHandlers[key](item.id)}
-                    onContextMenu={
-                      hasEditFeature && key === 'estate'
-                        ? (e) => {
-                            e.preventDefault();
-                            const x = e.clientX;
-                            const y = e.clientY;
-                            setEstateMenuPosition({ left: x, top: y });
-                            setEstateContextMenu({ x, y, estateId: item.id, isFinalized: item.finalized === 1 });
-                          }
-                        : hasEditFeature && key === 'division'
-                          ? (e) => {
-                              e.preventDefault();
-                              const x = e.clientX;
-                              const y = e.clientY;
-                              setDivisionMenuPosition({ left: x, top: y });
-                              setDivisionContextMenu({ x, y, divisionId: item.id });
-                            }
-                          : undefined
-                    }
-                  >
-                    <div className="item-content-map-update">
-                      <div className="item-text-block-map-update">
-                        <span className="item-name-map-update">{item[nameField]}</span>
-                        {key === 'estate' && estatePlanSizeSummary(item) ? (
-                          <span className="item-meta-map-update">{estatePlanSizeSummary(item)}</span>
-                        ) : null}
-                        {key === 'estate' && estateCoordinateSummary(item) ? (
-                          <span className="item-meta-map-update">{estateCoordinateSummary(item)}</span>
-                        ) : null}
-                        {key === 'estate' && estateCoordinatesMissing(item) ? (
-                          <span className="item-meta-map-update item-meta-missing-coords-map-update">Coordinates missing</span>
-                        ) : null}
-                        {key === 'division' && estateCoordinateSummary(item) ? (
-                          <span className="item-meta-map-update">{estateCoordinateSummary(item)}</span>
-                        ) : null}
-                        {key === 'division' && estateCoordinatesMissing(item) ? (
-                          <span className="item-meta-map-update item-meta-missing-coords-map-update">Coordinates missing</span>
-                        ) : null}
-                      </div>
-                      {!item.activated && <span className="item-inactive-tag-map-update">Inactive</span>}
-                    </div>
-                    {hasActivateFeature ? (
-                      <div className="item-actions-map-update">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); toggleHandlers[key](item.id); }}
-                          className={`btn-toggle-map-update ${item.activated ? 'btn-toggle-on-map-update' : 'btn-toggle-off-map-update'}`}
-                          title={item.activated ? 'Deactivate' : 'Activate'}
-                        >
-                          {item.activated ? <FaToggleOn /> : <FaToggleOff />}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
+  // Add button in nav bar: for fields view open "field" modal, otherwise open the current card level modal.
+  const handleNavAddClick = () => {
+    const level = currentViewLevel === 'fields' ? 'field' : currentViewLevel;
+    setActiveCreateLevel(level);
+    setNewItem({});
   };
 
   return (
     <div className="page-map-update">
-      {/* Estate context menu: right-click to set Finalized / Not Finalized */}
-      {estateContextMenu && hasEditFeature && (
-        <>
-          <div
-            className="estate-context-menu-backdrop-map-update"
-            onClick={() => setEstateContextMenu(null)}
-            aria-hidden
-          />
-          <div
-            ref={estateMenuRef}
-            className="estate-context-menu-map-update"
-            style={{ left: estateMenuPosition.left, top: estateMenuPosition.top }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="estate-context-menu-title-map-update">Estate options</div>
-            <button
-              type="button"
-              className="estate-context-menu-item-map-update"
-              onClick={() => openEstatePlanSizeModal(estateContextMenu.estateId)}
-            >
-              <FaSlidersH className="estate-context-menu-item-icon-map-update" />
-              Update min / max plan size (Ha)
-            </button>
-            <button
-              type="button"
-              className="estate-context-menu-item-map-update"
-              onClick={() => openEstateCoordinateModal(estateContextMenu.estateId)}
-            >
-              <FaMapMarkerAlt className="estate-context-menu-item-icon-map-update" />
-              Update latitude / longitude
-            </button>
-            <div className="estate-context-menu-divider-map-update" />
-            <div className="estate-context-menu-title-map-update">Finalized status</div>
-            {estateContextMenu.isFinalized ? (
-              <button type="button" className="estate-context-menu-item-map-update" onClick={() => handleSetEstateFinalized(estateContextMenu.estateId, 0)}>
-                <FaTimesCircle className="estate-context-menu-item-icon-map-update" />
-                Set as Not Finalized
-              </button>
-            ) : (
-              <button type="button" className="estate-context-menu-item-map-update" onClick={() => handleSetEstateFinalized(estateContextMenu.estateId, 1)}>
-                <FaCheck className="estate-context-menu-item-icon-map-update" />
-                Set as Finalized
-              </button>
-            )}
-          </div>
-        </>
-      )}
-      {divisionContextMenu && hasEditFeature && (
-        <>
-          <div
-            className="estate-context-menu-backdrop-map-update"
-            onClick={() => setDivisionContextMenu(null)}
-            aria-hidden
-          />
-          <div
-            ref={divisionMenuRef}
-            className="estate-context-menu-map-update"
-            style={{ left: divisionMenuPosition.left, top: divisionMenuPosition.top }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="estate-context-menu-title-map-update">Division options</div>
-            <button
-              type="button"
-              className="estate-context-menu-item-map-update"
-              onClick={() => openDivisionCoordinateModal(divisionContextMenu.divisionId)}
-            >
-              <FaMapMarkerAlt className="estate-context-menu-item-icon-map-update" />
-              Update latitude / longitude
-            </button>
-          </div>
-        </>
-      )}
-      {/* Header */}
-      <div className="header-map-update">
-        <div className="header-top-map-update">
-          <div className="header-title-group-map-update">
-            <FaMapMarkedAlt className="header-icon-map-update" />
-            <div>
-              <h1 className="header-title-map-update">Mapping Hierarchy</h1>
-              <p className="header-subtitle-map-update">Manage geographic structure and field configurations</p>
-            </div>
-          </div>
-          <button
-            onClick={handleDownloadAllFieldsReport}
-            className="btn-all-report-map-update"
-            disabled={allFieldsLoading}
-          >
-            <FaFileExcel /> {allFieldsLoading ? 'Downloading...' : 'All Fields Report'}
-          </button>
-        </div>
 
-        {breadcrumbs.length > 0 && (
-          <div className="breadcrumb-map-update">
-            <FaCubes className="breadcrumb-root-icon-map-update" />
-            {breadcrumbs.map((crumb, idx) => {
-              const Icon = crumb.icon;
-              return (
-                <React.Fragment key={crumb.key}>
-                  <FaChevronRight className="breadcrumb-sep-map-update" />
-                  <span className={`breadcrumb-item-map-update ${idx === breadcrumbs.length - 1 ? 'breadcrumb-item-active-map-update' : ''}`}>
-                    <Icon className="breadcrumb-item-icon-map-update" />
-                    {crumb.value}
-                  </span>
-                </React.Fragment>
-              );
-            })}
-          </div>
+      {/* ===== TOP 10% NAVIGATION BAR ===== */}
+      <MappingHierarchyNav
+        breadcrumbs={breadcrumbs}
+        currentViewLevel={currentViewLevel}
+        onRootClick={handleRootClick}
+        onBreadcrumbClick={handleBreadcrumbClick}
+        onAddClick={handleNavAddClick}
+        hasAddFeature={hasAddFeature}
+        onAllFieldsReport={handleDownloadAllFieldsReport}
+        allFieldsLoading={allFieldsLoading}
+      />
+
+      {/* ===== BOTTOM 90% CONTENT PANE ===== */}
+      <section className="content-pane-map-update">
+        {currentViewLevel === 'fields' ? (
+          <MappingFieldsPanel
+            filteredFields={filteredFields}
+            fieldsLoading={fieldsLoading}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            selectedDivision={selectedDivision}
+            hasEditFeature={hasEditFeature}
+            hasActivateFeature={hasActivateFeature}
+            hasAddFeature={hasAddFeature}
+            showFieldActionsColumn={showFieldActionsColumn}
+            missionReasons={missionReasons}
+            onFieldEdit={handleFieldEdit}
+            onAvailabilityModal={openAvailabilityModal}
+            onToggleFieldActivation={handleToggleFieldActivation}
+            onAddField={() => { setActiveCreateLevel('field'); setNewItem({}); }}
+            onDownloadExcel={handleDownloadExcel}
+            onBlockReasons={() => setReasonManageOpen(true)}
+          />
+        ) : (
+          currentLevelConfig && (
+            <MappingHierarchyCardGrid
+              level={currentViewLevel}
+              levelConfig={currentLevelConfig}
+              data={getLevelData(currentViewLevel)}
+              loading={getLevelLoading(currentViewLevel)}
+              selectedId={getSelectedId(currentViewLevel)}
+              onSelect={selectHandlers[currentViewLevel]}
+              onToggleActivation={toggleHandlers[currentViewLevel]}
+              hasActivateFeature={hasActivateFeature}
+              hasEditFeature={hasEditFeature}
+              hasAddFeature={hasAddFeature}
+              onPlanSizeModal={openEstatePlanSizeModal}
+              onCoordinateModal={currentViewLevel === 'estate' ? openEstateCoordinateModal : openDivisionCoordinateModal}
+              onMapImageModal={openHierarchyMapImageModal}
+              onSetFinalized={handleSetEstateFinalized}
+              estatePlanSizeSummary={estatePlanSizeSummary}
+              estateCoordinateSummary={estateCoordinateSummary}
+              estateCoordinatesMissing={estateCoordinatesMissing}
+              animKey={`${currentViewLevel}-${selectedGroup}-${selectedPlantation}-${selectedRegion}-${selectedEstate}`}
+            />
+          )
         )}
-      </div>
-
-      {/* Main Content */}
-      <div className="layout-map-update">
-        {/* Left: Hierarchy Panel */}
-        <aside className="sidebar-map-update">
-          <div className="sidebar-card-map-update">
-            <div className="sidebar-title-map-update">
-              <FaLayerGroup />
-              <span>Geographic Hierarchy</span>
-            </div>
-            <div className="levels-map-update">
-              {HIERARCHY_LEVELS.map((level, idx) => renderHierarchyLevel(level, idx))}
-            </div>
-          </div>
-        </aside>
-
-        {/* Right: Fields Panel */}
-        <main className="main-map-update">
-          <div className="fields-card-map-update">
-            <div className="fields-card-header-map-update">
-              <div className="fields-card-title-row-map-update">
-                <div className="fields-card-title-group-map-update">
-                  <FaLeaf className="fields-card-icon-map-update" />
-                  <h2 className="fields-card-title-map-update">Fields Management</h2>
-                  {selectedDivision && (
-                    <span className="fields-card-count-map-update">{filteredFields.length} field{filteredFields.length !== 1 ? 's' : ''}</span>
-                  )}
-                </div>
-                {selectedDivision && (
-                  <div className="fields-card-actions-map-update">
-                    {hasEditFeature ? (
-                      <button
-                        type="button"
-                        onClick={() => setReasonManageOpen(true)}
-                        className="btn-ghost-sm-map-update"
-                        title="Add or edit block reason catalog"
-                      >
-                        Block reasons
-                      </button>
-                    ) : null}
-                    <button
-                      onClick={handleDownloadExcel}
-                      className="btn-excel-map-update"
-                      title="Download Excel"
-                    >
-                      <FaFileExcel /> Export
-                    </button>
-                    {hasAddFeature ? (
-                      <button
-                        onClick={() => { setActiveCreateLevel('field'); setNewItem({}); }}
-                        className="btn-primary-sm-map-update"
-                        title="Create Field"
-                      >
-                        <FaPlus /> Add Field
-                      </button>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-
-              {selectedDivision && (
-                <div className="search-map-update">
-                  <FaSearch className="search-icon-map-update" />
-                  <input
-                    type="text"
-                    className="search-input-map-update"
-                    placeholder="Search by field name or short name..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <button className="search-clear-map-update" onClick={() => setSearchTerm('')}>
-                      <FaTimes />
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {!selectedDivision ? (
-              <EmptyState
-                icon={FaProjectDiagram}
-                title="No division selected"
-                description="Navigate the hierarchy on the left and select a division to view and manage its fields."
-              />
-            ) : (
-              <div className="table-wrapper-map-update">
-                {fieldsLoading ? (
-                  <LoadingSpinner text="Loading fields..." />
-                ) : filteredFields.length === 0 ? (
-                  <EmptyState
-                    icon={FaLeaf}
-                    title={searchTerm ? 'No matching fields' : 'No fields yet'}
-                    description={
-                      searchTerm
-                        ? 'Try a different search term.'
-                        : hasAddFeature
-                          ? 'Click "Add Field" to create the first field in this division.'
-                          : 'No fields available to view in this division.'
-                    }
-                  />
-                ) : (
-                  <table className="table-map-update">
-                    <thead>
-                      <tr>
-                        <th>Field Name</th>
-                        <th>Short Name</th>
-                        <th>Area</th>
-                        <th>Status</th>
-                        <th>Spread</th>
-                        <th>Spray</th>
-                        {showFieldActionsColumn ? <th className="th-actions-map-update">Actions</th> : null}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredFields.map(field => (
-                        <tr key={field.id}>
-                          <td><span className="cell-text-bold-map-update">{field.field}</span></td>
-                          <td><span className="cell-text-map-update">{field.short_name}</span></td>
-                          <td><span className="cell-text-map-update">{field.area}</span></td>
-                          <td><StatusBadge active={field.activated} /></td>
-                          <td>
-                            <AvailabilityCell
-                              field={field}
-                              type="spread"
-                              missionReasons={missionReasons}
-                              onEdit={openAvailabilityModal}
-                              canEdit={hasEditFeature}
-                            />
-                          </td>
-                          <td>
-                            <AvailabilityCell
-                              field={field}
-                              type="spray"
-                              missionReasons={missionReasons}
-                              onEdit={openAvailabilityModal}
-                              canEdit={hasEditFeature}
-                            />
-                          </td>
-                          {showFieldActionsColumn ? (
-                            <td>
-                              <div className="table-actions-map-update">
-                                {hasEditFeature ? (
-                                  <button onClick={() => handleFieldEdit(field)} className="btn-icon-edit-map-update" title="Edit">
-                                    <FaEdit />
-                                  </button>
-                                ) : null}
-                                {hasActivateFeature ? (
-                                  <button
-                                    onClick={() => handleToggleFieldActivation(field.id)}
-                                    className={`btn-toggle-table-map-update ${field.activated ? 'btn-toggle-on-map-update' : 'btn-toggle-off-map-update'}`}
-                                    title={field.activated ? 'Deactivate' : 'Activate'}
-                                  >
-                                    {field.activated ? <FaToggleOn /> : <FaToggleOff />}
-                                  </button>
-                                ) : null}
-                              </div>
-                            </td>
-                          ) : null}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            )}
-          </div>
-        </main>
-      </div>
+      </section>
 
       {/* ===== CREATE MODAL ===== */}
       {activeCreateLevel && hasAddFeature && (
@@ -1490,33 +1082,33 @@ const MappingUpdatePage = () => {
               </div>
               {activeCreateLevel === 'estate' && (
                 <>
-                <div className="form-row-two-map-update">
-                  <div className="form-group-map-update">
-                    <label className="label-map-update">Min plan size (Ha)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="input-map-update"
-                      placeholder="Optional"
-                      value={newItem.min_plan_size ?? ''}
-                      onChange={(e) => setNewItem({ ...newItem, min_plan_size: e.target.value })}
-                    />
+                  <div className="form-row-two-map-update">
+                    <div className="form-group-map-update">
+                      <label className="label-map-update">Min plan size (Ha)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="input-map-update"
+                        placeholder="Optional"
+                        value={newItem.min_plan_size ?? ''}
+                        onChange={(e) => setNewItem({ ...newItem, min_plan_size: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group-map-update">
+                      <label className="label-map-update">Max plan size (Ha)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="input-map-update"
+                        placeholder="Optional"
+                        value={newItem.max_plan_size ?? ''}
+                        onChange={(e) => setNewItem({ ...newItem, max_plan_size: e.target.value })}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group-map-update">
-                    <label className="label-map-update">Max plan size (Ha)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      className="input-map-update"
-                      placeholder="Optional"
-                      value={newItem.max_plan_size ?? ''}
-                      onChange={(e) => setNewItem({ ...newItem, max_plan_size: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <p className="form-hint-map-update">Used for estate manager plan approval area limits.</p>
+                  <p className="form-hint-map-update">Used for estate manager plan approval area limits.</p>
                 </>
               )}
               {activeCreateLevel === 'field' && (
@@ -1572,29 +1164,21 @@ const MappingUpdatePage = () => {
                 <div className="form-group-map-update">
                   <label className="label-map-update">Min plan size (Ha)</label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="number" min="0" step="0.01"
                     className="input-map-update"
                     placeholder="Leave empty for no minimum"
                     value={estatePlanSizeModal.min_plan_size}
-                    onChange={(e) =>
-                      setEstatePlanSizeModal({ ...estatePlanSizeModal, min_plan_size: e.target.value })
-                    }
+                    onChange={(e) => setEstatePlanSizeModal({ ...estatePlanSizeModal, min_plan_size: e.target.value })}
                   />
                 </div>
                 <div className="form-group-map-update">
                   <label className="label-map-update">Max plan size (Ha)</label>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="number" min="0" step="0.01"
                     className="input-map-update"
                     placeholder="Leave empty for no maximum"
                     value={estatePlanSizeModal.max_plan_size}
-                    onChange={(e) =>
-                      setEstatePlanSizeModal({ ...estatePlanSizeModal, max_plan_size: e.target.value })
-                    }
+                    onChange={(e) => setEstatePlanSizeModal({ ...estatePlanSizeModal, max_plan_size: e.target.value })}
                   />
                 </div>
               </div>
@@ -1603,19 +1187,130 @@ const MappingUpdatePage = () => {
               </p>
             </div>
             <div className="modal-footer-map-update">
-              <button type="button" onClick={closeModal} className="btn-ghost-map-update">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEstatePlanSizes}
-                className="btn-primary-map-update"
-                disabled={estatePlanSizeSaving}
-              >
+              <button type="button" onClick={closeModal} className="btn-ghost-map-update">Cancel</button>
+              <button type="button" onClick={handleSaveEstatePlanSizes} className="btn-primary-map-update" disabled={estatePlanSizeSaving}>
                 <FaSave /> {estatePlanSizeSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ===== HIERARCHY MAP IMAGE MODAL ===== */}
+      {hierarchyMapImageModal && hasEditFeature && (
+        <div className="modal-overlay-map-update" onClick={closeModal}>
+          <div className="modal-map-update modal-map-image-full-map-update" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header-map-update">
+              <h3 className="modal-title-map-update">
+                <FaImage className="modal-title-icon-map-update" />
+                {HIERARCHY_LEVEL_LABELS[hierarchyMapImageModal.level] || 'Item'} map — {hierarchyMapImageModal.entityName}
+              </h3>
+              <div className="map-image-header-actions-map-update">
+                {hierarchyMapImagePreviewUrl && (
+                  <button
+                    type="button"
+                    className="btn-ghost-sm-map-update"
+                    onClick={() => setMapImageFullscreen(true)}
+                    title="View full size"
+                  >
+                    <FaExpand /> Full view
+                  </button>
+                )}
+                <button type="button" onClick={closeModal} className="modal-close-map-update">
+                  <FaTimes />
+                </button>
+              </div>
+            </div>
+            <div className="modal-body-map-update map-image-body-map-update">
+              {hierarchyMapImagePreviewUrl ? (
+                <div
+                  className="map-image-viewer-map-update"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setMapImageFullscreen(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setMapImageFullscreen(true);
+                    }
+                  }}
+                  title="Click to view full size"
+                >
+                  <img
+                    src={hierarchyMapImagePreviewUrl}
+                    alt={`${hierarchyMapImageModal.entityName} map`}
+                    className="map-image-viewer-img-map-update"
+                  />
+                  <span className="map-image-viewer-hint-map-update">Click image for full view</span>
+                </div>
+              ) : (
+                <div className="estate-map-image-empty-map-update map-image-viewer-empty-map-update">
+                  <FaImage className="estate-map-image-empty-icon-map-update" />
+                  <p>No map image uploaded yet</p>
+                </div>
+              )}
+
+              <div className="map-image-upload-panel-map-update">
+                <div className="form-group-map-update">
+                  <label className="label-map-update">
+                    {hierarchyMapImageModal.map_image ? 'Replace map image' : 'Upload map image'}
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    className="input-map-update estate-map-image-file-input-map-update"
+                    onChange={handleHierarchyMapImageFileChange}
+                  />
+                  {hierarchyMapImageModal.selectedFileName && (
+                    <p className="form-hint-map-update">Selected: {hierarchyMapImageModal.selectedFileName}</p>
+                  )}
+                  {hierarchyMapImageModal.map_image && !hierarchyMapImageModal.previewDataUri && (
+                    <p className="form-hint-map-update">Current file: {hierarchyMapImageModal.map_image}</p>
+                  )}
+                </div>
+                <p className="form-hint-map-update">
+                  Stored as filename only ({hierarchyMapImageModal.level}-name-YYYY-MM-DD.jpg). Max size 15 MB. JPG, PNG, or WebP.
+                </p>
+              </div>
+            </div>
+            <div className="modal-footer-map-update">
+              <button type="button" onClick={closeModal} className="btn-ghost-map-update">Cancel</button>
+              <button
+                type="button"
+                onClick={handleSaveHierarchyMapImage}
+                className="btn-primary-map-update"
+                disabled={hierarchyMapImageSaving || !hierarchyMapImageModal.previewDataUri}
+              >
+                <FaSave /> {hierarchyMapImageSaving ? 'Uploading...' : (hierarchyMapImageModal.map_image ? 'Update Map' : 'Upload Map')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== MAP IMAGE FULLSCREEN VIEWER ===== */}
+      {mapImageFullscreen && hierarchyMapImagePreviewUrl && (
+        <div
+          className="map-image-fullscreen-map-update"
+          onClick={() => setMapImageFullscreen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Map image full view"
+        >
+          <button
+            type="button"
+            className="map-image-fullscreen-close-map-update"
+            onClick={() => setMapImageFullscreen(false)}
+            title="Close full view"
+          >
+            <FaTimes />
+          </button>
+          <img
+            src={hierarchyMapImagePreviewUrl}
+            alt={`${hierarchyMapImageModal?.entityName || 'Map'} full view`}
+            className="map-image-fullscreen-img-map-update"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
@@ -1637,31 +1332,19 @@ const MappingUpdatePage = () => {
                 <div className="form-group-map-update">
                   <label className="label-map-update">Latitude</label>
                   <input
-                    type="number"
-                    min="-90"
-                    max="90"
-                    step="0.0000001"
-                    className="input-map-update"
-                    placeholder="e.g. 6.8747931"
+                    type="number" min="-90" max="90" step="0.0000001"
+                    className="input-map-update" placeholder="e.g. 6.8747931"
                     value={estateCoordinateModal.latitude}
-                    onChange={(e) =>
-                      setEstateCoordinateModal({ ...estateCoordinateModal, latitude: e.target.value })
-                    }
+                    onChange={(e) => setEstateCoordinateModal({ ...estateCoordinateModal, latitude: e.target.value })}
                   />
                 </div>
                 <div className="form-group-map-update">
                   <label className="label-map-update">Longitude</label>
                   <input
-                    type="number"
-                    min="-180"
-                    max="180"
-                    step="0.0000001"
-                    className="input-map-update"
-                    placeholder="e.g. 79.8887541"
+                    type="number" min="-180" max="180" step="0.0000001"
+                    className="input-map-update" placeholder="e.g. 79.8887541"
                     value={estateCoordinateModal.longitude}
-                    onChange={(e) =>
-                      setEstateCoordinateModal({ ...estateCoordinateModal, longitude: e.target.value })
-                    }
+                    onChange={(e) => setEstateCoordinateModal({ ...estateCoordinateModal, longitude: e.target.value })}
                   />
                 </div>
               </div>
@@ -1669,9 +1352,7 @@ const MappingUpdatePage = () => {
                 <button
                   type="button"
                   className="btn-map-toggle-map-update"
-                  onClick={() =>
-                    setEstateCoordinateModal((prev) => ({ ...prev, showMap: !prev.showMap }))
-                  }
+                  onClick={() => setEstateCoordinateModal((prev) => ({ ...prev, showMap: !prev.showMap }))}
                 >
                   <FaMap />
                   {estateCoordinateModal.showMap ? 'Hide Map Picker' : 'Open Map Picker'}
@@ -1680,7 +1361,7 @@ const MappingUpdatePage = () => {
                   Picked: {estateCoordinateModal.latitude || '—'}, {estateCoordinateModal.longitude || '—'}
                 </span>
               </div>
-              {estateCoordinateModal.showMap ? (
+              {estateCoordinateModal.showMap && (
                 <EstateCoordinateMapPicker
                   latitude={estateCoordinateModal.latitude}
                   longitude={estateCoordinateModal.longitude}
@@ -1692,21 +1373,14 @@ const MappingUpdatePage = () => {
                     }))
                   }
                 />
-              ) : null}
+              )}
               <p className="form-hint-map-update">
                 Leave empty to clear coordinates. Weather forecast uses these values for this estate.
               </p>
             </div>
             <div className="modal-footer-map-update">
-              <button type="button" onClick={closeModal} className="btn-ghost-map-update">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEstateCoordinates}
-                className="btn-primary-map-update"
-                disabled={estateCoordinateSaving}
-              >
+              <button type="button" onClick={closeModal} className="btn-ghost-map-update">Cancel</button>
+              <button type="button" onClick={handleSaveEstateCoordinates} className="btn-primary-map-update" disabled={estateCoordinateSaving}>
                 <FaSave /> {estateCoordinateSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
@@ -1732,31 +1406,19 @@ const MappingUpdatePage = () => {
                 <div className="form-group-map-update">
                   <label className="label-map-update">Latitude</label>
                   <input
-                    type="number"
-                    min="-90"
-                    max="90"
-                    step="0.0000001"
-                    className="input-map-update"
-                    placeholder="e.g. 6.8747931"
+                    type="number" min="-90" max="90" step="0.0000001"
+                    className="input-map-update" placeholder="e.g. 6.8747931"
                     value={divisionCoordinateModal.latitude}
-                    onChange={(e) =>
-                      setDivisionCoordinateModal({ ...divisionCoordinateModal, latitude: e.target.value })
-                    }
+                    onChange={(e) => setDivisionCoordinateModal({ ...divisionCoordinateModal, latitude: e.target.value })}
                   />
                 </div>
                 <div className="form-group-map-update">
                   <label className="label-map-update">Longitude</label>
                   <input
-                    type="number"
-                    min="-180"
-                    max="180"
-                    step="0.0000001"
-                    className="input-map-update"
-                    placeholder="e.g. 79.8887541"
+                    type="number" min="-180" max="180" step="0.0000001"
+                    className="input-map-update" placeholder="e.g. 79.8887541"
                     value={divisionCoordinateModal.longitude}
-                    onChange={(e) =>
-                      setDivisionCoordinateModal({ ...divisionCoordinateModal, longitude: e.target.value })
-                    }
+                    onChange={(e) => setDivisionCoordinateModal({ ...divisionCoordinateModal, longitude: e.target.value })}
                   />
                 </div>
               </div>
@@ -1764,9 +1426,7 @@ const MappingUpdatePage = () => {
                 <button
                   type="button"
                   className="btn-map-toggle-map-update"
-                  onClick={() =>
-                    setDivisionCoordinateModal((prev) => ({ ...prev, showMap: !prev.showMap }))
-                  }
+                  onClick={() => setDivisionCoordinateModal((prev) => ({ ...prev, showMap: !prev.showMap }))}
                 >
                   <FaMap />
                   {divisionCoordinateModal.showMap ? 'Hide Map Picker' : 'Open Map Picker'}
@@ -1775,7 +1435,7 @@ const MappingUpdatePage = () => {
                   Picked: {divisionCoordinateModal.latitude || '—'}, {divisionCoordinateModal.longitude || '—'}
                 </span>
               </div>
-              {divisionCoordinateModal.showMap ? (
+              {divisionCoordinateModal.showMap && (
                 <EstateCoordinateMapPicker
                   latitude={divisionCoordinateModal.latitude}
                   longitude={divisionCoordinateModal.longitude}
@@ -1787,21 +1447,14 @@ const MappingUpdatePage = () => {
                     }))
                   }
                 />
-              ) : null}
+              )}
               <p className="form-hint-map-update">
                 Leave empty to clear coordinates. Weather prediction uses these values for this division.
               </p>
             </div>
             <div className="modal-footer-map-update">
-              <button type="button" onClick={closeModal} className="btn-ghost-map-update">
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveDivisionCoordinates}
-                className="btn-primary-map-update"
-                disabled={divisionCoordinateSaving}
-              >
+              <button type="button" onClick={closeModal} className="btn-ghost-map-update">Cancel</button>
+              <button type="button" onClick={handleSaveDivisionCoordinates} className="btn-primary-map-update" disabled={divisionCoordinateSaving}>
                 <FaSave /> {divisionCoordinateSaving ? 'Saving...' : 'Save'}
               </button>
             </div>
@@ -1848,9 +1501,7 @@ const MappingUpdatePage = () => {
                     >
                       <option value="">Select reason</option>
                       {missionReasons.map((reason) => (
-                        <option key={reason.id} value={reason.id}>
-                          {reason.reason}
-                        </option>
+                        <option key={reason.id} value={reason.id}>{reason.reason}</option>
                       ))}
                     </select>
                   </div>
@@ -1871,12 +1522,7 @@ const MappingUpdatePage = () => {
                       <option value="h">Partial (h)</option>
                       <option value="c">Cancel (c)</option>
                     </select>
-                    <button
-                      type="button"
-                      className="btn-primary-sm-map-update"
-                      onClick={handleAddReason}
-                      disabled={savingReason}
-                    >
+                    <button type="button" className="btn-primary-sm-map-update" onClick={handleAddReason} disabled={savingReason}>
                       Add
                     </button>
                   </div>
@@ -1884,9 +1530,7 @@ const MappingUpdatePage = () => {
               )}
             </div>
             <div className="modal-footer-map-update">
-              <button type="button" onClick={closeModal} className="btn-ghost-map-update">
-                Cancel
-              </button>
+              <button type="button" onClick={closeModal} className="btn-ghost-map-update">Cancel</button>
               <button type="button" onClick={handleAvailabilitySave} className="btn-primary-map-update">
                 <FaSave /> Save
               </button>
@@ -1922,12 +1566,7 @@ const MappingUpdatePage = () => {
                   <option value="h">Partial (h)</option>
                   <option value="c">Cancel (c)</option>
                 </select>
-                <button
-                  type="button"
-                  className="btn-primary-sm-map-update"
-                  onClick={handleAddReason}
-                  disabled={savingReason}
-                >
+                <button type="button" className="btn-primary-sm-map-update" onClick={handleAddReason} disabled={savingReason}>
                   <FaPlus /> Add reason
                 </button>
               </div>
@@ -1940,26 +1579,18 @@ const MappingUpdatePage = () => {
                           type="text"
                           className="input-map-update"
                           value={editingReasonRow.reason}
-                          onChange={(e) =>
-                            setEditingReasonRow({ ...editingReasonRow, reason: e.target.value })
-                          }
+                          onChange={(e) => setEditingReasonRow({ ...editingReasonRow, reason: e.target.value })}
                         />
                         <select
                           className="input-map-update reason-flag-select-map-update"
                           value={editingReasonRow.flag || 'h'}
-                          onChange={(e) =>
-                            setEditingReasonRow({ ...editingReasonRow, flag: e.target.value })
-                          }
+                          onChange={(e) => setEditingReasonRow({ ...editingReasonRow, flag: e.target.value })}
                         >
                           <option value="h">Partial (h)</option>
                           <option value="c">Cancel (c)</option>
                         </select>
-                        <button type="button" className="btn-primary-sm-map-update" onClick={handleSaveReasonRow} disabled={savingReason}>
-                          Save
-                        </button>
-                        <button type="button" className="btn-ghost-sm-map-update" onClick={() => setEditingReasonRow(null)}>
-                          Cancel
-                        </button>
+                        <button type="button" className="btn-primary-sm-map-update" onClick={handleSaveReasonRow} disabled={savingReason}>Save</button>
+                        <button type="button" className="btn-ghost-sm-map-update" onClick={() => setEditingReasonRow(null)}>Cancel</button>
                       </>
                     ) : (
                       <>
@@ -1971,14 +1602,7 @@ const MappingUpdatePage = () => {
                           type="button"
                           className="btn-icon-edit-map-update"
                           title="Edit reason"
-                          onClick={() =>
-                            setEditingReasonRow({
-                              id: r.id,
-                              reason: r.reason,
-                              flag: r.flag,
-                              activated: r.activated,
-                            })
-                          }
+                          onClick={() => setEditingReasonRow({ id: r.id, reason: r.reason, flag: r.flag, activated: r.activated })}
                         >
                           <FaEdit />
                         </button>
@@ -1989,9 +1613,7 @@ const MappingUpdatePage = () => {
               </div>
             </div>
             <div className="modal-footer-map-update">
-              <button type="button" onClick={closeModal} className="btn-ghost-map-update">
-                Close
-              </button>
+              <button type="button" onClick={closeModal} className="btn-ghost-map-update">Close</button>
             </div>
           </div>
         </div>
@@ -2015,8 +1637,7 @@ const MappingUpdatePage = () => {
                 <div className="form-group-map-update">
                   <label className="label-map-update">Field Name</label>
                   <input
-                    type="text"
-                    className="input-map-update"
+                    type="text" className="input-map-update"
                     value={editingField.field || ''}
                     onChange={(e) => setEditingField({ ...editingField, field: e.target.value })}
                   />
@@ -2024,8 +1645,7 @@ const MappingUpdatePage = () => {
                 <div className="form-group-map-update">
                   <label className="label-map-update">Short Name</label>
                   <input
-                    type="text"
-                    className="input-map-update"
+                    type="text" className="input-map-update"
                     value={editingField.short_name || ''}
                     onChange={(e) => setEditingField({ ...editingField, short_name: e.target.value })}
                   />
@@ -2033,8 +1653,7 @@ const MappingUpdatePage = () => {
                 <div className="form-group-map-update">
                   <label className="label-map-update">Area</label>
                   <input
-                    type="number"
-                    className="input-map-update"
+                    type="number" className="input-map-update"
                     value={editingField.area || ''}
                     onChange={(e) => setEditingField({ ...editingField, area: parseFloat(e.target.value) })}
                   />

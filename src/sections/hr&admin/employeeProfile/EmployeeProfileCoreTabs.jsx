@@ -719,7 +719,10 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
         <Field label="Reporting officer">
           <select name="reportingOfficer" value={form.reportingOfficer} onChange={onChange}>
             <option value="">-- Select --</option>
-            {employees.filter((e) => String(e.id) !== String(employeeId)).map((e) => (
+            {employees.filter((e) => {
+              const isDepartmentHead = departments.some((dept) => Number(dept.hod_employee_id) === Number(employeeId));
+              return String(e.id) !== String(employeeId) || isDepartmentHead;
+            }).map((e) => (
               <option key={e.id} value={e.id}>{e.employeeName || e.empNo}</option>
             ))}
           </select>

@@ -9,6 +9,9 @@ import {
   locationValidLabel,
   overlookingStatusLabel,
   requestModeLabel,
+  GEOFENCE_RADIUS_METERS,
+  formatAttendanceDistanceDetail,
+  isOutsideGeofenceRange,
 } from '../../../utils/hrStatusLabels';
 
 const formatDate = (year, month, day) => {
@@ -158,9 +161,36 @@ const formatWorkedHours = (minutesRaw) => {
   const mins = Math.round(total % 60);
   return `${hours}h ${mins}m`;
 };
+const formatPopupDate = (dateKey) => {
+  if (!dateKey) return '—';
+  const d = new Date(`${String(dateKey).slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return String(dateKey);
+  return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+};
 const buildMapUrl = (lat, lng) => {
   if (lat == null || lng == null) return '';
   return `https://www.google.com/maps?q=${lat},${lng}`;
+};
+const buildWorkLocationSiteLabel = (detail = {}, fallback = '-') => {
+  return (
+    detail.work_location_site_name ||
+    detail.employee_work_location_name ||
+    detail.employee_work_location_code ||
+    fallback
+  );
+};
+const buildWorkLocationCoordsLabel = (detail = {}) => {
+  const lat = detail.work_location_latitude;
+  const lng = detail.work_location_longitude;
+  if (lat == null || lng == null || lat === '' || lng === '') return 'Coordinates not set';
+  return `${Number(lat)}, ${Number(lng)}`;
+};
+const hasAttendanceLocationIssue = (detail, radiusMeters) => {
+  if (!detail) return false;
+  return (
+    isOutsideGeofenceRange(detail.mark_in_distance_meters, detail.mark_in_location_valid, radiusMeters) ||
+    isOutsideGeofenceRange(detail.mark_out_distance_meters, detail.mark_out_location_valid, radiusMeters)
+  );
 };
 const getEmployeeWorkLocation = (empLike = {}) => {
   return (
@@ -223,6 +253,11 @@ const RoasterPlanning = ({ embedded = false }) => {
   const attendanceRows = rosterResponse?.data?.attendanceRows || rosterResponse?.attendanceRows || [];
   const leaveRequestRows = rosterResponse?.data?.leaveRequestRows || rosterResponse?.leaveRequestRows || [];
   const holidayRows = rosterResponse?.data?.holidayRows || rosterResponse?.holidayRows || [];
+  const geofenceRadiusMeters = Number(
+    rosterResponse?.data?.geofenceRadiusMeters
+    ?? rosterResponse?.geofenceRadiusMeters
+    ?? GEOFENCE_RADIUS_METERS
+  );
   const rosterLoading = rosterLoadingInitial || rosterFetching;
 
   const holidayMetaByDate = useMemo(() => {
@@ -726,6 +761,25 @@ const RoasterPlanning = ({ embedded = false }) => {
           'Worked Minutes': attendanceDetail?.working_minutes ?? '-',
           'Mark In Valid': toBoolText(attendanceDetail?.mark_in_location_valid),
           'Mark Out Valid': toBoolText(attendanceDetail?.mark_out_location_valid),
+          'Mark In Distance (m)': attendanceDetail?.mark_in_distance_meters ?? '-',
+          'Mark Out Distance (m)': attendanceDetail?.mark_out_distance_meters ?? '-',
+          'Mark In 20m+': attendanceDetail
+            ? (isOutsideGeofenceRange(
+              attendanceDetail.mark_in_distance_meters,
+              attendanceDetail.mark_in_location_valid,
+              geofenceRadiusMeters,
+            ) ? 'Yes' : 'No')
+            : '-',
+          'Mark Out 20m+': attendanceDetail
+            ? (isOutsideGeofenceRange(
+              attendanceDetail.mark_out_distance_meters,
+              attendanceDetail.mark_out_location_valid,
+              geofenceRadiusMeters,
+            ) ? 'Yes' : 'No')
+            : '-',
+          'Assigned Work Location': buildWorkLocationSiteLabel(attendanceDetail, employee.workLocation || '-'),
+          'Work Location Coordinates': buildWorkLocationCoordsLabel(attendanceDetail),
+          'Allowed Range (m)': geofenceRadiusMeters,
           'Mark In Map': buildMapUrl(attendanceDetail?.mark_in_latitude, attendanceDetail?.mark_in_longitude) || '-',
           'Mark Out Map': buildMapUrl(attendanceDetail?.mark_out_latitude, attendanceDetail?.mark_out_longitude) || '-',
         });
@@ -753,32 +807,147 @@ const RoasterPlanning = ({ embedded = false }) => {
     downloadExcel(rows, `roster_${safeName}`);
   };
 
-  const openAttendancePopup = (e, employeeName, employeeId, dateString) => {
+  const openAttendancePopup = (e, employeeName, employeeId, dateString, employeeWorkLocation = '-') => {
     e.stopPropagation();
     e.preventDefault();
     const detail = attendanceDetailsByKey.get(attendanceKey(employeeId, dateString));
     if (!detail) {
       setAttendancePopup({
-        title: `${employeeName} · ${dateString}`,
+        employeeId,
+        employeeName,
+        dateString,
         detail: null,
       });
       return;
     }
+    const workLocationName = buildWorkLocationSiteLabel(detail, employeeWorkLocation);
+    const markInDistance = formatAttendanceDistanceDetail({
+      distanceMeters: detail.mark_in_distance_meters,
+      locationValid: detail.mark_in_location_valid,
+      radiusMeters: geofenceRadiusMeters,
+    });
+    const markOutDistance = formatAttendanceDistanceDetail({
+      distanceMeters: detail.mark_out_distance_meters,
+      locationValid: detail.mark_out_location_valid,
+      radiusMeters: geofenceRadiusMeters,
+    });
     setAttendancePopup({
-      title: `${employeeName} · ${dateString}`,
+      employeeId,
+      employeeName,
+      dateString,
       detail: {
+        workLocationName,
+        workLocationCode: detail.employee_work_location_code || '-',
+        workLocationCoords: buildWorkLocationCoordsLabel(detail),
+        workLocationMapUrl: buildMapUrl(detail.work_location_latitude, detail.work_location_longitude)
+          || detail.work_location_map_link
+          || '',
+        geofenceRadiusMeters,
+        locationIssue: markInDistance.outsideRange || markOutDistance.outsideRange,
         markIn: formatTimeOnly(detail.mark_in),
         markOut: formatTimeOnly(detail.mark_out),
         markInValid: toBoolText(detail.mark_in_location_valid),
         markOutValid: toBoolText(detail.mark_out_location_valid),
         workedHours: formatWorkedHours(detail.working_minutes),
         workingMinutes: Number.isFinite(Number(detail.working_minutes)) ? Number(detail.working_minutes) : null,
-        markInDistance: detail.mark_in_distance_meters,
-        markOutDistance: detail.mark_out_distance_meters,
+        markInDistance,
+        markOutDistance,
         markInMapUrl: buildMapUrl(detail.mark_in_latitude, detail.mark_in_longitude),
         markOutMapUrl: buildMapUrl(detail.mark_out_latitude, detail.mark_out_longitude),
       },
     });
+  };
+
+  const getEmployeeMonthLocationRows = (employeeId) => {
+    if (!employeeId) return [];
+    return monthDays
+      .map((day) => {
+        const detail = attendanceDetailsByKey.get(attendanceKey(employeeId, day.dateString));
+        if (!detail || String(detail.status || '').toLowerCase() !== 'present') return null;
+        const markInDistance = formatAttendanceDistanceDetail({
+          distanceMeters: detail.mark_in_distance_meters,
+          locationValid: detail.mark_in_location_valid,
+          radiusMeters: geofenceRadiusMeters,
+        });
+        const markOutDistance = formatAttendanceDistanceDetail({
+          distanceMeters: detail.mark_out_distance_meters,
+          locationValid: detail.mark_out_location_valid,
+          radiusMeters: geofenceRadiusMeters,
+        });
+        return {
+          dateString: day.dateString,
+          dayLabel: day.label,
+          weekday: day.weekday,
+          markIn: formatTimeOnly(detail.mark_in),
+          markOut: formatTimeOnly(detail.mark_out),
+          markInDistance,
+          markOutDistance,
+        };
+      })
+      .filter(Boolean);
+  };
+
+  const renderDistanceMeter = (distanceDetail, radiusMeters) => {
+    const distance = Number(String(distanceDetail?.text || '').replace(/[^\d.]/g, ''));
+    if (!Number.isFinite(distance)) {
+      return <div className="roaster-att-meter roaster-att-meter--empty">Distance not recorded</div>;
+    }
+    const outside = distanceDetail?.outsideRange;
+    const fillPct = Math.min(100, Math.round((distance / Math.max(radiusMeters * 2, distance)) * 100));
+    const thresholdPct = 50;
+    return (
+      <div className={`roaster-att-meter${outside ? ' roaster-att-meter--warn' : ' roaster-att-meter--ok'}`}>
+        <div className="roaster-att-meter__track" aria-hidden>
+          <div className="roaster-att-meter__fill" style={{ width: `${fillPct}%` }} />
+          <span className="roaster-att-meter__threshold" style={{ left: `${thresholdPct}%` }} />
+        </div>
+        <div className="roaster-att-meter__meta">
+          <strong>{Math.round(distance)} m</strong>
+          <span>{outside ? `${radiusMeters} m+ · outside range` : `Within ${radiusMeters} m`}</span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderAttendanceTimelineEvent = ({
+    kind,
+    time,
+    validLabel,
+    distanceDetail,
+    mapUrl,
+    radiusMeters,
+  }) => {
+    const hasTime = time && time !== '-';
+    const tone = distanceDetail?.outsideRange ? 'warn' : hasTime ? 'ok' : 'neutral';
+    return (
+      <article className={`roaster-att-timeline-item roaster-att-timeline-item--${kind} roaster-att-timeline-item--${tone}`}>
+        <div className="roaster-att-timeline-item__rail" aria-hidden>
+          <span className={`roaster-att-timeline-item__dot roaster-att-timeline-item__dot--${kind}`} />
+        </div>
+        <div className="roaster-att-timeline-item__body">
+          <div className="roaster-att-timeline-item__head">
+            <div>
+              <p className="roaster-att-timeline-item__eyebrow">{kind === 'in' ? 'Arrival' : 'Departure'}</p>
+              <h4 className="roaster-att-timeline-item__title">{kind === 'in' ? 'Mark in' : 'Mark out'}</h4>
+            </div>
+            <span className={`roaster-att-status-pill roaster-att-status-pill--${tone}`}>
+              {hasTime ? validLabel : 'Not recorded'}
+            </span>
+          </div>
+          <div className="roaster-att-timeline-item__time">{hasTime ? time : '—'}</div>
+          {hasTime ? renderDistanceMeter(distanceDetail, radiusMeters) : (
+            <p className="roaster-att-timeline-item__empty">No location data for this event.</p>
+          )}
+          {mapUrl ? (
+            <a className="roaster-att-map-link" href={mapUrl} target="_blank" rel="noreferrer">
+              Open GPS on map
+            </a>
+          ) : hasTime ? (
+            <span className="roaster-att-map-link roaster-att-map-link--disabled">GPS map unavailable</span>
+          ) : null}
+        </div>
+      </article>
+    );
   };
 
   return (
@@ -908,6 +1077,7 @@ const RoasterPlanning = ({ embedded = false }) => {
           <span className="legend-pill-roaster leave-pill-roaster">Bulk leave</span>
           <span className="legend-pill-roaster requested-pill-roaster">Leave Requested</span>
           <span className="legend-pill-roaster attended-pill-roaster">Attended</span>
+          <span className="legend-pill-roaster location-outside-pill-roaster">Attended · {geofenceRadiusMeters} m+</span>
           <span className="legend-pill-roaster holiday-mercantile-legend-roaster">Statutory holidays</span>
           <span className="legend-pill-roaster holiday-poya-legend-roaster">Poya holiday</span>
           <span className="legend-pill-roaster holiday-special-legend-roaster">Special holiday</span>
@@ -957,7 +1127,12 @@ const RoasterPlanning = ({ embedded = false }) => {
                 >
                   {employee.name}
                 </button>
-                <small>{employee.role}</small>
+                <small className="employee-role-roaster">{employee.role}</small>
+                {employee.workLocation && employee.workLocation !== '-' ? (
+                  <span className="employee-location-pill-roaster" title="Assigned work location">
+                    {employee.workLocation}
+                  </span>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -976,6 +1151,8 @@ const RoasterPlanning = ({ embedded = false }) => {
                 const isRequested = employee.requestedLeaveDays.includes(day.dateString);
                 const requestedLeaveStatus = employee.requestedLeaveStatusByDate?.[day.dateString] || null;
                 const isAttended = employee.attendance.attended.includes(day.dateString);
+                const attendanceDetail = attendanceDetailsByKey.get(attendanceKey(employee.id, day.dateString));
+                const locationOutsideRange = isAttended && hasAttendanceLocationIssue(attendanceDetail, geofenceRadiusMeters);
                 const hol = holidayMetaByDate[day.dateString]?.type;
                 const holClass =
                   hol === 'mercantile'
@@ -1010,14 +1187,15 @@ const RoasterPlanning = ({ embedded = false }) => {
                     className={`day-cell-roaster ${day.isWeekend ? 'weekend' : ''} ${stateClass} ${holClass} ${
                       locked ? 'locked' : ''
                     } ${cellBulkLeaveDiff ? 'day-cell-bulk-leave-diff-roaster' : ''}`.trim()}
-                    title={`${day.dateString}${isLeave ? ' | Bulk leave' : ''}${isRequested ? ' | Leave Requested' : ''}${isAttended ? ' | Attended' : ''}${holTitle}`}
+                    title={`${day.dateString}${isLeave ? ' | Bulk leave' : ''}${isRequested ? ' | Leave Requested' : ''}${isAttended ? ' | Attended' : ''}${locationOutsideRange ? ` | Outside ${geofenceRadiusMeters} m range` : ''}${holTitle}`}
                     onClick={() => {
                       if (isAttended) {
                         openAttendancePopup(
                           { stopPropagation: () => {}, preventDefault: () => {} },
                           employee.name,
                           employee.id,
-                          day.dateString
+                          day.dateString,
+                          employee.workLocation
                         );
                         return;
                       }
@@ -1027,7 +1205,7 @@ const RoasterPlanning = ({ embedded = false }) => {
                       if (ev.key !== 'Enter' && ev.key !== ' ') return;
                       if (isAttended) {
                         ev.preventDefault();
-                        openAttendancePopup(ev, employee.name, employee.id, day.dateString);
+                        openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation);
                         return;
                       }
                       if (locked) return;
@@ -1069,10 +1247,14 @@ const RoasterPlanning = ({ embedded = false }) => {
                       <span
                         className="attendance-info-hit-roaster"
                         aria-label="Show attendance details"
-                        title="Click for attendance details"
-                        onClick={(ev) => openAttendancePopup(ev, employee.name, employee.id, day.dateString)}
+                        title={locationOutsideRange
+                          ? `Outside ${geofenceRadiusMeters} m range — click for details`
+                          : 'Click for attendance details'}
+                        onClick={(ev) => openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation)}
                       >
-                        <span className="attendance-info-dot-roaster">i</span>
+                        <span className={`attendance-info-dot-roaster${locationOutsideRange ? ' attendance-info-dot-roaster--warn' : ''}`}>
+                          {locationOutsideRange ? '!' : 'i'}
+                        </span>
                       </span>
                     ) : null}
                   </div>
@@ -1129,65 +1311,161 @@ const RoasterPlanning = ({ embedded = false }) => {
 
       {attendancePopup ? (
         <div
-          className="approval-popup-backdrop-roaster"
+          className="roaster-attendance-backdrop"
           role="presentation"
           onClick={() => setAttendancePopup(null)}
         >
           <div
-            className="roaster-attendance-popup-panel"
+            className="roaster-attendance-modal"
             role="dialog"
             aria-modal="true"
             aria-label="Attendance details"
             onClick={(ev) => ev.stopPropagation()}
           >
-            <div className="approval-popup-header-row-roaster">
-              <div className="approval-popup-title-roaster">{attendancePopup.title}</div>
+            <header className="roaster-attendance-modal__header">
+              <div className="roaster-attendance-modal__header-main">
+                <p className="roaster-attendance-modal__eyebrow">Attendance record</p>
+                <h3 className="roaster-attendance-modal__title">{attendancePopup.employeeName}</h3>
+                <p className="roaster-attendance-modal__date">{formatPopupDate(attendancePopup.dateString)}</p>
+              </div>
               <button
                 type="button"
-                className="approval-popup-close-x-roaster"
+                className="roaster-attendance-modal__close"
                 aria-label="Close"
                 onClick={() => setAttendancePopup(null)}
               >
                 ×
               </button>
-            </div>
+            </header>
+
             {attendancePopup.detail ? (
-              <div className="roaster-attendance-details-grid">
-                <div><strong>Mark in:</strong> {attendancePopup.detail.markIn}</div>
-                <div><strong>Mark out:</strong> {attendancePopup.detail.markOut}</div>
-                <div><strong>Mark-in location:</strong> {attendancePopup.detail.markInValid}</div>
-                <div><strong>Mark-out location:</strong> {attendancePopup.detail.markOutValid}</div>
-                <div>
-                  <strong>Worked:</strong> {attendancePopup.detail.workedHours}
-                  {attendancePopup.detail.workingMinutes != null ? ` (${attendancePopup.detail.workingMinutes} mins)` : ''}
+              <div className="roaster-attendance-modal__body">
+                {attendancePopup.detail.locationIssue ? (
+                  <div className="roaster-attendance-alert roaster-attendance-alert--warn">
+                    One or more marks were recorded outside the {attendancePopup.detail.geofenceRadiusMeters} m office range.
+                  </div>
+                ) : null}
+
+                <div className="roaster-attendance-summary">
+                  <div className="roaster-attendance-summary__item">
+                    <span className="roaster-attendance-summary__label">Mark in</span>
+                    <span className="roaster-attendance-summary__value">{attendancePopup.detail.markIn}</span>
+                  </div>
+                  <div className="roaster-attendance-summary__item">
+                    <span className="roaster-attendance-summary__label">Mark out</span>
+                    <span className="roaster-attendance-summary__value">{attendancePopup.detail.markOut}</span>
+                  </div>
+                  <div className="roaster-attendance-summary__item roaster-attendance-summary__item--accent">
+                    <span className="roaster-attendance-summary__label">Worked</span>
+                    <span className="roaster-attendance-summary__value">{attendancePopup.detail.workedHours}</span>
+                    {attendancePopup.detail.workingMinutes != null ? (
+                      <span className="roaster-attendance-summary__meta">{attendancePopup.detail.workingMinutes} mins</span>
+                    ) : null}
+                  </div>
                 </div>
-                <div>
-                  <strong>Mark-in distance:</strong>{' '}
-                  {attendancePopup.detail.markInDistance != null ? `${attendancePopup.detail.markInDistance} m` : '-'}
-                </div>
-                <div>
-                  <strong>Mark-out distance:</strong>{' '}
-                  {attendancePopup.detail.markOutDistance != null ? `${attendancePopup.detail.markOutDistance} m` : '-'}
-                </div>
-                <div className="roaster-attendance-map-links">
-                  {attendancePopup.detail.markInMapUrl ? (
-                    <a href={attendancePopup.detail.markInMapUrl} target="_blank" rel="noreferrer">
-                      Open mark-in map
+
+                <section className="roaster-attendance-timeline">
+                  <div className="roaster-attendance-section-head">
+                    <h4>Mark in &amp; mark out</h4>
+                    <span>Allowed range {attendancePopup.detail.geofenceRadiusMeters} m from office</span>
+                  </div>
+                  {renderAttendanceTimelineEvent({
+                    kind: 'in',
+                    time: attendancePopup.detail.markIn,
+                    validLabel: attendancePopup.detail.markInValid,
+                    distanceDetail: attendancePopup.detail.markInDistance,
+                    mapUrl: attendancePopup.detail.markInMapUrl,
+                    radiusMeters: attendancePopup.detail.geofenceRadiusMeters,
+                  })}
+                  {renderAttendanceTimelineEvent({
+                    kind: 'out',
+                    time: attendancePopup.detail.markOut,
+                    validLabel: attendancePopup.detail.markOutValid,
+                    distanceDetail: attendancePopup.detail.markOutDistance,
+                    mapUrl: attendancePopup.detail.markOutMapUrl,
+                    radiusMeters: attendancePopup.detail.geofenceRadiusMeters,
+                  })}
+                </section>
+
+                {(() => {
+                  const monthRows = getEmployeeMonthLocationRows(attendancePopup.employeeId);
+                  if (!monthRows.length) return null;
+                  return (
+                    <section className="roaster-attendance-month-table-wrap">
+                      <div className="roaster-attendance-section-head">
+                        <h4>Location distance this month</h4>
+                        <span>Red = {attendancePopup.detail.geofenceRadiusMeters} m+ from office</span>
+                      </div>
+                      <div className="roaster-attendance-month-table-scroll">
+                        <table className="roaster-attendance-month-table">
+                          <thead>
+                            <tr>
+                              <th>Day</th>
+                              <th>Mark in</th>
+                              <th>In dist.</th>
+                              <th>Mark out</th>
+                              <th>Out dist.</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {monthRows.map((row) => {
+                              const isSelected = row.dateString === attendancePopup.dateString;
+                              return (
+                                <tr key={row.dateString} className={isSelected ? 'is-selected' : ''}>
+                                  <td>
+                                    <strong>{row.dayLabel}</strong>
+                                    <span>{row.weekday}</span>
+                                  </td>
+                                  <td>{row.markIn}</td>
+                                  <td className={row.markInDistance.outsideRange ? 'is-outside' : 'is-inside'}>
+                                    {row.markInDistance.text}
+                                  </td>
+                                  <td>{row.markOut}</td>
+                                  <td className={row.markOutDistance.outsideRange ? 'is-outside' : 'is-inside'}>
+                                    {row.markOutDistance.text}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  );
+                })()}
+
+                <section className="roaster-attendance-site-card">
+                  <div className="roaster-attendance-site-card__head">
+                    <h4>Assigned work location</h4>
+                    <span className="roaster-attendance-site-card__code">{attendancePopup.detail.workLocationCode}</span>
+                  </div>
+                  <p className="roaster-attendance-site-card__name">{attendancePopup.detail.workLocationName}</p>
+                  <dl className="roaster-attendance-meta-grid">
+                    <div>
+                      <dt>Office coordinates</dt>
+                      <dd>{attendancePopup.detail.workLocationCoords}</dd>
+                    </div>
+                    <div>
+                      <dt>Allowed range</dt>
+                      <dd>{attendancePopup.detail.geofenceRadiusMeters} metres</dd>
+                    </div>
+                  </dl>
+                  {attendancePopup.detail.workLocationMapUrl ? (
+                    <a
+                      className="roaster-att-site-map-btn"
+                      href={attendancePopup.detail.workLocationMapUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open office on map
                     </a>
-                  ) : (
-                    <span>Mark-in map unavailable</span>
-                  )}
-                  {attendancePopup.detail.markOutMapUrl ? (
-                    <a href={attendancePopup.detail.markOutMapUrl} target="_blank" rel="noreferrer">
-                      Open mark-out map
-                    </a>
-                  ) : (
-                    <span>Mark-out map unavailable</span>
-                  )}
-                </div>
+                  ) : null}
+                </section>
               </div>
             ) : (
-              <div className="roaster-attendance-no-data">Attendance details not available for this day.</div>
+              <div className="roaster-attendance-modal__empty">
+                <p>No attendance details are available for this day.</p>
+              </div>
             )}
           </div>
         </div>

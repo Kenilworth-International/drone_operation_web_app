@@ -236,6 +236,8 @@ const MasterData = ({ mode = 'full' }) => {
   const [newWorkLocationName, setNewWorkLocationName] = useState('');
   const [newWorkLocationCode, setNewWorkLocationCode] = useState('');
   const [newWorkLocationMapLink, setNewWorkLocationMapLink] = useState('');
+  const [newWorkLocationLatitude, setNewWorkLocationLatitude] = useState('');
+  const [newWorkLocationLongitude, setNewWorkLocationLongitude] = useState('');
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgCode, setNewOrgCode] = useState('');
   const [newOrgBr, setNewOrgBr] = useState('');
@@ -396,6 +398,8 @@ const MasterData = ({ mode = 'full' }) => {
     setNewWorkLocationName('');
     setNewWorkLocationCode('');
     setNewWorkLocationMapLink('');
+    setNewWorkLocationLatitude('');
+    setNewWorkLocationLongitude('');
     setAddWorkLocationOpen(true);
   };
   const closeAddWorkLocationModal = () => {
@@ -403,6 +407,8 @@ const MasterData = ({ mode = 'full' }) => {
     setNewWorkLocationName('');
     setNewWorkLocationCode('');
     setNewWorkLocationMapLink('');
+    setNewWorkLocationLatitude('');
+    setNewWorkLocationLongitude('');
   };
   const saveAddWorkLocationModal = async () => {
     const name = String(newWorkLocationName || '').trim();
@@ -415,6 +421,8 @@ const MasterData = ({ mode = 'full' }) => {
         locationName: name,
         locationCode: String(newWorkLocationCode || '').trim(),
         map_link: newWorkLocationMapLink || null,
+        latitude: newWorkLocationLatitude || null,
+        longitude: newWorkLocationLongitude || null,
         activated: 1,
       }).unwrap();
       await refetchWorkLocations();
@@ -587,6 +595,8 @@ const MasterData = ({ mode = 'full' }) => {
         locationName: item.locationName || '',
         locationCode: item.locationCode || '',
         map_link: item.map_link || '',
+        latitude: item.latitude != null ? String(item.latitude) : '',
+        longitude: item.longitude != null ? String(item.longitude) : '',
       });
     }
     if (type === 'missionPartialReason') setModalDraft({ reason: item.reason || '', flag: item.flag || 'c', chargeble: String(Number(item.chargeble) === 1 ? 1 : 0) });
@@ -794,6 +804,8 @@ const MasterData = ({ mode = 'full' }) => {
           locationName: modalDraft.locationName,
           locationCode: modalDraft.locationCode,
           map_link: modalDraft.map_link || null,
+          latitude: modalDraft.latitude || null,
+          longitude: modalDraft.longitude || null,
           activated: editModal.item.activated ?? 1,
         }).unwrap();
         refetchWorkLocations();
@@ -2041,6 +2053,20 @@ const MasterData = ({ mode = 'full' }) => {
                   onChange={(e) => setModalDraft((p) => ({ ...p, map_link: e.target.value }))}
                   placeholder="Google map link"
                 />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <input
+                    className="master-edit-input-master-data"
+                    value={modalDraft.latitude || ''}
+                    onChange={(e) => setModalDraft((p) => ({ ...p, latitude: e.target.value }))}
+                    placeholder="Latitude"
+                  />
+                  <input
+                    className="master-edit-input-master-data"
+                    value={modalDraft.longitude || ''}
+                    onChange={(e) => setModalDraft((p) => ({ ...p, longitude: e.target.value }))}
+                    placeholder="Longitude"
+                  />
+                </div>
               </div>
             )}
             {editModal.type === 'missionPartialReason' && (
@@ -2480,6 +2506,28 @@ const MasterData = ({ mode = 'full' }) => {
                   value={newWorkLocationMapLink}
                   onChange={(e) => setNewWorkLocationMapLink(e.target.value)}
                   placeholder="Optional"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="master-edit-field-master-data">
+                <label htmlFor="master-add-wl-lat">Latitude</label>
+                <input
+                  id="master-add-wl-lat"
+                  className="master-edit-input-master-data"
+                  value={newWorkLocationLatitude}
+                  onChange={(e) => setNewWorkLocationLatitude(e.target.value)}
+                  placeholder="e.g. 6.9271"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="master-edit-field-master-data">
+                <label htmlFor="master-add-wl-lng">Longitude</label>
+                <input
+                  id="master-add-wl-lng"
+                  className="master-edit-input-master-data"
+                  value={newWorkLocationLongitude}
+                  onChange={(e) => setNewWorkLocationLongitude(e.target.value)}
+                  placeholder="e.g. 79.8612"
                   autoComplete="off"
                 />
               </div>

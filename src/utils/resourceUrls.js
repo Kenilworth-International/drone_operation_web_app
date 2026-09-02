@@ -14,6 +14,7 @@ export const RESOURCE_URL_PATHS = {
   WAYPOINT_IMAGE: '/uploads/images/screen/waypoint',
   PILOT_IMAGE: '/uploads/images/screen/task',
   GROUP_LOGO_IMAGE: '/uploads/images/logo',
+  HIERARCHY_MAP_IMAGE: '/uploads/images/hierarchy_maps',
 
   VEHICLE_DAY: '/uploads/vehicle_day',
   MAINTENANCE_REQUEST_IMAGE: '/uploads/maintenance_requests',

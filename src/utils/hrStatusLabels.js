@@ -56,6 +56,8 @@ export const autoShortLeaveLine = (entry) => {
 
 export const nopayDayLabel = (message) => message || 'No pay day';
 
+export const GEOFENCE_RADIUS_METERS = 20;
+
 export const locationValidLabel = (value) => {
   if (value == null || value === '') return 'Not checked';
   return Number(value) === 1 ? 'At office location' : 'Outside office range';
@@ -78,7 +80,7 @@ export const attendanceLocationCaption = ({ locationValid, lat, lng, distanceMet
 
   if (locationValid != null && locationValid !== '') {
     const atOffice = Number(locationValid) === 1;
-    const label = atOffice ? 'At office location' : 'Outside office range';
+    const label = atOffice ? 'At office location' : 'Location';
     return distance != null ? `${label} · ${distance} m` : label;
   }
 
@@ -88,6 +90,35 @@ export const attendanceLocationCaption = ({ locationValid, lat, lng, distanceMet
   }
 
   return 'Not checked';
+};
+
+export const isOutsideGeofenceRange = (distanceMeters, locationValid, radiusMeters = GEOFENCE_RADIUS_METERS) => {
+  if (locationValid != null && locationValid !== '') {
+    return Number(locationValid) !== 1;
+  }
+  const distance = Number(distanceMeters);
+  if (!Number.isFinite(distance)) return false;
+  return distance > Number(radiusMeters || GEOFENCE_RADIUS_METERS);
+};
+
+export const formatAttendanceDistanceDetail = ({
+  distanceMeters,
+  locationValid,
+  radiusMeters = GEOFENCE_RADIUS_METERS,
+}) => {
+  const distance = Number(distanceMeters);
+  if (!Number.isFinite(distance)) {
+    return { text: '-', statusLabel: 'Not checked', outsideRange: false };
+  }
+  const outsideRange = isOutsideGeofenceRange(distance, locationValid, radiusMeters);
+  const rounded = Math.round(distance);
+  return {
+    text: `${rounded} m`,
+    statusLabel: outsideRange
+      ? `${rounded} m · ${radiusMeters} m+ (outside range)`
+      : `${rounded} m · within ${radiusMeters} m`,
+    outsideRange,
+  };
 };
 
 export const overlookingStatusLabel = (status) => {

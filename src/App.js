@@ -115,6 +115,7 @@ import WeatherPredictionPage from './sections/geo-spatial/weather/WeatherPredict
 
 import { useAppSelector } from './store/hooks';
 import SessionWatchdog from './components/SessionWatchdog';
+import SupportHrApp from './pages/SupportHrApp';
 
 // ProtectedRoute component to check authentication
 const ProtectedRoute = ({ children }) => {
@@ -155,6 +156,9 @@ function App() {
         <Route path="/" element={<Navigate to="/login" />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* HR Employee Self-Service Support Portal — isolated auth, own session */}
+        <Route path="/support/hr/*" element={<SupportHrApp />} />
         <Route
           path="/docs"
           element={
