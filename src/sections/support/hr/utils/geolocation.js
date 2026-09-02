@@ -28,7 +28,7 @@ export function watchBrowserLocation(onUpdate, onError) {
       else if (err.code === err.POSITION_UNAVAILABLE) onError?.(new Error('Location unavailable. Please try again.'));
       else onError?.(new Error('Failed to get location. Please try again.'));
     },
-    { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 },
+    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
   );
   return () => navigator.geolocation.clearWatch(watchId);
 }

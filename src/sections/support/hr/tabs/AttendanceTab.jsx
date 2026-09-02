@@ -7,6 +7,7 @@ import {
   DEFAULT_SHORT_LEAVE_MINUTES,
   leaveStatusLabel,
 } from '../utils/hrStatusLabels';
+import AttendanceTodayPanel from '../components/AttendanceTodayPanel';
 import { getEmployeeGreetingName } from '../utils/employeeDisplay';
 
 const LATE_TIME_OPTIONS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'];
@@ -129,7 +130,6 @@ export default function AttendanceTab({
   const [view, setView] = useState('mark');
   const [logMode, setLogMode] = useState('week');
   const [periodOffset, setPeriodOffset] = useState(0);
-  const [locationMsg, setLocationMsg] = useState('');
   const [marking, setMarking] = useState(false);
   const [showLateForm, setShowLateForm] = useState(false);
   const [lateUntil, setLateUntil] = useState('');
@@ -177,13 +177,18 @@ export default function AttendanceTab({
   const dateLabel = now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   const todayKey = toDateKey(now);
-  const todayRecord = useMemo(
-    () => attendanceLog.find((row) => {
+  const todayRecord = useMemo(() => {
+    const todayMatches = attendanceLog.filter((row) => {
       const dk = String(row?.attendance_date || row?.date || '').slice(0, 10);
-      return dk === todayKey;
-    }),
-    [attendanceLog, todayKey],
-  );
+      const markInKey = row?.mark_in ? String(row.mark_in).slice(0, 10) : '';
+      return dk === todayKey || markInKey === todayKey;
+    });
+    if (todayMatches.length === 0) return null;
+    return todayMatches.sort((a, b) => {
+      const score = (row) => (row?.mark_in ? 2 : 0) + (row?.mark_out ? 1 : 0);
+      return score(b) - score(a);
+    })[0];
+  }, [attendanceLog, todayKey]);
 
   const hasMarkedIn = Boolean(todayRecord?.mark_in);
   const hasMarkedOut = Boolean(todayRecord?.mark_out);
@@ -214,6 +219,14 @@ export default function AttendanceTab({
   const weeklyGraceAllowance = Number(attendancePolicy?.weeklyGraceAllowance ?? 2);
   const weeklyGraceUsed = Number(attendancePolicy?.weeklyGraceUsed ?? 0);
   const weeklyGraceRemaining = Math.max(0, weeklyGraceAllowance - weeklyGraceUsed);
+  const weekRangeLabel = useMemo(() => {
+    const startRaw = attendancePolicy?.weeklyGraceWeekStart;
+    const endRaw = attendancePolicy?.weeklyGraceWeekEnd;
+    const start = startRaw ? parseDateTime(startRaw) : null;
+    const end = endRaw ? parseDateTime(endRaw) : null;
+    if (!start || !end) return '';
+    return `${start.toLocaleDateString([], { day: '2-digit', month: 'short' })} – ${end.toLocaleDateString([], { day: '2-digit', month: 'short' })}`;
+  }, [attendancePolicy?.weeklyGraceWeekStart, attendancePolicy?.weeklyGraceWeekEnd]);
 
   const hasApprovedLeaveToday = Boolean(todayLeaveContext?.hasApprovedLeave);
   const canMarkIn = !hasMarkedIn;
@@ -236,8 +249,11 @@ export default function AttendanceTab({
       ? (canMarkOutByTime ? 'Mark Out' : `From ${earliestMarkOut}`)
       : 'Completed';
 
+  const locationReady = Boolean(deviceCoords && !locationWatchError);
+
   const isActionDisabled = !mainActionMode
     || marking
+    || !locationReady
     || (mainActionMode === 'mark_in' && !canMarkInByTime)
     || (mainActionMode === 'mark_out' && !canMarkOutByTime);
 
@@ -255,19 +271,15 @@ export default function AttendanceTab({
 
   const handleMark = async () => {
     if (!mainActionMode || isActionDisabled) return;
+    if (!deviceCoords) {
+      setNoticeMsg({ tone: 'warn', msg: 'Turn on location to mark attendance.' });
+      return;
+    }
     setMarking(true);
-    setLocationMsg('');
     try {
-      let lat = null;
-      let lng = null;
-      try {
-        const loc = await getBrowserLocation();
-        lat = loc.lat;
-        lng = loc.lng;
-      } catch (err) {
-        setLocationMsg(err.message);
-      }
-      const result = await markAttendance(mainActionMode, lat, lng);
+      const freshLocation = await getBrowserLocation();
+      setDeviceCoords(freshLocation);
+      const result = await markAttendance(mainActionMode, freshLocation.lat, freshLocation.lng);
       const geofenceMsg = result?.geofence?.message;
       setNoticeMsg({
         tone: result?.geofence?.valid === false ? 'warn' : 'success',
@@ -402,7 +414,7 @@ export default function AttendanceTab({
               <div className="hrsup-att-circle-content">
                 {!isEarlyMarkOut && <FaFingerprint className="hrsup-att-fingerprint" aria-hidden="true" />}
                 {marking ? (
-                  <span className="hrsup-att-circle-label">Processing…</span>
+                  <span className="hrsup-att-circle-label">Refreshing location…</span>
                 ) : (
                   <>
                     <span className={`hrsup-att-circle-label${isEarlyMarkOut ? ' hrsup-att-circle-label--compact' : ''}`}>{mainActionText}</span>
@@ -429,50 +441,34 @@ export default function AttendanceTab({
           {mainActionMode === 'mark_out' && !canMarkOutByTime && (
             <p className="hrsup-att-inline-hint hrsup-att-inline-hint--warn">{markOutWaitHint}</p>
           )}
-
-          {locationMsg && (
-            <div className="hrsup-notice-box hrsup-notice-box--warn">
-              <strong>Location:</strong> {locationMsg} Your attendance will still be recorded but marked as location unknown.
-            </div>
+          {!locationReady && mainActionMode && (
+            <p className="hrsup-att-inline-hint hrsup-att-inline-hint--warn">
+              Turn on location to {mainActionMode === 'mark_in' ? 'mark in' : 'mark out'}
+            </p>
           )}
 
-          {view === 'mark' && (
-            <div className={`hrsup-card hrsup-att-location-card${locationStatus.valid === true ? ' hrsup-att-location-card--ok' : ''}${locationStatus.valid === false ? ' hrsup-att-location-card--warn' : ''}`}>
-              <h3 className="hrsup-card-title">{locationStatus.workLocationName || 'Location'}</h3>
-              {locationWatchError ? (
-                <p className="hrsup-att-location-distance hrsup-att-location-distance--warn">{locationWatchError}</p>
-              ) : (
-                <p className="hrsup-att-location-distance">{locationStatus.message}</p>
-              )}
-            </div>
-          )}
-
-          <div className="hrsup-att-stats">
-            <div className="hrsup-att-stat">
-              <span className="hrsup-att-stat-value">{formatTime(todayRecord?.mark_in)}</span>
-              <span className="hrsup-att-stat-label">Mark In</span>
-            </div>
-            <div className="hrsup-att-stat">
-              <span className="hrsup-att-stat-value">{formatTime(todayRecord?.mark_out)}</span>
-              <span className="hrsup-att-stat-label">Mark Out</span>
-            </div>
-            <div className="hrsup-att-stat">
-              <span className="hrsup-att-stat-value">{workedMinutes}</span>
-              <span className="hrsup-att-stat-label">Working Mins</span>
-            </div>
-            {(todayRecord?.mark_in_distance_meters != null || todayRecord?.mark_out_distance_meters != null) && (
-              <div className="hrsup-att-stat">
-                <span className="hrsup-att-stat-value">
-                  {todayRecord?.mark_out_distance_meters != null
-                    ? `${todayRecord.mark_out_distance_meters} m`
-                    : `${todayRecord.mark_in_distance_meters} m`}
-                </span>
-                <span className="hrsup-att-stat-label">
-                  {todayRecord?.mark_out_distance_meters != null ? 'Mark Out Dist.' : 'Mark In Dist.'}
-                </span>
-              </div>
-            )}
-          </div>
+          <AttendanceTodayPanel
+            todayRecord={todayRecord}
+            formatTime={formatTime}
+            workedMinutes={workedMinutes}
+            requiredMinutes={REQUIRED_DAILY_MINUTES}
+            progressPercent={progressPercent}
+            weeklyGraceRemaining={weeklyGraceRemaining}
+            weeklyGraceAllowance={weeklyGraceAllowance}
+            weekRangeLabel={weekRangeLabel}
+            shortLeaveMonthlyCap={shortLeaveCap}
+            requestedShortLeaveMonthlyUsed={requestedShortLeaveUsed}
+            markOutWindow={markOutWindow}
+            liveDistanceMeters={locationStatus.distanceMeters}
+            liveLocationValid={locationStatus.valid}
+            locationReady={locationReady}
+            locationError={locationWatchError}
+            hasMarkedIn={hasMarkedIn}
+            hasMarkedOut={hasMarkedOut}
+            canMarkIn={canMarkIn}
+            canMarkOut={canMarkOut}
+            radiusMeters={locationStatus.radiusMeters}
+          />
 
           {todayLateDeparture && (
             <div className="hrsup-card hrsup-att-late-status">
