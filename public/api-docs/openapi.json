@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 800\n- **Route files:** 68\n- **Schema overlays applied:** 326\n- **Generated:** 2026-09-02T14:16:21.605Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps) or `POST /api/public/login/hr-web-support` (HR web support portal)."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 799\n- **Route files:** 68\n- **Schema overlays applied:** 325\n- **Generated:** 2026-09-02T14:36:54.338Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
   },
   "servers": [
     {
@@ -894,7 +894,7 @@
     "/api/public/login/hr-dev": {
       "post": {
         "summary": "HR dev login without OTP",
-        "description": "Issues a session token for the ICT-configured OTP-bypass test mobile (`otp_bypass_mobile` in App Version Management). Used by DSMS HR mobile in development/testing.",
+        "description": "Issues a session token for the ICT-configured OTP-bypass test mobile (`otp_bypass_mobile` in App Version Management for `com.kenilworth.dsms_hr`). Used by DSMS HR mobile and the web support portal (`/#/support/hr/login`) when the entered number matches that bypass mobile.",
         "tags": [
           "Public"
         ],
@@ -942,92 +942,6 @@
                     ]
                   }
                 }
-              }
-            }
-          }
-        },
-        "security": []
-      }
-    },
-    "/api/public/login/hr-web-support": {
-      "post": {
-        "summary": "HR web support login without OTP",
-        "description": "Sign in to the browser HR support portal (`/#/support/hr/login`). Uses the same eligibility rules as the mobile app but skips SMS OTP after checks pass.",
-        "tags": [
-          "Public"
-        ],
-        "responses": {
-          "200": {
-            "description": "Login successful",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HrSessionLoginResponse"
-                },
-                "example": {
-                  "login_status": true,
-                  "token": "123|abcdef...",
-                  "token_created_at": "2026-09-02T14:00:00.000Z",
-                  "id": 42,
-                  "name": "Jane Perera"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Not eligible for HR access",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "login_status": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "status": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "reason": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "mobile_no",
-                  "system_code"
-                ],
-                "properties": {
-                  "mobile_no": {
-                    "type": "string",
-                    "description": "9-digit mobile number without leading 0",
-                    "example": "771234567"
-                  },
-                  "system_code": {
-                    "type": "string",
-                    "enum": [
-                      "dsms_hr"
-                    ]
-                  }
-                }
-              },
-              "example": {
-                "mobile_no": "771234567",
-                "system_code": "dsms_hr"
               }
             }
           }
@@ -41090,7 +41004,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Obtain via POST /api/public/login/verify-otp (mobile) or POST /api/public/login/hr-web-support (HR web). Send as `Authorization: Bearer <token>` on every protected request."
+        "description": "Obtain via POST /api/public/login/verify-otp. ICT OTP-bypass test mobiles may use POST /api/public/login/hr-dev (configured in App Versions). Send as `Authorization: Bearer <token>` on every protected request."
       }
     },
     "schemas": {

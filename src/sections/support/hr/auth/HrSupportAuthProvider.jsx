@@ -42,19 +42,40 @@ export function HrSupportAuthProvider({ children }) {
 
   const base = getNodeBackendUrl();
 
-  const loginWithEligibility = useCallback(async (mobileNo) => {
-    const res = await fetch(`${base}/api/public/login/hr-web-support`, {
+  const checkEligibility = useCallback(async (mobileNo) => {
+    const res = await fetch(`${base}/api/public/hr-user-login-eligibility`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mobile_no: mobileNo, system_code: 'dsms_hr' }),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const err = new Error(data?.message || 'Sign in failed. Please try again.');
-      err.reason = data?.reason;
-      throw err;
-    }
-    return data;
+    return res.json();
+  }, [base]);
+
+  const loginWithoutOtp = useCallback(async (mobileNo) => {
+    const res = await fetch(`${base}/api/public/login/hr-dev`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobile_no: mobileNo, system_code: 'dsms_hr' }),
+    });
+    return res.json();
+  }, [base]);
+
+  const requestOtp = useCallback(async (mobileNo) => {
+    const res = await fetch(`${base}/api/public/login/request-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobile_no: mobileNo, system_code: 'dsms_hr' }),
+    });
+    return res.json();
+  }, [base]);
+
+  const verifyOtp = useCallback(async (mobileNo, otp) => {
+    const res = await fetch(`${base}/api/public/login/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mobile_no: mobileNo, otp, system_code: 'dsms_hr' }),
+    });
+    return res.json();
   }, [base]);
 
   const value = useMemo(
@@ -65,10 +86,13 @@ export function HrSupportAuthProvider({ children }) {
       isAuthenticated,
       login,
       logout,
-      loginWithEligibility,
+      checkEligibility,
+      loginWithoutOtp,
+      requestOtp,
+      verifyOtp,
       hrRequest: (path, options) => hrSupportRequest(path, token, options),
     }),
-    [token, phone, tokenCreatedAt, isAuthenticated, login, logout, loginWithEligibility],
+    [token, phone, tokenCreatedAt, isAuthenticated, login, logout, checkEligibility, loginWithoutOtp, requestOtp, verifyOtp],
   );
 
   return <HrSupportAuthContext.Provider value={value}>{children}</HrSupportAuthContext.Provider>;
