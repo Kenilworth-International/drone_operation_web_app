@@ -9,93 +9,166 @@
 .att-day-view {
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 14px;
+  padding: 18px;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: #334155;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
 }
 
-.att-day-toolbar {
-  margin-bottom: 16px;
+.att-day-hero {
+  margin-bottom: 18px;
 }
 
-.att-day-toolbar-row {
+.att-day-hero-top {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
 }
 
-.att-day-field {
+.att-day-date-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.att-day-nav-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.att-day-nav-btn:hover {
+  background: #e2e8f0;
+}
+
+.att-day-date-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.att-day-date-input {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: #334155;
+}
+
+.att-day-date-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.att-day-daytype {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #e0f2fe;
+  color: #0369a1;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.att-day-search-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
   font-size: 13px;
   color: #64748b;
   font-weight: 500;
+  margin-bottom: 14px;
 }
 
-.att-day-field-grow {
-  flex: 1;
-  min-width: 240px;
-}
-
-.att-day-field input {
+.att-day-search-field input {
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
   color: #334155;
-  font-weight: 400;
 }
 
-.att-day-daytype {
-  margin-left: auto;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: #e0f2fe;
-  color: #0369a1;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.att-day-summary-row {
-  display: flex;
-  flex-wrap: wrap;
+.att-day-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
-  margin-top: 14px;
+  margin-bottom: 12px;
 }
 
-.att-day-summary-chip {
+.att-day-kpi {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  padding: 7px 13px;
-  font-size: 13px;
-  font-weight: 500;
-  color: #475569;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.att-day-summary-ok {
+.att-day-kpi span {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.att-day-kpi strong {
+  font-size: 22px;
+  color: #0f172a;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.att-day-kpi--ok {
   background: #ecfdf5;
   border-color: #a7f3d0;
+}
+
+.att-day-kpi--ok strong {
   color: #059669;
 }
 
-.att-day-summary-warn {
+.att-day-kpi--warn {
   background: #fff7ed;
   border-color: #fdba74;
+}
+
+.att-day-kpi--warn strong {
   color: #d97706;
 }
 
+.att-day-kpi--info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.att-day-kpi--info strong {
+  color: #2563eb;
+}
+
+.att-day-kpi--danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.att-day-kpi--danger strong {
+  color: #dc2626;
+}
+
 .att-day-policy-note {
-  margin-top: 12px;
   font-size: 13px;
   color: #64748b;
   line-height: 1.55;
-  font-weight: 400;
 }
 
 .att-day-loading {
@@ -104,163 +177,382 @@
   padding: 48px 0;
 }
 
-.att-day-table-wrap {
-  overflow: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
+.att-day-split {
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+  gap: 16px;
+  min-height: 520px;
 }
 
-.att-day-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 880px;
-}
-
-.att-day-table th,
-.att-day-table td {
-  padding: 11px 14px;
-  border-bottom: 1px solid #e2e8f0;
-  text-align: left;
-  vertical-align: middle;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #475569;
-  font-weight: 400;
-}
-
-.att-day-table th {
-  background: #f1f5f9;
-  color: #475569;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  border-bottom: 1px solid #cbd5e1;
-}
-
-.att-day-table th:nth-child(5),
-.att-day-table td:nth-child(5) {
-  min-width: 220px;
-}
-
-.att-day-emp-name {
-  font-weight: 500;
-  font-size: 14px;
-  color: #334155;
-}
-
-.att-day-emp-meta {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 2px;
-  font-weight: 400;
-}
-
-.att-day-time-cell {
-  font-size: 14px;
-  font-weight: 400;
-  color: #475569;
-  font-variant-numeric: tabular-nums;
-}
-
-.att-day-time-stack {
+.att-day-employee-list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 8px;
+  max-height: 72vh;
+  overflow: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px;
+  background: #f8fafc;
 }
 
-.att-day-time-main {
+.att-day-employee-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.att-day-employee-item:hover {
+  border-color: #cbd5e1;
+}
+
+.att-day-employee-item--active {
+  border-color: #0284c7;
+  box-shadow: 0 0 0 1px #0284c7;
+  background: #f0f9ff;
+}
+
+.att-day-employee-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  margin-top: 6px;
+  flex-shrink: 0;
+  background: #94a3b8;
+}
+
+.att-day-employee-dot--completed {
+  background: #059669;
+}
+
+.att-day-employee-dot--in-progress {
+  background: #2563eb;
+}
+
+.att-day-employee-dot--pending {
+  background: #d97706;
+}
+
+.att-day-employee-dot--auto {
+  background: #7c3aed;
+}
+
+.att-day-employee-dot--nopay {
+  background: #dc2626;
+}
+
+.att-day-employee-dot--absent {
+  background: #cbd5e1;
+}
+
+.att-day-employee-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.att-day-employee-item-name {
   font-size: 14px;
-  font-weight: 500;
-  color: #334155;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.3;
+  font-weight: 600;
+  color: #0f172a;
 }
 
-.att-day-time-loc {
-  font-size: 11px;
-  color: #94a3b8;
-  font-weight: 400;
-  line-height: 1.35;
+.att-day-employee-item-meta {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.att-day-detail-panel,
+.att-day-detail-empty {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 16px;
+  max-height: 72vh;
+  overflow: auto;
+}
+
+.att-day-detail-empty h3 {
+  margin: 0 0 8px;
+  color: #0f172a;
+}
+
+.att-day-detail-empty p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.att-day-detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.att-day-detail-name {
+  margin: 0;
+  font-size: 20px;
+  color: #0f172a;
+}
+
+.att-day-detail-meta,
+.att-day-detail-submeta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #64748b;
+}
+
+.att-day-detail-section {
+  margin-bottom: 18px;
+}
+
+.att-day-detail-section h4 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #475569;
+}
+
+.att-day-mark-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.att-day-mark-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.att-day-mark-card-title {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 6px;
+}
+
+.att-day-mark-card-time {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+}
+
+.att-day-mark-card-loc,
+.att-day-mark-card-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.att-day-mark-card-link {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #0284c7;
   text-decoration: none;
 }
 
-a.att-day-time-loc:hover {
-  color: #0284c7;
+.att-day-mark-card-link:hover {
   text-decoration: underline;
-  text-underline-offset: 2px;
 }
 
-.att-day-tags {
+.att-day-detail-stats {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 8px;
-  max-width: 280px;
 }
 
-.att-day-leave-item {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  max-width: 100%;
+.att-day-stat-chip {
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 6px 12px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: #475569;
 }
 
-.att-day-leave-detail {
-  font-size: 11px;
-  color: #64748b;
-  line-height: 1.35;
-  padding-left: 2px;
-  word-break: break-word;
+.att-day-stat-chip strong {
+  color: #0f172a;
 }
 
-.att-day-leave-item--nopay .att-day-leave-detail {
+.att-day-stat-chip--warn {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.att-day-stat-chip--info {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.att-day-stat-chip--danger {
+  background: #fef2f2;
   color: #b91c1c;
 }
 
-.att-day-tag {
-  display: inline-block;
+.att-day-alert {
+  margin-top: 12px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.att-day-alert strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.att-day-alert p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.att-day-alert--danger {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.att-day-alert--info {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.att-day-context-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
   background: #f8fafc;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
+}
+
+.att-day-context-card p {
+  margin: 0 0 10px;
   color: #334155;
-  font-weight: 500;
-  line-height: 1.4;
-  max-width: 100%;
+  line-height: 1.5;
+}
+
+.att-day-detail-grid,
+.att-day-leave-card-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.att-day-detail-row {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 10px;
+  font-size: 13px;
+}
+
+.att-day-detail-label {
+  color: #64748b;
+}
+
+.att-day-detail-value {
+  color: #0f172a;
   word-break: break-word;
 }
 
-.att-day-tag-nopay {
-  background: #fef2f2;
+.att-day-leave-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.att-day-leave-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+}
+
+.att-day-leave-card--auto {
+  border-color: #ddd6fe;
+  background: #faf5ff;
+}
+
+.att-day-leave-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.att-day-status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.att-day-status-pill--completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.att-day-status-pill--in_progress {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.att-day-status-pill--not_marked {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.att-day-status-pill--approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.att-day-status-pill--pending_l1,
+.att-day-status-pill--pending_l2 {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.att-day-status-pill--rejected,
+.att-day-status-pill--cancelled,
+.att-day-status-pill--canceled {
+  background: #fee2e2;
   color: #b91c1c;
 }
 
 .att-day-muted {
   color: #94a3b8;
   font-size: 13px;
-  font-weight: 400;
-}
-
-.att-day-lieu-balance {
-  font-weight: 500;
-  font-size: 13px;
-  color: #0284c7;
-}
-
-.att-day-lieu-acc {
-  font-size: 12px;
-  color: #059669;
-  margin-top: 4px;
-  font-weight: 400;
 }
 
 .att-day-lieu-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-  margin-top: 8px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .att-day-btn {
@@ -286,7 +578,26 @@ a.att-day-time-loc:hover {
 .att-day-empty {
   text-align: center;
   color: #94a3b8;
-  padding: 28px;
+  padding: 28px 12px;
   font-size: 14px;
-  font-weight: 400;
+}
+
+@media (max-width: 960px) {
+  .att-day-split {
+    grid-template-columns: 1fr;
+  }
+
+  .att-day-employee-list,
+  .att-day-detail-panel {
+    max-height: none;
+  }
+
+  .att-day-mark-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .att-day-detail-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
 }

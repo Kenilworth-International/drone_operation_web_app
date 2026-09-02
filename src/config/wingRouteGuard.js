@@ -49,8 +49,22 @@ export function resolveLegacyHomePath(pathname) {
   return LEGACY_HOME_PATH_ALIASES[pathname] || null;
 }
 
+/** Routes where ?employee= is meaningful (deep-link to selected employee). */
+const EMPLOYEE_QUERY_ROUTE_PREFIXES = [
+  '/home/employeeProfileDetails',
+  '/home/employees',
+  '/home/employeeAssignment',
+];
+
+export function isEmployeeQueryRoute(pathname) {
+  if (!pathname) return false;
+  return EMPLOYEE_QUERY_ROUTE_PREFIXES.some(
+    (base) => pathname === base || pathname.startsWith(`${base}/`),
+  );
+}
+
 /** Preserve wing (and comb) when navigating in-app. */
-export function withCurrentWingSearch(pathname, currentSearch) {
+export function withCurrentWingSearch(pathname, currentSearch, currentPathname = '') {
   const params = new URLSearchParams(currentSearch || '');
   const next = new URLSearchParams();
   const wing = params.get('wing');
@@ -60,6 +74,27 @@ export function withCurrentWingSearch(pathname, currentSearch) {
   if (params.get('comb') === '1') {
     next.set('comb', '1');
   }
+  const employee = params.get('employee');
+  if (
+    employee
+    && isEmployeeQueryRoute(pathname)
+    && isEmployeeQueryRoute(currentPathname)
+  ) {
+    next.set('employee', employee);
+  }
   const q = next.toString();
   return q ? { pathname, search: `?${q}` } : { pathname };
+}
+
+/** Remove route-specific query keys when the current path does not use them. */
+export function sanitizeSearchForPath(pathname, search) {
+  const params = new URLSearchParams(search || '');
+  let changed = false;
+  if (!isEmployeeQueryRoute(pathname) && params.has('employee')) {
+    params.delete('employee');
+    changed = true;
+  }
+  if (!changed) return search || '';
+  const q = params.toString();
+  return q ? `?${q}` : '';
 }

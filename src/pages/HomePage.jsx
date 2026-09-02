@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import TopNavBar from '../components/TopNavBar';
 import LeftNavBar from '../components/LeftNavBar';
 import CombChrome from '../components/CombChrome';
@@ -9,6 +9,7 @@ import {
   isOdWingWorkflowShellPath,
 } from '../config/odWingShell';
 import { normalizeWingTitle, resolveWingNavTheme } from '../config/wingHubDisplay';
+import { sanitizeSearchForPath } from '../config/wingRouteGuard';
 import { getUserData } from '../utils/authUtils';
 import RequireWingQueryParam from '../components/RequireWingQueryParam';
 import '../styles/home.css';
@@ -18,6 +19,7 @@ const COMB_TAB_BASES = ['/home/monitoringDashboard', '/home/dataViewer', '/home/
 
 const HomePage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [showSidebar, setShowSidebar] = useState(false);
   const userData = getUserData();
   const wingTheme = resolveWingNavTheme(new URLSearchParams(location.search).get('wing'));
@@ -81,6 +83,12 @@ const HomePage = () => {
 
   // Helper to detect mobile view
   const isMobile = () => window.innerWidth <= 768;
+
+  useEffect(() => {
+    const sanitizedSearch = sanitizeSearchForPath(location.pathname, location.search);
+    if (sanitizedSearch === (location.search || '')) return;
+    navigate({ pathname: location.pathname, search: sanitizedSearch }, { replace: true });
+  }, [location.pathname, location.search, navigate]);
 
   // Listen for window resize to auto-close sidebar on desktop
   React.useEffect(() => {

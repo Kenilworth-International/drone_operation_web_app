@@ -29,6 +29,7 @@ import {
   normalizeWingTitle,
 } from '../config/wingHubDisplay';
 import { useNavbarPermissions } from '../hooks/useNavbarPermissions';
+import { withCurrentWingSearch } from '../config/wingRouteGuard';
 import { useGetFieldUnblockPendingCountQuery } from '../api/services NodeJs/fieldUnblockRequestsApi';
 import { useGetPlanActivatePendingCountQuery } from '../api/services NodeJs/planActivateRequestsApi';
 import { useGetStrategicFuelVoucherPendingCountQuery } from '../api/services NodeJs/strategicFinanceApprovalsApi';
@@ -49,8 +50,8 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
   const showCalendarNav = isCalendarAllowedWing(normalizedWingTitle);
   const isGeoSpatial = isGeoSpatialWing(normalizedWingTitle);
   const showGeoDashboardFirst = isGeoSpatial;
-  /** Keep ?wing= on every in-app nav link so the sidebar stays filtered to one wing. */
-  const withWingSearch = (pathname) => ({ pathname, search: location.search });
+  /** Keep ?wing= (and employee only between employee pages) on in-app nav links. */
+  const withWingSearch = (pathname) => withCurrentWingSearch(pathname, location.search, location.pathname);
   const categoriesToShow = useMemo(() => {
     if (!wingTitle) return categories;
     const normalizedWing =

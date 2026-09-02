@@ -143,8 +143,13 @@ const LeaveManagement = () => {
         id: employee.id,
         leaveTypeAccess,
       }).unwrap();
+      setEditedAccessByEmployee((prev) => {
+        const next = { ...prev };
+        delete next[employee.id];
+        return next;
+      });
+      await refetchEmployees();
       showMessage(`Updated leave types for ${employee.employeeName || employee.empNo || employee.id}`);
-      refetchEmployees();
     } catch (error) {
       showMessage(error?.data?.message || 'Failed to update employee leave types', true);
     } finally {
