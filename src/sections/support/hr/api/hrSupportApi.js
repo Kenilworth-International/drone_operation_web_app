@@ -48,9 +48,6 @@ export async function hrSupportRequest(path, token, options = {}) {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${activeToken}`,
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        Pragma: 'no-cache',
-        Expires: '0',
         ...(options.headers || {}),
       },
     });
