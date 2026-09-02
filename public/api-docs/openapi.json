@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 799\n- **Route files:** 68\n- **Schema overlays applied:** 323\n- **Generated:** 2026-09-02T12:35:47.942Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 800\n- **Route files:** 68\n- **Schema overlays applied:** 326\n- **Generated:** 2026-09-02T14:16:21.605Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps) or `POST /api/public/login/hr-web-support` (HR web support portal)."
   },
   "servers": [
     {
@@ -584,29 +584,54 @@
     },
     "/api/public/hr-user-login-eligibility": {
       "post": {
-        "summary": "Hr User Login Eligibility",
-        "description": "Module: Public",
+        "summary": "HR user login eligibility",
+        "description": "Checks whether a mobile number may use DSMS HR (mobile app or web support portal). Internal user, activated account, and employee link required unless ICT OTP-bypass test mobile.",
         "tags": [
           "Public"
         ],
         "responses": {
           "200": {
-            "description": "Successful response"
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "422": {
-            "description": "Validation error"
+            "description": "Eligibility result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrLoginEligibilityResponse"
+                },
+                "example": {
+                  "eligible": true,
+                  "reason": "ok"
+                }
+              }
+            }
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [
+                  "mobile_no"
+                ],
+                "properties": {
+                  "mobile_no": {
+                    "type": "string",
+                    "description": "9-digit mobile number without leading 0",
+                    "example": "771234567"
+                  },
+                  "system_code": {
+                    "type": "string",
+                    "enum": [
+                      "dsms_hr"
+                    ],
+                    "default": "dsms_hr"
+                  }
+                }
+              },
+              "example": {
+                "mobile_no": "771234567",
+                "system_code": "dsms_hr"
               }
             }
           }
@@ -723,17 +748,20 @@
                 "properties": {
                   "mobile_no": {
                     "type": "string",
-                    "example": "+94771234567"
+                    "description": "9-digit mobile number without leading 0",
+                    "example": "771234567"
                   },
-                  "app_type": {
+                  "system_code": {
                     "type": "string",
                     "enum": [
-                      "transport",
-                      "hr",
-                      "pilot",
-                      "plantation"
+                      "dsms_hr",
+                      "dsms_transport",
+                      "dsms_pilot",
+                      "dsms_plantation",
+                      "webapp"
                     ],
-                    "description": "Which mobile app is requesting the OTP"
+                    "description": "Which app is requesting the OTP",
+                    "example": "dsms_hr"
                   }
                 }
               },
@@ -759,7 +787,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LoginResponse"
+                  "$ref": "#/components/schemas/HrSessionLoginResponse"
                 },
                 "example": {
                   "status": true,
@@ -795,25 +823,29 @@
                 "type": "object",
                 "required": [
                   "mobile_no",
-                  "otp_code"
+                  "otp"
                 ],
                 "properties": {
                   "mobile_no": {
                     "type": "string",
-                    "example": "+94771234567"
+                    "description": "9-digit mobile number without leading 0",
+                    "example": "771234567"
                   },
-                  "otp_code": {
+                  "otp": {
                     "type": "string",
+                    "description": "6-digit OTP received via SMS",
                     "example": "123456"
                   },
-                  "app_type": {
+                  "system_code": {
                     "type": "string",
                     "enum": [
-                      "transport",
-                      "hr",
-                      "pilot",
-                      "plantation"
-                    ]
+                      "dsms_hr",
+                      "dsms_transport",
+                      "dsms_pilot",
+                      "dsms_plantation",
+                      "webapp"
+                    ],
+                    "example": "dsms_hr"
                   }
                 }
               },
@@ -861,29 +893,141 @@
     },
     "/api/public/login/hr-dev": {
       "post": {
-        "summary": "Hr Dev",
-        "description": "Module: Public",
+        "summary": "HR dev login without OTP",
+        "description": "Issues a session token for the ICT-configured OTP-bypass test mobile (`otp_bypass_mobile` in App Version Management). Used by DSMS HR mobile in development/testing.",
         "tags": [
           "Public"
         ],
         "responses": {
           "200": {
-            "description": "Successful response"
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrSessionLoginResponse"
+                }
+              }
+            }
           },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "422": {
-            "description": "Validation error"
+          "403": {
+            "description": "Bypass disabled or mobile not configured for bypass",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [
+                  "mobile_no",
+                  "system_code"
+                ],
+                "properties": {
+                  "mobile_no": {
+                    "type": "string",
+                    "example": "771234567"
+                  },
+                  "system_code": {
+                    "type": "string",
+                    "enum": [
+                      "dsms_hr"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/public/login/hr-web-support": {
+      "post": {
+        "summary": "HR web support login without OTP",
+        "description": "Sign in to the browser HR support portal (`/#/support/hr/login`). Uses the same eligibility rules as the mobile app but skips SMS OTP after checks pass.",
+        "tags": [
+          "Public"
+        ],
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HrSessionLoginResponse"
+                },
+                "example": {
+                  "login_status": true,
+                  "token": "123|abcdef...",
+                  "token_created_at": "2026-09-02T14:00:00.000Z",
+                  "id": 42,
+                  "name": "Jane Perera"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not eligible for HR access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "login_status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "status": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "mobile_no",
+                  "system_code"
+                ],
+                "properties": {
+                  "mobile_no": {
+                    "type": "string",
+                    "description": "9-digit mobile number without leading 0",
+                    "example": "771234567"
+                  },
+                  "system_code": {
+                    "type": "string",
+                    "enum": [
+                      "dsms_hr"
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "mobile_no": "771234567",
+                "system_code": "dsms_hr"
               }
             }
           }
@@ -33606,8 +33750,8 @@
     },
     "/api/hr/attendance/mark": {
       "post": {
-        "summary": "Mark Attendance",
-        "description": "Module: HR Mobile",
+        "summary": "Mark attendance in/out",
+        "description": "Records mark-in or mark-out for today. GPS coordinates are required. Distance from work location and geofence validity are stored on the attendance record.",
         "tags": [
           "HR Mobile"
         ],
@@ -33617,12 +33761,57 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SuccessMessage"
+                  "type": "object",
+                  "properties": {
+                    "geofence": {
+                      "type": "object",
+                      "properties": {
+                        "valid": {
+                          "type": "boolean",
+                          "nullable": true
+                        },
+                        "distanceMeters": {
+                          "type": "number",
+                          "nullable": true
+                        },
+                        "radiusMeters": {
+                          "type": "number"
+                        },
+                        "message": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "mark_in_distance_meters": {
+                      "type": "number",
+                      "nullable": true
+                    },
+                    "mark_out_distance_meters": {
+                      "type": "number",
+                      "nullable": true
+                    }
+                  },
+                  "additionalProperties": true
                 },
                 "example": {
-                  "status": true,
-                  "message": "Attendance marked",
-                  "time": "08:02 AM"
+                  "geofence": {
+                    "valid": true,
+                    "distanceMeters": 12.5,
+                    "radiusMeters": 20,
+                    "message": "You are 12.5 m from Head Office (within 20 m)."
+                  },
+                  "mark_in_distance_meters": 12.5,
+                  "mark_in_location_valid": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error (e.g. missing GPS, mark-in window, mark-out rules)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -33644,32 +33833,35 @@
               "schema": {
                 "type": "object",
                 "required": [
-                  "date",
-                  "status"
+                  "mode",
+                  "latitude",
+                  "longitude"
                 ],
                 "properties": {
-                  "date": {
-                    "type": "string",
-                    "format": "date"
-                  },
-                  "status": {
+                  "mode": {
                     "type": "string",
                     "enum": [
-                      "present",
-                      "absent",
-                      "half_day"
-                    ]
+                      "mark_in",
+                      "mark_out"
+                    ],
+                    "example": "mark_in"
                   },
-                  "remarks": {
-                    "type": "string"
+                  "latitude": {
+                    "type": "number",
+                    "format": "double",
+                    "example": 7.2906
+                  },
+                  "longitude": {
+                    "type": "number",
+                    "format": "double",
+                    "example": 80.6337
                   }
                 }
               },
               "example": {
-                "type": "in",
+                "mode": "mark_in",
                 "latitude": 7.2906,
-                "longitude": 80.6337,
-                "timestamp": "2026-08-20T08:02:00+05:30"
+                "longitude": 80.6337
               }
             }
           }
@@ -33809,7 +34001,7 @@
     },
     "/api/hr/attendance/log": {
       "post": {
-        "summary": "Attendance Log",
+        "summary": "Attendance log",
         "description": "Module: HR Mobile",
         "tags": [
           "HR Mobile"
@@ -33820,26 +34012,48 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "boolean"
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "date": {
-                            "type": "string",
-                            "format": "date"
-                          },
-                          "status": {
-                            "type": "string"
-                          }
-                        }
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "attendance_date": {
+                        "type": "string",
+                        "format": "date"
+                      },
+                      "mark_in": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "mark_out": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "working_minutes": {
+                        "type": "integer"
+                      },
+                      "mark_in_distance_meters": {
+                        "type": "number",
+                        "nullable": true
+                      },
+                      "mark_out_distance_meters": {
+                        "type": "number",
+                        "nullable": true
+                      },
+                      "mark_in_location_valid": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "1 = in range, 0 = outside range"
+                      },
+                      "mark_out_location_valid": {
+                        "type": "integer",
+                        "nullable": true,
+                        "description": "1 = in range, 0 = outside range"
+                      },
+                      "pay_status": {
+                        "type": "string"
                       }
-                    }
+                    },
+                    "additionalProperties": true
                   }
                 }
               }
@@ -40876,7 +41090,7 @@
         "type": "http",
         "scheme": "bearer",
         "bearerFormat": "JWT",
-        "description": "Obtain via POST /api/public/login/verify-otp. Send as `Authorization: Bearer <token>` on every protected request."
+        "description": "Obtain via POST /api/public/login/verify-otp (mobile) or POST /api/public/login/hr-web-support (HR web). Send as `Authorization: Bearer <token>` on every protected request."
       }
     },
     "schemas": {
@@ -40995,6 +41209,69 @@
               "already_logged_in",
               "server_error"
             ]
+          }
+        }
+      },
+      "HrLoginEligibilityResponse": {
+        "type": "object",
+        "properties": {
+          "eligible": {
+            "type": "boolean",
+            "example": true
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "invalid_mobile",
+              "not_registered",
+              "pending_approval",
+              "not_internal_user",
+              "missing_employee_link"
+            ],
+            "example": "ok"
+          }
+        }
+      },
+      "HrSessionLoginResponse": {
+        "type": "object",
+        "properties": {
+          "login_status": {
+            "type": "boolean",
+            "example": true
+          },
+          "token": {
+            "type": "string",
+            "description": "Bearer token for subsequent HR API requests"
+          },
+          "token_created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "token_expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "token_expires_in_days": {
+            "type": "integer",
+            "nullable": true,
+            "example": 30
+          },
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "mobile_no": {
+            "type": "string",
+            "nullable": true
           }
         }
       },

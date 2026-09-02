@@ -42,31 +42,19 @@ export function HrSupportAuthProvider({ children }) {
 
   const base = getNodeBackendUrl();
 
-  const checkEligibility = useCallback(async (mobileNo) => {
-    const res = await fetch(`${base}/api/public/hr-user-login-eligibility`, {
+  const loginWithEligibility = useCallback(async (mobileNo) => {
+    const res = await fetch(`${base}/api/public/login/hr-web-support`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ mobile_no: mobileNo, system_code: 'dsms_hr' }),
     });
-    return res.json();
-  }, [base]);
-
-  const requestOtp = useCallback(async (mobileNo) => {
-    const res = await fetch(`${base}/api/public/login/request-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile_no: mobileNo, system_code: 'dsms_hr' }),
-    });
-    return res.json();
-  }, [base]);
-
-  const verifyOtp = useCallback(async (mobileNo, otp) => {
-    const res = await fetch(`${base}/api/public/login/verify-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mobile_no: mobileNo, otp, system_code: 'dsms_hr' }),
-    });
-    return res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const err = new Error(data?.message || 'Sign in failed. Please try again.');
+      err.reason = data?.reason;
+      throw err;
+    }
+    return data;
   }, [base]);
 
   const value = useMemo(
@@ -77,12 +65,10 @@ export function HrSupportAuthProvider({ children }) {
       isAuthenticated,
       login,
       logout,
-      checkEligibility,
-      requestOtp,
-      verifyOtp,
+      loginWithEligibility,
       hrRequest: (path, options) => hrSupportRequest(path, token, options),
     }),
-    [token, phone, tokenCreatedAt, isAuthenticated, login, logout, checkEligibility, requestOtp, verifyOtp],
+    [token, phone, tokenCreatedAt, isAuthenticated, login, logout, loginWithEligibility],
   );
 
   return <HrSupportAuthContext.Provider value={value}>{children}</HrSupportAuthContext.Provider>;
