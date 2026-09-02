@@ -34,12 +34,13 @@ export default function HrSupportShell({
   canAccessHrManagement,
   canApproveLeaves,
   profile,
+  loginUser,
   hodApprovals,
   reportingApprovals,
 }) {
   const location = useLocation();
   const { logout } = useHrSupportAuth();
-  const displayName = profile?.employeeName || profile?.name || 'Employee';
+  const displayName = profile?.employeeName || profile?.preferredName || profile?.name || loginUser?.name || 'Employee';
   const initial = displayName.charAt(0).toUpperCase();
   const role = profile?.jobRole || profile?.designation || 'Employee';
 

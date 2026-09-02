@@ -84,8 +84,10 @@ export default function HrSupportLogin() {
       if (bypass && phone === bypass) {
         const loginRes = await loginWithoutOtp(phone);
         if (loginRes?.login_status === true && loginRes?.token) {
-          login(loginRes.token, phone, loginRes.token_created_at || null);
-          navigate(from, { replace: true });
+          login(loginRes.token, phone, loginRes.token_created_at || null, {
+            name: loginRes.name,
+            email: loginRes.email,
+          });
           return;
         }
         setError(loginRes?.message || 'Test login failed. Ensure this mobile is registered and activated.');
@@ -123,8 +125,10 @@ export default function HrSupportLogin() {
         setError(res?.message || 'OTP verification failed. Please try again.');
         return;
       }
-      login(res.token, phone, res.token_created_at || null);
-      navigate(from, { replace: true });
+      login(res.token, phone, res.token_created_at || null, {
+        name: res.name,
+        email: res.email,
+      });
     } catch (err) {
       setError(err?.message || 'Verification failed.');
     } finally {
@@ -174,7 +178,7 @@ export default function HrSupportLogin() {
           <form onSubmit={handleContinue} className="hrsup-login-form">
             <h2 className="hrsup-login-heading">Sign in</h2>
             <p className="hrsup-login-hint">
-              Enter your registered mobile number. Same rules as the DSMS HR mobile app — OTP bypass applies only to the ICT test number configured in App Versions.
+              Enter your registered mobile number. Same rules as the DSMS HR mobile app — the ICT test number in App Versions can skip OTP.
             </p>
             <div className="hrsup-login-field">
               <label className="hrsup-login-label" htmlFor="hrsup-phone">Mobile number</label>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useHrSupportAuth } from '../sections/support/hr/auth/HrSupportAuthProvider';
-import { hrSupportRequest } from '../sections/support/hr/api/hrSupportApi';
+import { hrSupportRequest, getHrSupportToken } from '../sections/support/hr/api/hrSupportApi';
 import HrSupportShell from '../sections/support/hr/shell/HrSupportShell';
 import RejectModal from '../sections/support/hr/components/RejectModal';
 
@@ -34,8 +34,12 @@ function formatDate(value) {
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
 }
 
+function isAbortedRequestError(err) {
+  return err?.name === 'AbortError' || /aborted|abort/i.test(String(err?.message || ''));
+}
+
 export default function SupportHrRouter() {
-  const { token, logout } = useHrSupportAuth();
+  const { token, logout, loginUser } = useHrSupportAuth();
   const navigate = useNavigate();
 
   // Session data state
@@ -52,30 +56,78 @@ export default function SupportHrRouter() {
   const [rejectLoading, setRejectLoading] = useState(false);
 
   const loadHome = useCallback(async () => {
-    if (!token) return;
+    const activeToken = token || getHrSupportToken();
+    if (!activeToken) return;
     setLoading(true);
     setError('');
     try {
-      const [dashboard, types, requests, tasks, attendance] = await Promise.all([
-        hrSupportRequest('/api/hr/dashboard', token, { method: 'POST', body: JSON.stringify({}) }),
-        hrSupportRequest('/api/hr/leave/types', token, { method: 'POST', body: JSON.stringify({}) }),
-        hrSupportRequest('/api/hr/leave/my-requests', token, { method: 'POST', body: JSON.stringify({}) }),
-        hrSupportRequest('/api/hr/leave/approvals', token, { method: 'POST', body: JSON.stringify({}) }),
-        hrSupportRequest('/api/hr/attendance/log', token, { method: 'POST', body: JSON.stringify({}) }),
-      ]);
+      const runDashboard = () => hrSupportRequest('/api/hr/dashboard', activeToken, { method: 'POST', body: JSON.stringify({}) });
+
+      const requests = [
+        { key: 'dashboard', run: runDashboard },
+        { key: 'types', run: () => hrSupportRequest('/api/hr/leave/types', activeToken, { method: 'POST', body: JSON.stringify({}) }) },
+        { key: 'requests', run: () => hrSupportRequest('/api/hr/leave/my-requests', activeToken, { method: 'POST', body: JSON.stringify({}) }) },
+        { key: 'tasks', run: () => hrSupportRequest('/api/hr/leave/approvals', activeToken, { method: 'POST', body: JSON.stringify({}) }) },
+        { key: 'attendance', run: () => hrSupportRequest('/api/hr/attendance/log', activeToken, { method: 'POST', body: JSON.stringify({}) }) },
+      ];
+
+      let results = await Promise.allSettled(requests.map((item) => item.run()));
+      const data = {};
+      const failures = [];
+
+      results.forEach((result, index) => {
+        const { key } = requests[index];
+        if (result.status === 'fulfilled') {
+          data[key] = result.value;
+          return;
+        }
+        if (key === 'dashboard' && result.reason?.isNetworkError) {
+          failures.push({ key, message: result.reason?.message || 'Request failed', retry: true });
+          return;
+        }
+        failures.push({ key, message: result.reason?.message || 'Request failed' });
+      });
+
+      if (!data.dashboard && failures.some((f) => f.key === 'dashboard' && f.retry)) {
+        await new Promise((resolve) => { setTimeout(resolve, 400); });
+        try {
+          data.dashboard = await runDashboard();
+          const retryIdx = failures.findIndex((f) => f.key === 'dashboard' && f.retry);
+          if (retryIdx >= 0) failures.splice(retryIdx, 1);
+        } catch (retryErr) {
+          if (!isAbortedRequestError(retryErr)) {
+            failures.push({ key: 'dashboard', message: retryErr?.message || 'Request failed' });
+          }
+        }
+      }
+
+      if (!data.dashboard) {
+        const dashboardFailure = failures.find((f) => f.key === 'dashboard');
+        const message = dashboardFailure?.message || failures[0]?.message || 'Failed to load HR data.';
+        if (/employee profile not found|not linked to employee/i.test(message)) {
+          throw new Error('Your account is not linked to employee records. Please contact administration.');
+        }
+        throw new Error(message);
+      }
+
+      const types = data.types || [];
       const requestableTypes = (types || []).filter((t) => {
         const isRequestable = Number(t?.employee_requestable ?? t?.employeeRequestable ?? 1) === 1;
         return isRequestable && String(t?.code || '') !== 'bulk_leave';
       });
-      setHomeData(dashboard || null);
+      setHomeData(data.dashboard || null);
       setLeaveTypes(requestableTypes);
-      setMyRequests(requests || []);
-      setApprovals(tasks || []);
-      setAttendanceLog(attendance || []);
+      setMyRequests(data.requests || []);
+      setApprovals(data.tasks || []);
+      setAttendanceLog(data.attendance || []);
       if (requestableTypes.length > 0) {
         setLeaveForm((f) => ({ ...f, leaveTypeCode: f.leaveTypeCode || requestableTypes[0]?.code || '' }));
       }
+      if (failures.length > 0) {
+        setError(failures.map((f) => f.message).join(' · '));
+      }
     } catch (err) {
+      if (isAbortedRequestError(err)) return;
       if (err?.status === 401 || err?.isAuthError) { logout(); return; }
       setError(err?.message || 'Failed to load data.');
     } finally {
@@ -225,6 +277,7 @@ export default function SupportHrRouter() {
               canAccessHrManagement={canAccessHrManagement}
               canApproveLeaves={canApproveLeaves}
               profile={profile}
+              loginUser={loginUser}
               hodApprovals={hodApprovals}
               reportingApprovals={reportingApprovals}
             />
@@ -320,6 +373,7 @@ export default function SupportHrRouter() {
               <ProfileTab
                 token={token}
                 profile={profile}
+                loginUser={loginUser}
                 refreshing={refreshing}
                 onRefresh={refresh}
               />

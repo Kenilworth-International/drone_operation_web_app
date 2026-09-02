@@ -8,7 +8,7 @@ function formatDate(value) {
   return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
 }
 
-export default function ProfileTab({ token, profile, refreshing, onRefresh }) {
+export default function ProfileTab({ token, profile, loginUser, refreshing, onRefresh }) {
   const { logout } = useHrSupportAuth();
   const [reportingChain, setReportingChain] = useState([]);
   const [hod, setHod] = useState(null);
@@ -68,7 +68,7 @@ export default function ProfileTab({ token, profile, refreshing, onRefresh }) {
     }
   };
 
-  const displayName = profile?.employeeName || profile?.name || 'Employee';
+  const displayName = profile?.employeeName || profile?.preferredName || profile?.name || loginUser?.name || 'Employee';
   const initial = displayName.charAt(0).toUpperCase();
   const role = profile?.designation || profile?.jobRole || '—';
 

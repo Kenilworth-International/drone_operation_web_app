@@ -32,18 +32,40 @@ export function clearHrSupportSession() {
 
 export async function hrSupportRequest(path, token, options = {}) {
   const base = getNodeBackendUrl();
-  const res = await fetch(`${base}${path}`, {
-    ...options,
-    cache: 'no-store',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      Pragma: 'no-cache',
-      Expires: '0',
-      ...(options.headers || {}),
-    },
-  });
+  const activeToken = token || getHrSupportToken();
+  if (!activeToken) {
+    const err = new Error('Session expired. Please login again.');
+    err.status = 401;
+    err.isAuthError = true;
+    throw err;
+  }
+
+  let res;
+  try {
+    res = await fetch(`${base}${path}`, {
+      ...options,
+      cache: 'no-store',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${activeToken}`,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+        ...(options.headers || {}),
+      },
+    });
+  } catch (networkErr) {
+    if (networkErr?.name === 'AbortError') {
+      throw networkErr;
+    }
+    const err = new Error(
+      networkErr?.message === 'Failed to fetch'
+        ? `Unable to reach the server (${path}). Check your connection and try again.`
+        : (networkErr?.message || 'Network request failed'),
+    );
+    err.isNetworkError = true;
+    throw err;
+  }
 
   let json = null;
   try {
@@ -68,12 +90,25 @@ export async function hrSupportRequest(path, token, options = {}) {
 
 export async function hrSupportUpload(path, token, formData) {
   const base = getNodeBackendUrl();
-  const res = await fetch(`${base}${path}`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-    cache: 'no-store',
-  });
+  const activeToken = token || getHrSupportToken();
+  if (!activeToken) {
+    throw new Error('Session expired');
+  }
+  let res;
+  try {
+    res = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${activeToken}` },
+      body: formData,
+      cache: 'no-store',
+    });
+  } catch (networkErr) {
+    throw new Error(
+      networkErr?.message === 'Failed to fetch'
+        ? `Unable to reach the server (${path}). Check your connection and try again.`
+        : (networkErr?.message || 'Network request failed'),
+    );
+  }
   let json = null;
   try { json = await res.json(); } catch { json = null; }
   if (res.status === 401) {

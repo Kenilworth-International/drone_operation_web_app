@@ -19,12 +19,14 @@ export function HrSupportAuthProvider({ children }) {
     () => localStorage.getItem(HR_SUPPORT_TOKEN_CREATED_AT_KEY) || null,
   );
   const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(getHrSupportToken()));
+  const [loginUser, setLoginUser] = useState(null);
 
   const logout = useCallback(() => {
     clearHrSupportSession();
     setToken(null);
     setPhone(null);
     setTokenCreatedAt(null);
+    setLoginUser(null);
     setIsAuthenticated(false);
   }, []);
 
@@ -32,11 +34,12 @@ export function HrSupportAuthProvider({ children }) {
     registerHrSupportUnauthorizedHandler(logout);
   }, [logout]);
 
-  const login = useCallback((newToken, loginPhone, createdAt) => {
+  const login = useCallback((newToken, loginPhone, createdAt, userSnapshot = null) => {
     saveHrSupportSession(newToken, loginPhone, createdAt || null);
     setToken(newToken);
     setPhone(loginPhone);
     setTokenCreatedAt(createdAt || null);
+    setLoginUser(userSnapshot);
     setIsAuthenticated(true);
   }, []);
 
@@ -83,6 +86,7 @@ export function HrSupportAuthProvider({ children }) {
       token,
       phone,
       tokenCreatedAt,
+      loginUser,
       isAuthenticated,
       login,
       logout,
@@ -92,7 +96,7 @@ export function HrSupportAuthProvider({ children }) {
       verifyOtp,
       hrRequest: (path, options) => hrSupportRequest(path, token, options),
     }),
-    [token, phone, tokenCreatedAt, isAuthenticated, login, logout, checkEligibility, loginWithoutOtp, requestOtp, verifyOtp],
+    [token, phone, tokenCreatedAt, loginUser, isAuthenticated, login, logout, checkEligibility, loginWithoutOtp, requestOtp, verifyOtp],
   );
 
   return <HrSupportAuthContext.Provider value={value}>{children}</HrSupportAuthContext.Provider>;
