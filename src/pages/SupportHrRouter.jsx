@@ -110,10 +110,22 @@ export default function SupportHrRouter() {
         throw new Error(message);
       }
 
-      const types = data.types || [];
-      const requestableTypes = (types || []).filter((t) => {
+      const accessCodes = (
+        data.dashboard?.profile?.allowedLeaveTypeCodes
+        || data.dashboard?.profile?.allowed_leave_type_codes
+        || []
+      )
+        .map((code) => String(code || '').trim().toLowerCase())
+        .filter(Boolean);
+      const sourceTypes = Array.isArray(data.dashboard?.leaveTypes) && data.dashboard.leaveTypes.length > 0
+        ? data.dashboard.leaveTypes
+        : (data.types || []);
+      const requestableTypes = (sourceTypes || []).filter((t) => {
+        const code = String(t?.code || '').trim().toLowerCase();
         const isRequestable = Number(t?.employee_requestable ?? t?.employeeRequestable ?? 1) === 1;
-        return isRequestable && String(t?.code || '') !== 'bulk_leave';
+        if (!isRequestable || code === 'bulk_leave') return false;
+        if (accessCodes.length > 0 && !accessCodes.includes(code)) return false;
+        return true;
       });
       setHomeData(data.dashboard || null);
       setLeaveTypes(requestableTypes);
@@ -341,6 +353,7 @@ export default function SupportHrRouter() {
                 attendancePolicy={attendancePolicy}
                 balances={balances}
                 policySummary={policySummary}
+                profile={profile}
               />
             }
           />

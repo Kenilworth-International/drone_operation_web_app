@@ -4,6 +4,8 @@ import {
   useAcceptHrLieuLeaveMutation,
   useGetHrAttendanceDayViewQuery,
 } from '../../../api/services NodeJs/hrLeaveApi';
+import { useGetEmpDepartmentsQuery } from '../../../api/services NodeJs/empOrgStructureApi';
+import { useGetWorkLocationsQuery } from '../../../api/services NodeJs/jdManagementApi';
 import {
   attendanceDayStatusLabel,
   attendanceLocationCaption,
@@ -73,10 +75,10 @@ const statusTone = (row) => {
   return 'neutral';
 };
 
-function DetailRow({ label, value, children }) {
+function DetailRow({ label, value, children, fullWidth = false }) {
   if (value == null && !children) return null;
   return (
-    <div className="att-day-detail-row">
+    <div className={`att-day-detail-row${fullWidth ? ' att-day-detail-row--full' : ''}`}>
       <span className="att-day-detail-label">{label}</span>
       <span className="att-day-detail-value">{children || value}</span>
     </div>
@@ -134,14 +136,14 @@ function LeaveRequestCard({ leave }) {
         {auto && (leave.autoReason || leave.auto_reason) ? (
           <DetailRow label="Reason" value={autoReasonLabel(leave.autoReason || leave.auto_reason)} />
         ) : null}
-        {(leave.reason || leave.reason_text) ? (
-          <DetailRow label="Note" value={leave.reason || leave.reason_text} />
-        ) : null}
         {leave.level1ApproverName || leave.level1_approver_name ? (
           <DetailRow label="Reporting officer" value={leave.level1ApproverName || leave.level1_approver_name} />
         ) : null}
         {leave.level2ApproverName || leave.level2_approver_name ? (
           <DetailRow label="HOD" value={leave.level2ApproverName || leave.level2_approver_name} />
+        ) : null}
+        {(leave.reason || leave.reason_text) ? (
+          <DetailRow label="Note" value={leave.reason || leave.reason_text} fullWidth />
         ) : null}
       </div>
     </article>
@@ -246,13 +248,17 @@ function EmployeeDetailPanel({
         {att?.nopay ? (
           <div className="att-day-alert att-day-alert--danger">
             <strong>{nopayDayLabel(att.nopayReason)}</strong>
-            {att.nopayReason ? <p>{att.nopayReason}</p> : null}
           </div>
         ) : null}
         {att?.autoShortLeave ? (
           <div className="att-day-alert att-day-alert--info">
             <strong>Automatic short leave applied</strong>
-            <p>{typeof att.autoShortLeave === 'string' ? att.autoShortLeave : 'Recorded from attendance policy.'}</p>
+            <p>
+              {typeof att.autoShortLeave === 'string'
+                ? autoReasonLabel(att.autoShortLeave)
+                : autoReasonLabel(att.autoShortLeave.autoReason || att.autoShortLeave.auto_reason) ||
+                  'Recorded from attendance policy.'}
+            </p>
           </div>
         ) : null}
       </section>
@@ -359,12 +365,45 @@ function EmployeeDetailPanel({
 export default function AttendanceDayView() {
   const [selectedDate, setSelectedDate] = useState(toIsoDate());
   const [search, setSearch] = useState('');
+  const [departmentCode, setDepartmentCode] = useState('');
+  const [workLocationCode, setWorkLocationCode] = useState('');
   const [acceptingKey, setAcceptingKey] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+
+  const { data: departmentsData } = useGetEmpDepartmentsQuery();
+  const { data: workLocationsData } = useGetWorkLocationsQuery();
+
+  const departments = useMemo(() => {
+    const list = Array.isArray(departmentsData)
+      ? departmentsData
+      : Array.isArray(departmentsData?.data)
+        ? departmentsData.data
+        : [];
+    return [...list].sort((a, b) =>
+      String(a.department_name || a.dept_code || '').localeCompare(
+        String(b.department_name || b.dept_code || ''),
+      ),
+    );
+  }, [departmentsData]);
+
+  const workLocations = useMemo(() => {
+    const list = Array.isArray(workLocationsData)
+      ? workLocationsData
+      : Array.isArray(workLocationsData?.data)
+        ? workLocationsData.data
+        : [];
+    return [...list].sort((a, b) =>
+      String(a.locationName || a.locationCode || '').localeCompare(
+        String(b.locationName || b.locationCode || ''),
+      ),
+    );
+  }, [workLocationsData]);
 
   const { data: response, isFetching, refetch } = useGetHrAttendanceDayViewQuery({
     date: selectedDate,
     search: search.trim() || undefined,
+    departmentCode: departmentCode || undefined,
+    workLocation: workLocationCode || undefined,
   });
   const [acceptLieuLeave] = useAcceptHrLieuLeaveMutation();
 
@@ -430,14 +469,14 @@ export default function AttendanceDayView() {
               ‹
             </button>
             <div className="att-day-date-block">
+              <span className="att-day-date-trigger">{formatDateHeading(selectedDate)}</span>
               <input
                 type="date"
-                className="att-day-date-input"
+                className="att-day-date-input-hidden"
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value || toIsoDate())}
-                aria-label="Attendance date"
+                aria-label="Choose attendance date"
               />
-              <div className="att-day-date-title">{formatDateHeading(selectedDate)}</div>
             </div>
             <button type="button" className="att-day-nav-btn" onClick={() => shiftDate(1)} aria-label="Next day">
               ›
@@ -446,15 +485,55 @@ export default function AttendanceDayView() {
           <span className="att-day-daytype">{dayBanner}</span>
         </div>
 
-        <label className="att-day-search-field">
-          <span>Search employee</span>
-          <input
-            type="text"
-            placeholder="Name, EMP no, department, designation..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
+        <div className="att-day-toolbar">
+          <label className="att-day-filter-field">
+            <span>Department</span>
+            <select
+              value={departmentCode}
+              onChange={(e) => setDepartmentCode(e.target.value)}
+              aria-label="Filter by department"
+            >
+              <option value="">All departments</option>
+              {departments.map((dept) => {
+                const value = String(dept.dept_code || dept.id || '').trim();
+                if (!value) return null;
+                return (
+                  <option key={dept.id || value} value={value}>
+                    {dept.department_name || dept.dept_code || `Department ${dept.id}`}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+          <label className="att-day-filter-field">
+            <span>Work location</span>
+            <select
+              value={workLocationCode}
+              onChange={(e) => setWorkLocationCode(e.target.value)}
+              aria-label="Filter by work location"
+            >
+              <option value="">All locations</option>
+              {workLocations.map((loc) => {
+                const value = String(loc.locationCode || '').trim();
+                if (!value) return null;
+                return (
+                  <option key={loc.id || value} value={value}>
+                    {loc.locationName || loc.locationCode}
+                  </option>
+                );
+              })}
+            </select>
+          </label>
+          <label className="att-day-search-field att-day-search-field--toolbar">
+            <span>Search employee</span>
+            <input
+              type="text"
+              placeholder="Name, EMP no, designation..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+        </div>
 
         <div className="att-day-kpi-grid">
           <div className="att-day-kpi">

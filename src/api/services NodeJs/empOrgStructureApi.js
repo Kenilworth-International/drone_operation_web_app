@@ -115,6 +115,14 @@ export const empOrgStructureApi = baseApi.injectEndpoints({
       queryFn: async (body) => post(`${BASE}/chief-job-roles/save`, body),
       invalidatesTags: ['EmpOrgStructure', 'UserJobDescriptions'],
     }),
+    getEmpHodAssignments: builder.query({
+      queryFn: async () => post(`${BASE}/hod-assignments`),
+      providesTags: ['EmpOrgStructure'],
+    }),
+    saveEmpHodAssignment: builder.mutation({
+      queryFn: async (body) => post(`${BASE}/hod-assignments/save`, body),
+      invalidatesTags: ['EmpOrgStructure'],
+    }),
   }),
 });
 
@@ -143,4 +151,6 @@ export const {
   useSaveEmpRoleMaxLimitMutation,
   useGetEmpChiefJobRolesQuery,
   useSaveEmpChiefJobRoleMutation,
+  useGetEmpHodAssignmentsQuery,
+  useSaveEmpHodAssignmentMutation,
 } = empOrgStructureApi;

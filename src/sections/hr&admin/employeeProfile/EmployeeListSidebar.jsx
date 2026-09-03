@@ -13,10 +13,11 @@ export default function EmployeeListSidebar({
     const q = search.trim().toLowerCase();
     if (!q) return employees;
     return employees.filter((emp) => {
-      const name = (emp.employeeName || emp.preferredName || '').toLowerCase();
+      const preferred = (emp.preferredName || '').toLowerCase();
+      const fullName = (emp.employeeName || '').toLowerCase();
       const empNo = (emp.empNo || '').toLowerCase();
       const nic = (emp.nic || '').toLowerCase();
-      return name.includes(q) || empNo.includes(q) || nic.includes(q);
+      return preferred.includes(q) || fullName.includes(q) || empNo.includes(q) || nic.includes(q);
     });
   }, [employees, search]);
 
@@ -43,7 +44,7 @@ export default function EmployeeListSidebar({
           filtered.map((emp) => {
             const id = String(emp.id);
             const selected = id === String(selectedId);
-            const name = emp.employeeName || emp.preferredName || `Employee ${emp.id}`;
+            const name = emp.preferredName || emp.employeeName || `Employee ${emp.id}`;
             const photoUrl = getEmployeePhotoUrl(emp);
             return (
               <button

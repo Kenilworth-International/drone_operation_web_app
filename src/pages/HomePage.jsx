@@ -74,6 +74,9 @@ const HomePage = () => {
   /** Geo Spatial weather: fixed location panel; scroll forecast panel only. */
   const isWeatherPredictionRoute = location.pathname.includes('/geo-spatial/weather-prediction');
 
+  /** Mapping Update: fixed chrome; scroll hierarchy/field card grid only. */
+  const isMappingUpdateRoute = location.pathname.includes('/geo-spatial/mapping-update');
+
   /** External plantation portal: full viewport, no build footer. */
   const isPlantationExternalRoute = useMemo(() => {
     const { pathname } = location;
@@ -123,7 +126,7 @@ const HomePage = () => {
         />
       )}
       <div 
-        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}`}
+        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isMappingUpdateRoute ? ' content-dashboard--mapping-update' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}`}
         style={{
           marginLeft: isExternalUser || fullWidthNoLeftNav ? '0' : '280px',
           width: isExternalUser || fullWidthNoLeftNav ? '100vw' : 'calc(100vw - 280px)',

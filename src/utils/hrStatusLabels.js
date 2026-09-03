@@ -39,22 +39,49 @@ export const lieuStatusLabel = (status) => {
 };
 
 export const autoReasonLabel = (reason) => {
+  const key = String(reason || '')
+    .toLowerCase()
+    .trim();
   const map = {
     late_mark_in: 'Late arrival',
     early_mark_out: 'Left early',
     insufficient_hours: 'Did not complete required hours',
   };
-  return map[String(reason || '')] || humanizeToken(reason) || 'Automatic short leave';
+  if (map[key]) return map[key];
+  return humanizeToken(reason) || 'Automatic short leave';
 };
 
 export const autoShortLeaveLine = (entry) => {
   if (!entry) return null;
-  const reason = autoReasonLabel(entry.autoReason || entry.auto_reason);
-  const mins = entry.shortLeaveMinutes ?? entry.short_leave_minutes;
+  const reason = autoReasonLabel(
+    typeof entry === 'string' ? entry : entry.autoReason || entry.auto_reason,
+  );
+  const mins =
+    typeof entry === 'object'
+      ? entry.shortLeaveMinutes ?? entry.short_leave_minutes
+      : null;
   return mins ? `Auto short leave: ${reason} (${mins} min)` : `Auto short leave: ${reason}`;
 };
 
-export const nopayDayLabel = (message) => message || 'No pay day';
+export const nopayDayLabel = (message) => {
+  if (!message) return 'No pay day';
+  const raw = String(message).trim();
+  const key = raw.toLowerCase();
+  const map = {
+    late_mark_in:
+      'No pay — automatic short leave on a no-pay slot (late arrival).',
+    insufficient_hours:
+      'No pay — automatic short leave on a no-pay slot (did not complete required hours).',
+    early_mark_out:
+      'No pay — automatic short leave on a no-pay slot (left early).',
+  };
+  if (map[key]) return map[key];
+  // Token-like codes (underscores, no spaces) → humanize
+  if (/^[a-z0-9_]+$/i.test(raw) && raw.includes('_')) {
+    return `No pay — ${autoReasonLabel(raw)}`;
+  }
+  return raw;
+};
 
 export const GEOFENCE_RADIUS_METERS = 20;
 

@@ -341,6 +341,7 @@ const JDManagement = () => {
         <div className="jd-left-panel-jd-mgmt">
           <div className="jd-panel-header-jd-mgmt">
             <h2 className="jd-panel-title-jd-mgmt">Emp designations</h2>
+            
           </div>
 
           <div className="jd-designations-list-jd-mgmt">

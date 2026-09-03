@@ -112,7 +112,7 @@ const Employees = () => {
       </div>
 
           {isLoading && <p className="ep-employees-list-message">Loading employees…</p>}
-          {error && (
+      {error && (
             <p className="ep-employees-list-message ep-employees-list-message--error">
               {error?.data?.message || error?.message || 'Failed to load employees.'}
             </p>
@@ -132,7 +132,7 @@ const Employees = () => {
                 const name = employee.employeeName || employee.preferredName || 'Unnamed';
                 return (
                   <li key={employee.id}>
-                    <button
+                  <button 
                       type="button"
                       className={`ep-employees-card${isSelected ? ' ep-employees-card--selected' : ''}`}
                       onClick={() => handleSelectEmployee(employee.id)}
@@ -140,7 +140,7 @@ const Employees = () => {
                     >
                       <EmployeeAvatar employee={employee} name={name} size="lg" />
                       <span className="ep-employees-card-name">{name}</span>
-                    </button>
+                  </button>
                   </li>
                 );
               })}

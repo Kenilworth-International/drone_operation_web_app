@@ -874,6 +874,31 @@
   gap: 14px 16px;
 }
 
+.ep-emp-no-group {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.ep-emp-no-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  font-weight: 600;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+.ep-emp-no-suffix {
+  flex: 1;
+  min-width: 0;
+  border-radius: 0 8px 8px 0 !important;
+}
+
 @media (max-width: 540px) {
   .ep-add-form {
     grid-template-columns: 1fr;

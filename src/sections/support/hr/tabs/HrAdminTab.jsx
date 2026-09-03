@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { hrSupportRequest } from '../api/hrSupportApi';
+import { formatApiDateDisplay } from '../utils/formatApiDate';
 
 function flattenOrgNodes(nodes = [], depth = 0, out = []) {
   for (const node of nodes) {
@@ -106,7 +107,7 @@ export default function HrAdminTab({ token, refreshing, refresh }) {
               ['Mobile', emp.mobile],
               ['Status', emp.status],
               ['Branch', emp.branch],
-              ['Joined', emp.joinedDate && new Date(emp.joinedDate).toLocaleDateString()],
+              ['Joined', emp.joinedDate && formatApiDateDisplay(emp.joinedDate)],
             ].filter(([, v]) => v).map(([k, v]) => (
               <div key={k} className="hrsup-dl-row"><span className="hrsup-dl-label">{k}</span><span className="hrsup-dl-value">{v}</span></div>
             ))}

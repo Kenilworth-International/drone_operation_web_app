@@ -13,7 +13,6 @@ export const HR_MASTER_CATEGORIES = [
   { key: 'shift_type', label: 'Shift Type', group: 'Employment' },
   { key: 'member_type', label: 'Member Type', group: 'Employment' },
   { key: 'employment_category', label: 'Employment Category', group: 'Employment' },
-  { key: 'job_category', label: 'Job Category', group: 'Employment' },
   { key: 'employment_type', label: 'Employment Type', group: 'Employment' },
   { key: 'contract_type', label: 'Contract Type', group: 'Employment' },
   { key: 'probation_period', label: 'Probation Period', group: 'Employment' },

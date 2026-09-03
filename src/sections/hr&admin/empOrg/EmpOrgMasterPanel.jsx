@@ -17,6 +17,7 @@ import {
 } from '../../../api/services NodeJs/empOrgStructureApi';
 import { useGetAllEmployeeRegistrationsQuery } from '../../../api/services NodeJs/jdManagementApi';
 import ChiefJobRoleTab from './ChiefJobRoleTab';
+import HodAssignmentTab from './HodAssignmentTab';
 import {
   clampPowerToLayer,
   findLayerById,
@@ -30,6 +31,7 @@ const TABS = [
   { id: 'subDivisions', label: 'Sub-divisions' },
   { id: 'roles', label: 'Job roles' },
   { id: 'chiefs', label: 'Chief job roles' },
+  { id: 'hods', label: 'HOD assignments' },
   { id: 'limits', label: 'Max limits' },
   { id: 'specs', label: 'Specializations' },
   { id: 'designations', label: 'Designations' },
@@ -128,6 +130,7 @@ export default function EmpOrgMasterPanel() {
   const location = useLocation();
   const [tab, setTab] = useState('departments');
   const [chiefTabRefresh, setChiefTabRefresh] = useState(0);
+  const [hodTabRefresh, setHodTabRefresh] = useState(0);
   const [msg, setMsg] = useState(null);
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
@@ -258,6 +261,10 @@ export default function EmpOrgMasterPanel() {
         break;
       case 'chiefs':
         setChiefTabRefresh((n) => n + 1);
+        break;
+      case 'hods':
+        setHodTabRefresh((n) => n + 1);
+        refetchDepts();
         break;
       case 'limits':
         refetchDepts();
@@ -437,7 +444,7 @@ export default function EmpOrgMasterPanel() {
         <div className="emp-org-master-header">
           <div>
             <h3 className="emp-org-master-title">Employee org master data</h3>
-            <p className="emp-org-master-sub">Manage departments, sub-divisions, roles, chief roles, specializations, and auto-generated designations.</p>
+            <p className="emp-org-master-sub">Manage departments, HOD assignments, sub-divisions, roles, chief roles, specializations, and auto-generated designations.</p>
           </div>
         </div>
         <Msg text={msg?.text} type={msg?.type} />
@@ -622,6 +629,7 @@ export default function EmpOrgMasterPanel() {
       )}
 
       {tab === 'chiefs' && <ChiefJobRoleTab notify={notify} refreshToken={chiefTabRefresh} />}
+      {tab === 'hods' && <HodAssignmentTab notify={notify} refreshToken={hodTabRefresh} />}
 
       {tab === 'limits' && (
         <div className="emp-org-panel">

@@ -9,6 +9,7 @@ import {
 } from '../utils/hrStatusLabels';
 import AttendanceTodayPanel from '../components/AttendanceTodayPanel';
 import { getEmployeeGreetingName } from '../utils/employeeDisplay';
+import { formatApiDateDisplay, formatApiDateYmd } from '../utils/formatApiDate';
 
 const LATE_TIME_OPTIONS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '23:00', '23:30'];
 const REQUIRED_DAILY_MINUTES_DEFAULT = 570;
@@ -42,17 +43,9 @@ function getMarkOut(row) {
 }
 
 function formatHistoryDate(value) {
-  if (!value) return '—';
-  const raw = String(value).replace(' ', 'T');
-  const d = new Date(raw.includes('T') ? raw : `${raw.slice(0, 10)}T12:00:00`);
-  if (Number.isNaN(d.getTime())) return String(value);
-  const sameYear = d.getFullYear() === new Date().getFullYear();
-  return d.toLocaleDateString(undefined, {
-    weekday: 'short',
-    day: '2-digit',
-    month: 'short',
-    ...(sameYear ? {} : { year: 'numeric' }),
-  });
+  const ymd = formatApiDateYmd(value);
+  if (!ymd) return '—';
+  return formatApiDateDisplay(ymd, '—');
 }
 
 function getHistoryDayMeta(row) {
@@ -179,8 +172,8 @@ export default function AttendanceTab({
   const todayKey = toDateKey(now);
   const todayRecord = useMemo(() => {
     const todayMatches = attendanceLog.filter((row) => {
-      const dk = String(row?.attendance_date || row?.date || '').slice(0, 10);
-      const markInKey = row?.mark_in ? String(row.mark_in).slice(0, 10) : '';
+      const dk = formatApiDateYmd(row?.attendance_date || row?.date);
+      const markInKey = row?.mark_in ? formatApiDateYmd(row.mark_in) : '';
       return dk === todayKey || markInKey === todayKey;
     });
     if (todayMatches.length === 0) return null;
@@ -328,7 +321,7 @@ export default function AttendanceTab({
   };
   const range = logMode === 'week' ? getWeekRange(periodOffset) : getMonthRange(periodOffset);
   const filteredLog = useMemo(() => attendanceLog.filter((row) => {
-    const dk = String(row?.attendance_date || row?.date || '').slice(0, 10);
+    const dk = formatApiDateYmd(row?.attendance_date || row?.date);
     if (!dk) return false;
     const d = new Date(`${dk}T12:00:00`);
     return d >= range.start && d <= range.end;
@@ -336,8 +329,8 @@ export default function AttendanceTab({
 
   const sortedLog = useMemo(
     () => [...filteredLog].sort((a, b) => {
-      const aKey = String(a?.attendance_date || a?.date || '').slice(0, 10);
-      const bKey = String(b?.attendance_date || b?.date || '').slice(0, 10);
+      const aKey = formatApiDateYmd(a?.attendance_date || a?.date);
+      const bKey = formatApiDateYmd(b?.attendance_date || b?.date);
       return bKey.localeCompare(aKey);
     }),
     [filteredLog],
@@ -553,7 +546,7 @@ export default function AttendanceTab({
           ) : (
             <div className="hrsup-att-history-list">
               {sortedLog.map((row, idx) => {
-                const dateKey = String(row?.attendance_date || row?.date || '').slice(0, 10);
+                const dateKey = formatApiDateYmd(row?.attendance_date || row?.date);
                 const dayMeta = getHistoryDayMeta(row);
                 return (
                   <div key={String(row?.id || `${dateKey}-${idx}`)} className="hrsup-card hrsup-att-history-card">

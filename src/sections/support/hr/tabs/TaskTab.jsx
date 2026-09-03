@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import ApprovalRequestCard from '../components/ApprovalRequestCard';
 import RejectModal from '../components/RejectModal';
 import { getApprovalKind } from '../utils/hrApprovals';
+import { formatApiDateDisplay } from '../utils/formatApiDate';
 
 function formatDate(value) {
-  if (!value) return '—';
-  const d = new Date(String(value).slice(0, 10) + 'T12:00:00');
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
+  return formatApiDateDisplay(value, '—');
 }
 
 export default function TaskTab({ hodApprovals, actApproval, refreshing, refresh }) {

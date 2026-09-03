@@ -100,6 +100,7 @@ const LeaveManagement = () => {
       .join(',');
 
   const onToggleLeaveTypeAccess = (employeeId, leaveCode) => {
+    const normalizedCode = String(leaveCode || '').trim().toLowerCase();
     setEditedAccessByEmployee((prev) => {
       const existingRaw =
         prev[employeeId] !== undefined
@@ -108,11 +109,11 @@ const LeaveManagement = () => {
       const existingSet = new Set(
         existingRaw
           .split(',')
-          .map((item) => item.trim())
+          .map((item) => item.trim().toLowerCase())
           .filter(Boolean)
       );
-      if (existingSet.has(leaveCode)) existingSet.delete(leaveCode);
-      else existingSet.add(leaveCode);
+      if (existingSet.has(normalizedCode)) existingSet.delete(normalizedCode);
+      else existingSet.add(normalizedCode);
       return {
         ...prev,
         [employeeId]: Array.from(existingSet).join(','),
@@ -127,14 +128,16 @@ const LeaveManagement = () => {
         editedAccessByEmployee[employee.id] !== undefined
           ? editedAccessByEmployee[employee.id]
           : String(employee.leaveTypeAccess || '');
-      const visibleCodes = new Set(leaveTypes.map((type) => String(type.code || '').trim()).filter(Boolean));
+      const visibleCodes = new Set(
+        leaveTypes.map((type) => String(type.code || '').trim().toLowerCase()).filter(Boolean),
+      );
       const existingCodes = String(employee.leaveTypeAccess || '')
         .split(',')
-        .map((item) => item.trim())
+        .map((item) => item.trim().toLowerCase())
         .filter(Boolean);
       const selectedCodes = leaveTypeAccessRaw
         .split(',')
-        .map((item) => item.trim())
+        .map((item) => item.trim().toLowerCase())
         .filter(Boolean);
       const hiddenExistingCodes = existingCodes.filter((code) => !visibleCodes.has(code));
       const finalCodes = Array.from(new Set([...selectedCodes, ...hiddenExistingCodes]));

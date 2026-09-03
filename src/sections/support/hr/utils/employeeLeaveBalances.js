@@ -28,36 +28,80 @@ function buildCardFromLeaveType(type, policySummary, balanceByCode) {
   const policyKey = POLICY_CODE_TO_KEY[code];
   if (policyKey && policySummary?.[policyKey]) {
     const summary = policySummary[policyKey];
-    return { code, title, kind: 'policy', quota: Number(summary.entitlement ?? 0), used: Number(summary.used ?? 0), pending: Number(summary.pending ?? 0), available: Number(summary.available ?? 0) };
+    return {
+      code,
+      title,
+      kind: 'policy',
+      quota: Number(summary.entitlement ?? 0),
+      used: Number(summary.used ?? 0),
+      pending: Number(summary.pending ?? 0),
+      available: Number(summary.available ?? 0),
+    };
   }
   const row = balanceByCode.get(code);
   if (row) return { code, title, kind: 'balance', ...readBalanceRow(row) };
   return { code, title, kind: policyKey ? 'policy' : 'balance', quota: 0, used: 0, pending: 0, available: 0 };
 }
 
-export function buildEmployeeLeaveBalanceCards(leaveTypes = [], policySummary = null, balances = []) {
+/**
+ * Leave Availability + Leave Policy.
+ * Empty availability → no cards (HR must assign leave types first).
+ */
+export function buildEmployeeLeaveBalanceCards(
+  leaveTypes = [],
+  policySummary = null,
+  balances = [],
+  allowedLeaveTypeCodes = null,
+) {
+  const leaveTypeByCode = new Map();
+  (leaveTypes || []).forEach((type) => {
+    const code = String(type?.code || '').trim().toLowerCase();
+    if (code) leaveTypeByCode.set(code, type);
+  });
+
   const balanceByCode = new Map();
   (balances || []).forEach((row) => {
     const code = String(row?.leave_type_code || row?.code || '').trim().toLowerCase();
     if (code) balanceByCode.set(code, row);
   });
 
-  if (leaveTypes.length > 0) {
-    return leaveTypes.map((type) => buildCardFromLeaveType(type, policySummary, balanceByCode)).filter(Boolean);
+  const normalizedAccess = (allowedLeaveTypeCodes || [])
+    .map((code) => String(code || '').trim().toLowerCase())
+    .filter(Boolean);
+
+  if (normalizedAccess.length === 0) {
+    return [];
   }
 
   const cards = [];
-  Object.entries(POLICY_CODE_TO_KEY).forEach(([code, key]) => {
-    const summary = policySummary?.[key];
-    if (!summary) return;
-    cards.push({ code, title: POLICY_FALLBACK_TITLES[code] || code, kind: 'policy', quota: Number(summary.entitlement ?? 0), used: Number(summary.used ?? 0), pending: Number(summary.pending ?? 0), available: Number(summary.available ?? 0) });
+  const seen = new Set();
+
+  normalizedAccess.forEach((code) => {
+    if (seen.has(code)) return;
+    const type = leaveTypeByCode.get(code) || {
+      code,
+      name: POLICY_FALLBACK_TITLES[code] || balanceByCode.get(code)?.leaveTypeName || code,
+    };
+    const card = buildCardFromLeaveType(type, policySummary, balanceByCode);
+    if (card) {
+      cards.push(card);
+      seen.add(code);
+    }
   });
-  const policyCodes = new Set(Object.keys(POLICY_CODE_TO_KEY));
-  (balances || []).forEach((row) => {
-    const code = String(row?.leave_type_code || row?.code || '').trim().toLowerCase();
-    if (!code || policyCodes.has(code)) return;
-    cards.push({ code, title: String(row?.leaveTypeName || row?.leave_type_name || code), kind: 'balance', ...readBalanceRow(row) });
+
+  balanceByCode.forEach((row, code) => {
+    if (seen.has(code) || !normalizedAccess.includes(code)) return;
+    const type = leaveTypeByCode.get(code) || {
+      code,
+      name: row?.leaveTypeName || row?.leave_type_name || code,
+    };
+    const card = buildCardFromLeaveType(type, policySummary, balanceByCode);
+    if (card) {
+      cards.push(card);
+      seen.add(code);
+    }
   });
+
   return cards;
 }
 

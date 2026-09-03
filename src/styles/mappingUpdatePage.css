@@ -37,13 +37,17 @@
 
 .page-map-update {
   background: var(--mu-gray-50);
-  height: 100vh;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--mu-gray-800);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
+  flex: 1 1 0;
+  width: 100%;
 }
 
 /* ---- Navigation Bar (10%) ---- */
@@ -179,11 +183,17 @@
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
   padding: 18px;
+  overflow-x: hidden;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   align-content: start;
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  max-height: 100%;
   animation: cardGridFadeIn-map-update 0.22s ease both;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mu-primary) var(--mu-gray-100);
 }
 
 @keyframes cardGridFadeIn-map-update {
@@ -514,8 +524,9 @@
 }
 
 .fields-card-grid-map-update {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  overflow-y: auto;
 }
 
 /* ---- Field cards ---- */
@@ -2079,9 +2090,10 @@
 
 @media (max-width: 640px) {
   .page-map-update {
-    height: auto;
-    min-height: 100vh;
-    overflow: auto;
+    height: 100%;
+    min-height: 0;
+    max-height: 100%;
+    overflow: hidden;
   }
 
   .nav-bar-map-update {
@@ -2098,15 +2110,16 @@
 
   .content-pane-map-update {
     height: auto;
-    min-height: calc(100vh - 80px);
-    overflow: visible;
+    min-height: 0;
+    flex: 1 1 0;
+    overflow: hidden;
   }
 
   .card-grid-map-update {
     grid-template-columns: 1fr 1fr;
     padding: 10px;
     gap: 10px;
-    overflow-y: visible;
+    overflow-y: auto;
   }
 
   .table-wrapper-map-update {

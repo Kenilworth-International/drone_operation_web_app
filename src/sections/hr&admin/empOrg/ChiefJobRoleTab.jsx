@@ -9,6 +9,7 @@ import {
   useGetUserJobDescriptionsQuery,
   useCreateUserJobDescriptionMutation,
   useUpdateUserJobDescriptionMutation,
+  useGetAllEmployeeRegistrationsQuery,
 } from '../../../api/services NodeJs/jdManagementApi';
 import {
   findSeniorLayer,
@@ -24,6 +25,7 @@ const EMPTY_CHIEF = {
   power: 0,
   sort_order: 0,
   activated: 1,
+  holder_employee_id: '',
   dept_ids: [],
 };
 
@@ -79,9 +81,32 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
   const { data: chiefRoles = [], refetch: refetchChiefs } = useGetEmpChiefJobRolesQuery();
   const { data: departments = [], refetch: refetchDepartments } = useGetEmpDepartmentsQuery();
   const { data: layers = [], refetch: refetchLayers } = useGetEmpManagementLayersQuery();
+  const { data: employeesData } = useGetAllEmployeeRegistrationsQuery();
   const [saveChiefRole] = useSaveEmpChiefJobRoleMutation();
   const [createJd] = useCreateUserJobDescriptionMutation();
   const [updateJd] = useUpdateUserJobDescriptionMutation();
+
+  const employees = useMemo(() => {
+    if (!employeesData) return [];
+    if (Array.isArray(employeesData)) return employeesData;
+    if (Array.isArray(employeesData.data)) return employeesData.data;
+    return [];
+  }, [employeesData]);
+
+  const employeeLabel = (emp) => {
+    const name = emp.employeeName || emp.preferredName || 'Employee';
+    return emp.empNo ? `${name} (${emp.empNo})` : `${name} #${emp.id}`;
+  };
+
+  const holderLabel = (role) => {
+    if (!role?.holder_employee_id) return '—';
+    if (role.holder_employee_name || role.holder_emp_no) {
+      const name = role.holder_employee_name || 'Employee';
+      return role.holder_emp_no ? `${name} (${role.holder_emp_no})` : name;
+    }
+    const emp = employees.find((e) => Number(e.id) === Number(role.holder_employee_id));
+    return emp ? employeeLabel(emp) : `Employee #${role.holder_employee_id}`;
+  };
 
   const selectedRole = useMemo(
     () => chiefRoles.find((r) => String(r.id) === String(selectedRoleId)) || null,
@@ -157,6 +182,7 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
       ...EMPTY_CHIEF,
       mgt_layer_id: seniorLayer ? String(seniorLayer.id) : '',
       power: bounds ? bounds.min : 170,
+      holder_employee_id: '',
       dept_ids: [],
     });
     setRoleModal('add');
@@ -172,6 +198,7 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
       power: row.power ?? (seniorPowerBounds?.min ?? 170),
       sort_order: row.sort_order ?? 0,
       activated: row.activated ?? 1,
+      holder_employee_id: row.holder_employee_id ? String(row.holder_employee_id) : '',
       dept_ids: Array.isArray(row.dept_ids) ? row.dept_ids.map(Number) : [],
     });
     setRoleModal('edit');
@@ -216,6 +243,9 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
         sort_order: roleForm.sort_order === '' || roleForm.sort_order == null
           ? 0
           : Number(roleForm.sort_order),
+        holder_employee_id: roleForm.holder_employee_id
+          ? Number(roleForm.holder_employee_id)
+          : null,
       }).unwrap();
       refetchChiefs();
       notify(roleModal === 'edit' ? 'Chief role updated.' : 'Chief role added.');
@@ -278,7 +308,8 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
   return (
     <div className="emp-org-panel">
       <p className="emp-org-hint">
-        Chief-level roles (C-suite) oversee multiple departments. Higher power means higher authority — CEO should have the highest power.
+        Chief-level roles (C-suite) oversee multiple departments. Assign the employee who holds each post.
+        Higher power means higher authority — CEO should have the highest power.
         Job descriptions here apply to the chief role company-wide (not per department).
       </p>
 
@@ -291,6 +322,7 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
           <tr>
             <th>Code</th>
             <th>Role</th>
+            <th>Holder</th>
             <th>Power</th>
             <th>Managed departments</th>
             <th>Layer</th>
@@ -300,7 +332,7 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
         </thead>
         <tbody>
           {chiefRoles.length === 0 ? (
-            <tr><td colSpan={7} className="emp-org-empty-cell">No chief roles configured.</td></tr>
+            <tr><td colSpan={8} className="emp-org-empty-cell">No chief roles configured.</td></tr>
           ) : chiefRoles.map((r) => (
             <tr
               key={r.id}
@@ -309,6 +341,7 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
             >
               <td>{r.jr_code}</td>
               <td>{r.job_role}</td>
+              <td>{holderLabel(r)}</td>
               <td><strong>{r.power}</strong></td>
               <td className="emp-org-dept-list">{r.department_names || '—'}</td>
               <td>{r.layer_name || '—'}</td>
@@ -413,6 +446,23 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
             />
             <span className="emp-org-field-hint">
               {layerPowerHint(seniorLayer) || 'Allowed power: 170–200'}. CEO must have the highest power among chief roles.
+            </span>
+          </label>
+          <label className="emp-org-field">
+            <span>Position holder (employee)</span>
+            <select
+              value={roleForm.holder_employee_id || ''}
+              onChange={(e) => setRoleForm({ ...roleForm, holder_employee_id: e.target.value })}
+            >
+              <option value="">Not set</option>
+              {employees.map((emp) => (
+                <option key={emp.id} value={emp.id}>
+                  {employeeLabel(emp)}
+                </option>
+              ))}
+            </select>
+            <span className="emp-org-field-hint">
+              Employee who currently holds this chief post. One employee can hold only one chief role.
             </span>
           </label>
           <label className="emp-org-field">

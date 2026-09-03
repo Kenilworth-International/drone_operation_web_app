@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { hrSupportRequest } from '../api/hrSupportApi';
 import { useHrSupportAuth } from '../auth/HrSupportAuthProvider';
+import { formatApiDateDisplay } from '../utils/formatApiDate';
 
 function formatDate(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
+  return formatApiDateDisplay(value, '—');
 }
 
 export default function ProfileTab({ token, profile, loginUser, refreshing, onRefresh }) {
@@ -87,13 +86,14 @@ export default function ProfileTab({ token, profile, loginUser, refreshing, onRe
       <div className="hrsup-card">
         <h3 className="hrsup-card-title">Employee Information</h3>
         {[
-          ['Employee No', profile?.employeeNo || profile?.employee_no],
+          ['Employee No', profile?.employeeNo || profile?.employee_no || profile?.empNo],
           ['Department', profile?.department],
           ['Branch', profile?.branch],
           ['Email', profile?.email],
-          ['Mobile', profile?.mobile],
+          ['Mobile', profile?.mobile || profile?.mobile_no],
+          ['Date of Birth', profile?.dob && formatDate(profile.dob)],
           ['Joined', formatDate(profile?.joinedDate || profile?.joined_date)],
-          ['Status', profile?.status],
+          ['Status', profile?.status || profile?.employeeStatus],
         ].filter(([, v]) => v).map(([k, v]) => (
           <div key={k} className="hrsup-dl-row"><span className="hrsup-dl-label">{k}</span><span className="hrsup-dl-value">{v}</span></div>
         ))}
@@ -103,12 +103,19 @@ export default function ProfileTab({ token, profile, loginUser, refreshing, onRe
       {(reportingChain.length > 0 || hod) && (
         <div className="hrsup-card">
           <h3 className="hrsup-card-title">Reporting Chain</h3>
-          {reportingChain.map((member, idx) => (
-            <div key={idx} className="hrsup-dl-row">
-              <span className="hrsup-dl-label">{member.role || `Level ${idx + 1}`}</span>
-              <span className="hrsup-dl-value">{member.employeeName || member.name || '—'}</span>
-            </div>
-          ))}
+          {reportingChain.map((member, idx) => {
+            const roleLabel = idx === 0 || member.role === 'self'
+              ? 'You'
+              : idx === 1 || member.role === 'reporting_officer'
+                ? 'Reporting officer'
+                : `Higher manager (L${idx})`;
+            return (
+              <div key={member.id || idx} className="hrsup-dl-row">
+                <span className="hrsup-dl-label">{roleLabel}</span>
+                <span className="hrsup-dl-value">{member.employeeName || member.name || '—'}</span>
+              </div>
+            );
+          })}
           {hod && (
             <div className="hrsup-dl-row">
               <span className="hrsup-dl-label">Head of Department</span>

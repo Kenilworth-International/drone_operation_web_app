@@ -2,6 +2,16 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGetUserMemberTypesQuery, useGetUserJobRolesQuery, useGetUserLevelsQuery, useGetDrivingLicenseTypesQuery, useGetWorkLocationsQuery, useGetDSCSQuery, useGetProvincesQuery, useGetDistrictsQuery, useGetASCSQuery, useCreateEmployeeRegistrationMutation, useUpdateEmployeeRegistrationMutation, useGetEmployeeRegistrationByIdQuery, useGetLastEmpNoQuery, useLazyCheckEmpNoQuery, useGetAllEmployeeRegistrationsQuery } from '../../api/services NodeJs/jdManagementApi';
 import { useGetEmpDepartmentsQuery } from '../../api/services NodeJs/empOrgStructureApi';
 import { parseNic } from '../../utils/nic';
+import {
+  isContractEmploymentType,
+  isProbationEmploymentType,
+  isExternalMemberType,
+  isInternalMemberType,
+  CONTRACT_EMPLOYMENT_TYPE_VALUE,
+  isRoasterShiftType,
+  calculateProbationEndDate,
+  splitDate,
+} from './employeeProfile/employeeProfileUtils';
 import '../../styles/employeeRegistration.css';
 
 const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = null } = {}) => {
@@ -137,7 +147,6 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
     shiftType: '',
     memberTypeFlag: '',
     employmentCategory: '',
-    jobCategory: '',
     designation: '',
     employmentType: '',
     contractType: '',
@@ -322,6 +331,40 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
         if (name === 'flexHoursEnabled' && value !== '1') {
           updates.flexHoursMinutes = '0';
         }
+        if (name === 'memberTypeFlag') {
+          if (isExternalMemberType(normalizedValue)) {
+            updates.employmentType = CONTRACT_EMPLOYMENT_TYPE_VALUE;
+          } else if (isInternalMemberType(normalizedValue) && isContractEmploymentType(prev.employmentType)) {
+            updates.employmentType = '';
+            updates.contractType = '';
+            updates.contractStartDate = '';
+            updates.contractEndDate = '';
+          }
+        }
+        if (name === 'employmentType' && !isContractEmploymentType(normalizedValue)) {
+          updates.contractType = '';
+          updates.contractStartDate = '';
+          updates.contractEndDate = '';
+        }
+        if (name === 'employmentType' && !isProbationEmploymentType(normalizedValue)) {
+          updates.probationPeriod = '';
+          updates.probationEndDate = '';
+        }
+        if (name === 'employmentType' && isProbationEmploymentType(normalizedValue)) {
+          updates.probationEndDate = calculateProbationEndDate(
+            prev.joinedDate,
+            updates.probationPeriod ?? prev.probationPeriod,
+          );
+        }
+        if (name === 'shiftType' && !isRoasterShiftType(normalizedValue)) {
+          updates.bulkLeaveAvailable = '0';
+        }
+        if ((name === 'joinedDate' || name === 'probationPeriod')
+          && isProbationEmploymentType(updates.employmentType ?? prev.employmentType)) {
+          const joined = name === 'joinedDate' ? normalizedValue : prev.joinedDate;
+          const period = name === 'probationPeriod' ? normalizedValue : prev.probationPeriod;
+          updates.probationEndDate = calculateProbationEndDate(joined, period);
+        }
         
         return {
           ...prev,
@@ -451,7 +494,6 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
   // Codes stored in `employees` are mapped back to dropdown IDs.
   useEffect(() => {
     if (!isEditMode || !editEmployee) return;
-    const splitDate = (v) => (v ? String(v).split('T')[0] : '');
     const jobRoleId = userJobRoles.find((r) => r.jdCode === editEmployee.employeeJobRole)?.id || '';
     const levelId = userLevels.find((l) => l.levelCode === editEmployee.jobRoleLayer)?.id || '';
     const deptId =
@@ -514,7 +556,6 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
       shiftType: editEmployee.shiftType || '',
       memberTypeFlag: editEmployee.memberTypeFlag || '',
       employmentCategory: editEmployee.employmentCategory || '',
-      jobCategory: editEmployee.jobCategory || '',
       designation: editEmployee.designation || '',
       employmentType: editEmployee.employmentType || '',
       contractType: editEmployee.contractType || '',
@@ -854,7 +895,6 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
           shiftType: '',
           memberTypeFlag: '',
           employmentCategory: '',
-          jobCategory: '',
           designation: '',
           employmentType: '',
           contractType: '',
@@ -1981,22 +2021,6 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
                 </select>
               </div>
               <div className="form-group-emp-reg">
-                <label>Job Category:</label>
-                <select name="jobCategory" value={formData.jobCategory} onChange={handleInputChange}>
-                  <option value="">-- Select --</option>
-                  <option value="CEO">CEO</option>
-                  <option value="COO">COO</option>
-                  <option value="CHRO">CHRO</option>
-                  <option value="HOD">HOD</option>
-                  <option value="Manager">Manager</option>
-                  <option value="Assistant Manager">Assistant Manager</option>
-                  <option value="Senior Executive">Senior Executive</option>
-                  <option value="Executive">Executive</option>
-                  <option value="Junior Executive">Junior Executive</option>
-                  <option value="Non-Executive">Non-Executive</option>
-                </select>
-              </div>
-              <div className="form-group-emp-reg">
                 <label>Designation (current job role):</label>
                 <input
                   type="text"
@@ -2010,68 +2034,94 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
             <div className="form-row-emp-reg">
               <div className="form-group-emp-reg">
                 <label>Employment Type:</label>
-                <select name="employmentType" value={formData.employmentType} onChange={handleInputChange}>
+                <select
+                  name="employmentType"
+                  value={formData.employmentType}
+                  onChange={handleInputChange}
+                  disabled={!formData.memberTypeFlag}
+                >
                   <option value="">-- Select --</option>
-                  <option value="Permanent Employee">Permanent Employee</option>
-                  <option value="Probation Employee">Probation Employee</option>
-                  <option value="Trainee Employee">Trainee Employee</option>
-                  <option value="Intern">Intern</option>
+                  {isExternalMemberType(formData.memberTypeFlag) ? (
+                    <option value="Contract Employee">Contract Employee</option>
+                  ) : (
+                    <>
+                      <option value="Permanent Employee">Permanent Employee</option>
+                      <option value="Probation Employee">Probation Employee</option>
+                      <option value="Trainee Employee">Trainee Employee</option>
+                      <option value="Intern">Intern</option>
+                    </>
+                  )}
                 </select>
+                {!formData.memberTypeFlag && (
+                  <small style={{ display: 'block', marginTop: 4, color: '#6b7280' }}>
+                    Select member type first.
+                  </small>
+                )}
               </div>
-              <div className="form-group-emp-reg">
-                <label>Contract Type:</label>
-                <select name="contractType" value={formData.contractType} onChange={handleInputChange}>
-                  <option value="">-- Select --</option>
-                  <option value="Fixed-term Contract">Fixed-term Contract</option>
-                  <option value="Short-term Contract">Short-term Contract</option>
-                </select>
-              </div>
+              {(isExternalMemberType(formData.memberTypeFlag) || isContractEmploymentType(formData.employmentType)) && (
+                <div className="form-group-emp-reg">
+                  <label>Contract Type:</label>
+                  <select name="contractType" value={formData.contractType} onChange={handleInputChange}>
+                    <option value="">-- Select --</option>
+                    <option value="Fixed-term Contract">Fixed-term Contract</option>
+                    <option value="Short-term Contract">Short-term Contract</option>
+                  </select>
+                </div>
+              )}
             </div>
 
-            <div className="form-row-emp-reg">
-              <div className="form-group-emp-reg">
-                <label>Contract Start Date:</label>
-                <input
-                  type="date"
-                  name="contractStartDate"
-                  value={formData.contractStartDate}
-                  onChange={handleInputChange}
-                  onClick={handleDateInputClick}
-                />
+            {(isExternalMemberType(formData.memberTypeFlag) || isContractEmploymentType(formData.employmentType)) && (
+              <div className="form-row-emp-reg">
+                <div className="form-group-emp-reg">
+                  <label>Contract Start Date:</label>
+                  <input
+                    type="date"
+                    name="contractStartDate"
+                    value={formData.contractStartDate}
+                    onChange={handleInputChange}
+                    onClick={handleDateInputClick}
+                  />
+                </div>
+                <div className="form-group-emp-reg">
+                  <label>Contract End Date:</label>
+                  <input
+                    type="date"
+                    name="contractEndDate"
+                    value={formData.contractEndDate}
+                    onChange={handleInputChange}
+                    onClick={handleDateInputClick}
+                  />
+                </div>
               </div>
-              <div className="form-group-emp-reg">
-                <label>Contract End Date:</label>
-                <input
-                  type="date"
-                  name="contractEndDate"
-                  value={formData.contractEndDate}
-                  onChange={handleInputChange}
-                  onClick={handleDateInputClick}
-                />
+            )}
+
+            {isProbationEmploymentType(formData.employmentType) && (
+              <div className="form-row-emp-reg">
+                <div className="form-group-emp-reg">
+                  <label>Probation Period:</label>
+                  <select name="probationPeriod" value={formData.probationPeriod} onChange={handleInputChange}>
+                    <option value="">-- Select --</option>
+                    <option value="6 months">6 months</option>
+                    <option value="9 months">9 months</option>
+                    <option value="1 year">1 year</option>
+                  </select>
+                </div>
+                <div className="form-group-emp-reg">
+                  <label>Probation End Date (auto):</label>
+                  <input
+                    type="date"
+                    name="probationEndDate"
+                    value={formData.probationEndDate}
+                    readOnly
+                    style={{ background: '#f5f5f5' }}
+                    title="Auto-calculated from joined date + probation period"
+                    placeholder="Auto-calculated"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="form-row-emp-reg">
-              <div className="form-group-emp-reg">
-                <label>Probation Period:</label>
-                <select name="probationPeriod" value={formData.probationPeriod} onChange={handleInputChange}>
-                  <option value="">-- Select --</option>
-                  <option value="6 months">6 months</option>
-                  <option value="9 months">9 months</option>
-                  <option value="1 year">1 year</option>
-                </select>
-              </div>
-              <div className="form-group-emp-reg">
-                <label>Probation End Date (auto):</label>
-                <input
-                  type="date"
-                  name="probationEndDate"
-                  value={formData.probationEndDate}
-                  onChange={handleInputChange}
-                  onClick={handleDateInputClick}
-                  placeholder="Auto-calculated"
-                />
-              </div>
               <div className="form-group-emp-reg">
                 <label>Retirement Date (auto, age 60):</label>
                 <input
@@ -2273,12 +2323,19 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
                 <label>Bulk Leave Available:</label>
                 <select
                   name="bulkLeaveAvailable"
-                  value={formData.bulkLeaveAvailable}
+                  value={isRoasterShiftType(formData.shiftType) ? formData.bulkLeaveAvailable : '0'}
                   onChange={handleInputChange}
+                  disabled={!isRoasterShiftType(formData.shiftType)}
+                  title={isRoasterShiftType(formData.shiftType) ? undefined : 'Available only when shift type is Roaster'}
                 >
                   <option value="0">No</option>
                   <option value="1">Yes</option>
                 </select>
+                {!isRoasterShiftType(formData.shiftType) && (
+                  <small style={{ display: 'block', marginTop: 4, color: '#6b7280' }}>
+                    Available only for Roaster shift type.
+                  </small>
+                )}
               </div>
               <div className="form-group-emp-reg">
                 <label>Flex Hours Enabled:</label>

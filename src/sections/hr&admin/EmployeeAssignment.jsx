@@ -21,6 +21,7 @@ import {
   useGetEmpSubDivisionsQuery,
   useResolveEmpDesignationMutation,
 } from '../../api/services NodeJs/empOrgStructureApi';
+import { isSeniorManagementCategory } from './employeeProfile/employeeProfileUtils';
 import '../../styles/employeeAssignment.css';
 
 const EMPTY_LIST = [];
@@ -299,14 +300,15 @@ const EmployeeAssignment = () => {
 
   const reportingOfficerOptions = useMemo(() => {
     const empId = selectedEmployee?.id;
+    const isSeniorManagement = isSeniorManagementCategory(selectedEmployee?.employmentCategory);
     const isDepartmentHead = departments.some((dept) => Number(dept.hod_employee_id) === Number(empId));
     return allEmployees
-      .filter((emp) => String(emp.id) !== String(empId) || isDepartmentHead)
+      .filter((emp) => String(emp.id) !== String(empId) || isSeniorManagement || isDepartmentHead)
       .map((emp) => ({
         value: emp.id,
         label: `${emp.empNo || emp.id} — ${emp.employeeName || emp.preferredName || 'Employee'}`,
       }));
-  }, [allEmployees, selectedEmployee?.id, departments]);
+  }, [allEmployees, selectedEmployee?.id, selectedEmployee?.employmentCategory, departments]);
 
   const selectEmployee = useCallback((employee) => {
     const employeeId = String(employee.id);
@@ -780,6 +782,9 @@ const EmployeeAssignment = () => {
                         <option key={officer.value} value={officer.value}>{officer.label}</option>
                       ))}
                     </select>
+                    <p className="ea-field-hint-ea" style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+                      One reporting officer only. Choosing a new officer replaces the previous one.
+                    </p>
                   </div>
                   <div className="ea-form-group-ea">
                     <label htmlFor="toWorkLocationId">Work location</label>

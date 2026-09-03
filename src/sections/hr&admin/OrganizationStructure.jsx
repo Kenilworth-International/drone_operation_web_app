@@ -21,7 +21,6 @@ function filterTree(nodes, query) {
       node.name?.toLowerCase().includes(q)
       || node.subtitle?.toLowerCase().includes(q)
       || node.designation?.toLowerCase().includes(q)
-      || node.jobCategory?.toLowerCase().includes(q)
       || node.departmentName?.toLowerCase().includes(q)
       || node.nodeType?.toLowerCase().includes(q)
       || String(node.empNo || '').toLowerCase().includes(q);

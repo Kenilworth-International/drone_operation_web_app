@@ -9,6 +9,8 @@ import {
   useGetDSCSQuery,
   useGetASCSQuery,
   useGetAllEmployeeRegistrationsQuery,
+  useGetLastEmpNoQuery,
+  useLazyCheckEmpNoQuery,
 } from '../../../api/services NodeJs/jdManagementApi';
 import {
   useGetEmpDepartmentsQuery,
@@ -18,17 +20,30 @@ import {
   useGetEmpDesignationsQuery,
   useResolveEmpDesignationMutation,
   useGetEmpRoleMaxLimitsQuery,
-  useGetEmpChiefJobRolesQuery,
 } from '../../../api/services NodeJs/empOrgStructureApi';
 import {
   appendFormFields,
   applyNicDerived,
+  empNoSuffixValidationMessage,
+  formatEmpNoPreview,
   isValidNic,
   mobileValidationMessage,
   nicValidationMessage,
+  parseEmpNoSuffix,
+  sanitizeEmpNoSuffix,
   sanitizeNicInput,
   sanitizePhone9,
   splitDate,
+  isContractEmploymentType,
+  isProbationEmploymentType,
+  isExternalMemberType,
+  isInternalMemberType,
+  CONTRACT_EMPLOYMENT_TYPE_VALUE,
+  isRoasterShiftType,
+  calculateProbationEndDate,
+  jobRoleMatchesEmploymentCategory,
+  isSeniorManagementCategory,
+  clearSeniorManagementOrgFields,
 } from './employeeProfileUtils';
 import { parseNic } from '../../../utils/nic';
 import { calculateAge } from '../../../utils/nic';
@@ -47,7 +62,7 @@ import {
   pruneLicenseTypeIds,
 } from './drivingLicenseUtils';
 
-/** Stable fallbacks — avoid new [] / {} references that retrigger RTK Query + useEffect loops */
+/** Stable fallbacks ... avoid new [] / {} references that retrigger RTK Query + useEffect loops */
 const EMPTY_LIST = [];
 const DESIGNATIONS_QUERY_ARG = {};
 
@@ -74,6 +89,84 @@ function Field({ label, children, hint, error }) {
       {error ? <span className="epd-field-error">{error}</span> : null}
       {!error && hint ? <span className="epd-field-hint">{hint}</span> : null}
     </div>
+  );
+}
+
+function EmpNoField({
+  value,
+  onChange,
+  excludeEmployeeId = null,
+  required = false,
+  error = null,
+  loadingHint = false,
+  onConflictChange,
+}) {
+  const [checkEmpNo] = useLazyCheckEmpNoQuery();
+  const [checking, setChecking] = useState(false);
+  const [conflict, setConflict] = useState(null);
+
+  useEffect(() => {
+    if (!value || !/^\d+$/.test(value)) {
+      setConflict(null);
+      setChecking(false);
+      if (onConflictChange) onConflictChange(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setChecking(true);
+      try {
+        const res = await checkEmpNo({
+          empNoSuffix: value,
+          excludeEmployeeId: excludeEmployeeId || null,
+        }).unwrap();
+        if (cancelled) return;
+        const data = res?.data || res;
+        const nextConflict = data?.available === false
+          ? (data.holder || { employeeName: 'another employee' })
+          : null;
+        setConflict(nextConflict);
+        if (onConflictChange) onConflictChange(nextConflict);
+      } catch {
+        if (cancelled) return;
+        setConflict(null);
+        if (onConflictChange) onConflictChange(null);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    }, 350);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [value, excludeEmployeeId, checkEmpNo, onConflictChange]);
+
+  const preview = formatEmpNoPreview(value);
+  const conflictError = conflict
+    ? `Already assigned to ${conflict.employeeName || conflict.preferredName || 'another employee'}`
+    : null;
+
+  return (
+    <Field
+      label={required ? 'EMP no. *' : 'EMP no.'}
+      hint={!error && !conflictError && preview ? `Will be saved as ${preview}` : undefined}
+      error={error || conflictError}
+    >
+      <div className="ep-emp-no-group">
+        <span className="ep-emp-no-prefix">EMP</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={str(value)}
+          onChange={(e) => onChange(sanitizeEmpNoSuffix(e.target.value))}
+          placeholder={loadingHint ? 'Loading...' : '1'}
+          aria-invalid={Boolean(error || conflictError)}
+          className="ep-emp-no-suffix"
+        />
+      </div>
+      {checking ? <span className="epd-field-hint">Checking availability...</span> : null}
+    </Field>
   );
 }
 
@@ -226,7 +319,7 @@ export function PersonalTab({ employeeId, readOnly = false }) {
     [licenseTypes, form?.drivingLicense],
   );
 
-  if (isLoading || !employee || !form) return <p className="epd-empty">Loading…</p>;
+  if (isLoading || !employee || !form) return <p className="epd-empty">Loading...</p>;
 
   if (readOnly) {
     const licenseLabels = (form.drivingLicenseType || [])
@@ -235,7 +328,7 @@ export function PersonalTab({ employeeId, readOnly = false }) {
       .join(', ');
     const licenseDisplay = form.drivingLicense === DRIVING_LICENSE_NO || !licenseTypesEnabled
       ? 'Not applicable'
-      : (licenseLabels || '—');
+      : (licenseLabels || '...');
 
     return (
       <div className="epd-section ep-tab-readonly">
@@ -377,7 +470,7 @@ export function PersonalTab({ employeeId, readOnly = false }) {
           <SaveBanner message={message} />
           <div className="epd-actions">
             <button type="button" className="epd-btn epd-btn-primary" onClick={onSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save personal details'}
+              {saving ? 'Saving...' : 'Save personal details'}
             </button>
           </div>
         </>
@@ -391,11 +484,11 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
   const [updateEmployee, { isLoading: saving }] = useUpdateEmployeeRegistrationMutation();
   const [message, setMessage] = useState(null);
   const [form, setForm] = useState(null);
+  const [empNoConflict, setEmpNoConflict] = useState(null);
   const [resolvedDesignation, setResolvedDesignation] = useState(null);
 
   const { data: departmentsData } = useGetEmpDepartmentsQuery();
   const { data: jobRolesData } = useGetEmpJobRolesQuery();
-  const { data: chiefRolesData } = useGetEmpChiefJobRolesQuery();
   const { data: allDesignationsData } = useGetEmpDesignationsQuery(DESIGNATIONS_QUERY_ARG);
   const { data: locationsData } = useGetWorkLocationsQuery();
   const { data: employeesData } = useGetAllEmployeeRegistrationsQuery();
@@ -403,7 +496,6 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
 
   const departments = departmentsData ?? EMPTY_LIST;
   const jobRoles = jobRolesData ?? EMPTY_LIST;
-  const chiefRoles = chiefRolesData ?? EMPTY_LIST;
   const allDesignations = allDesignationsData ?? EMPTY_LIST;
 
   const deptId = form?.emp_department_id || '';
@@ -449,26 +541,22 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
     && Number(selectedRoleLimit.current_count ?? 0) >= Number(selectedRoleLimit.max_limit),
   );
 
-  const chiefDeptMap = useMemo(() => {
-    const map = new Map();
-    chiefRoles.forEach((r) => {
-      map.set(Number(r.id), new Set((r.dept_ids || []).map(Number)));
+  const selectableJobRoles = useMemo(() => {
+    const category = form?.employmentCategory || '';
+    return jobRoles.filter((r) => {
+      if (Number(r.activated) !== 1) return false;
+      if (!jobRoleMatchesEmploymentCategory(r, category)) return false;
+      // Chief roles: show for the selected category (do not hide by department link)
+      if (Number(r.chief) === 1) return Boolean(deptId);
+      if (!deptId) return false;
+      return (r.dept_ids || []).includes(Number(deptId));
     });
-    return map;
-  }, [chiefRoles]);
-
-  const selectableJobRoles = useMemo(() => jobRoles.filter((r) => {
-    if (Number(r.activated) !== 1) return false;
-    if (!deptId) return false;
-    if (Number(r.chief) === 1) {
-      return chiefDeptMap.get(Number(r.id))?.has(Number(deptId));
-    }
-    return (r.dept_ids || []).includes(Number(deptId));
-  }), [jobRoles, deptId, chiefDeptMap]);
+  }, [jobRoles, deptId, form?.employmentCategory]);
 
   const selectedIsChief = Boolean(
     roleId && jobRoles.find((r) => Number(r.id) === Number(roleId) && Number(r.chief) === 1),
   );
+  const isSeniorManagement = isSeniorManagementCategory(form?.employmentCategory);
 
   const workLocations = useMemo(() => {
     const w = locationsData?.data || locationsData;
@@ -487,11 +575,11 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
     }
     const des = allDesignations.find((d) => Number(d.id) === Number(employee.emp_designation_id));
     setForm({
+      empNoSuffix: parseEmpNoSuffix(employee.empNo),
       companyName: employee.companyName || '',
       shiftType: employee.shiftType || '',
       memberTypeFlag: employee.memberTypeFlag || '',
       employmentCategory: employee.employmentCategory || '',
-      jobCategory: employee.jobCategory || '',
       employmentType: employee.employmentType || '',
       contractType: employee.contractType || '',
       contractStartDate: splitDate(employee.contractStartDate),
@@ -521,6 +609,10 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
   }, [employee, employeeId, allDesignationsData, workLocations]);
 
   useEffect(() => {
+    if (isSeniorManagement) {
+      setResolvedDesignation(null);
+      return undefined;
+    }
     if (!deptId || !roleId) {
       setResolvedDesignation(null);
       return undefined;
@@ -554,7 +646,7 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [deptId, roleId, specId]);
+  }, [deptId, roleId, specId, isSeniorManagement]);
 
   const onChange = (e) => {
     const { name, value } = e.target;
@@ -568,6 +660,16 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
         next.emp_designation_id = '';
         next.designation_title = '';
       }
+      if (name === 'employmentCategory') {
+        next.emp_job_role_id = '';
+        next.emp_specialization_id = '';
+        next.emp_designation_id = '';
+        next.designation_title = '';
+        if (isSeniorManagementCategory(value)) {
+          Object.assign(next, clearSeniorManagementOrgFields(next));
+          next.employmentCategory = value;
+        }
+      }
       if (name === 'emp_job_role_id') {
         next.emp_specialization_id = '';
         next.emp_designation_id = '';
@@ -578,13 +680,57 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
         next.designation_title = '';
       }
       if (name === 'flexHoursEnabled' && value !== '1') next.flexHoursMinutes = '0';
+      if (name === 'memberTypeFlag') {
+        if (isExternalMemberType(value)) {
+          next.employmentType = CONTRACT_EMPLOYMENT_TYPE_VALUE;
+        } else if (isInternalMemberType(value) && isContractEmploymentType(next.employmentType)) {
+          next.employmentType = '';
+          next.contractType = '';
+          next.contractStartDate = '';
+          next.contractEndDate = '';
+        }
+      }
+      if (name === 'employmentType' && !isContractEmploymentType(value)) {
+        next.contractType = '';
+        next.contractStartDate = '';
+        next.contractEndDate = '';
+      }
+      if (name === 'employmentType' && !isProbationEmploymentType(value)) {
+        next.probationPeriod = '';
+        next.probationEndDate = '';
+      }
+      if (name === 'employmentType' && isProbationEmploymentType(value)) {
+        next.probationEndDate = calculateProbationEndDate(next.joinedDate, next.probationPeriod);
+      }
+      if (name === 'shiftType' && !isRoasterShiftType(value)) {
+        next.bulkLeaveAvailable = '0';
+      }
+      if ((name === 'joinedDate' || name === 'probationPeriod') && isProbationEmploymentType(next.employmentType)) {
+        next.probationEndDate = calculateProbationEndDate(
+          name === 'joinedDate' ? value : next.joinedDate,
+          name === 'probationPeriod' ? value : next.probationPeriod,
+        );
+      }
       return next;
     });
   };
 
   const onSave = async () => {
     setMessage(null);
-    if (roleId && deptId && !isRoleSelectable(roleId)) {
+    const empNoErr = empNoSuffixValidationMessage(form?.empNoSuffix);
+    if (empNoErr) {
+      setMessage({ type: 'error', text: empNoErr });
+      return;
+    }
+    if (empNoConflict) {
+      const holder = empNoConflict.employeeName || empNoConflict.preferredName || 'another employee';
+      setMessage({
+        type: 'error',
+        text: `Employee number ${formatEmpNoPreview(form.empNoSuffix)} is already assigned to ${holder}.`,
+      });
+      return;
+    }
+    if (!isSeniorManagement && roleId && deptId && !isRoleSelectable(roleId)) {
       const roleName = jobRoles.find((r) => Number(r.id) === Number(roleId))?.job_role || 'this role';
       const deptName = departments.find((d) => Number(d.id) === Number(deptId))?.department_name || 'this department';
       setMessage({
@@ -593,9 +739,12 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
       });
       return;
     }
+    const payload = isSeniorManagement
+      ? clearSeniorManagementOrgFields({ ...form, employmentCategory: form.employmentCategory })
+      : form;
     const fd = new FormData();
     fd.append('id', String(employeeId));
-    appendFormFields(fd, form);
+    appendFormFields(fd, payload);
     try {
       await updateEmployee(fd).unwrap();
       setMessage({ type: 'success', text: 'Employment details saved.' });
@@ -605,7 +754,12 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
     }
   };
 
-  if (isLoading || !employee || !form) return <p className="epd-empty">Loading…</p>;
+  if (isLoading || !employee || !form) return <p className="epd-empty">Loading...</p>;
+
+  const isContract = isExternalMemberType(form.memberTypeFlag)
+    || isContractEmploymentType(form.employmentType);
+  const isProbation = isProbationEmploymentType(form.employmentType);
+  const isRoaster = isRoasterShiftType(form.shiftType);
 
   if (readOnly) {
     const deptName = lookupLabel(departments, form.emp_department_id, 'department_name');
@@ -621,30 +775,41 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
           items={[
             { label: 'EMP no.', value: employee.empNo },
             { label: 'Company', value: form.companyName },
-            { label: 'Department', value: deptName || employee.departmentName },
-            { label: 'Sub-division', value: subName },
-            { label: 'Job role', value: roleName || employee.employeeJobRoleName },
-            { label: 'Specialization', value: specName },
-            { label: 'Designation', value: form.designation_title || resolvedDesignation?.designation_title },
+            { label: 'Employment category', value: form.employmentCategory },
+            ...(!isSeniorManagement
+              ? [
+                  { label: 'Department', value: deptName || employee.departmentName },
+                  { label: 'Sub-division', value: subName },
+                  { label: 'Job role', value: roleName || employee.employeeJobRoleName },
+                  { label: 'Specialization', value: specName },
+                  { label: 'Designation', value: form.designation_title || resolvedDesignation?.designation_title },
+                ]
+              : []),
             { label: 'Reporting officer', value: officer ? (officer.employeeName || officer.empNo) : '' },
             { label: 'Work location', value: locationName || employee.workLocationName },
             { label: 'Shift type', value: form.shiftType },
             { label: 'Member type', value: form.memberTypeFlag },
-            { label: 'Employment category', value: form.employmentCategory },
-            { label: 'Job category', value: form.jobCategory },
             { label: 'Employment type', value: form.employmentType },
-            { label: 'Contract type', value: form.contractType },
+            ...(isContract
+              ? [
+                  { label: 'Contract type', value: form.contractType },
+                  { label: 'Contract start', value: form.contractStartDate },
+                  { label: 'Contract end', value: form.contractEndDate },
+                ]
+              : []),
             { label: 'Joined date', value: form.joinedDate },
             { label: 'Appointment date', value: form.appointmentDate },
-            { label: 'Contract start', value: form.contractStartDate },
-            { label: 'Contract end', value: form.contractEndDate },
-            { label: 'Probation period', value: form.probationPeriod },
-            { label: 'Probation end', value: form.probationEndDate },
+            ...(isProbation
+              ? [
+                  { label: 'Probation period', value: form.probationPeriod },
+                  { label: 'Probation end', value: form.probationEndDate },
+                ]
+              : []),
             { label: 'Retirement date', value: form.retirementDate },
             { label: 'Employee status', value: form.employeeStatus },
             { label: 'Work status', value: form.workStatus },
             { label: 'Biometric ID', value: form.biometricId },
-            { label: 'Bulk leave', value: yesNo(form.bulkLeaveAvailable) },
+            { label: 'Bulk leave', value: yesNo(isRoaster ? form.bulkLeaveAvailable : '0') },
             { label: 'Flex hours', value: yesNo(form.flexHoursEnabled) },
             { label: 'Flex minutes', value: form.flexHoursMinutes },
             { label: 'Permanent date', value: form.permanentDate },
@@ -657,71 +822,114 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
   return (
     <div className={`epd-section${readOnly ? ' ep-tab-readonly' : ''}`}>
       {!readOnly && (
-        <p className="epd-section-intro">Department, sub-division, role, designation, contract, and attendance settings — saved once here only.</p>
+        <p className="epd-section-intro">
+          {isSeniorManagement
+            ? 'Senior Management: department, sub-division, job role, specialization, and designation are managed via Chief Roles / Departments (HOD) - not on this profile.'
+            : 'Department, sub-division, role, designation, contract, and attendance settings - saved once here only.'}
+        </p>
       )}
       <FieldGrid>
-        <Field label="EMP no.">
-          <input value={employee.empNo || ''} readOnly style={{ background: '#f5f5f5' }} />
-        </Field>
+        <EmpNoField
+          value={form.empNoSuffix}
+          onChange={(suffix) => setForm((prev) => (prev ? { ...prev, empNoSuffix: suffix } : prev))}
+          excludeEmployeeId={employeeId}
+          required
+          onConflictChange={setEmpNoConflict}
+        />
         <Field label="Company">
           <MasterSelect category="company_name" name="companyName" value={str(form.companyName)} onChange={onChange} />
         </Field>
-        <Field label="Department">
-          <select name="emp_department_id" value={str(form.emp_department_id)} onChange={onChange}>
-            <option value="">-- Select --</option>
-            {departments.filter((d) => Number(d.activated) === 1).map((d) => (
-              <option key={d.id} value={d.id}>{d.department_name}</option>
-            ))}
-          </select>
+        <Field label="Employment category">
+          <MasterSelect category="employment_category" name="employmentCategory" value={form.employmentCategory} onChange={onChange} />
         </Field>
-        <Field label="Sub-division">
-          <select name="emp_sub_division_id" value={form.emp_sub_division_id} onChange={onChange} disabled={!deptId}>
-            <option value="">-- Select --</option>
-            {subDivisions.filter((s) => Number(s.activated) === 1).map((s) => (
-              <option key={s.id} value={s.id}>{s.sub_division_name}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Job role" hint={deptId ? 'Chief roles appear only for departments they manage. Roles at max headcount are disabled.' : 'Select a department first to see chief-level roles.'}>
-          <select name="emp_job_role_id" value={form.emp_job_role_id} onChange={onChange}>
-            <option value="">-- Select --</option>
-            {selectableJobRoles.map((r) => {
-              const atCapacity = deptId && !Number(r.chief) && !isRoleSelectable(r.id);
-              return (
-                <option key={r.id} value={r.id} disabled={atCapacity}>
-                  {r.job_role}{Number(r.chief) === 1 ? ' (chief)' : ''}{atCapacity ? ' (full)' : ''}
-                </option>
-              );
-            })}
-          </select>
-          {selectedRoleAtCapacity && (
-            <p className="epd-row-warning">
-              Maximum headcount ({selectedRoleLimit.max_limit}) reached for this role in the selected department.
-            </p>
-          )}
-        </Field>
-        <Field label="Specialization" hint={selectedIsChief ? 'Not applicable for chief-level roles.' : (specializations.length === 0 && roleId ? 'No specializations for this dept/role — role-only designation applies.' : undefined)}>
-          <select name="emp_specialization_id" value={form.emp_specialization_id} onChange={onChange} disabled={selectedIsChief || !roleId || specializations.length === 0}>
-            <option value="">-- None --</option>
-            {specializations.filter((s) => Number(s.activated) === 1).map((s) => (
-              <option key={s.id} value={s.id}>{s.specialization}</option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Designation">
-          <input
-            name="designation_title"
-            value={form.designation_title || resolvedDesignation?.designation_title || ''}
-            readOnly
-            style={{ background: '#f5f5f5' }}
-          />
-        </Field>
-        <Field label="Reporting officer">
+        {!isSeniorManagement ? (
+          <>
+            <Field label="Department">
+              <select name="emp_department_id" value={str(form.emp_department_id)} onChange={onChange}>
+                <option value="">-- Select --</option>
+                {departments.filter((d) => Number(d.activated) === 1).map((d) => (
+                  <option key={d.id} value={d.id}>{d.department_name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Sub-division">
+              <select name="emp_sub_division_id" value={form.emp_sub_division_id} onChange={onChange} disabled={!deptId}>
+                <option value="">-- Select --</option>
+                {subDivisions.filter((s) => Number(s.activated) === 1).map((s) => (
+                  <option key={s.id} value={s.id}>{s.sub_division_name}</option>
+                ))}
+              </select>
+            </Field>
+            <Field
+              label="Job role"
+              hint={
+                !form.employmentCategory
+                  ? 'Select employment category first.'
+                  : !deptId
+                    ? 'Select a department first to see roles for this category.'
+                    : 'Shows job roles (including chief) for the selected employment category. Roles at max headcount are disabled.'
+              }
+            >
+              <select
+                name="emp_job_role_id"
+                value={form.emp_job_role_id}
+                onChange={onChange}
+                disabled={!form.employmentCategory || !deptId}
+              >
+                <option value="">-- Select --</option>
+                {selectableJobRoles.map((r) => {
+                  const atCapacity = deptId && !Number(r.chief) && !isRoleSelectable(r.id);
+                  return (
+                    <option key={r.id} value={r.id} disabled={atCapacity}>
+                      {r.job_role}{Number(r.chief) === 1 ? ' (chief)' : ''}{atCapacity ? ' (full)' : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              {form.employmentCategory && deptId && selectableJobRoles.length === 0 && (
+                <p className="epd-row-warning">
+                  No job roles found for {form.employmentCategory} in this department.
+                </p>
+              )}
+              {selectedRoleAtCapacity && (
+                <p className="epd-row-warning">
+                  Maximum headcount ({selectedRoleLimit.max_limit}) reached for this role in the selected department.
+                </p>
+              )}
+            </Field>
+            <Field label="Specialization" hint={selectedIsChief ? 'Not applicable for chief-level roles.' : (specializations.length === 0 && roleId ? 'No specializations for this dept/role - role-only designation applies.' : undefined)}>
+              <select name="emp_specialization_id" value={form.emp_specialization_id} onChange={onChange} disabled={selectedIsChief || !roleId || specializations.length === 0}>
+                <option value="">-- None --</option>
+                {specializations.filter((s) => Number(s.activated) === 1).map((s) => (
+                  <option key={s.id} value={s.id}>{s.specialization}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Designation">
+              <input
+                name="designation_title"
+                value={form.designation_title || resolvedDesignation?.designation_title || ''}
+                readOnly
+                style={{ background: '#f5f5f5' }}
+              />
+            </Field>
+          </>
+        ) : null}
+        <Field
+          label="Reporting officer"
+          hint={
+            isSeniorManagement || departments.some((dept) => Number(dept.hod_employee_id) === Number(employeeId))
+              ? 'Senior Management and department HODs may select themselves as reporting officer.'
+              : 'One reporting officer only. Changing this replaces the previous officer.'
+          }
+        >
           <select name="reportingOfficer" value={form.reportingOfficer} onChange={onChange}>
             <option value="">-- Select --</option>
             {employees.filter((e) => {
+              const isSelf = String(e.id) === String(employeeId);
+              if (!isSelf) return true;
               const isDepartmentHead = departments.some((dept) => Number(dept.hod_employee_id) === Number(employeeId));
-              return String(e.id) !== String(employeeId) || isDepartmentHead;
+              return isSeniorManagement || isDepartmentHead;
             }).map((e) => (
               <option key={e.id} value={e.id}>{e.employeeName || e.empNo}</option>
             ))}
@@ -739,36 +947,68 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
         <Field label="Member type">
           <MasterSelect category="member_type" name="memberTypeFlag" value={form.memberTypeFlag} onChange={onChange} />
         </Field>
-        <Field label="Employment category">
-          <MasterSelect category="employment_category" name="employmentCategory" value={form.employmentCategory} onChange={onChange} />
+        <Field
+          label="Employment type"
+          hint={
+            isExternalMemberType(form.memberTypeFlag)
+              ? 'External members use Contract Employee.'
+              : isInternalMemberType(form.memberTypeFlag)
+                ? 'Internal members use non-contract employment types.'
+                : 'Select member type to filter employment types.'
+          }
+        >
+          <MasterSelect
+            category="employment_type"
+            name="employmentType"
+            value={form.employmentType}
+            onChange={onChange}
+            disabled={!form.memberTypeFlag}
+            filterOption={(opt) => {
+              if (isExternalMemberType(form.memberTypeFlag)) {
+                return isContractEmploymentType(opt.value || opt.label);
+              }
+              if (isInternalMemberType(form.memberTypeFlag)) {
+                return !isContractEmploymentType(opt.value || opt.label);
+              }
+              return true;
+            }}
+          />
         </Field>
-        <Field label="Job category">
-          <MasterSelect category="job_category" name="jobCategory" value={form.jobCategory} onChange={onChange} />
-        </Field>
-        <Field label="Employment type">
-          <MasterSelect category="employment_type" name="employmentType" value={form.employmentType} onChange={onChange} />
-        </Field>
-        <Field label="Contract type">
-          <MasterSelect category="contract_type" name="contractType" value={form.contractType} onChange={onChange} />
-        </Field>
+        {isContract && (
+          <>
+            <Field label="Contract type">
+              <MasterSelect category="contract_type" name="contractType" value={form.contractType} onChange={onChange} />
+            </Field>
+            <Field label="Contract start">
+              <input type="date" name="contractStartDate" value={form.contractStartDate} onChange={onChange} />
+            </Field>
+            <Field label="Contract end">
+              <input type="date" name="contractEndDate" value={form.contractEndDate} onChange={onChange} />
+            </Field>
+          </>
+        )}
         <Field label="Joined date">
           <input type="date" name="joinedDate" value={form.joinedDate} onChange={onChange} />
         </Field>
         <Field label="Appointment date">
           <input type="date" name="appointmentDate" value={form.appointmentDate} onChange={onChange} />
         </Field>
-        <Field label="Contract start">
-          <input type="date" name="contractStartDate" value={form.contractStartDate} onChange={onChange} />
-        </Field>
-        <Field label="Contract end">
-          <input type="date" name="contractEndDate" value={form.contractEndDate} onChange={onChange} />
-        </Field>
-        <Field label="Probation period">
-          <MasterSelect category="probation_period" name="probationPeriod" value={form.probationPeriod} onChange={onChange} />
-        </Field>
-        <Field label="Probation end">
-          <input type="date" name="probationEndDate" value={form.probationEndDate} onChange={onChange} />
-        </Field>
+        {isProbation && (
+          <>
+            <Field label="Probation period">
+              <MasterSelect category="probation_period" name="probationPeriod" value={form.probationPeriod} onChange={onChange} />
+            </Field>
+            <Field label="Probation end" hint="Auto-calculated from joined date + probation period.">
+              <input
+                type="date"
+                name="probationEndDate"
+                value={form.probationEndDate}
+                readOnly
+                style={{ background: '#f5f5f5' }}
+              />
+            </Field>
+          </>
+        )}
         <Field label="Retirement date">
           <input type="date" name="retirementDate" value={form.retirementDate} onChange={onChange} />
         </Field>
@@ -781,8 +1021,16 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
         <Field label="Biometric ID">
           <input name="biometricId" value={form.biometricId} onChange={onChange} />
         </Field>
-        <Field label="Bulk leave">
-          <select name="bulkLeaveAvailable" value={form.bulkLeaveAvailable} onChange={onChange}>
+        <Field
+          label="Bulk leave"
+          hint={isRoaster ? undefined : 'Available only when shift type is Roaster.'}
+        >
+          <select
+            name="bulkLeaveAvailable"
+            value={isRoaster ? form.bulkLeaveAvailable : '0'}
+            onChange={onChange}
+            disabled={!isRoaster}
+          >
             <option value="0">No</option>
             <option value="1">Yes</option>
           </select>
@@ -805,7 +1053,7 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
           <SaveBanner message={message} />
           <div className="epd-actions">
             <button type="button" className="epd-btn epd-btn-primary" onClick={onSave} disabled={saving || selectedRoleAtCapacity}>
-              {saving ? 'Saving…' : 'Save employment details'}
+              {saving ? 'Saving...' : 'Save employment details'}
             </button>
           </div>
         </>
@@ -901,7 +1149,7 @@ export function SecurityTab({ employeeId, readOnly = false }) {
     }
   };
 
-  if (isLoading || !employee || !form) return <p className="epd-empty">Loading…</p>;
+  if (isLoading || !employee || !form) return <p className="epd-empty">Loading...</p>;
 
   if (readOnly) {
     const provinceName = lookupLabel(provinces, form.province, 'province');
@@ -971,7 +1219,7 @@ export function SecurityTab({ employeeId, readOnly = false }) {
           <SaveBanner message={message} />
           <div className="epd-actions">
             <button type="button" className="epd-btn epd-btn-primary" onClick={onSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save security details'}
+              {saving ? 'Saving...' : 'Save security details'}
             </button>
           </div>
         </>
@@ -1020,7 +1268,7 @@ export function LegacyFilesSection({ employeeId, readOnly = false }) {
     <div className="epd-section">
       <h4 className="ep-subsection-title">Registration documents</h4>
       <p className="epd-section-intro">
-        HR registration documents. Education certificates and service letters are managed under Qualifications — not here.
+        HR registration documents. Education certificates and service letters are managed under Qualifications ... not here.
       </p>
       {!readOnly && <SaveBanner message={message} />}
       <div className="ep-doc-gallery">
@@ -1067,10 +1315,29 @@ export function LegacyFilesSection({ employeeId, readOnly = false }) {
 }
 
 export function AddEmployeeModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ employeeName: '', nic: '', mobileNumber: '', dob: '', gender: '' });
+  const [form, setForm] = useState({
+    employeeName: '',
+    nic: '',
+    mobileNumber: '',
+    dob: '',
+    gender: '',
+    empNoSuffix: '',
+  });
   const [touched, setTouched] = useState({});
   const [message, setMessage] = useState(null);
+  const [empNoConflict, setEmpNoConflict] = useState(null);
+  const [empNoInitialized, setEmpNoInitialized] = useState(false);
   const [createEmployee, { isLoading: creating }] = useCreateEmployeeRegistrationMutation();
+  const { data: lastEmpNoData, isLoading: loadingLastEmpNo } = useGetLastEmpNoQuery();
+  const nextEmpNumber = lastEmpNoData?.data?.nextNumber ?? lastEmpNoData?.nextNumber ?? null;
+
+  useEffect(() => {
+    if (empNoInitialized || loadingLastEmpNo) return;
+    if (nextEmpNumber != null) {
+      setForm((prev) => ({ ...prev, empNoSuffix: String(nextEmpNumber) }));
+      setEmpNoInitialized(true);
+    }
+  }, [empNoInitialized, loadingLastEmpNo, nextEmpNumber]);
 
   const fieldErrors = useMemo(() => {
     const errors = {};
@@ -1087,6 +1354,10 @@ export function AddEmployeeModal({ onClose, onCreated }) {
       const mobileErr = mobileValidationMessage(form.mobileNumber);
       if (mobileErr) errors.mobileNumber = mobileErr;
     }
+    if (touched.empNoSuffix) {
+      const empNoErr = empNoSuffixValidationMessage(form.empNoSuffix);
+      if (empNoErr) errors.empNoSuffix = empNoErr;
+    }
     return errors;
   }, [form, touched]);
 
@@ -1100,16 +1371,26 @@ export function AddEmployeeModal({ onClose, onCreated }) {
     if (nicErr) errors.nic = nicErr;
     const mobileErr = mobileValidationMessage(form.mobileNumber);
     if (mobileErr) errors.mobileNumber = mobileErr;
+    const empNoErr = empNoSuffixValidationMessage(form.empNoSuffix);
+    if (empNoErr) errors.empNoSuffix = empNoErr;
     return errors;
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
     setMessage(null);
-    setTouched({ employeeName: true, nic: true, mobileNumber: true });
+    setTouched({ employeeName: true, nic: true, mobileNumber: true, empNoSuffix: true });
     const errors = validateAll();
     if (Object.keys(errors).length) {
       setMessage({ type: 'error', text: 'Please fix the highlighted fields.' });
+      return;
+    }
+    if (empNoConflict) {
+      const holder = empNoConflict.employeeName || empNoConflict.preferredName || 'another employee';
+      setMessage({
+        type: 'error',
+        text: `Employee number ${formatEmpNoPreview(form.empNoSuffix)} is already assigned to ${holder}.`,
+      });
       return;
     }
     const mobile = sanitizePhone9(form.mobileNumber);
@@ -1118,6 +1399,7 @@ export function AddEmployeeModal({ onClose, onCreated }) {
     fd.append('nic', form.nic.trim().toUpperCase());
     fd.append('mobileNumber', mobile);
     fd.append('employeeType', 'i');
+    fd.append('empNoSuffix', form.empNoSuffix);
     const parsed = parseNic(form.nic);
     if (parsed.valid) {
       fd.append('dob', parsed.dob);
@@ -1140,11 +1422,19 @@ export function AddEmployeeModal({ onClose, onCreated }) {
       <div className="epd-modal-card ep-add-modal" role="dialog" aria-modal="true">
         <div className="epd-modal-header">
           <h3>Add new employee</h3>
-          <button type="button" className="epd-modal-close" onClick={onClose} aria-label="Close">×</button>
+          <button type="button" className="epd-modal-close" onClick={onClose} aria-label="Close">&times;</button>
         </div>
         <form className="epd-modal-body ep-add-modal-body" onSubmit={onSubmit} noValidate>
           <p className="epd-section-intro">Create with minimum details, then complete the full profile in the tabs.</p>
           <div className="ep-add-form">
+            <EmpNoField
+              value={form.empNoSuffix}
+              onChange={(suffix) => setForm((p) => ({ ...p, empNoSuffix: suffix }))}
+              required
+              loadingHint={loadingLastEmpNo}
+              error={fieldErrors.empNoSuffix}
+              onConflictChange={setEmpNoConflict}
+            />
             <Field label="Employee name *" error={fieldErrors.employeeName}>
               <input
                 value={str(form.employeeName)}
@@ -1205,7 +1495,7 @@ export function AddEmployeeModal({ onClose, onCreated }) {
           <div className="epd-actions ep-add-modal-actions">
             <button type="button" className="epd-btn" onClick={onClose}>Cancel</button>
             <button type="submit" className="epd-btn epd-btn-primary" disabled={creating}>
-              {creating ? 'Creating…' : 'Create & open profile'}
+              {creating ? 'Creating...' : 'Create & open profile'}
             </button>
           </div>
         </form>

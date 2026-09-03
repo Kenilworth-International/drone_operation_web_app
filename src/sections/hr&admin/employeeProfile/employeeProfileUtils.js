@@ -125,16 +125,57 @@ export function employeeMatchesWing(employee, wingQuery) {
   return employeeInWing(employee, ctx);
 }
 
+/**
+ * Normalize API/DB date values to YYYY-MM-DD for <input type="date">.
+ * Avoids the classic -1 day bug: MySQL DATE → JS Date → JSON UTC ISO → split('T')[0].
+ */
 export function splitDate(value) {
-  if (!value) return '';
-  return String(value).split('T')[0];
+  if (value == null || value === '') return '';
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    const yyyy = value.getFullYear();
+    const mm = String(value.getMonth() + 1).padStart(2, '0');
+    const dd = String(value.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const s = String(value).trim();
+  if (!s || s === 'null' || s === 'undefined') return '';
+
+  // Pure calendar date — never run through Date() (UTC parsing shifts the day)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // Date prefix with time / timezone (ISO or MySQL datetime)
+  if (/^\d{4}-\d{2}-\d{2}[T\s]/.test(s)) {
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) {
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return s.slice(0, 10);
+  }
+
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return '';
 }
 
 export function formatProfileDate(value) {
   const raw = splitDate(value);
   if (!raw) return null;
+  const parts = raw.split('-').map((p) => Number(p));
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return raw;
+  const [y, m, d] = parts;
   try {
-    return new Date(raw).toLocaleDateString('en-GB', {
+    return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -153,6 +194,148 @@ export const EMPLOYEE_CAREER_DATE_FIELDS = [
   { key: 'contractEndDate', label: 'Contract end' },
   { key: 'retirementDate', label: 'Retirement' },
 ];
+
+/** True when employment type is Contract Employee (HR master option_value). */
+export function isContractEmploymentType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return false;
+  return text === 'contract employee' || text.startsWith('contract');
+}
+
+/** True when employment type is Probation Employee. */
+export function isProbationEmploymentType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return false;
+  return text === 'probation employee' || text.startsWith('probation');
+}
+
+/** Default stored value for contract employment type (HR master option). */
+export const CONTRACT_EMPLOYMENT_TYPE_VALUE = 'Contract Employee';
+
+/** True when member type is External. */
+export function isExternalMemberType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  return text === 'external';
+}
+
+/** True when member type is Internal. */
+export function isInternalMemberType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  return text === 'internal';
+}
+
+/**
+ * Filter employment_type master options by member type:
+ * External → Contract Employee only; Internal → non-contract types.
+ */
+export function filterEmploymentTypeOptionsByMemberType(options, memberType) {
+  const list = Array.isArray(options) ? options : [];
+  if (isExternalMemberType(memberType)) {
+    return list.filter((opt) => isContractEmploymentType(opt.value || opt.label));
+  }
+  if (isInternalMemberType(memberType)) {
+    return list.filter((opt) => !isContractEmploymentType(opt.value || opt.label));
+  }
+  return list;
+}
+
+/** True when shift type is Roaster (roster) — bulk leave is only for this shift. */
+export function isRoasterShiftType(value) {
+  const text = String(value || '').trim().toLowerCase();
+  if (!text) return false;
+  return text === 'roaster' || text === 'roster' || text.startsWith('roaster') || text.startsWith('roster');
+}
+
+function normalizeCategoryKey(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+/** True when employment category is Senior Management (chief/HOD managed elsewhere). */
+export function isSeniorManagementCategory(value) {
+  return normalizeCategoryKey(value) === 'senior management';
+}
+
+/**
+ * Match employment category (HR master) to emp_job_roles management layer name.
+ * e.g. "Senior Management" ↔ emp_management_layers.layer_name
+ */
+export function jobRoleMatchesEmploymentCategory(role, employmentCategory) {
+  const category = normalizeCategoryKey(employmentCategory);
+  if (!category) return false;
+  const layer = normalizeCategoryKey(role?.layer_name || role?.mgtLayerName || role?.mgt_layer_name);
+  if (!layer) return false;
+  return layer === category || layer.includes(category) || category.includes(layer);
+}
+
+/** Org-placement fields that do not apply to Senior Management employees. */
+export const SENIOR_MANAGEMENT_CLEARED_ORG_FIELDS = [
+  'emp_department_id',
+  'emp_division_id',
+  'emp_sub_division_id',
+  'emp_job_role_id',
+  'emp_specialization_id',
+  'emp_designation_id',
+  'designation_title',
+  'designation',
+  'department',
+  'departmentName',
+];
+
+export function clearSeniorManagementOrgFields(formLike = {}) {
+  const next = { ...formLike };
+  SENIOR_MANAGEMENT_CLEARED_ORG_FIELDS.forEach((key) => {
+    next[key] = '';
+  });
+  return next;
+}
+
+/**
+ * Parse probation period labels like "6 months", "9 months", "1 year" into months.
+ * @returns {number|null}
+ */
+export function parseProbationPeriodMonths(period) {
+  const text = String(period || '').trim().toLowerCase();
+  if (!text) return null;
+
+  const yearMatch = text.match(/(\d+(?:\.\d+)?)\s*years?/);
+  if (yearMatch) {
+    const years = Number(yearMatch[1]);
+    return Number.isFinite(years) ? Math.round(years * 12) : null;
+  }
+
+  const monthMatch = text.match(/(\d+(?:\.\d+)?)\s*months?/);
+  if (monthMatch) {
+    const months = Number(monthMatch[1]);
+    return Number.isFinite(months) ? Math.round(months) : null;
+  }
+
+  const bare = Number(text);
+  if (Number.isFinite(bare) && bare > 0) return Math.round(bare);
+
+  return null;
+}
+
+/**
+ * joinedDate (YYYY-MM-DD) + probation period → probation end date (YYYY-MM-DD).
+ */
+export function calculateProbationEndDate(joinedDate, probationPeriod) {
+  const joined = splitDate(joinedDate);
+  const months = parseProbationPeriodMonths(probationPeriod);
+  if (!joined || months == null || months <= 0) return '';
+
+  const d = new Date(`${joined}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return '';
+
+  d.setMonth(d.getMonth() + months);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 export function employeeRecord(data) {
   return data?.data || data || null;
@@ -277,5 +460,28 @@ export function nicValidationMessage(nic) {
   const value = String(nic || '').trim();
   if (!value) return 'NIC is required.';
   if (!isValidNic(value)) return 'Use 12 digits (new NIC) or 9 digits + V/X (old NIC).';
+  return null;
+}
+
+export function parseEmpNoSuffix(empNo) {
+  const match = String(empNo || '').trim().toUpperCase().match(/^EMP(\d+)$/);
+  if (!match) return '';
+  return String(Number(match[1]));
+}
+
+export function sanitizeEmpNoSuffix(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+export function formatEmpNoPreview(suffix) {
+  if (!suffix || !/^\d+$/.test(String(suffix))) return '';
+  return `EMP${String(Number(suffix)).padStart(3, '0')}`;
+}
+
+export function empNoSuffixValidationMessage(suffix) {
+  if (!suffix || !/^\d+$/.test(String(suffix))) {
+    return 'Enter the numeric part of the employee number (e.g. 1 for EMP001).';
+  }
+  if (Number(suffix) <= 0) return 'Employee number must be a positive number.';
   return null;
 }

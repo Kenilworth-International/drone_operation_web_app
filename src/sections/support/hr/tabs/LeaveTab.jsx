@@ -17,6 +17,7 @@ import {
   getApprovalTypeBadge,
   isLateDepartureApproval,
 } from '../utils/hrApprovals';
+import { formatApiDateDisplay } from '../utils/formatApiDate';
 
 const SESSION_OPTIONS = [
   { value: 'morning', label: 'Morning' },
@@ -33,9 +34,7 @@ function isShortLeaveTypeCode(code) {
 }
 
 function formatDate(value) {
-  if (!value) return '—';
-  const d = new Date(String(value).slice(0, 10) + 'T12:00:00');
-  return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleDateString();
+  return formatApiDateDisplay(value, '—');
 }
 
 function statusBadgeClass(status) {
@@ -65,6 +64,7 @@ export default function LeaveTab({
   attendancePolicy,
   balances,
   policySummary,
+  profile,
 }) {
   const [leaveSubTab, setLeaveSubTab] = useState('request');
   const [files, setFiles] = useState([]);
@@ -86,8 +86,13 @@ export default function LeaveTab({
   const shortLeaveExceeded = Boolean(attendancePolicy?.shortLeaveMonthlyExceeded ?? Number(attendancePolicy?.shortLeaveMonthlyUsed ?? 0) >= shortLeaveCap);
 
   const leaveBalanceCards = useMemo(
-    () => buildEmployeeLeaveBalanceCards(leaveTypes, policySummary, balances),
-    [leaveTypes, policySummary, balances],
+    () => buildEmployeeLeaveBalanceCards(
+      leaveTypes,
+      policySummary,
+      balances,
+      profile?.allowedLeaveTypeCodes || profile?.allowed_leave_type_codes || null,
+    ),
+    [leaveTypes, policySummary, balances, profile?.allowedLeaveTypeCodes, profile?.allowed_leave_type_codes],
   );
 
   const isShortLeaveType = isShortLeaveTypeCode(leaveForm.leaveTypeCode);
@@ -371,6 +376,15 @@ export default function LeaveTab({
                 Reporting Officer and HOD are not configured. Please contact HR.
               </p>
             </div>
+          ) : leaveTypes.length === 0 ? (
+            <div className="hrsup-leave-unavailable" style={{ background: '#eff6ff', borderColor: '#93c5fd' }}>
+              <div className="hrsup-leave-unavailable-icon" aria-hidden="true">ℹ</div>
+              <h3 className="hrsup-leave-unavailable-title" style={{ color: '#1e3a8a' }}>Leave Availability Not Set</h3>
+              <p className="hrsup-leave-unavailable-text" style={{ color: '#1e40af' }}>
+                {profile?.leaveAvailabilityNotice
+                  || 'Leave availability is not set for your profile. Please contact HR to assign your leave types in Leave Management → Employee Leave Availability.'}
+              </p>
+            </div>
           ) : (
             <>
               <div className="hrsup-card hrsup-leave-section">
@@ -381,17 +395,13 @@ export default function LeaveTab({
                   )}
                 </div>
                 <p className="hrsup-leave-section-hint">Choose the leave category you need.</p>
-                {leaveTypes.length === 0 ? (
-                  <p className="hrsup-empty">No leave types available.</p>
-                ) : (
-                  <div className="hrsup-chips hrsup-leave-chips">
-                    {leaveTypes.map((t) => (
-                      <button key={t.code} type="button" className={`hrsup-chip${leaveForm.leaveTypeCode === t.code ? ' hrsup-chip--active' : ''}`} onClick={() => updateLeaveTypeCode(t.code)}>
-                        {t.name || t.code}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="hrsup-chips hrsup-leave-chips">
+                  {leaveTypes.map((t) => (
+                    <button key={t.code} type="button" className={`hrsup-chip${leaveForm.leaveTypeCode === t.code ? ' hrsup-chip--active' : ''}`} onClick={() => updateLeaveTypeCode(t.code)}>
+                      {t.name || t.code}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {!isShortLeaveType && (

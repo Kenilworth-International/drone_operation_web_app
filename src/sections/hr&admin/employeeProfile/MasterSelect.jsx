@@ -9,9 +9,13 @@ export default function MasterSelect({
   disabled,
   className,
   placeholder = '-- Select --',
+  filterOption,
 }) {
   const { getOptions, isLoading } = useHrMasterOptions();
-  const options = getOptions(category);
+  const allOptions = getOptions(category);
+  const options = typeof filterOption === 'function'
+    ? allOptions.filter(filterOption)
+    : allOptions;
 
   return (
     <select

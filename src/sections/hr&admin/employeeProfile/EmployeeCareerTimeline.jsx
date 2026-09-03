@@ -1,39 +1,43 @@
 import React, { useMemo } from 'react';
 import { useEmployee } from './useEmployee';
-import { splitDate } from './employeeProfileUtils';
-
-function formatTimelineDate(value) {
-  const raw = splitDate(value);
-  if (!raw) return null;
-  try {
-    return new Date(raw).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-  } catch {
-    return raw;
-  }
-}
+import {
+  splitDate,
+  formatProfileDate,
+  isContractEmploymentType,
+  isExternalMemberType,
+  isProbationEmploymentType,
+} from './employeeProfileUtils';
 
 export default function EmployeeCareerTimeline({ employeeId }) {
   const { employee, isLoading } = useEmployee(employeeId);
 
   const events = useMemo(() => {
     if (!employee) return [];
+    const isContract = isExternalMemberType(employee.memberTypeFlag)
+      || isContractEmploymentType(employee.employmentType);
+    const isProbation = isProbationEmploymentType(employee.employmentType);
     const candidates = [
       { key: 'joined', label: 'Joined company', date: employee.joinedDate },
       { key: 'appointment', label: 'Current appointment', date: employee.appointmentDate },
-      { key: 'probation-end', label: 'Probation end', date: employee.probationEndDate },
+      ...(isProbation
+        ? [{ key: 'probation-end', label: 'Probation end', date: employee.probationEndDate }]
+        : []),
       { key: 'permanent', label: 'Permanent status', date: employee.permanentDate },
-      { key: 'contract-start', label: 'Contract start', date: employee.contractStartDate },
-      { key: 'contract-end', label: 'Contract end', date: employee.contractEndDate },
+      ...(isContract
+        ? [
+            { key: 'contract-start', label: 'Contract start', date: employee.contractStartDate },
+            { key: 'contract-end', label: 'Contract end', date: employee.contractEndDate },
+          ]
+        : []),
       { key: 'retirement', label: 'Retirement', date: employee.retirementDate },
     ];
     return candidates
-      .map((item) => ({ ...item, displayDate: formatTimelineDate(item.date) }))
+      .map((item) => {
+        const iso = splitDate(item.date);
+        return { ...item, iso, displayDate: formatProfileDate(item.date) };
+      })
       .filter((item) => item.displayDate)
-      .sort((a, b) => new Date(splitDate(a.date)) - new Date(splitDate(b.date)));
+      .sort((a, b) => String(a.iso).localeCompare(String(b.iso)));
   }, [employee]);
 
   if (isLoading || !employee) return null;
@@ -48,7 +52,7 @@ export default function EmployeeCareerTimeline({ employeeId }) {
             <span className="ep-career-timeline-dot" aria-hidden="true" />
             <div className="ep-career-timeline-body">
               <span className="ep-career-timeline-label">{event.label}</span>
-              <time className="ep-career-timeline-date" dateTime={splitDate(event.date)}>{event.displayDate}</time>
+              <time className="ep-career-timeline-date" dateTime={event.iso}>{event.displayDate}</time>
             </div>
           </li>
         ))}

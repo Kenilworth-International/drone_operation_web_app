@@ -39,7 +39,7 @@ export default function EmployeeProfileHero({ employeeId, readOnly = false }) {
     );
   }
 
-  const title = employee.employeeName || employee.preferredName || `Employee ${employeeId}`;
+  const title = employee.preferredName || employee.employeeName || `Employee ${employeeId}`;
   const status = employee.employeeStatus || employee.workStatus || '—';
   const tone = statusTone(status);
 
