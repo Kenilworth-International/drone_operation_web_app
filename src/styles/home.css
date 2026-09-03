@@ -140,7 +140,8 @@
 
 .content-dashboard.content-dashboard--employee-profile > *,
 .content-dashboard.content-dashboard--organization-structure > * {
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    height: 0;
     min-height: 0;
     min-width: 0;
     display: flex;
@@ -175,12 +176,14 @@
     flex-direction: column;
     min-height: 0;
     height: 100vh;
+    max-height: 100vh;
     box-sizing: border-box;
     padding: 0;
 }
 
 .content-dashboard.content-dashboard--mapping-update > * {
-    flex: 1 1 0;
+    flex: 1 1 auto;
+    height: 0;
     min-height: 0;
     min-width: 0;
     display: flex;

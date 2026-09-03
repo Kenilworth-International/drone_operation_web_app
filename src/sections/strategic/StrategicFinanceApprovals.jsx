@@ -27,6 +27,13 @@ import {
   useApproveFuelGeneratorVoucherMutation,
   useDeclineFuelGeneratorVoucherMutation,
 } from '../../api/services NodeJs/fuelGeneratorVoucherApi';
+import {
+  useGetPendingMaintenanceVouchersQuery,
+  useGetMaintenanceVoucherHistoryQuery,
+  useApproveMaintenanceVoucherMutation,
+  useDeclineMaintenanceVoucherMutation,
+} from '../../api/services NodeJs/maintenanceVoucherApi';
+import MaintenanceVoucherPrint from '../finance/maintenance/MaintenanceVoucherPrint';
 import { getUserData } from '../../utils/authUtils';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -106,6 +113,15 @@ const StrategicFinanceApprovals = () => {
   const [approvingVoucherId, setApprovingVoucherId] = useState(null);
   const [decliningVoucherId, setDecliningVoucherId] = useState(null);
 
+  // Maintenance voucher state
+  const [maintTab, setMaintTab]                     = useState(0);
+  const [maintSearch, setMaintSearch]               = useState('');
+  const [maintApproveConfirm, setMaintApproveConfirm] = useState(null);
+  const [maintDecline, setMaintDecline]             = useState(null);
+  const [maintPrintVoucher, setMaintPrintVoucher]   = useState(null);
+  const [approvingMaintId, setApprovingMaintId]     = useState(null);
+  const [decliningMaintId, setDecliningMaintId]     = useState(null);
+
   const { data: transportPending = [], isLoading: transportPendingLoading, refetch: refetchTransportPending } =
     useGetPendingFuelTransportVouchersQuery();
   const { data: transportHistory = [], isLoading: transportHistoryLoading, refetch: refetchTransportHistory } =
@@ -139,6 +155,14 @@ const StrategicFinanceApprovals = () => {
   });
   const printDetail = fuelSource === 'vehicle' ? transportPrintDetail : generatorPrintDetail;
 
+  // Maintenance voucher queries & mutations
+  const { data: maintPending = [], isLoading: maintPendingLoading, refetch: refetchMaintPending } =
+    useGetPendingMaintenanceVouchersQuery();
+  const { data: maintHistory = [], isLoading: maintHistoryLoading, refetch: refetchMaintHistory } =
+    useGetMaintenanceVoucherHistoryQuery();
+  const [approveMaintVoucher, { isLoading: approvingMaint }] = useApproveMaintenanceVoucherMutation();
+  const [declineMaintVoucher, { isLoading: decliningMaint }] = useDeclineMaintenanceVoucherMutation();
+
   const [approveTransportVoucher, { isLoading: approvingTransport }] = useApproveFuelTransportVoucherMutation();
   const [declineTransportVoucher, { isLoading: decliningTransport }] = useDeclineFuelTransportVoucherMutation();
   const [approveGeneratorVoucher, { isLoading: approvingGenerator }] = useApproveFuelGeneratorVoucherMutation();
@@ -164,12 +188,14 @@ const StrategicFinanceApprovals = () => {
         refetchTransportHistory(),
         refetchGeneratorPending(),
         refetchGeneratorHistory(),
+        refetchMaintPending(),
+        refetchMaintHistory(),
       ]);
       setLastRefreshedAt(new Date());
     } finally {
       if (showSpinner) setIsRefreshing(false);
     }
-  }, [refetchTransportPending, refetchTransportHistory, refetchGeneratorPending, refetchGeneratorHistory]);
+  }, [refetchTransportPending, refetchTransportHistory, refetchGeneratorPending, refetchGeneratorHistory, refetchMaintPending, refetchMaintHistory]);
 
   useEffect(() => {
     if (lastRefreshedAt) return;
@@ -411,8 +437,11 @@ const StrategicFinanceApprovals = () => {
             <span className="financial-cards-tab-badge">{transportPending.length + generatorPending.length}</span>
           ) : null}
         </button>
-        <button type="button" className="financial-cards-tab" disabled>
-          More approvals (coming soon)
+        <button type="button" className={`financial-cards-tab${mainTab === 1 ? ' active' : ''}`} onClick={() => setMainTab(1)}>
+          Maintenance Vouchers
+          {maintPending.length > 0 ? (
+            <span className="financial-cards-tab-badge">{maintPending.length}</span>
+          ) : null}
         </button>
       </div>
 
@@ -569,6 +598,327 @@ const StrategicFinanceApprovals = () => {
                 </table>
               </div>
             )}
+        </div>
+      ) : null}
+
+      {/* ── Maintenance Vouchers Tab ──────────────────────────────────── */}
+      {mainTab === 1 ? (
+        <div className="pending-settlements-section-financial-cards spm-finance-panel-financial-cards">
+          <div className="spm-finance-panel-intro">
+            <div>
+              <h2 className="spm-finance-panel-title">Maintenance Vouchers</h2>
+              <p className="spm-finance-panel-subtitle">
+                MD system approval for finance-created maintenance payment vouchers
+              </p>
+            </div>
+            {!isMd ? (
+              <div className="spm-finance-readonly-note">View only — MD role required to approve or decline</div>
+            ) : null}
+          </div>
+
+          <div className="settlements-tab-nav-financial-cards spm-fuel-header-row-financial-cards">
+            <div className="settlements-tab-group-financial-cards">
+              <span className="settlements-tab-group-label-financial-cards">View</span>
+              <div className="settlements-tab-pills-financial-cards">
+                <button
+                  type="button"
+                  className={`settlements-tab-pill-financial-cards${maintTab === 0 ? ' active' : ''}`}
+                  onClick={() => setMaintTab(0)}
+                >
+                  Pending
+                  {maintPending.length > 0 ? (
+                    <span className="settlements-tab-pill-badge-financial-cards">{maintPending.length}</span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className={`settlements-tab-pill-financial-cards${maintTab === 1 ? ' active' : ''}`}
+                  onClick={() => setMaintTab(1)}
+                >
+                  History
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="spm-finance-summary-strip">
+            <div className="spm-finance-summary-item">
+              <span className="spm-finance-summary-label">Pending approval</span>
+              <strong>{maintPending.length}</strong>
+            </div>
+            <div className="spm-finance-summary-item">
+              <span className="spm-finance-summary-label">History records</span>
+              <strong>{maintHistory.length}</strong>
+            </div>
+          </div>
+
+          <div className="settlements-filters-financial-cards spm-finance-search-row">
+            <input
+              type="text"
+              placeholder="Search voucher no, preparer, amount…"
+              value={maintSearch}
+              onChange={(e) => setMaintSearch(e.target.value)}
+              className="settlement-search-input-financial-cards"
+            />
+          </div>
+
+          {(maintTab === 0 ? maintPendingLoading : maintHistoryLoading) ? (
+            <div className="spm-finance-loading">
+              <CircularProgress size={28} />
+              <span>Loading vouchers…</span>
+            </div>
+          ) : (() => {
+            const sourceRows   = maintTab === 0 ? maintPending : maintHistory;
+            const filteredMaint = maintSearch.trim()
+              ? sourceRows.filter((r) =>
+                  String(r.voucher_no || '').toLowerCase().includes(maintSearch.toLowerCase()) ||
+                  String(r.created_by_name || r.checked_by_name || '').toLowerCase().includes(maintSearch.toLowerCase()) ||
+                  String(r.total_amount || '').includes(maintSearch)
+                )
+              : sourceRows;
+            return (
+              <div className="settlements-table-container-financial-cards">
+                <table className="voucher-history-table-financial-cards">
+                  <thead>
+                    <tr>
+                      <th>Voucher No</th>
+                      <th>Created</th>
+                      <th>Status</th>
+                      <th>{maintTab === 1 ? 'Approved / Declined By' : 'Prepared By'}</th>
+                      <th>Items</th>
+                      <th>Amount</th>
+                      {maintTab === 1 ? <th>Settled</th> : null}
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredMaint.length === 0 ? (
+                      <tr>
+                        <td colSpan={maintTab === 1 ? 8 : 7} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                          No vouchers found
+                        </td>
+                      </tr>
+                    ) : filteredMaint.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.voucher_no}</td>
+                        <td>{formatDate(row.created_at)}</td>
+                        <td>
+                          <span className={`voucher-status-pill-financial-cards ${row.status}`}>
+                            {voucherStatusLabel(Number(row.settled) === 1 ? 'settled' : row.status)}
+                          </span>
+                        </td>
+                        <td>
+                          {maintTab === 1
+                            ? getVoucherDecidedBy(row)
+                            : row.checked_by_name || row.created_by_name || '-'}
+                        </td>
+                        <td className="voucher-details-cell-financial-cards">
+                          <div className="voucher-details-main-financial-cards">
+                            {getVoucherApprovalTypeLabel(row)} ({row.transaction_count || 0})
+                          </div>
+                          <div className="voucher-details-sub-financial-cards">
+                            {row.transaction_count || 0} item
+                            {(row.transaction_count || 0) === 1 ? '' : 's'}
+                          </div>
+                        </td>
+                        <td>LKR {Number(row.total_amount || 0).toFixed(2)}</td>
+                        {maintTab === 1 ? renderSettledCell(row) : null}
+                        <td className="voucher-history-actions-cell-financial-cards">
+                          <div className="voucher-history-actions-financial-cards">
+                            <button
+                              type="button"
+                              className="voucher-action-btn-financial-cards voucher-action-btn-outline-financial-cards"
+                              onClick={() => setMaintPrintVoucher(row)}
+                              title="Print"
+                            >
+                              <FaPrint />
+                            </button>
+                            {maintTab === 0 && isMd ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className={`voucher-action-btn-financial-cards voucher-action-btn-success-financial-cards spm-approve-btn-financial-cards${approvingMaint && approvingMaintId === row.id ? ' is-loading' : ''}`}
+                                  onClick={() => setMaintApproveConfirm(row)}
+                                  disabled={approvingMaint || decliningMaint}
+                                  title="Approve"
+                                >
+                                  {approvingMaint && approvingMaintId === row.id ? (
+                                    <>
+                                      <span className="financial-cards-btn-spinner financial-cards-btn-spinner-light" aria-hidden="true" />
+                                      <span className="spm-action-btn-label">Approving…</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircleIcon fontSize="small" />
+                                      <span className="spm-action-btn-label">Approve</span>
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`voucher-action-btn-financial-cards voucher-action-btn-danger-financial-cards spm-decline-btn-financial-cards${decliningMaint && decliningMaintId === row.id ? ' is-loading' : ''}`}
+                                  onClick={() => setMaintDecline({ row, reason: '' })}
+                                  disabled={approvingMaint || decliningMaint}
+                                  title="Decline"
+                                >
+                                  {decliningMaint && decliningMaintId === row.id ? (
+                                    <>
+                                      <span className="financial-cards-btn-spinner" aria-hidden="true" />
+                                      <span className="spm-action-btn-label">Declining…</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CancelIcon fontSize="small" />
+                                      <span className="spm-action-btn-label">Decline</span>
+                                    </>
+                                  )}
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
+          {/* Approve confirm dialog */}
+          <Dialog
+            open={Boolean(maintApproveConfirm)}
+            onClose={() => !approvingMaint && setMaintApproveConfirm(null)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{ sx: spmDialogPaperSx }}
+          >
+            <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1, fontWeight: 700, color: '#102739', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CheckCircleIcon sx={{ color: '#15803d', fontSize: 22 }} />
+              Approve Maintenance Voucher
+            </DialogTitle>
+            <DialogContent sx={{ px: 3, pt: 1, pb: 2.5 }}>
+              <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.55 }}>
+                Confirm system approval for voucher{' '}
+                <strong>{maintApproveConfirm?.voucher_no}</strong> totaling{' '}
+                <strong>LKR {Number(maintApproveConfirm?.total_amount || 0).toFixed(2)}</strong>.
+              </Typography>
+              {maintApproveConfirm ? (
+                <Box sx={spmVoucherSummaryBoxSx}>
+                  <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mb: 0.5 }}>
+                    Voucher summary
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {maintApproveConfirm.transaction_count || 0} item
+                    {(maintApproveConfirm.transaction_count || 0) === 1 ? '' : 's'}
+                  </Typography>
+                </Box>
+              ) : null}
+            </DialogContent>
+            <DialogActions sx={spmDialogActionsSx}>
+              <Button variant="outlined" onClick={() => setMaintApproveConfirm(null)} disabled={approvingMaint} sx={{ textTransform: 'none', borderColor: '#cbd5e1', color: '#475569' }}>Cancel</Button>
+              <Button
+                variant="contained"
+                color="success"
+                disabled={approvingMaint}
+                sx={{ textTransform: 'none', minWidth: 110, boxShadow: 'none' }}
+                onClick={async () => {
+                  setApprovingMaintId(maintApproveConfirm.id);
+                  try {
+                    await approveMaintVoucher(maintApproveConfirm.id).unwrap();
+                    setMaintApproveConfirm(null);
+                    toast.success('Maintenance voucher approved');
+                    refetchMaintPending();
+                    refetchMaintHistory();
+                    setLastRefreshedAt(new Date());
+                  } catch (e) {
+                    toast.error(e?.data?.message || 'Failed to approve');
+                  } finally {
+                    setApprovingMaintId(null);
+                  }
+                }}
+              >
+                {approvingMaint ? 'Approving...' : 'Approve'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Decline dialog */}
+          <Dialog
+            open={Boolean(maintDecline)}
+            onClose={() => !decliningMaint && setMaintDecline(null)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{ sx: spmDialogPaperSx }}
+          >
+            <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1, fontWeight: 700, color: '#102739', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CancelIcon sx={{ color: '#b91c1c', fontSize: 22 }} />
+              Decline Maintenance Voucher
+            </DialogTitle>
+            <DialogContent sx={{ px: 3, pt: 1, pb: 2.5 }}>
+              <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.55, mb: 1.5 }}>
+                Please provide a reason for declining. Finance will see the status and can re-voucher.
+              </Typography>
+              {maintDecline?.row ? (
+                <Box sx={{ ...spmVoucherSummaryBoxSx, mt: 0, mb: 2 }}>
+                  <Typography variant="caption" sx={{ display: 'block', color: '#64748b', mb: 0.5 }}>Voucher</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, color: '#1e293b' }}>
+                    {maintDecline.row.voucher_no} · LKR {Number(maintDecline.row.total_amount || 0).toFixed(2)}
+                  </Typography>
+                </Box>
+              ) : null}
+              <Typography component="label" htmlFor="maint-decline-reason" variant="caption" sx={{ display: 'block', fontWeight: 600, color: '#475569', mb: 0.75 }}>
+                Decline reason
+              </Typography>
+              <TextField
+                id="maint-decline-reason"
+                autoFocus
+                fullWidth
+                multiline
+                minRows={4}
+                placeholder="Enter reason for declining this voucher..."
+                value={maintDecline?.reason || ''}
+                onChange={(e) => setMaintDecline((p) => (p ? { ...p, reason: e.target.value } : p))}
+                disabled={decliningMaint}
+                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '8px', backgroundColor: '#fff', fontSize: '0.9rem' } }}
+              />
+            </DialogContent>
+            <DialogActions sx={spmDialogActionsSx}>
+              <Button variant="outlined" onClick={() => setMaintDecline(null)} disabled={decliningMaint} sx={{ textTransform: 'none', borderColor: '#cbd5e1', color: '#475569' }}>Cancel</Button>
+              <Button
+                variant="contained"
+                color="error"
+                disabled={decliningMaint || !maintDecline?.reason?.trim()}
+                sx={{ textTransform: 'none', minWidth: 110, boxShadow: 'none', '&.Mui-disabled': { backgroundColor: '#fecaca', color: '#fff' } }}
+                onClick={async () => {
+                  if (!maintDecline?.reason?.trim()) return;
+                  setDecliningMaintId(maintDecline.row.id);
+                  try {
+                    await declineMaintVoucher({ id: maintDecline.row.id, reason: maintDecline.reason.trim() }).unwrap();
+                    setMaintDecline(null);
+                    toast.success('Maintenance voucher declined');
+                    refetchMaintPending();
+                    refetchMaintHistory();
+                    setLastRefreshedAt(new Date());
+                  } catch (e) {
+                    toast.error(e?.data?.message || 'Failed to decline');
+                  } finally {
+                    setDecliningMaintId(null);
+                  }
+                }}
+              >
+                {decliningMaint ? 'Declining...' : 'Decline'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Print preview */}
+          {maintPrintVoucher ? (
+            <MaintenanceVoucherPrint
+              voucher={maintPrintVoucher}
+              onClose={() => setMaintPrintVoucher(null)}
+            />
+          ) : null}
         </div>
       ) : null}
 

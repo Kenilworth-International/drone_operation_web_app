@@ -2,7 +2,8 @@
 .ep-shell.epd-container {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0%;
+  flex: 1 1 auto;
+  height: 0;
   min-height: 0;
   width: 100%;
   padding: 16px 20px 20px;
@@ -29,7 +30,8 @@
 
 .ep-layout {
   display: flex;
-  flex: 1 1 0%;
+  flex: 1 1 auto;
+  height: 0;
   gap: 16px;
   align-items: stretch;
   min-height: 0;
@@ -38,9 +40,10 @@
 }
 
 .ep-main {
-  flex: 1 1 0%;
+  flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
+  height: auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -53,7 +56,8 @@
 
 .ep-main>.ep-main-profile,
 .ep-main>.ep-main-empty {
-  flex: 1 1 0%;
+  flex: 1 1 auto;
+  height: 0;
   min-height: 0;
   width: 100%;
 }
@@ -61,16 +65,22 @@
 .ep-main-profile {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
+  flex: 1 1 auto;
+  height: 0;
   min-height: 0;
   overflow: hidden;
 }
 
 .ep-main .epd-content {
-  flex: 1 1 0;
+  flex: 1 1 auto;
+  height: 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #004b71 #e2e8f0;
 }
 
 .ep-main-empty {
@@ -89,11 +99,12 @@
   color: #1e293b;
 }
 
-/* Sidebar */
+/* Sidebar — search fixed; name list scrolls independently */
 .ep-sidebar {
   flex: 0 0 280px;
   width: 280px;
   min-height: 0;
+  height: auto;
   align-self: stretch;
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -136,11 +147,38 @@
 }
 
 .ep-sidebar-list {
+  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  flex: 1 1 0;
-  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 4px 8px 10px;
+  scrollbar-width: thin;
+  scrollbar-color: #004b71 #e2e8f0;
+}
+
+.ep-sidebar-list::-webkit-scrollbar,
+.ep-main .epd-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ep-sidebar-list::-webkit-scrollbar-track,
+.ep-main .epd-content::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+.ep-sidebar-list::-webkit-scrollbar-thumb,
+.ep-main .epd-content::-webkit-scrollbar-thumb {
+  background: #004b71;
+  border-radius: 4px;
+}
+
+.ep-sidebar-list::-webkit-scrollbar-thumb:hover,
+.ep-main .epd-content::-webkit-scrollbar-thumb:hover {
+  background: #003a5a;
 }
 
 .ep-sidebar-empty {
@@ -446,13 +484,30 @@
 @media (max-width: 900px) {
   .ep-layout {
     flex-direction: column;
+    height: auto;
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   .ep-sidebar {
     width: 100%;
-    height: auto;
+    flex: 0 0 auto;
+    height: 240px;
     max-height: 240px;
-    flex-shrink: 0;
+    min-height: 180px;
+  }
+
+  .ep-sidebar-list {
+    flex: 1 1 auto;
+    height: 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .ep-main {
+    flex: 1 1 auto;
+    height: 0;
+    min-height: 280px;
   }
 
   .ep-hero {

@@ -146,6 +146,7 @@ function TransportHrDashboard() {
   const [chartViewMode, setChartViewMode] = useState('combined');
   const [maintenanceStatusFilter, setMaintenanceStatusFilter] = useState('all');
   const [maintenanceVehicleFilter, setMaintenanceVehicleFilter] = useState('all');
+  const [maintenanceMonthFilter, setMaintenanceMonthFilter] = useState('');
   const [maintenanceSearch, setMaintenanceSearch] = useState('');
   const [availableTodayTab, setAvailableTodayTab] = useState('assignVehicle');
   const [showTransportDetailModal, setShowTransportDetailModal] = useState(false);
@@ -278,7 +279,10 @@ function TransportHrDashboard() {
   const { data: vehicleDrivers = [], refetch: refetchDrivers } = useGetVehicleAppDriversQuery();
   const { data: fuelCards = [] } = useGetDriverFuelCardsQuery({});
   const [saveVehicleAppVehicle, { isLoading: savingVehicleCard }] = useSaveVehicleAppVehicleMutation();
-  const { data: maintenanceRequests = [], isLoading: loadingMaintenance } = useGetVehicleAppMaintenanceRequestsQuery(monthKey);
+  const maintenanceMonthOptions = useMemo(() => getRollingMonthOptions(36), []);
+  const { data: maintenanceRequests = [], isLoading: loadingMaintenance } = useGetVehicleAppMaintenanceRequestsQuery(
+    maintenanceMonthFilter || ''
+  );
   const [hrDecideMaintenance, { isLoading: savingHrDecision }] = useHrDecideVehicleMaintenanceRequestMutation();
   const { data: leaveRows = [], isLoading: loadingLeaves } = useGetLeaveDaysForHrQuery({ yearMonth: monthKey });
   const { data: rentRows = [], isLoading: loadingRent } = useGetPendingApprovalsQuery({ yearMonth: monthKey, status: 'all' });
@@ -1270,6 +1274,17 @@ function TransportHrDashboard() {
       return (
         <div className="details-table-wrap-transport-hr details-table-wrap-transport-hr--scroll">
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10, flexShrink: 0 }}>
+            <label style={{ display: 'grid', gap: 4 }}>
+              <span style={{ fontSize: 12, color: '#4b5563', fontWeight: 600 }}>Month</span>
+              <select value={maintenanceMonthFilter} onChange={(e) => setMaintenanceMonthFilter(e.target.value)}>
+                <option value="">All months</option>
+                {maintenanceMonthOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}{opt.value === monthKey ? ' (current)' : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label style={{ display: 'grid', gap: 4 }}>
               <span style={{ fontSize: 12, color: '#4b5563', fontWeight: 600 }}>Status</span>
               <select value={maintenanceStatusFilter} onChange={(e) => setMaintenanceStatusFilter(e.target.value)}>

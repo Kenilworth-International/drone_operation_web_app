@@ -15,6 +15,7 @@ import {
   useGetApprovedForFinanceQuery,
 } from '../../api/services NodeJs/vehicleRentApi';
 import { useGetVehicleAppMaintenanceRequestsQuery } from '../../api/services NodeJs/vehicleAppApi';
+import { useGetMaintenanceVoucherHistoryQuery } from '../../api/services NodeJs/maintenanceVoucherApi';
 import VehicleRent from '../finance/vehicleRent/VehicleRent';
 import DriverAdvanceFinance from '../finance/driverAdvance/DriverAdvanceFinance';
 import MaintenanceFinance from '../finance/maintenance/MaintenanceFinance';
@@ -41,14 +42,22 @@ function TransportFinanceDashboard() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  // Maintenance queue is not month-bound by default (pending work spans months).
+  const [maintenanceMonth, setMaintenanceMonth] = useState('');
   const [activeSection, setActiveSection] = useState('');
 
-  const monthOptions = useMemo(() => getRollingMonthOptions(24), []);
+  const monthOptions = useMemo(() => getRollingMonthOptions(36), []);
   const selectedMonthLabel = monthOptions.find((m) => m.value === selectedMonth)?.label || selectedMonth;
+  const maintenanceMonthLabel = maintenanceMonth
+    ? (monthOptions.find((m) => m.value === maintenanceMonth)?.label || maintenanceMonth)
+    : 'All months';
 
   const { data: rentRows = [], isLoading: rentLoading } = useGetApprovedForFinanceQuery({ yearMonth: selectedMonth });
   const { data: advanceRows = [], isLoading: advanceLoading } = useGetAdvanceRequestsForFinanceQuery({ yearMonth: selectedMonth });
-  const { data: maintenanceRows = [], isLoading: maintenanceLoading } = useGetVehicleAppMaintenanceRequestsQuery(selectedMonth);
+  const { data: maintenanceRows = [], isLoading: maintenanceLoading } = useGetVehicleAppMaintenanceRequestsQuery(
+    maintenanceMonth || ''
+  );
+  const { data: maintenanceVoucherHistory = [] } = useGetMaintenanceVoucherHistoryQuery();
 
   const kpi = useMemo(() => {
     const rentPendingApproval = rentRows.filter((r) => String(r.finance_approval || 'p') === 'p').length;
@@ -77,6 +86,11 @@ function TransportFinanceDashboard() {
       (r) => String(r.finance_approval || 'p') === 'a' && Number(r.finance_paid || 0) !== 1
     ).length;
     const maintenancePaidCount = maintenanceRows.filter((r) => Number(r.finance_paid || 0) === 1).length;
+    const maintenancePaidAmount = maintenanceRows.reduce((sum, row) => (
+      Number(row.finance_paid) === 1 ? sum + Number(row.cost_estimation || 0) : sum
+    ), 0);
+    const maintenanceVoucherPending      = maintenanceVoucherHistory.filter((v) => v.status === 'pending').length;
+    const maintenanceVoucherApprovedUnpaid = maintenanceVoucherHistory.filter((v) => v.status === 'approved' && !v.settled).length;
 
     return {
       rentPendingApproval,
@@ -88,11 +102,17 @@ function TransportFinanceDashboard() {
       maintenancePendingFinance,
       maintenanceApprovedNotPaid,
       maintenancePaidCount,
-      totalPaidAmount: rentPaidAmount + advancePaidAmount,
+      maintenancePaidAmount,
+      maintenanceVoucherPending,
+      maintenanceVoucherApprovedUnpaid,
+      totalPaidAmount: rentPaidAmount + advancePaidAmount + maintenancePaidAmount,
       rentPaidAmount,
       advancePaidAmount,
+      pendingFinanceTotal: rentPendingApproval + advPendingApproval + maintenancePendingFinance,
+      approvedNotPaidTotal: rentApprovedNotPaid + advApprovedNotPaid + maintenanceApprovedNotPaid,
+      paidRecordsTotal: rentPaidCount + advPaidCount + maintenancePaidCount,
     };
-  }, [rentRows, advanceRows, maintenanceRows]);
+  }, [rentRows, advanceRows, maintenanceRows, maintenanceVoucherHistory]);
 
   const rentByVehicleChart = useMemo(() => {
     const map = new Map();
@@ -129,12 +149,12 @@ function TransportFinanceDashboard() {
     {
       key: 'vehicleSummary',
       title: 'Vehicle Summary',
-      caption: 'View month-wise vehicle finance summary details.',
+      caption: 'Month-wise vehicle finance summary.',
     },
     {
       key: 'monthlyRecords',
       title: 'Monthly Records (Approvals)',
-      caption: 'Open finance approval and mark paid records.',
+      caption: 'Vehicle rent finance approval and mark paid.',
       stats: [
         { label: 'Pending', value: kpi.rentPendingApproval, tone: 'pending' },
         { label: 'Approved, Not Paid', value: kpi.rentApprovedNotPaid, tone: 'approvedNotPaid' },
@@ -144,7 +164,7 @@ function TransportFinanceDashboard() {
     {
       key: 'driverAdvance',
       title: 'Driver Advance Finance',
-      caption: 'Manage advance finance approval and payment proof.',
+      caption: 'Advance finance approval and payment proof.',
       stats: [
         { label: 'Pending', value: kpi.advPendingApproval, tone: 'pending' },
         { label: 'Approved, Not Paid', value: kpi.advApprovedNotPaid, tone: 'approvedNotPaid' },
@@ -154,10 +174,11 @@ function TransportFinanceDashboard() {
     {
       key: 'maintenanceFinance',
       title: 'Maintenance Finance',
-      caption: 'Finance approval and payment proof flow for maintenance.',
+      caption: 'HR-approved maintenance → finance approval → voucher → MD approve → settle.',
       stats: [
         { label: 'Pending Finance', value: kpi.maintenancePendingFinance, tone: 'pending' },
-        { label: 'Approved, Not Paid', value: kpi.maintenanceApprovedNotPaid, tone: 'approvedNotPaid' },
+        { label: 'Voucher Pending MD', value: kpi.maintenanceVoucherPending, tone: 'pending' },
+        { label: 'Voucher — Settle Now', value: kpi.maintenanceVoucherApprovedUnpaid, tone: 'approvedNotPaid' },
         { label: 'Paid', value: kpi.maintenancePaidCount, tone: 'paid' },
       ],
     },
@@ -193,8 +214,8 @@ function TransportFinanceDashboard() {
       return (
         <MaintenanceFinance
           embedded
-          externalMonth={selectedMonth}
-          onMonthChange={setSelectedMonth}
+          externalMonth={maintenanceMonth}
+          onMonthChange={setMaintenanceMonth}
           prefetchedRows={maintenanceRows}
           prefetchedLoading={maintenanceLoading}
         />
@@ -203,21 +224,30 @@ function TransportFinanceDashboard() {
     return null;
   };
 
+  const isMaintenanceSection = activeSection === 'maintenanceFinance';
+  const showHeaderMonth = !activeSection || !isMaintenanceSection;
+
   return (
     <div className="transport-finance-shell">
       <div className="transport-finance-head">
         <div>
           <h2>Transport Finance Dashboard</h2>
-          <p>Redesigned finance operations with payment visibility and pending approvals.</p>
+          <p>
+            {isMaintenanceSection
+              ? `Maintenance finance queue · ${maintenanceMonthLabel}`
+              : 'Rent, advance, and maintenance finance — approvals and payments.'}
+          </p>
         </div>
-        <label className="transport-finance-month-filter">
-          Month
-          <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
-            {monthOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </label>
+        {showHeaderMonth ? (
+          <label className="transport-finance-month-filter">
+            Rent / Advance month
+            <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+              {monthOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </div>
 
       {activeSection ? (
@@ -246,24 +276,36 @@ function TransportFinanceDashboard() {
         <>
           <div className="transport-finance-kpi-grid">
             <div className="transport-finance-kpi-card">
-              <span>Total Paid (Month)</span>
+              <span>Total Paid</span>
               <strong>LKR {toMoney(kpi.totalPaidAmount)}</strong>
-              <p>Rent: LKR {toMoney(kpi.rentPaidAmount)} | Advance: LKR {toMoney(kpi.advancePaidAmount)}</p>
+              <p>
+                Rent: LKR {toMoney(kpi.rentPaidAmount)} | Advance: LKR {toMoney(kpi.advancePaidAmount)}
+                {' '}| Maint: LKR {toMoney(kpi.maintenancePaidAmount)}
+              </p>
             </div>
             <div className="transport-finance-kpi-card">
               <span>Pending Finance Approvals</span>
-              <strong>{kpi.rentPendingApproval + kpi.advPendingApproval}</strong>
-              <p>Rent: {kpi.rentPendingApproval} | Advance: {kpi.advPendingApproval}</p>
+              <strong>{kpi.pendingFinanceTotal}</strong>
+              <p>
+                Rent: {kpi.rentPendingApproval} | Advance: {kpi.advPendingApproval}
+                {' '}| Maint: {kpi.maintenancePendingFinance}
+              </p>
             </div>
             <div className="transport-finance-kpi-card">
               <span>Approved, Not Paid</span>
-              <strong>{kpi.rentApprovedNotPaid + kpi.advApprovedNotPaid}</strong>
-              <p>Rent: {kpi.rentApprovedNotPaid} | Advance: {kpi.advApprovedNotPaid}</p>
+              <strong>{kpi.approvedNotPaidTotal}</strong>
+              <p>
+                Rent: {kpi.rentApprovedNotPaid} | Advance: {kpi.advApprovedNotPaid}
+                {' '}| Maint: {kpi.maintenanceApprovedNotPaid}
+              </p>
             </div>
             <div className="transport-finance-kpi-card">
               <span>Paid Records</span>
-              <strong>{kpi.rentPaidCount + kpi.advPaidCount}</strong>
-              <p>Rent: {kpi.rentPaidCount} | Advance: {kpi.advPaidCount}</p>
+              <strong>{kpi.paidRecordsTotal}</strong>
+              <p>
+                Rent: {kpi.rentPaidCount} | Advance: {kpi.advPaidCount}
+                {' '}| Maint: {kpi.maintenancePaidCount}
+              </p>
             </div>
           </div>
 
@@ -328,7 +370,7 @@ function TransportFinanceDashboard() {
               <button
                 key={card.key}
                 type="button"
-                className="transport-finance-module-card"
+                className={`transport-finance-module-card${card.key === 'maintenanceFinance' ? ' transport-finance-module-card--maintenance' : ''}`}
                 onClick={() => setActiveSection(card.key)}
               >
                 <strong>{card.title}</strong>

@@ -144,6 +144,11 @@ export const FEATURE_CODES = {
   /** Financial Cards: Settle Fuel Bill button */
   FINANCIAL_CARDS_SETTLE_FUEL_BILL: 'FEAT_FINANCIAL_CARDS_SETTLE_FUEL_BILL',
 
+  /** Maintenance Finance: Create Voucher button */
+  MAINTENANCE_VOUCHER_CREATE: 'FEAT_MAINTENANCE_VOUCHER_CREATE',
+  /** Maintenance Finance: Settle voucher (mark paid) */
+  MAINTENANCE_VOUCHER_SETTLE: 'FEAT_MAINTENANCE_VOUCHER_SETTLE',
+
   /** Field unblock requests: Approve action */
   FIELD_UNBLOCK_APPROVE: 'FEAT_FIELD_UNBLOCK_APPROVE',
   /** Field unblock requests: Reject action */

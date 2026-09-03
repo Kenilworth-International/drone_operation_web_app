@@ -1,349 +1,907 @@
-.maintenance-finance-root-transport-finance {
+/* ========================================================
+   Maintenance Finance — Professional UI
+   Design language: enterprise blue, clean cards, modern table
+   ======================================================== */
+
+/* ── Root ─────────────────────────────────────────────── */
+.mf-root {
   width: 100%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  gap: 12px;
-  padding: 8px;
+  gap: 0;
   box-sizing: border-box;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f0f5f9;
+  min-height: 100%;
+  padding: 18px 20px 24px;
 }
 
-.maintenance-finance-root-embedded-transport-finance {
+.mf-root.mf-embedded {
   padding: 0;
+  background: transparent;
 }
 
-.maintenance-finance-toolbar-transport-finance {
-  margin-bottom: 12px;
+/* ── Page header ──────────────────────────────────────── */
+.mf-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.mf-header-left h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0b2234;
+  letter-spacing: -0.3px;
+}
+
+.mf-header-left p {
+  margin: 0;
+  font-size: 13px;
+  color: #5b7a90;
+  font-weight: 400;
+}
+
+.mf-header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.maintenance-finance-toolbar-title-transport-finance {
-  font-weight: 700;
-  color: #173247;
-  font-size: 14px;
-}
-
-.maintenance-finance-filters-row-transport-finance {
+/* ── KPI strip ────────────────────────────────────────── */
+.mf-kpi-strip {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
 }
 
-.maintenance-finance-filter-label-transport-finance {
-  display: grid;
-  gap: 4px;
-  min-width: 220px;
-}
-
-.maintenance-finance-filter-label-title-transport-finance {
-  font-size: 12px;
-  color: #4b5563;
-  font-weight: 600;
-}
-
-.maintenance-finance-select-transport-finance {
-  border: 1px solid #c8d9e7;
-  border-radius: 10px;
+.mf-kpi-card {
+  flex: 1 1 140px;
   background: #fff;
-  color: #0f2a3d;
-  padding: 8px 10px;
-  min-width: 220px;
-  box-sizing: border-box;
-}
-
-.maintenance-finance-loading-transport-finance {
-  min-height: 220px;
-  border: 1px solid #d9e5ef;
-  border-radius: 14px;
-  background: #fff;
+  border: 1px solid #dde8f0;
+  border-radius: 12px;
+  padding: 14px 18px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 120px;
+  box-shadow: 0 1px 3px rgba(11,34,52,0.06);
+  transition: box-shadow 0.2s;
 }
 
-.maintenance-finance-table-wrap-transport-finance {
-  width: 100%;
-  min-width: 0;
-  display: block;
-  overflow-x: auto;
-  overflow-y: hidden;
-  flex: 1;
-  min-height: 0;
+.mf-kpi-card:hover {
+  box-shadow: 0 4px 12px rgba(11,34,52,0.10);
 }
 
-.maintenance-finance-table-transport-finance {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 960px;
-  background: #ffffff;
-  border: 1px solid #dde6ee;
+.mf-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7a98ad;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-.maintenance-finance-table-transport-finance th,
-.maintenance-finance-table-transport-finance td {
-  border: 1px solid #dde6ee;
-  padding: 10px;
-  text-align: left;
-  font-size: 13px;
-  color: #1e293b;
-}
-
-.maintenance-finance-table-transport-finance th {
-  background: #f2f7fb;
+.mf-kpi-value {
+  font-size: 26px;
   font-weight: 700;
-  color: #16364a;
-}
-
-.maintenance-finance-no-rows-transport-finance {
-  border: 1px solid #dde6ee;
-  padding: 12px;
-  color: #475569;
-}
-
-.maintenance-finance-chip-transport-finance {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 700;
+  color: #0b2234;
   line-height: 1;
 }
 
-.maintenance-finance-chip-hr-approved-transport-finance {
-  background: #dcfce7;
-  color: #166534;
-}
+.mf-kpi-card.mf-kpi-warning .mf-kpi-value { color: #b45309; }
+.mf-kpi-card.mf-kpi-success .mf-kpi-value { color: #065f46; }
+.mf-kpi-card.mf-kpi-info    .mf-kpi-value { color: #1e3a8a; }
+.mf-kpi-card.mf-kpi-danger  .mf-kpi-value { color: #991b1b; }
 
-.maintenance-finance-chip-hr-declined-transport-finance {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.maintenance-finance-chip-hr-pending-transport-finance {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.maintenance-finance-chip-finance-approved-transport-finance {
-  background: #dbeafe;
-  color: #1e3a8a;
-}
-
-.maintenance-finance-chip-finance-declined-transport-finance {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.maintenance-finance-chip-finance-pending-transport-finance {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.maintenance-finance-chip-paid-transport-finance {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.maintenance-finance-chip-not-paid-transport-finance {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.maintenance-finance-muted-transport-finance {
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.maintenance-finance-actions-row-transport-finance {
-  display: inline-flex;
-  gap: 8px;
-}
-
-.maintenance-finance-action-cell-transport-finance {
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-.maintenance-finance-actions-row-tight-transport-finance {
-  gap: 6px;
-}
-
-.maintenance-finance-proof-grid-transport-finance {
-  display: grid;
-  gap: 6px;
-}
-
-.maintenance-finance-proof-link-transport-finance {
-  color: #005786;
-  font-size: 12px;
-  text-decoration: none;
-}
-
-.maintenance-finance-proof-link-transport-finance:hover {
-  text-decoration: underline;
-}
-
-.maintenance-finance-proof-filename-transport-finance {
-  color: #6b7280;
-}
-
-.maintenance-finance-text-input-transport-finance {
-  width: 100%;
-  border: 1px solid #c8d9e7;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-  box-sizing: border-box;
-}
-
-.maintenance-finance-btn-outline-transport-finance {
-  border: 1px solid #0b6e9f;
-  background: #ffffff;
-  color: #0b3d5c;
-  border-radius: 10px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-.maintenance-finance-btn-outline-transport-finance:hover {
-  background: #e8f4fa;
-  border-color: #004b71;
-  color: #004b71;
-}
-
-.maintenance-finance-btn-secondary-transport-finance {
-  background: #f3f7fa;
-  color: #2d4557;
-  border: 1px solid #c4d3df;
-  border-radius: 10px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
-}
-
-.maintenance-finance-btn-secondary-transport-finance:hover {
-  background: #e8eff5;
-}
-
-.maintenance-finance-btn-secondary-transport-finance:disabled,
-.maintenance-finance-btn-outline-transport-finance:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.maintenance-finance-modal-overlay-transport-finance {
-  position: fixed;
-  inset: 0;
-  z-index: 6200;
-  background: rgba(15, 23, 42, 0.45);
+/* ── Filter bar ───────────────────────────────────────── */
+.mf-filter-bar {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #dde8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 3px rgba(11,34,52,0.05);
 }
 
-.maintenance-finance-modal-card-transport-finance {
-  background: #ffffff;
-  border-radius: 14px;
-  max-width: 760px;
-  width: 100%;
-  max-height: 88vh;
-  overflow: hidden;
+.mf-filter-group {
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
-  border: 1px solid #d8e2ea;
+  gap: 5px;
 }
 
-.maintenance-finance-modal-toolbar-transport-finance {
+.mf-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7a98ad;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mf-select {
+  border: 1px solid #c5d7e5;
+  border-radius: 8px;
+  background: #f8fbfd;
+  color: #1e3a4d;
+  padding: 8px 32px 8px 11px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  min-width: 200px;
+  outline: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%235b7a90' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.mf-select:focus {
+  border-color: #0070a8;
+  box-shadow: 0 0 0 3px rgba(0,112,168,0.12);
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+.mf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.1s;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.mf-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.mf-btn-primary {
+  background: linear-gradient(135deg, #005a87 0%, #0077b6 100%);
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(0,90,135,0.28);
+}
+
+.mf-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #004b71 0%, #0066a0 100%);
+  box-shadow: 0 4px 12px rgba(0,90,135,0.35);
+  transform: translateY(-1px);
+}
+
+.mf-btn-secondary {
+  background: #f0f5f9;
+  color: #2d4a5d;
+  border: 1px solid #c5d7e5;
+}
+
+.mf-btn-secondary:hover:not(:disabled) {
+  background: #e0ecf5;
+  border-color: #9ab5c8;
+}
+
+.mf-btn-outline {
+  background: #fff;
+  color: #005a87;
+  border: 1.5px solid #005a87;
+}
+
+.mf-btn-outline:hover:not(:disabled) {
+  background: #e8f4fb;
+}
+
+.mf-btn-danger {
+  background: #fff;
+  color: #b91c1c;
+  border: 1.5px solid #e5837c;
+}
+
+.mf-btn-danger:hover:not(:disabled) {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.mf-btn-success {
+  background: #fff;
+  color: #15803d;
+  border: 1.5px solid #4ade80;
+}
+
+.mf-btn-success:hover:not(:disabled) {
+  background: #f0fdf4;
+  border-color: #16a34a;
+}
+
+.mf-btn-ghost {
+  background: none;
+  color: #005a87;
+  border: none;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.mf-btn-ghost:hover:not(:disabled) {
+  background: #e8f4fb;
+  border-radius: 6px;
+}
+
+.mf-btn-sm {
+  padding: 5px 11px;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.mf-btn-icon {
+  padding: 6px;
+  border-radius: 6px;
+  line-height: 0;
+}
+
+/* active state for toggle buttons */
+.mf-btn-active {
+  background: linear-gradient(135deg, #004b71, #006d9e) !important;
+  color: #fff !important;
+  border-color: #004b71 !important;
+  box-shadow: 0 2px 8px rgba(0,75,113,0.25) !important;
+}
+
+/* Badge */
+.mf-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #dc2626;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  border-radius: 999px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-left: 5px;
+  line-height: 1;
+}
+
+/* ── Status chips ─────────────────────────────────────── */
+.mf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  line-height: 1.3;
+  border: 1.5px solid transparent;
+}
+
+/* HR chips */
+.mf-chip-hr-approved  { background: #dcfce7; color: #166534; border-color: #86efac; }
+.mf-chip-hr-pending   { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+.mf-chip-hr-declined  { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+
+/* Finance chips */
+.mf-chip-fin-approved  { background: #dbeafe; color: #1e40af; border-color: #93c5fd; }
+.mf-chip-fin-pending   { background: #fef9c3; color: #854d0e; border-color: #fde68a; }
+.mf-chip-fin-declined  { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+
+/* Voucher chips */
+.mf-chip-v-none       { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+.mf-chip-v-pending    { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+.mf-chip-v-approved   { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+.mf-chip-v-settled    { background: #eff6ff; color: #1e40af; border-color: #93c5fd; }
+.mf-chip-v-declined   { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.mf-chip-v-findecline { background: #fff1f2; color: #9f1239; border-color: #fda4af; }
+
+.mf-chip-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.65;
+  flex-shrink: 0;
+}
+
+/* ── Section cards ────────────────────────────────────── */
+.mf-section-card {
+  background: #fff;
+  border: 1px solid #dde8f0;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(11,34,52,0.06);
+}
+
+.mf-section-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid #eaf1f7;
+  background: linear-gradient(to right, #f4f9fc, #fafcfe);
   gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f8fafc;
+  flex-wrap: wrap;
 }
 
-.maintenance-finance-modal-title-transport-finance {
-  margin: 0;
-  font-size: 18px;
+.mf-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
   font-weight: 700;
   color: #0b2234;
 }
 
-.maintenance-finance-modal-body-transport-finance {
-  padding: 16px;
-  display: grid;
-  gap: 12px;
-}
-
-.maintenance-finance-modal-hint-transport-finance {
-  margin: 0;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.maintenance-finance-modal-field-transport-finance {
-  display: grid;
-  gap: 6px;
-}
-
-.maintenance-finance-modal-label-transport-finance {
-  font-weight: 600;
-  font-size: 13px;
-  color: #1f2937;
-}
-
-.maintenance-finance-modal-textarea-transport-finance {
-  width: 100%;
-  border: 1px solid #d1d5db;
+.mf-section-icon {
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
-  padding: 10px;
-  font-size: 13px;
-  resize: vertical;
-  font-family: inherit;
-  box-sizing: border-box;
-}
-
-.maintenance-finance-modal-confirm-text-transport-finance {
-  margin: 0;
-  color: #334155;
-  font-size: 14px;
-}
-
-.maintenance-finance-modal-error-transport-finance {
-  margin: 0;
-  color: #b91c1c;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.maintenance-finance-modal-actions-transport-finance {
+  background: linear-gradient(135deg, #005a87, #0077b6);
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.mf-section-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ── History panel ────────────────────────────────────── */
+.mf-history-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mf-history-filter-pill {
+  padding: 5px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1.5px solid #c5d7e5;
+  background: #f8fbfd;
+  color: #2d4a5d;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.mf-history-filter-pill.active {
+  background: #005a87;
+  color: #fff;
+  border-color: #005a87;
+}
+
+.mf-history-filter-pill:hover:not(.active) {
+  background: #e0ecf5;
+  border-color: #9ab5c8;
+}
+
+/* ── Table ────────────────────────────────────────────── */
+.mf-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.mf-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+  font-size: 13px;
+}
+
+.mf-table thead tr {
+  background: linear-gradient(to bottom, #f0f7fc, #e9f3f9);
+  border-bottom: 2px solid #c8dce9;
+}
+
+.mf-table th {
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4a6a7d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.mf-table td {
+  padding: 11px 14px;
+  color: #1e3348;
+  border-bottom: 1px solid #edf3f7;
+  vertical-align: middle;
+}
+
+.mf-table tbody tr:hover {
+  background: #f5fbff;
+}
+
+.mf-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mf-table tbody tr.mf-row-selected {
+  background: #e8f4fb !important;
+}
+
+.mf-table tbody tr.mf-row-selected td {
+  border-bottom-color: #bee3f8;
+}
+
+.mf-table-empty {
+  text-align: center;
+  padding: 48px 20px !important;
+  color: #94a3b8 !important;
+}
+
+.mf-table-empty-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 8px;
 }
 
-.maintenance-finance-notice-text-transport-finance {
-  margin: 0;
-  font-weight: 600;
+.mf-table-empty-icon {
+  font-size: 32px;
+  opacity: 0.35;
 }
 
-.maintenance-finance-notice-error-transport-finance {
+.mf-table-empty-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+/* ── Voucher number link ──────────────────────────────── */
+.mf-voucher-no-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0369a1;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.3px;
+}
+
+.mf-voucher-no-btn:hover {
+  color: #0c4a6e;
+  text-decoration: underline;
+}
+
+/* Secondary voucher detail */
+.mf-cell-sub {
+  font-size: 11px;
+  color: #7a9ab0;
+  margin-top: 3px;
+}
+
+/* Muted text */
+.mf-muted {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* Action cell */
+.mf-action-cell {
+  white-space: nowrap;
+}
+
+.mf-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* ── Checkbox select ──────────────────────────────────── */
+.mf-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #005a87;
+}
+
+/* ── Loading ──────────────────────────────────────────── */
+.mf-loading {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #7a9ab0;
+  font-size: 13px;
+}
+
+/* ── Modal overlay ────────────────────────────────────── */
+.mf-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  background: rgba(10, 20, 35, 0.55);
+  backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: mf-fade-in 0.15s ease;
+}
+
+@keyframes mf-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.mf-modal {
+  background: #fff;
+  border-radius: 16px;
+  max-width: 780px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 32px 80px rgba(10,20,35,0.28), 0 0 0 1px rgba(0,90,135,0.08);
+  animation: mf-slide-up 0.2s ease;
+  overflow: hidden;
+}
+
+@keyframes mf-slide-up {
+  from { transform: translateY(18px); opacity: 0.7; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.mf-modal-sm { max-width: 480px; }
+.mf-modal-md { max-width: 620px; }
+
+.mf-modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid #e8f0f5;
+  background: linear-gradient(135deg, #003d5c 0%, #005a87 100%);
+  flex-shrink: 0;
+}
+
+.mf-modal-head-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.mf-modal-head-text {
+  flex: 1;
+}
+
+.mf-modal-title {
+  margin: 0 0 2px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.mf-modal-subtitle {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255,255,255,0.72);
+}
+
+.mf-modal-close-btn {
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s;
+  line-height: 1;
+}
+
+.mf-modal-close-btn:hover {
+  background: rgba(255,255,255,0.28);
+}
+
+.mf-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mf-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #eaf1f7;
+  background: #f8fbfd;
+  flex-shrink: 0;
+}
+
+/* ── Modal summary box ────────────────────────────────── */
+.mf-summary-box {
+  background: #f4f9fd;
+  border: 1px solid #d0e4f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.mf-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mf-summary-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #7a9ab0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mf-summary-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0b2234;
+}
+
+/* ── Form fields ──────────────────────────────────────── */
+.mf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mf-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e3348;
+}
+
+.mf-field-label span {
+  color: #dc2626;
+  margin-left: 2px;
+}
+
+.mf-input,
+.mf-textarea {
+  width: 100%;
+  border: 1px solid #c5d7e5;
+  border-radius: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1e3348;
+  background: #fafcfd;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+.mf-input:focus,
+.mf-textarea:focus {
+  border-color: #0070a8;
+  box-shadow: 0 0 0 3px rgba(0,112,168,0.1);
+  background: #fff;
+}
+
+.mf-textarea { resize: vertical; min-height: 80px; }
+
+.mf-select-full {
+  width: 100%;
+}
+
+/* File upload */
+.mf-file-upload-area {
+  border: 2px dashed #c5d7e5;
+  border-radius: 10px;
+  padding: 20px;
+  text-align: center;
+  background: #f8fbfd;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+}
+
+.mf-file-upload-area:hover,
+.mf-file-upload-area.has-file {
+  border-color: #0077b6;
+  background: #f0f8fd;
+}
+
+.mf-file-upload-area input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.mf-file-upload-icon {
+  font-size: 28px;
+  color: #7a9ab0;
+  margin-bottom: 8px;
+  line-height: 1;
+}
+
+.mf-file-upload-text {
+  font-size: 13px;
+  color: #5b7a90;
+  font-weight: 500;
+}
+
+.mf-file-upload-sub {
+  font-size: 11px;
+  color: #9ab5c8;
+  margin-top: 3px;
+}
+
+.mf-file-name-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e0f2fe;
+  color: #0369a1;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Error / notice ───────────────────────────────────── */
+.mf-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
   color: #b91c1c;
 }
 
-.maintenance-finance-notice-success-transport-finance {
-  color: #14532d;
+.mf-success-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #15803d;
 }
 
+/* ── Notice modal variant ─────────────────────────────── */
+.mf-notice-modal-head-success {
+  background: linear-gradient(135deg, #14532d 0%, #16a34a 100%);
+}
+
+.mf-notice-modal-head-error {
+  background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%);
+}
+
+/* ── Mini table in modals ─────────────────────────────── */
+.mf-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  border: 1px solid #e2ecf2;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mf-mini-table th {
+  background: #f0f7fc;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4a6a7d;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 1px solid #d5e5ef;
+  text-align: left;
+}
+
+.mf-mini-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #edf3f7;
+  color: #1e3348;
+}
+
+.mf-mini-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.mf-mini-table tbody tr:hover {
+  background: #f5fbff;
+}
+
+/* ── Total row ────────────────────────────────────────── */
+.mf-total-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #f0f7fc;
+  border: 1px solid #d5e5ef;
+  border-radius: 0 0 8px 8px;
+  border-top: none;
+}
+
+.mf-total-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4a6a7d;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.mf-total-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0b2234;
+}
+
+/* ── Divider ──────────────────────────────────────────── */
+.mf-divider {
+  height: 1px;
+  background: #eaf1f7;
+  margin: 4px 0;
+}

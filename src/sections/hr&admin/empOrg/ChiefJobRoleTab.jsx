@@ -217,10 +217,6 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
 
   const handleSaveRole = async (e) => {
     e.preventDefault();
-    if (!roleForm.dept_ids?.length) {
-      notify('Select at least one managed department.', 'error');
-      return;
-    }
     if (!seniorLayer) {
       notify('Senior Management layer is not configured.', 'error');
       return;
@@ -483,9 +479,9 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
             Active
           </label>
           <div className="emp-org-field">
-            <span>Managed departments *</span>
+            <span>Managed departments</span>
             <span className="emp-org-field-hint">
-              Each department can be assigned to only one chief role at a time.
+              Optional. Uncheck all to clear managed departments. Each department can belong to only one chief role at a time.
             </span>
             <div className="emp-org-dept-grid">
               {activeDepartments.map((d) => {

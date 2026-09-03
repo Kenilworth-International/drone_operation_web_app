@@ -37,16 +37,15 @@
 
 .page-map-update {
   background: var(--mu-gray-50);
-  height: 100%;
+  flex: 1 1 auto;
+  height: 0;
   min-height: 0;
-  max-height: 100%;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   color: var(--mu-gray-800);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   box-sizing: border-box;
-  flex: 1 1 0;
   width: 100%;
 }
 
@@ -167,8 +166,19 @@
 
 /* ---- Content Pane (90%) ---- */
 .content-pane-map-update {
-  flex: 1;
+  flex: 1 1 auto;
+  height: 0;
   min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.content-pane-map-update > * {
+  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
+  min-width: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -183,14 +193,15 @@
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 14px;
   padding: 18px;
+  padding-bottom: 28px;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   align-content: start;
-  flex: 1 1 0;
+  flex: 1 1 auto;
+  height: 0;
   min-height: 0;
-  max-height: 100%;
   animation: cardGridFadeIn-map-update 0.22s ease both;
   scrollbar-width: thin;
   scrollbar-color: var(--mu-primary) var(--mu-gray-100);
@@ -368,6 +379,7 @@
   padding: 8px 10px;
   border-top: 1px solid var(--mu-gray-100);
   background: var(--mu-gray-50);
+  flex-shrink: 0;
 }
 
 .card-action-btn-map-update {
@@ -459,9 +471,11 @@
    =================================================== */
 
 .main-map-update {
-  height: 100%;
+  flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .fields-card-map-update {
@@ -470,11 +484,49 @@
   border-radius: 0;
   box-shadow: none;
   overflow: hidden;
-  height: 100%;
+  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
 }
+
+.fields-card-scroll-map-update {
+  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--mu-primary) var(--mu-gray-100);
+}
+
+.fields-card-scroll-map-update--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fields-card-grid-map-update {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  padding: 18px;
+  padding-bottom: 40px;
+  align-content: start;
+}
+
+.fields-card-grid-map-update .field-card-map-update:nth-child(1)  { animation-delay: 0ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(2)  { animation-delay: 30ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(3)  { animation-delay: 60ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(4)  { animation-delay: 90ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(5)  { animation-delay: 110ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(6)  { animation-delay: 130ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(7)  { animation-delay: 150ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(8)  { animation-delay: 165ms; }
+.fields-card-grid-map-update .field-card-map-update:nth-child(n+9) { animation-delay: 180ms; }
 
 .fields-card-header-map-update {
   padding: 14px 20px;
@@ -523,22 +575,18 @@
   border-radius: 20px;
 }
 
-.fields-card-grid-map-update {
-  flex: 1 1 0;
-  min-height: 0;
-  overflow-y: auto;
-}
-
 /* ---- Field cards ---- */
 .field-card-map-update {
   cursor: default;
+  height: auto;
+  align-self: start;
 }
 
 .field-card-body-map-update {
   display: flex;
   flex-direction: column;
   padding: 14px 14px 10px 14px;
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -1788,23 +1836,26 @@
    =================================================== */
 
 .card-grid-map-update::-webkit-scrollbar,
+.fields-card-scroll-map-update::-webkit-scrollbar,
 .table-wrapper-map-update::-webkit-scrollbar,
 .reason-list-map-update::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 8px;
+  height: 8px;
 }
 
 .card-grid-map-update::-webkit-scrollbar-track,
+.fields-card-scroll-map-update::-webkit-scrollbar-track,
 .table-wrapper-map-update::-webkit-scrollbar-track,
 .reason-list-map-update::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--mu-gray-100);
 }
 
 .card-grid-map-update::-webkit-scrollbar-thumb,
+.fields-card-scroll-map-update::-webkit-scrollbar-thumb,
 .table-wrapper-map-update::-webkit-scrollbar-thumb,
 .reason-list-map-update::-webkit-scrollbar-thumb {
-  background: var(--mu-gray-300);
-  border-radius: 10px;
+  background: var(--mu-primary);
+  border-radius: 4px;
 }
 
 /* ===================================================
@@ -2082,6 +2133,13 @@
     gap: 12px;
   }
 
+  .fields-card-grid-map-update {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    padding: 14px;
+    padding-bottom: 36px;
+    gap: 12px;
+  }
+
   .nav-bar-map-update {
     padding: 0 12px;
     gap: 8px;
@@ -2109,17 +2167,45 @@
   }
 
   .content-pane-map-update {
-    height: auto;
+    flex: 1 1 auto;
+    height: 0;
     min-height: 0;
-    flex: 1 1 0;
     overflow: hidden;
+  }
+
+  .content-pane-map-update > * {
+    flex: 1 1 auto;
+    height: 0;
+    min-height: 0;
+  }
+
+  .fields-card-map-update {
+    flex: 1 1 auto;
+    height: 0;
+    min-height: 0;
+  }
+
+  .fields-card-scroll-map-update {
+    flex: 1 1 auto;
+    height: 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .fields-card-grid-map-update {
+    grid-template-columns: 1fr 1fr;
+    padding: 10px;
+    padding-bottom: 36px;
+    gap: 10px;
   }
 
   .card-grid-map-update {
     grid-template-columns: 1fr 1fr;
     padding: 10px;
+    padding-bottom: 24px;
     gap: 10px;
     overflow-y: auto;
+    min-height: 0;
   }
 
   .table-wrapper-map-update {

@@ -228,8 +228,13 @@
 
 .transport-finance-module-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.transport-finance-module-card--maintenance {
+  border-color: #c5d9e8;
+  background: linear-gradient(180deg, #ffffff 0%, #f3f8fc 100%);
 }
 
 .transport-finance-module-card {

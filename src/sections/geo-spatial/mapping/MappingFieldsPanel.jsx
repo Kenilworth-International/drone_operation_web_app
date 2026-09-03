@@ -250,40 +250,48 @@ const MappingFieldsPanel = ({
       </div>
 
       {!selectedDivision ? (
-        <EmptyState
-          icon={FaProjectDiagram}
-          title="No division selected"
-          description="Select a division from the hierarchy above to view and manage its fields."
-        />
+        <div className="fields-card-scroll-map-update fields-card-scroll-map-update--center">
+          <EmptyState
+            icon={FaProjectDiagram}
+            title="No division selected"
+            description="Select a division from the hierarchy above to view and manage its fields."
+          />
+        </div>
       ) : fieldsLoading ? (
-        <LoadingSpinner text="Loading fields..." />
+        <div className="fields-card-scroll-map-update fields-card-scroll-map-update--center">
+          <LoadingSpinner text="Loading fields..." />
+        </div>
       ) : filteredFields.length === 0 ? (
-        <EmptyState
-          icon={FaLeaf}
-          title={searchTerm ? 'No matching fields' : 'No fields yet'}
-          description={
-            searchTerm
-              ? 'Try a different search term.'
-              : hasAddFeature
-                ? 'Click "Add Field" to create the first field in this division.'
-                : 'No fields available to view in this division.'
-          }
-        />
+        <div className="fields-card-scroll-map-update fields-card-scroll-map-update--center">
+          <EmptyState
+            icon={FaLeaf}
+            title={searchTerm ? 'No matching fields' : 'No fields yet'}
+            description={
+              searchTerm
+                ? 'Try a different search term.'
+                : hasAddFeature
+                  ? 'Click "Add Field" to create the first field in this division.'
+                  : 'No fields available to view in this division.'
+            }
+          />
+        </div>
       ) : (
-        <div className="card-grid-map-update fields-card-grid-map-update">
-          {filteredFields.map((field) => (
-            <FieldCard
-              key={field.id}
-              field={field}
-              hasEditFeature={hasEditFeature}
-              hasActivateFeature={hasActivateFeature}
-              showFieldActionsColumn={showFieldActionsColumn}
-              missionReasons={missionReasons}
-              onFieldEdit={onFieldEdit}
-              onAvailabilityModal={onAvailabilityModal}
-              onToggleFieldActivation={onToggleFieldActivation}
-            />
-          ))}
+        <div className="fields-card-scroll-map-update">
+          <div className="fields-card-grid-map-update">
+            {filteredFields.map((field) => (
+              <FieldCard
+                key={field.id}
+                field={field}
+                hasEditFeature={hasEditFeature}
+                hasActivateFeature={hasActivateFeature}
+                showFieldActionsColumn={showFieldActionsColumn}
+                missionReasons={missionReasons}
+                onFieldEdit={onFieldEdit}
+                onAvailabilityModal={onAvailabilityModal}
+                onToggleFieldActivation={onToggleFieldActivation}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
