@@ -33,7 +33,15 @@ const PilotSummaryOpsRoomData = () => {
                     startDate: startDate.toLocaleDateString('en-CA'),
                     endDate: endDate.toLocaleDateString('en-CA')
                 }));
+                if (result.error) {
+                    throw new Error(result.error?.data?.message || result.error?.error || 'Failed to load pilot summary');
+                }
                 const response = result.data;
+                if (!response?.pilots) {
+                    setPilotsData([]);
+                    setFilterOptions({ pilotNames: [] });
+                    return;
+                }
 
                 const pilotStats = {};
                 response.pilots.forEach(pilot => {

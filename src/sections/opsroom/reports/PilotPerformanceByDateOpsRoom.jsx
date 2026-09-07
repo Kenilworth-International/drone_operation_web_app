@@ -25,6 +25,10 @@ const PilotPerformanceByDateOpsRoom = () => {
         startDate: formatDate(startDate),
         endDate: formatDate(endDate)
       }));
+      if (result.error) {
+        setApiData(null);
+        return;
+      }
       const res = result.data;
       setApiData(res);
     } catch (e) {
