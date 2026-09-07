@@ -18,6 +18,7 @@ import {
 import { useGetAllEmployeeRegistrationsQuery } from '../../../api/services NodeJs/jdManagementApi';
 import ChiefJobRoleTab from './ChiefJobRoleTab';
 import HodAssignmentTab from './HodAssignmentTab';
+import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
 import {
   clampPowerToLayer,
   findLayerById,
@@ -154,7 +155,7 @@ export default function EmpOrgMasterPanel() {
   const employeeNameById = useMemo(() => {
     const map = new Map();
     employees.forEach((emp) => {
-      map.set(Number(emp.id), emp.employeeName || emp.preferredName || emp.empNo || `Employee ${emp.id}`);
+      map.set(Number(emp.id), getEmployeeDisplayName(emp, emp.empNo || `Employee ${emp.id}`));
     });
     return map;
   }, [employees]);
@@ -759,7 +760,7 @@ export default function EmpOrgMasterPanel() {
               <option value="">Not set</option>
               {employees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.employeeName || emp.preferredName || emp.empNo || `Employee ${emp.id}`}
+                  {getEmployeeDisplayName(emp, emp.empNo || `Employee ${emp.id}`)}
                 </option>
               ))}
             </select>

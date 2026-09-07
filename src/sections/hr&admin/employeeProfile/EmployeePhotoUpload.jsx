@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useUpdateEmployeeRegistrationMutation } from '../../../api/services NodeJs/jdManagementApi';
-import { employeeInitials, employeeRecord, getEmployeePhotoUrl } from './employeeProfileUtils';
+import { employeeInitials, employeeRecord, getEmployeePhotoUrl, getEmployeeDisplayName } from './employeeProfileUtils';
 
 export default function EmployeePhotoUpload({
   employeeId,
@@ -17,7 +17,7 @@ export default function EmployeePhotoUpload({
 
   const serverPhotoUrl = getEmployeePhotoUrl(employee);
   const photoUrl = previewUrl || (!loadFailed ? serverPhotoUrl : null);
-  const name = employee?.employeeName || employee?.preferredName || 'Employee';
+  const name = getEmployeeDisplayName(employee);
   const initials = employeeInitials(name);
   const isHero = size === 'hero';
 

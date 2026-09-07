@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { employeeInitials, getEmployeePhotoUrl } from './employeeProfileUtils';
+import { employeeInitials, getEmployeePhotoUrl, getEmployeeDisplayName } from './employeeProfileUtils';
 
 export default function EmployeeAvatar({ employee, name, className = '', size = 'md' }) {
-  const displayName = name || employee?.employeeName || employee?.preferredName || 'Employee';
+  const displayName = name || getEmployeeDisplayName(employee);
   const photoUrl = getEmployeePhotoUrl(employee);
   const [failed, setFailed] = useState(false);
 

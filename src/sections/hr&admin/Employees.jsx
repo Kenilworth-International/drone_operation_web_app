@@ -3,6 +3,7 @@ import { useSearchParams, useLocation } from 'react-router-dom';
 import { useGetAllEmployeeRegistrationsQuery } from '../../api/services NodeJs/jdManagementApi';
 import EmployeeProfileTabbedView from './employeeProfile/EmployeeProfileTabbedView';
 import EmployeeAvatar from './employeeProfile/EmployeeAvatar';
+import { getEmployeeDisplayName } from './employeeProfile/employeeProfileUtils';
 import '../../styles/employeeProfileDetails.css';
 import '../../styles/employees.css';
 
@@ -51,7 +52,8 @@ const Employees = () => {
     if (!searchTerm.trim()) return employees;
     const q = searchTerm.toLowerCase();
     return employees.filter((employee) => (
-      (employee.employeeName && employee.employeeName.toLowerCase().includes(q))
+      (employee.preferredName && employee.preferredName.toLowerCase().includes(q))
+      || (employee.employeeName && employee.employeeName.toLowerCase().includes(q))
       || (employee.empNo && employee.empNo.toLowerCase().includes(q))
       || (employee.nic && employee.nic.toLowerCase().includes(q))
       || (employee.emailAddress && employee.emailAddress.toLowerCase().includes(q))
@@ -129,7 +131,7 @@ const Employees = () => {
               {filteredEmployees.map((employee) => {
                 const idStr = String(employee.id);
                 const isSelected = selectedEmployeeId === idStr;
-                const name = employee.employeeName || employee.preferredName || 'Unnamed';
+                const name = getEmployeeDisplayName(employee, 'Unnamed');
                 return (
                   <li key={employee.id}>
                   <button 

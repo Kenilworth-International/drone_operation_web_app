@@ -615,7 +615,7 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
     }
     const selected = employees.find((emp) => String(emp.id) === String(formData.reportingOfficer));
     if (selected) {
-      const displayName = selected.employeeName || selected.preferredName || selected.empNo || `Employee ${selected.id}`;
+      const displayName = selected.preferredName || selected.empNo || `Employee ${selected.id}`;
       setReportingOfficerSearch(displayName);
     }
   }, [formData.reportingOfficer, employees]);
@@ -712,7 +712,7 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
       return;
     }
     if (empNoConflict) {
-      const holderName = empNoConflict.employeeName || empNoConflict.preferredName || 'another employee';
+      const holderName = empNoConflict.preferredName || empNoConflict.employeeName || 'another employee';
       setSubmitMessage({
         type: 'error',
         text: `Employee number ${formatEmpNoPreview(empNoSuffix)} is already assigned to ${holderName}.`,
@@ -1954,7 +1954,7 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
                 )}
                 {!checkingEmpNo && empNoConflict && (
                   <small className="emp-no-error-emp-reg">
-                    Already assigned to {empNoConflict.employeeName || empNoConflict.preferredName || 'another employee'}
+                    Already assigned to {empNoConflict.preferredName || empNoConflict.employeeName || 'another employee'}
                   </small>
                 )}
                 {!checkingEmpNo && !empNoConflict && empNoSuffix && (
@@ -2254,14 +2254,14 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
                         .filter((emp) => {
                           const q = reportingOfficerSearch.trim().toLowerCase();
                           if (!q) return true;
-                          const name = String(emp.employeeName || emp.preferredName || '').toLowerCase();
+                          const name = String(emp.preferredName || '').toLowerCase();
                           const empNo = String(emp.empNo || '').toLowerCase();
                           const id = String(emp.id || '').toLowerCase();
                           return name.includes(q) || empNo.includes(q) || id.includes(q);
                         })
                         .slice(0, 50)
                         .map((emp) => {
-                          const displayName = emp.employeeName || emp.preferredName || emp.empNo || `Employee ${emp.id}`;
+                          const displayName = emp.preferredName || emp.empNo || `Employee ${emp.id}`;
                           return (
                             <div
                               key={emp.id}
@@ -2282,7 +2282,7 @@ const EmployeeRegistration = ({ employeeId = null, embedded = false, onSaved = n
                       {employees.filter((emp) => {
                         const q = reportingOfficerSearch.trim().toLowerCase();
                         if (!q) return true;
-                        const name = String(emp.employeeName || emp.preferredName || '').toLowerCase();
+                        const name = String(emp.preferredName || '').toLowerCase();
                         const empNo = String(emp.empNo || '').toLowerCase();
                         const id = String(emp.id || '').toLowerCase();
                         return name.includes(q) || empNo.includes(q) || id.includes(q);

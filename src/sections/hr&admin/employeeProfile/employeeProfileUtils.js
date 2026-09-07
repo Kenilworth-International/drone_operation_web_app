@@ -195,6 +195,22 @@ export const EMPLOYEE_CAREER_DATE_FIELDS = [
   { key: 'retirementDate', label: 'Retirement' },
 ];
 
+/**
+ * Preferred name for employee lists/selectors.
+ * Falls back to EMP no, then legal name only if preferred is empty.
+ */
+export function getEmployeeDisplayName(employee, fallback = 'Employee') {
+  if (!employee) return fallback;
+  const preferred = String(employee.preferredName || employee.preferred_name || '').trim();
+  if (preferred) return preferred;
+  const empNo = String(employee.empNo || employee.emp_no || '').trim();
+  if (empNo) return empNo;
+  const legal = String(
+    employee.employeeName || employee.employee_name || employee.name || '',
+  ).trim();
+  return legal || fallback;
+}
+
 /** True when employment type is Contract Employee (HR master option_value). */
 export function isContractEmploymentType(value) {
   const text = String(value || '').trim().toLowerCase();
@@ -202,11 +218,19 @@ export function isContractEmploymentType(value) {
   return text === 'contract employee' || text.startsWith('contract');
 }
 
-/** True when employment type is Probation Employee. */
+/**
+ * True when employment type has a company probation period.
+ * Permanent / Probation / Trainee — not Intern or Contract.
+ */
 export function isProbationEmploymentType(value) {
   const text = String(value || '').trim().toLowerCase();
   if (!text) return false;
-  return text === 'probation employee' || text.startsWith('probation');
+  if (text.includes('intern') || text.startsWith('contract')) return false;
+  return (
+    text.includes('permanent')
+    || text.includes('probation')
+    || text.includes('trainee')
+  );
 }
 
 /** Default stored value for contract employment type (HR master option). */

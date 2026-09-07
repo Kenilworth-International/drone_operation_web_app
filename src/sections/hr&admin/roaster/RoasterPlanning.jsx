@@ -375,7 +375,7 @@ const RoasterPlanning = ({ embedded = false }) => {
       if (!byEmployee[id]) {
         byEmployee[id] = {
           id,
-          name: entry.employeeName || `Employee ${id}`,
+          name: entry.preferredName || entry.employeeName || `Employee ${id}`,
           role: entry.employeeJobRoleName || '-',
           workLocation: getEmployeeWorkLocation(entry),
           isBulkLeaveEligible: Number(entry.bulkLeaveAvailable ?? entry.bulk_leave_available ?? 0) === 1,
@@ -454,7 +454,7 @@ const RoasterPlanning = ({ embedded = false }) => {
       if (byEmployee[id]) {
         return {
           ...byEmployee[id],
-          name: emp.employeeName || emp.name || byEmployee[id].name || `Employee ${id}`,
+          name: emp.preferredName || emp.employeeName || emp.name || byEmployee[id].name || `Employee ${id}`,
           role: emp.employeeJobRoleName || emp.designation || byEmployee[id].role || '-',
           workLocation: getEmployeeWorkLocation(emp) || byEmployee[id].workLocation || '-',
           isBulkLeaveEligible: Number(emp.bulkLeaveAvailable ?? byEmployee[id].isBulkLeaveEligible ?? 0) === 1,
@@ -462,7 +462,7 @@ const RoasterPlanning = ({ embedded = false }) => {
       }
       return {
         id,
-        name: emp.employeeName || emp.name || `Employee ${id}`,
+        name: emp.preferredName || emp.employeeName || emp.name || `Employee ${id}`,
         role: emp.employeeJobRoleName || emp.designation || '-',
         workLocation: getEmployeeWorkLocation(emp),
         isBulkLeaveEligible: Number(emp.bulkLeaveAvailable ?? 0) === 1,

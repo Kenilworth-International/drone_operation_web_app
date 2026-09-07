@@ -5,6 +5,7 @@ import {
   useSaveEmpHodAssignmentMutation,
 } from '../../../api/services NodeJs/empOrgStructureApi';
 import { useGetAllEmployeeRegistrationsQuery } from '../../../api/services NodeJs/jdManagementApi';
+import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
 
 function HodModal({ title, onClose, onSubmit, submitLabel, children, submitting, onClear, clearLabel }) {
   return (
@@ -70,6 +71,7 @@ export default function HodAssignmentTab({ notify, refreshToken = 0 }) {
       (row.dept_ids || []).forEach((deptId) => {
         map.set(Number(deptId), {
           employeeId: row.employee_id,
+          preferredName: row.preferred_name,
           employeeName: row.employee_name,
         });
       });
@@ -85,7 +87,7 @@ export default function HodAssignmentTab({ notify, refreshToken = 0 }) {
   }, [refreshToken]);
 
   const employeeLabel = (emp) => {
-    const name = emp.employeeName || emp.preferredName || 'Employee';
+    const name = getEmployeeDisplayName(emp);
     return emp.empNo ? `${name} (${emp.empNo})` : `${name} #${emp.id}`;
   };
 
@@ -250,7 +252,7 @@ export default function HodAssignmentTab({ notify, refreshToken = 0 }) {
                   <label
                     key={d.id}
                     className="emp-org-dept-chip"
-                    title={heldByOther ? `Currently ${heldBy.employeeName} — will be replaced` : undefined}
+                    title={heldByOther ? `Currently ${getEmployeeDisplayName(heldBy)} — will be replaced` : undefined}
                   >
                     <input
                       type="checkbox"
@@ -258,7 +260,7 @@ export default function HodAssignmentTab({ notify, refreshToken = 0 }) {
                       onChange={() => toggleDept(d.id)}
                     />
                     {d.department_name}
-                    {heldByOther ? ` (now: ${heldBy.employeeName})` : ''}
+                    {heldByOther ? ` (now: ${getEmployeeDisplayName(heldBy)})` : ''}
                   </label>
                 );
               })}

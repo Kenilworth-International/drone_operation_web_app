@@ -17,6 +17,7 @@ import {
   isPowerInLayerRange,
   layerPowerHint,
 } from './empOrgLayerPower';
+import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
 
 const EMPTY_CHIEF = {
   jr_code: '',
@@ -94,7 +95,7 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
   }, [employeesData]);
 
   const employeeLabel = (emp) => {
-    const name = emp.employeeName || emp.preferredName || 'Employee';
+    const name = getEmployeeDisplayName(emp);
     return emp.empNo ? `${name} (${emp.empNo})` : `${name} #${emp.id}`;
   };
 

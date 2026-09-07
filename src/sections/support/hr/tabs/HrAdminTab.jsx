@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { hrSupportRequest } from '../api/hrSupportApi';
 import { formatApiDateDisplay } from '../utils/formatApiDate';
+import { getEmployeeDisplayName } from '../utils/employeeDisplay';
 
 function flattenOrgNodes(nodes = [], depth = 0, out = []) {
   for (const node of nodes) {
@@ -94,9 +95,9 @@ export default function HrAdminTab({ token, refreshing, refresh }) {
         ) : (
           <div className="hrsup-card">
             <div className="hrsup-profile-header" style={{ marginBottom: 12 }}>
-              <div className="hrsup-profile-avatar">{(emp.employeeName || emp.name || '?').charAt(0).toUpperCase()}</div>
+              <div className="hrsup-profile-avatar">{(getEmployeeDisplayName(emp, '?')).charAt(0).toUpperCase()}</div>
               <div>
-                <p className="hrsup-profile-name">{emp.employeeName || emp.name}</p>
+                <p className="hrsup-profile-name">{getEmployeeDisplayName(emp)}</p>
                 <p className="hrsup-profile-role">{emp.designation || emp.jobRole || '—'}</p>
               </div>
             </div>
@@ -167,10 +168,10 @@ export default function HrAdminTab({ token, refreshing, refresh }) {
                 <div className="hrsup-card-head">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#dbeafe', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}>
-                      {(emp.employeeName || emp.name || '?').charAt(0).toUpperCase()}
+                      {(getEmployeeDisplayName(emp, '?')).charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <div className="hrsup-list-title">{emp.employeeName || emp.name}</div>
+                      <div className="hrsup-list-title">{getEmployeeDisplayName(emp)}</div>
                       <div className="hrsup-list-meta">{emp.employeeNo || emp.employee_no || '—'} · {emp.department || '—'}</div>
                     </div>
                   </div>

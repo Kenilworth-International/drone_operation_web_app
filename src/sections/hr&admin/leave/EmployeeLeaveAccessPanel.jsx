@@ -1,4 +1,5 @@
 import React from 'react';
+import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
 
 export default function EmployeeLeaveAccessPanel({
   allEmployees,
@@ -43,7 +44,7 @@ export default function EmployeeLeaveAccessPanel({
               <div key={employee.id} className="leave-item-leavemgt leave-item-data-leavemgt">
                 <div className="leave-item-top-leavemgt">
                   <div className="leave-employee-meta-leavemgt">
-                    <strong>{employee.employeeName || employee.preferredName || employee.empNo || `Employee ${employee.id}`}</strong>
+                    <strong>{getEmployeeDisplayName(employee, employee.empNo || `Employee ${employee.id}`)}</strong>
                     <div className="leave-subtext-leavemgt">Emp No: {employee.empNo || '-'}</div>
                   </div>
                   <div className="leave-current-access-center-leavemgt" title={currentAccessText}>

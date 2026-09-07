@@ -10,6 +10,7 @@ import {
   FaUser,
 } from 'react-icons/fa';
 import { useHrSupportAuth } from '../auth/HrSupportAuthProvider';
+import { getEmployeeDisplayName } from '../utils/employeeDisplay';
 import '../../../../styles/hrSupportShell.css';
 
 const BASE = '/support/hr';
@@ -40,7 +41,7 @@ export default function HrSupportShell({
 }) {
   const location = useLocation();
   const { logout } = useHrSupportAuth();
-  const displayName = profile?.employeeName || profile?.preferredName || profile?.name || loginUser?.name || 'Employee';
+  const displayName = getEmployeeDisplayName(profile, loginUser?.name || 'Employee');
   const initial = displayName.charAt(0).toUpperCase();
   const role = profile?.jobRole || profile?.designation || 'Employee';
 

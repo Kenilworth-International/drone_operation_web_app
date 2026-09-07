@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { employeeInitials, getEmployeePhotoUrl } from './employeeProfileUtils';
+import { employeeInitials, getEmployeePhotoUrl, getEmployeeDisplayName } from './employeeProfileUtils';
 
 export default function EmployeeListSidebar({
   employees,
@@ -44,7 +44,7 @@ export default function EmployeeListSidebar({
           filtered.map((emp) => {
             const id = String(emp.id);
             const selected = id === String(selectedId);
-            const name = emp.preferredName || emp.employeeName || `Employee ${emp.id}`;
+            const name = getEmployeeDisplayName(emp, `Employee ${emp.id}`);
             const photoUrl = getEmployeePhotoUrl(emp);
             return (
               <button

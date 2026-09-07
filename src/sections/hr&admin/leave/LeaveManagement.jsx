@@ -14,6 +14,7 @@ import LeaveEntitlementPanel from './LeaveEntitlementPanel';
 import EmployeeLeaveAccessPanel from './EmployeeLeaveAccessPanel';
 import HolidayMarkingPanel from './HolidayMarkingPanel';
 import FlexHoursPanel from './FlexHoursPanel';
+import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
 import '../../../styles/leavemanagement.css';
 
 const TABS = [
@@ -152,7 +153,7 @@ const LeaveManagement = () => {
         return next;
       });
       await refetchEmployees();
-      showMessage(`Updated leave types for ${employee.employeeName || employee.empNo || employee.id}`);
+      showMessage(`Updated leave types for ${getEmployeeDisplayName(employee, employee.empNo || employee.id)}`);
     } catch (error) {
       showMessage(error?.data?.message || 'Failed to update employee leave types', true);
     } finally {
@@ -203,7 +204,7 @@ const LeaveManagement = () => {
         flexHoursEnabled: effective.enabled ? 1 : 0,
         flexHoursMinutes: effective.enabled ? Number(effective.minutes || 0) : 0,
       }).unwrap();
-      showMessage(`Updated flex hours for ${employee.employeeName || employee.empNo || employee.id}`);
+      showMessage(`Updated flex hours for ${getEmployeeDisplayName(employee, employee.empNo || employee.id)}`);
       refetchEmployees();
     } catch (error) {
       showMessage(error?.data?.message || 'Failed to update flex hours', true);
@@ -221,7 +222,7 @@ const LeaveManagement = () => {
     if (!statusOk) return false;
     const needle = String(flexSearchText || '').trim().toLowerCase();
     if (!needle) return true;
-    const name = String(employee.employeeName || employee.preferredName || '').toLowerCase();
+    const name = String(employee.preferredName || employee.employeeName || '').toLowerCase();
     const empNo = String(employee.empNo || '').toLowerCase();
     return name.includes(needle) || empNo.includes(needle);
   });

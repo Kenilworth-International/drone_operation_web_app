@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { hrSupportRequest } from '../api/hrSupportApi';
 import { useHrSupportAuth } from '../auth/HrSupportAuthProvider';
 import { formatApiDateDisplay } from '../utils/formatApiDate';
+import { getEmployeeDisplayName } from '../utils/employeeDisplay';
 
 function formatDate(value) {
   return formatApiDateDisplay(value, '—');
@@ -67,7 +68,7 @@ export default function ProfileTab({ token, profile, loginUser, refreshing, onRe
     }
   };
 
-  const displayName = profile?.employeeName || profile?.preferredName || profile?.name || loginUser?.name || 'Employee';
+  const displayName = getEmployeeDisplayName(profile, loginUser?.name || 'Employee');
   const initial = displayName.charAt(0).toUpperCase();
   const role = profile?.designation || profile?.jobRole || '—';
 
@@ -87,7 +88,7 @@ export default function ProfileTab({ token, profile, loginUser, refreshing, onRe
         <h3 className="hrsup-card-title">Employee Information</h3>
         {[
           ['Employee No', profile?.employeeNo || profile?.employee_no || profile?.empNo],
-          ['Department', profile?.department],
+          ['Department', profile?.departmentName || profile?.department],
           ['Branch', profile?.branch],
           ['Email', profile?.email],
           ['Mobile', profile?.mobile || profile?.mobile_no],
@@ -112,14 +113,14 @@ export default function ProfileTab({ token, profile, loginUser, refreshing, onRe
             return (
               <div key={member.id || idx} className="hrsup-dl-row">
                 <span className="hrsup-dl-label">{roleLabel}</span>
-                <span className="hrsup-dl-value">{member.employeeName || member.name || '—'}</span>
+                <span className="hrsup-dl-value">{getEmployeeDisplayName(member, member.name || '—')}</span>
               </div>
             );
           })}
           {hod && (
             <div className="hrsup-dl-row">
               <span className="hrsup-dl-label">Head of Department</span>
-              <span className="hrsup-dl-value">{hod.employeeName || hod.name || '—'}</span>
+              <span className="hrsup-dl-value">{getEmployeeDisplayName(hod, hod.name || '—')}</span>
             </div>
           )}
         </div>

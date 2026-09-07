@@ -7,6 +7,7 @@ import {
   getApprovalStageLabel,
   getApprovalTypeBadge,
 } from '../utils/hrApprovals';
+import { getEmployeeDisplayName } from '../utils/employeeDisplay';
 
 function getInitials(name) {
   return String(name || 'U')
@@ -54,11 +55,11 @@ export default function ApprovalRequestCard({
             {photoUrl ? (
               <img src={photoUrl} alt="" className="hrsup-approval-card__avatar-img" />
             ) : (
-              getInitials(item?.employeeName || item?.employee_name)
+              getInitials(getEmployeeDisplayName(item))
             )}
           </div>
           <div className="hrsup-approval-card__person-meta">
-            <div className="hrsup-approval-card__name">{item?.employeeName || item?.employee_name || 'Employee'}</div>
+            <div className="hrsup-approval-card__name">{getEmployeeDisplayName(item)}</div>
             <div className="hrsup-approval-card__sub">
               {item?.empNo ? `Emp ${item.empNo}` : 'Employee'}
             </div>

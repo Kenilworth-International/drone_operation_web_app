@@ -143,7 +143,7 @@ function EmpNoField({
 
   const preview = formatEmpNoPreview(value);
   const conflictError = conflict
-    ? `Already assigned to ${conflict.employeeName || conflict.preferredName || 'another employee'}`
+    ? `Already assigned to ${conflict.preferredName || conflict.employeeName || 'another employee'}`
     : null;
 
   return (
@@ -723,7 +723,7 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
       return;
     }
     if (empNoConflict) {
-      const holder = empNoConflict.employeeName || empNoConflict.preferredName || 'another employee';
+      const holder = empNoConflict.preferredName || empNoConflict.employeeName || 'another employee';
       setMessage({
         type: 'error',
         text: `Employee number ${formatEmpNoPreview(form.empNoSuffix)} is already assigned to ${holder}.`,
@@ -785,7 +785,7 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
                   { label: 'Designation', value: form.designation_title || resolvedDesignation?.designation_title },
                 ]
               : []),
-            { label: 'Reporting officer', value: officer ? (officer.employeeName || officer.empNo) : '' },
+            { label: 'Reporting officer', value: officer ? (officer.preferredName || officer.empNo) : '' },
             { label: 'Work location', value: locationName || employee.workLocationName },
             { label: 'Shift type', value: form.shiftType },
             { label: 'Member type', value: form.memberTypeFlag },
@@ -931,7 +931,7 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
               const isDepartmentHead = departments.some((dept) => Number(dept.hod_employee_id) === Number(employeeId));
               return isSeniorManagement || isDepartmentHead;
             }).map((e) => (
-              <option key={e.id} value={e.id}>{e.employeeName || e.empNo}</option>
+              <option key={e.id} value={e.id}>{e.preferredName || e.empNo}</option>
             ))}
           </select>
         </Field>
@@ -1386,7 +1386,7 @@ export function AddEmployeeModal({ onClose, onCreated }) {
       return;
     }
     if (empNoConflict) {
-      const holder = empNoConflict.employeeName || empNoConflict.preferredName || 'another employee';
+      const holder = empNoConflict.preferredName || empNoConflict.employeeName || 'another employee';
       setMessage({
         type: 'error',
         text: `Employee number ${formatEmpNoPreview(form.empNoSuffix)} is already assigned to ${holder}.`,

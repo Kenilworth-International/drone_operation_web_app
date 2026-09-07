@@ -21,7 +21,7 @@ import {
   useGetEmpSubDivisionsQuery,
   useResolveEmpDesignationMutation,
 } from '../../api/services NodeJs/empOrgStructureApi';
-import { isSeniorManagementCategory } from './employeeProfile/employeeProfileUtils';
+import { isSeniorManagementCategory, getEmployeeDisplayName } from './employeeProfile/employeeProfileUtils';
 import '../../styles/employeeAssignment.css';
 
 const EMPTY_LIST = [];
@@ -306,7 +306,7 @@ const EmployeeAssignment = () => {
       .filter((emp) => String(emp.id) !== String(empId) || isSeniorManagement || isDepartmentHead)
       .map((emp) => ({
         value: emp.id,
-        label: `${emp.empNo || emp.id} — ${emp.employeeName || emp.preferredName || 'Employee'}`,
+        label: emp.preferredName || emp.empNo || 'Employee',
       }));
   }, [allEmployees, selectedEmployee?.id, selectedEmployee?.employmentCategory, departments]);
 
@@ -597,7 +597,7 @@ const EmployeeAssignment = () => {
                 onClick={() => selectEmployee(employee)}
               >
                 <div className="ea-employee-info-ea">
-                  <span className="ea-employee-name-ea">{employee.employeeName || 'N/A'}</span>
+                  <span className="ea-employee-name-ea">{getEmployeeDisplayName(employee, 'N/A')}</span>
                   <span className="ea-employee-designation-ea">
                     {employee.designation_title || employee.designation || 'No designation'}
                   </span>
@@ -641,7 +641,7 @@ const EmployeeAssignment = () => {
                 </div>
 
                 <div className="ea-employee-info-display-ea">
-                  <span className="ea-info-value-ea">{selectedEmployee.employeeName}</span>
+                  <span className="ea-info-value-ea">{getEmployeeDisplayName(selectedEmployee)}</span>
                   <span className="ea-info-designation-ea">{selectedEmployee.empNo || `ID ${selectedEmployee.id}`}</span>
                 </div>
 
@@ -901,7 +901,7 @@ const EmployeeAssignment = () => {
               <button type="button" className="ea-letter-close-btn-ea" onClick={() => setShowLetterModal(false)}>×</button>
             </div>
             <div className="ea-letter-modal-body-ea">
-              <p><strong>Employee:</strong> {selectedEmployee.employeeName}</p>
+              <p><strong>Employee:</strong> {getEmployeeDisplayName(selectedEmployee)}</p>
               <p><strong>Event:</strong> {selectedHistoryItem.event_type}</p>
               <p><strong>Effective:</strong> {formatHistoryDate(selectedHistoryItem.effective_date)}</p>
               <p><strong>Department:</strong> {selectedHistoryItem.from_department_code || '—'} → {selectedHistoryItem.to_department_code || '—'}</p>

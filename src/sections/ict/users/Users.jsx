@@ -336,8 +336,8 @@ export default function UsersDirectory({
     () => (employee) => {
       if (!employee) return "";
       const displayName =
-        employee.employeeName ||
         employee.preferredName ||
+        employee.employeeName ||
         employee.name ||
         "Unnamed";
       const empNo = employee.empNo ? ` (${employee.empNo})` : "";
@@ -350,7 +350,7 @@ export default function UsersDirectory({
     if (!q) return availableEmployeeOptionsForRegister;
     return availableEmployeeOptionsForRegister.filter((employee) => {
       const name = String(
-        employee.employeeName || employee.preferredName || employee.name || "",
+        employee.preferredName || employee.employeeName || employee.name || "",
       ).toLowerCase();
       const empNo = String(employee.empNo || "").toLowerCase();
       const nic = String(employee.nic || "").toLowerCase();
@@ -862,7 +862,7 @@ export default function UsersDirectory({
     const userLevelCode = employee.jobRoleLayer || "g";
     setFormData((prev) => ({
       ...prev,
-      name: employee.employeeName || employee.preferredName || "",
+      name: employee.preferredName || employee.employeeName || "",
       email: employee.companyEmailAddress || employee.emailAddress || "",
       nic: employee.nic || "",
       mobile_no: normalizeMobileNo(employee.mobileNumber || ""),
@@ -1263,8 +1263,8 @@ export default function UsersDirectory({
                               }
                             >
                               <div className="employee-estate-like-title-user-reg-ict">
-                                {employee.employeeName ||
-                                  employee.preferredName ||
+                                {employee.preferredName ||
+                                  employee.employeeName ||
                                   employee.name ||
                                   "Unnamed"}
                               </div>
@@ -1285,7 +1285,7 @@ export default function UsersDirectory({
                     <div className="employee-info-box">
                       <p>
                         <strong>Employee Found:</strong>{" "}
-                        {selectedEmployee.employeeName} (
+                        {selectedEmployee.preferredName || selectedEmployee.employeeName} (
                         {selectedEmployee.empNo})
                       </p>
                       <p>
