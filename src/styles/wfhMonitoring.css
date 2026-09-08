@@ -1,0 +1,742 @@
+.wfh-page {
+  padding: 14px 22px 40px;
+  color: #152028;
+  background: #f3f6f8;
+  min-height: calc(100vh - 90px);
+}
+
+.wfh-btn,
+.wfh-btn-ghost,
+.wfh-btn-link {
+  border: 1px solid #c9d5dd;
+  background: #fff;
+  color: #1c2d38;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wfh-btn {
+  background: #1a5c4c;
+  border-color: #1a5c4c;
+  color: #fff;
+}
+
+.wfh-btn-ghost {
+  background: transparent;
+}
+
+.wfh-btn-compact {
+  padding: 4px 10px;
+  font-size: 0.78rem;
+  border-radius: 7px;
+}
+
+.wfh-btn-link {
+  border: 0;
+  background: transparent;
+  color: #1a5c4c;
+  padding: 0;
+  margin-top: 6px;
+  width: fit-content;
+}
+
+.wfh-shell {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 980px) {
+  .wfh-shell {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wfh-device-rail,
+.wfh-main {
+  background: #fff;
+  border: 1px solid #e2e8ed;
+  border-radius: 12px;
+}
+
+.wfh-device-rail {
+  padding: 16px 12px 12px;
+  position: sticky;
+  top: 12px;
+  min-width: 0;
+}
+
+.wfh-rail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 4px 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eef2f5;
+}
+
+.wfh-rail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wfh-rail-head h3 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5f7080;
+}
+
+.wfh-main-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: #122028;
+}
+
+.wfh-session-strip h4,
+.wfh-timeline-wrap h4 {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5f7080;
+}
+
+.wfh-rail-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef3f6;
+  color: #4d606d;
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.wfh-device-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: calc(100vh - 220px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d0d8 transparent;
+}
+
+.wfh-device-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.wfh-device-list::-webkit-scrollbar-thumb {
+  background: #c5d0d8;
+  border-radius: 999px;
+}
+
+.wfh-device-item {
+  width: 100%;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  border-radius: 10px;
+  padding: 10px 10px 10px 8px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.wfh-device-item:hover {
+  background: #f6f9fb;
+}
+
+.wfh-device-item.is-active {
+  background: #f0f7f4;
+}
+
+.wfh-device-status {
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: #9aafbc;
+  flex-shrink: 0;
+}
+
+.wfh-device-status.live {
+  background: #1a8f6e;
+  box-shadow: 0 0 0 3px rgba(26, 143, 110, 0.18);
+}
+
+.wfh-device-status.paused {
+  background: #c47a2d;
+  box-shadow: 0 0 0 3px rgba(196, 122, 45, 0.18);
+}
+
+.wfh-device-status.idle {
+  background: #b0bec8;
+}
+
+.wfh-device-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.wfh-device-name {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 650;
+  color: #122028;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wfh-device-meta,
+.wfh-device-user,
+.wfh-device-seen {
+  display: block;
+  color: #6b7c88;
+  font-size: 0.76rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wfh-device-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.wfh-device-meta > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wfh-meta-sep {
+  color: #c0cbd3;
+}
+
+.wfh-status-text {
+  font-weight: 650;
+  flex-shrink: 0;
+}
+
+.wfh-status-text.live {
+  color: #1a6b54;
+}
+
+.wfh-status-text.paused {
+  color: #9a5314;
+}
+
+.wfh-status-text.idle {
+  color: #6b7c88;
+}
+
+.wfh-device-user {
+  color: #3d5160;
+  font-weight: 550;
+}
+
+.wfh-device-seen {
+  color: #8a9aa5;
+}
+
+.wfh-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.wfh-pill.live {
+  background: #e5f5ef;
+  color: #17634f;
+}
+
+.wfh-pill.pause {
+  background: #fff1e4;
+  color: #9a5314;
+}
+
+.wfh-pill.idle {
+  background: #eef2f5;
+  color: #61727e;
+}
+
+.wfh-main {
+  padding: 16px 18px 22px;
+  min-height: 560px;
+}
+
+.wfh-main-head {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8eef2;
+}
+
+.wfh-main-head p,
+.wfh-muted,
+.wfh-empty p {
+  margin: 6px 0 0;
+  color: #6b7c88;
+  font-size: 0.88rem;
+}
+
+.wfh-empty {
+  padding: 64px 20px;
+  text-align: center;
+}
+
+.wfh-empty h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.wfh-session-strip {
+  margin-bottom: 18px;
+}
+
+.wfh-session-cards {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  margin-top: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #c5d0d8 transparent;
+}
+
+.wfh-session-cards::-webkit-scrollbar {
+  height: 4px;
+}
+
+.wfh-session-cards::-webkit-scrollbar-thumb {
+  background: #c5d0d8;
+  border-radius: 999px;
+}
+
+.wfh-session-card {
+  flex: 0 0 200px;
+  width: 200px;
+  box-sizing: border-box;
+  border: 1px solid #e4ebf0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 0;
+}
+
+.wfh-session-card.is-open {
+  border-color: #b7d9cc;
+  background: #f5faf8;
+}
+
+.wfh-session-card-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.wfh-session-card-top strong {
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: #122028;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.wfh-session-card-top .wfh-status-text {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+}
+
+.wfh-session-range {
+  margin: 0;
+  color: #6b7c88;
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.wfh-session-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.wfh-session-worked {
+  color: #5f7080;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.wfh-session-card-footer .wfh-btn-link {
+  margin-top: 0;
+  font-size: 0.74rem;
+}
+
+.wfh-reason-inline {
+  margin: 0;
+  color: #9a5314;
+  font-size: 0.7rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.wfh-reason-line {
+  margin: 8px 0 0 !important;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff6ec;
+  color: #7a4414 !important;
+  font-size: 0.82rem !important;
+  line-height: 1.35;
+}
+
+.wfh-timeline-wrap {
+  margin-top: 8px;
+}
+
+.wfh-timeline {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0 0 0 8px;
+  position: relative;
+}
+
+.wfh-timeline::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  background: #d9e3ea;
+}
+
+.wfh-tl-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  gap: 12px;
+  padding: 0 0 18px;
+}
+
+.wfh-tl-item:last-child {
+  padding-bottom: 0;
+}
+
+.wfh-tl-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-top: 4px;
+  margin-left: 4px;
+  background: #9aafbc;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #d9e3ea;
+  z-index: 1;
+}
+
+.wfh-tl-item.session .wfh-tl-dot,
+.wfh-tl-item.resume .wfh-tl-dot {
+  background: #1a5c4c;
+  box-shadow: 0 0 0 2px #c7e4da;
+}
+
+.wfh-tl-item.pause .wfh-tl-dot {
+  background: #c47a2d;
+  box-shadow: 0 0 0 2px #f0d7b8;
+}
+
+.wfh-tl-item.fail .wfh-tl-dot {
+  background: #b42318;
+  box-shadow: 0 0 0 2px #f5c4c0;
+}
+
+.wfh-tl-item.end .wfh-tl-dot {
+  background: #7b8d99;
+}
+
+.wfh-tl-body {
+  border: 1px solid #e4ebf0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #fff;
+}
+
+.wfh-tl-item.pause .wfh-tl-body {
+  background: #fffaf4;
+  border-color: #edd9c0;
+}
+
+.wfh-tl-item.fail .wfh-tl-body {
+  background: #fff6f5;
+  border-color: #efc5c1;
+}
+
+.wfh-tl-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: #6b7c88;
+  font-size: 0.78rem;
+}
+
+.wfh-tl-tag {
+  font-weight: 700;
+  color: #4d606d;
+}
+
+.wfh-tl-tag.pause {
+  color: #9a5314;
+}
+
+.wfh-tl-tag.fail {
+  color: #b42318;
+}
+
+.wfh-fail-line {
+  margin: 6px 0 0;
+  color: #8a2f28;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.wfh-muted-inline {
+  margin: 4px 0 0;
+  color: #6b7c88;
+  font-size: 0.74rem;
+}
+
+.wfh-tl-body .wfh-session-card-footer {
+  margin-top: 6px;
+}
+
+.wfh-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 22, 28, 0.35);
+  z-index: 80;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.wfh-drawer {
+  width: min(640px, 100%);
+  height: 100%;
+  background: #fff;
+  border-left: 1px solid #d7e1e8;
+  padding: 18px;
+  overflow: auto;
+  box-shadow: -12px 0 40px rgba(15, 30, 40, 0.12);
+  animation: wfh-drawer-in 0.22s ease;
+}
+
+@keyframes wfh-drawer-in {
+  from {
+    transform: translateX(18px);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.wfh-drawer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8eef2;
+}
+
+.wfh-drawer-head h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.wfh-drawer-head p {
+  margin: 4px 0 0;
+  color: #6b7c88;
+  font-size: 0.85rem;
+}
+
+.wfh-drawer-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wfh-capture-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.wfh-capture-card {
+  border: 1px solid #e1e8ed;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f8fafb;
+}
+
+.wfh-thumb,
+.wfh-thumb-placeholder {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  background: #d9e3e9;
+  display: block;
+}
+
+.wfh-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6a7a84;
+  font-size: 0.85rem;
+}
+
+.wfh-capture-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  font-size: 0.8rem;
+  color: #61727e;
+}
+
+.wfh-capture-meta strong {
+  color: #152028;
+}
+
+.wfh-thumb-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.wfh-thumb-btn:hover .wfh-thumb {
+  opacity: 0.92;
+}
+
+.wfh-lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 16, 22, 0.72);
+  padding: 2vh 2vw;
+}
+
+.wfh-lightbox {
+  width: 90vw;
+  height: 90vh;
+  max-width: 90vw;
+  max-height: 90vh;
+  background: #0f1a20;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.wfh-lightbox-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #152028;
+  color: #e8eef2;
+  flex-shrink: 0;
+}
+
+.wfh-lightbox-head strong {
+  display: block;
+  font-size: 0.95rem;
+}
+
+.wfh-lightbox-head span {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: #9aafbc;
+}
+
+.wfh-lightbox-head .wfh-btn-ghost {
+  border-color: #3a4d58;
+  color: #e8eef2;
+  background: transparent;
+}
+
+.wfh-lightbox-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  background: #0b1217;
+}
+
+.wfh-lightbox-body img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}

@@ -93,8 +93,10 @@ export const baseApi = createApi({
     'TaskCancelStatus',
     // Others
     'Calendar', 'Reasons', 'ASC', 'Chemicals', 'TimeOfDays', 'HrMasterOptions',
+    'IncidentTypes', 'IncidentEquipment',
     // HR Leave and Attendance
     'HrLeave', 'HrLeaveAdmin', 'HrAttendance', 'HrRoster', 'KpiDefinitions', 'KpiRatingBands', 'KpiLeaderboard', 'SmartKpiTemplates', 'SmartKpiFieldTypes', 'SmartKpiReviews', 'SmartKpiScopeStatus', 'HrmDashboard',
+    'WfhMonitoring',
     // Financial cards / fuel approvals
     'FinancialCards', 'FinancialCardTransactions', 'Transactions', 'FuelApprovals', 'FuelTransportVouchers',
     'GeneratorFuelApprovals', 'FuelGeneratorVouchers', 'FinanceMasterData', 'StrategicFinanceApprovals',

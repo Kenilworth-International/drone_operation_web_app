@@ -163,10 +163,10 @@ Employees must report the accident immediately to their supervisor/ HOD and the 
 
 No-pay leave is granted without pay for the day(s) an employee is absent. It is typically approved at the employee's request and is subject to the discretion of the HOD. Taking no-pay leave may impact the employee's performance evaluation and other related entitlements.
 
-### Work Off-Site / Working-from-home
+### Work-from-home
 
-The Work Off-Site / Working-from-Home is granted to allow employees to perform their duties remotely without compromising on the expected work output. This arrangement is designed to be mutually beneficial to both the employer and the employee.
+Work-from-Home is granted to allow employees to perform their duties remotely without compromising on the expected work output. This arrangement is designed to be mutually beneficial to both the employer and the employee.
 
-Employees working off-site must ensure that they fulfil their work responsibilities within the standard work hours. A full workday off-site requires the completion of nine hours and thirty minutes (9 1/2) of work, while a half-day requires five (5) hours of work.
+Employees working from home must ensure that they fulfil their work responsibilities within the standard work hours. A full workday requires the completion of nine hours and thirty minutes (9 1/2) of work, while a half-day requires five (5) hours of work.
 
-This arrangement should be managed with prior approval from the employee's manager or HOD. Working from home or other off-site locations should not negatively impact the employee's performance or other work-related responsibilities.
+This arrangement should be managed with prior approval from the employee's manager or HOD. Working from home should not negatively impact the employee's performance or other work-related responsibilities.

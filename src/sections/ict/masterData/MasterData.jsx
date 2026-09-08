@@ -63,6 +63,8 @@ import SmartKpiTemplatesPanel from './SmartKpiTemplatesPanel';
 import SmartKpiFieldTypesPanel from './SmartKpiFieldTypesPanel';
 import LocationHierarchyPanel from './LocationHierarchyPanel';
 import FuelTypesMasterPanel from './FuelTypesMasterPanel';
+import IncidentTypesMasterPanel from './IncidentTypesMasterPanel';
+import IncidentEquipmentMasterPanel from './IncidentEquipmentMasterPanel';
 import { useSendMessageMutation } from '../../../api/services/authApi';
 import {
   useGetInvoiceOrganizationsQuery,
@@ -962,6 +964,8 @@ const MasterData = ({ mode = 'full' }) => {
               { key: 'maintenanceCategories', label: 'Maintenance Categories' },
               { key: 'poolRequestCategories', label: 'Pool Vehicle Request Categories' },
               { key: 'chemicals', label: 'Chemicals' },
+              { key: 'incidentTypes', label: 'Incident Types' },
+              { key: 'incidentEquipment', label: 'Incident Equipment' },
               { key: 'workingTimes', label: 'Working Times' },
               { key: 'hrMasterOptions', label: 'HR Master Options' },
               { key: 'kpiDefinitions', label: 'KPI Definitions' },
@@ -1284,6 +1288,14 @@ const MasterData = ({ mode = 'full' }) => {
                   </table>
                 </div>
               </div>
+            )}
+
+            {selectedMasterModule === 'incidentTypes' && (
+              <IncidentTypesMasterPanel onMessage={setQuickMessage} />
+            )}
+
+            {selectedMasterModule === 'incidentEquipment' && (
+              <IncidentEquipmentMasterPanel onMessage={setQuickMessage} />
             )}
 
             {selectedMasterModule === 'workingTimes' && (

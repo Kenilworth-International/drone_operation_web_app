@@ -66,6 +66,7 @@ import EmployeeAssignment from './sections/hr&admin/EmployeeAssignment';
 import MonthlyRoaster from './sections/hr&admin/roaster/MonthlyRoaster';
 import AttendanceRoasterHub from './sections/hr&admin/roaster/AttendanceRoasterHub';
 import LeaveManagement from './sections/hr&admin/leave/LeaveManagement';
+import WfhMonitoringPage from './sections/hr&admin/wfhMonitoring/WfhMonitoringPage';
 import EmployeeKpiDashboard from './sections/hr&admin/kpi/EmployeeKpiDashboard';
 import SmartKpiTemplatesPage from './sections/hr&admin/kpi/SmartKpiTemplatesPage';
 import ResourceAllocation from './sections/administration/resource-allocation/ResourceAllocation';
@@ -838,6 +839,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <LeaveManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="attendance/wfh-monitoring"
+            element={
+              <ProtectedRoute>
+                <WfhMonitoringPage />
               </ProtectedRoute>
             }
           />

@@ -34,6 +34,7 @@ import '../services NodeJs/planStatusApi';
 import '../services NodeJs/plantationDashboardApi';
 import '../services NodeJs/webReportsApi';
 import '../services NodeJs/jdManagementApi';
+import '../services NodeJs/wfhMonitoringApi';
 
 // Export the complete API
 export { baseApi };
@@ -63,6 +64,7 @@ export * from '../services NodeJs/planActivateRequestsApi';
 export * from '../services NodeJs/fieldUnblockRequestsApi';
 export * from '../services NodeJs/planStatusApi';
 export * from '../services NodeJs/webReportsApi';
+export * from '../services NodeJs/wfhMonitoringApi';
 
 /**
  * Total Endpoint Count: 165+

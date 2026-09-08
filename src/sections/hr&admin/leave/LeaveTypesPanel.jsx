@@ -21,6 +21,7 @@ function emptyDraft() {
     employee_requestable: '1',
     hr_only: '0',
     requires_medical: '0',
+    requires_wfh_monitoring: '0',
     sort_order: '0',
   };
 }
@@ -54,6 +55,7 @@ export default function LeaveTypesPanel({ onMessage }) {
       employee_requestable: String(Number(row.employee_requestable ?? 1) === 1 ? 1 : 0),
       hr_only: String(Number(row.hr_only ?? 0) === 1 ? 1 : 0),
       requires_medical: String(Number(row.requires_medical ?? 0) === 1 ? 1 : 0),
+      requires_wfh_monitoring: String(Number(row.requires_wfh_monitoring ?? 0) === 1 ? 1 : 0),
       sort_order: String(row.sort_order ?? 0),
     });
   };
@@ -81,6 +83,7 @@ export default function LeaveTypesPanel({ onMessage }) {
         employee_requestable: parseInt(draft.employee_requestable, 10) === 1 ? 1 : 0,
         hr_only: parseInt(draft.hr_only, 10) === 1 ? 1 : 0,
         requires_medical: parseInt(draft.requires_medical, 10) === 1 ? 1 : 0,
+        requires_wfh_monitoring: parseInt(draft.requires_wfh_monitoring, 10) === 1 ? 1 : 0,
         status: editRow ? (Number(editRow.status ?? 1) === 1 ? 1 : 0) : 1,
       }).unwrap();
       notify(editRow ? 'Leave type updated.' : 'Leave type created.');
@@ -124,15 +127,16 @@ export default function LeaveTypesPanel({ onMessage }) {
                 <th>Requestable</th>
                 <th>HR only</th>
                 <th>Medical</th>
+                <th>WFH mon.</th>
                 <th>Sort</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={8}>Loading…</td></tr>
+                <tr><td colSpan={9}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8}>No leave types found.</td></tr>
+                <tr><td colSpan={9}>No leave types found.</td></tr>
               ) : (
                 rows.map((row) => {
                   const isActive = Number(row.status ?? 1) === 1;
@@ -144,6 +148,7 @@ export default function LeaveTypesPanel({ onMessage }) {
                     <td>{Number(row.employee_requestable ?? 0) === 1 ? 'Yes' : 'No'}</td>
                     <td>{Number(row.hr_only ?? 0) === 1 ? 'Yes' : 'No'}</td>
                     <td>{Number(row.requires_medical ?? 0) === 1 ? 'Yes' : 'No'}</td>
+                    <td>{Number(row.requires_wfh_monitoring ?? 0) === 1 ? 'Yes' : 'No'}</td>
                     <td>{row.sort_order ?? 0}</td>
                     <td className="leave-admin-actions-leavemgt">
                       <button type="button" className="leave-btn-leavemgt leave-btn-secondary-leavemgt" onClick={() => openEdit(row)}>
@@ -226,6 +231,14 @@ export default function LeaveTypesPanel({ onMessage }) {
                   onChange={(e) => setDraft((prev) => ({ ...prev, requires_medical: e.target.checked ? '1' : '0' }))}
                 />
                 Requires medical
+              </label>
+              <label className="leave-checkbox-chip-leavemgt">
+                <input
+                  type="checkbox"
+                  checked={draft.requires_wfh_monitoring === '1'}
+                  onChange={(e) => setDraft((prev) => ({ ...prev, requires_wfh_monitoring: e.target.checked ? '1' : '0' }))}
+                />
+                Requires WFH monitoring
               </label>
             </div>
             <label className="leave-holiday-modal-label-leavemgt">Sort order</label>

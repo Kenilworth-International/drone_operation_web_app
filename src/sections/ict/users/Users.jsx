@@ -1870,22 +1870,6 @@ export default function UsersDirectory({
                   <option value="e">External</option>
                 </select>
               </div>
-              <div className="users-filter-group">
-                <label>Role</label>
-                <select
-                  value={userRoleFilter}
-                  onChange={(e) => setUserRoleFilter(e.target.value)}
-                >
-                  <option value="">All</option>
-                  {userJobRoles
-                    .filter((role) => role.status === 1)
-                    .map((role) => (
-                      <option key={role.id} value={role.jdCode || role.id}>
-                        {role.designation}
-                      </option>
-                    ))}
-                </select>
-              </div>
               <div
                 className={`form-group full-width${isMgmtList ? " users-search-wrap" : ""}`}
               >
@@ -1897,6 +1881,22 @@ export default function UsersDirectory({
                   value={userSearchTerm}
                   onChange={(e) => setUserSearchTerm(e.target.value)}
                 />
+              </div>
+              <div className="users-filter-group users-filter-group--role">
+                <label htmlFor="users-role-filter">Role</label>
+                <select
+                  id="users-role-filter"
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value)}
+                  aria-label="Filter users by job role"
+                >
+                  <option value="">All roles</option>
+                  {activeUserJobRoles.map((role) => (
+                    <option key={role.id} value={role.jdCode || role.id}>
+                      {role.designation}
+                    </option>
+                  ))}
+                </select>
               </div>
               <button
                 type="button"

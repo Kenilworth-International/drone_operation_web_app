@@ -89,26 +89,30 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
   const { categoryVisibility, categoryFullAccess, allowedPaths } = useNavbarPermissions();
 
   const userId = userData?.id ?? userData?.user_id;
-  const { data: fieldUnblockPendingPayload } = useGetFieldUnblockPendingCountQuery(undefined, {
-    pollingInterval: 120000,
+  // Badge counts: poll at most once per minute; skip focus/remount spam.
+  const pendingBadgeQueryOpts = {
+    pollingInterval: 60_000,
+    refetchOnMountOrArgChange: 60,
+    refetchOnFocus: false,
+    refetchOnReconnect: true,
     skip: !userId,
-  });
+  };
+  const { data: fieldUnblockPendingPayload } = useGetFieldUnblockPendingCountQuery(
+    undefined,
+    pendingBadgeQueryOpts,
+  );
   const fieldUnblockPendingCount = Number(fieldUnblockPendingPayload?.count ?? 0);
 
-  const { data: planActivatePendingPayload } = useGetPlanActivatePendingCountQuery(undefined, {
-    pollingInterval: 60000,
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-    skip: !userId,
-  });
+  const { data: planActivatePendingPayload } = useGetPlanActivatePendingCountQuery(
+    undefined,
+    pendingBadgeQueryOpts,
+  );
   const planActivatePendingCount = Number(planActivatePendingPayload?.count ?? 0);
 
-  const { data: strategicFinancePendingPayload } = useGetStrategicFuelVoucherPendingCountQuery(undefined, {
-    pollingInterval: 60000,
-    refetchOnMountOrArgChange: true,
-    refetchOnFocus: true,
-    skip: !userId,
-  });
+  const { data: strategicFinancePendingPayload } = useGetStrategicFuelVoucherPendingCountQuery(
+    undefined,
+    pendingBadgeQueryOpts,
+  );
   const strategicFinancePendingCount = Number(strategicFinancePendingPayload?.count ?? 0);
 
   const getNavPendingCount = (item) => {

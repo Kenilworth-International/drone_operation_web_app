@@ -220,6 +220,15 @@
   min-width: 200px;
 }
 
+.users-mgmt-toolbar .users-filter-group--role {
+  flex-shrink: 0;
+}
+
+.users-mgmt-toolbar .users-filter-group--role select {
+  min-width: 180px;
+  max-width: 260px;
+}
+
 .users-table-wrapper.users-mgmt-table-scroll {
   flex: 1;
   min-height: 0;

@@ -34,6 +34,7 @@ import {
   FaCloudSunRain,
   FaServer,
   FaBullhorn,
+  FaLaptop,
 } from 'react-icons/fa';
 
 const navbarCategories = [
@@ -113,6 +114,7 @@ const navbarCategories = [
       { path: '/home/attendance/roaster-planning', label: 'Attendance & Roaster', icon: FaClock },
       { path: '/home/attendance/employee-kpi', label: 'Employee KPI', icon: FaChartLine },
       { path: '/home/attendance/leave-management', label: 'Leave Management', icon: FaCalendarAlt },
+      { path: '/home/attendance/wfh-monitoring', label: 'WFH Manage', icon: FaLaptop },
     ],
   },
   {

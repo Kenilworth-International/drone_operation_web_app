@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 801\n- **Route files:** 68\n- **Schema overlays applied:** 325\n- **Generated:** 2026-09-03T10:31:48.793Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 820\n- **Route files:** 70\n- **Schema overlays applied:** 325\n- **Generated:** 2026-09-08T07:00:02.204Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
   },
   "servers": [
     {
@@ -153,6 +153,10 @@
       "description": "Vehicle/drone maintenance request lifecycle."
     },
     {
+      "name": "Maintenance Vouchers",
+      "description": "Maintenance Vouchers endpoints"
+    },
+    {
       "name": "Mapping Hierarchy",
       "description": "Groups → Plantations → Estates → Divisions → Fields hierarchy."
     },
@@ -271,6 +275,10 @@
     {
       "name": "Web Reports",
       "description": "Web-based operational reporting (performance, coverage, breakdown)."
+    },
+    {
+      "name": "Wfh Monitoring",
+      "description": "Wfh Monitoring endpoints"
     }
   ],
   "paths": {
@@ -11072,6 +11080,309 @@
         "description": "Module: Fuel Generator Vouchers",
         "tags": [
           "Fuel Generator Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/create": {
+      "post": {
+        "summary": "Create",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/pending": {
+      "get": {
+        "summary": "Pending",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/history": {
+      "get": {
+        "summary": "History",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/{id}": {
+      "get": {
+        "summary": "Id",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/{id}/approve": {
+      "post": {
+        "summary": "Approve",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/{id}/decline": {
+      "post": {
+        "summary": "Decline",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/{id}/physical-approval": {
+      "post": {
+        "summary": "Physical Approval",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/maintenance-vouchers/{id}/settle": {
+      "post": {
+        "summary": "Settle",
+        "description": "Module: Maintenance Vouchers",
+        "tags": [
+          "Maintenance Vouchers"
         ],
         "responses": {
           "200": {
@@ -35543,6 +35854,418 @@
         "description": "Module: HR Leave",
         "tags": [
           "HR Leave"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/device/register": {
+      "post": {
+        "summary": "Register",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/session/start": {
+      "post": {
+        "summary": "Start",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/session/end": {
+      "post": {
+        "summary": "End",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/status": {
+      "get": {
+        "summary": "Status",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Status",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/capture": {
+      "post": {
+        "summary": "Capture",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/admin/captures": {
+      "get": {
+        "summary": "Captures",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Captures",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/admin/captures/{id}/file": {
+      "get": {
+        "summary": "File",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/wfh-monitoring/admin/devices": {
+      "get": {
+        "summary": "Devices",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "summary": "Devices",
+        "description": "Module: Wfh Monitoring",
+        "tags": [
+          "Wfh Monitoring"
         ],
         "responses": {
           "200": {
