@@ -46,9 +46,9 @@ function sessionRangeLabel(session) {
   return `${day} · ${start} → ${end}`;
 }
 
-function sessionWorkedLabel(session, pauses) {
+function sessionWorkedLabel(session, pauses, boundEndMs) {
   const sessionPauses = (pauses || []).filter((p) => Number(p.session_id) === Number(session.id));
-  return formatDuration(computeWorkedMs([session], sessionPauses));
+  return formatDuration(computeWorkedMs([session], sessionPauses, boundEndMs));
 }
 
 function personLabel(name, empNo, id) {
@@ -62,14 +62,14 @@ function toMs(value) {
   return Number.isNaN(t) ? null : t;
 }
 
-/** Worked time = session spans minus pause spans (open sessions/pauses count to now). */
-function computeWorkedMs(sessions, pauses) {
-  const now = Date.now();
+/** Worked time = session spans minus pause spans (open sessions/pauses count to boundEnd). */
+function computeWorkedMs(sessions, pauses, boundEndMs = Date.now()) {
+  const endBound = Number.isFinite(boundEndMs) ? boundEndMs : Date.now();
   let sessionMs = 0;
   (sessions || []).forEach((s) => {
     const start = toMs(s.started_at);
     if (start == null) return;
-    const end = toMs(s.ended_at) ?? now;
+    const end = Math.min(toMs(s.ended_at) ?? endBound, endBound);
     sessionMs += Math.max(0, end - start);
   });
 
@@ -77,7 +77,7 @@ function computeWorkedMs(sessions, pauses) {
   (pauses || []).forEach((p) => {
     const start = toMs(p.paused_at);
     if (start == null) return;
-    const end = toMs(p.resumed_at) ?? now;
+    const end = Math.min(toMs(p.resumed_at) ?? endBound, endBound);
     pauseMs += Math.max(0, end - start);
   });
 
@@ -92,6 +92,26 @@ function formatDuration(ms) {
   if (hours <= 0) return `${minutes}m`;
   if (minutes <= 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
+}
+
+function toLocalDateKey(value = new Date()) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateHeading(dateKey) {
+  const d = new Date(`${dateKey}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return dateKey;
+  return d.toLocaleDateString(undefined, {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
 }
 
 function CaptureThumb({ captureId, onOpen, meta }) {
@@ -307,25 +327,41 @@ function CapturesDrawer({ open, onClose, session, deviceId }) {
 }
 
 export default function WfhMonitoringPage() {
+  const [selectedDate, setSelectedDate] = useState(() => toLocalDateKey(new Date()));
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [capturesSession, setCapturesSession] = useState(null);
 
-  // Device rail only — do not refetch the full catalog when selecting a device.
+  const todayKey = toLocalDateKey(new Date());
+  const isToday = selectedDate === todayKey;
+
+  // Device rail for the selected calendar day.
   const {
     data: listData,
     isLoading: loadingDevices,
     refetch: refetchList,
-  } = useListWfhDevicesQuery({});
+  } = useListWfhDevicesQuery({ date: selectedDate });
 
   const devices = listData?.devices || [];
 
   useEffect(() => {
+    setSelectedDeviceId('');
+  }, [selectedDate]);
+
+  useEffect(() => {
     if (!selectedDeviceId && devices.length) {
       setSelectedDeviceId(String(devices[0].id));
+    } else if (
+      selectedDeviceId &&
+      devices.length &&
+      !devices.some((d) => String(d.id) === String(selectedDeviceId))
+    ) {
+      setSelectedDeviceId(String(devices[0].id));
+    } else if (selectedDeviceId && !devices.length) {
+      setSelectedDeviceId('');
     }
   }, [devices, selectedDeviceId]);
 
-  // Timeline/detail for the selected device only (skips reloading all devices).
+  // Timeline/detail for the selected device + date.
   const {
     data: detailData,
     isFetching: loadingDetail,
@@ -334,6 +370,7 @@ export default function WfhMonitoringPage() {
     {
       deviceId: selectedDeviceId ? Number(selectedDeviceId) : undefined,
       activityOnly: true,
+      date: selectedDate,
     },
     { skip: !selectedDeviceId }
   );
@@ -352,9 +389,16 @@ export default function WfhMonitoringPage() {
     [selectedDeviceId, sessions, pauses, agentEvents]
   );
 
+  const dayBoundEndMs = useMemo(() => {
+    if (isToday) return Date.now();
+    const end = new Date(`${selectedDate}T00:00:00`);
+    end.setDate(end.getDate() + 1);
+    return end.getTime();
+  }, [selectedDate, isToday]);
+
   const workedLabel = useMemo(
-    () => formatDuration(computeWorkedMs(sessions, pauses)),
-    [sessions, pauses]
+    () => formatDuration(computeWorkedMs(sessions, pauses, dayBoundEndMs)),
+    [sessions, pauses, dayBoundEndMs]
   );
 
   const refetchDevices = () => {
@@ -366,26 +410,48 @@ export default function WfhMonitoringPage() {
     <div className="wfh-page">
       <div className="wfh-shell">
         <aside className="wfh-device-rail">
-          <div className="wfh-rail-head">
-            <h3>Devices</h3>
-            <div className="wfh-rail-actions">
-              <span className="wfh-rail-count">{devices.length}</span>
-              <button type="button" className="wfh-btn-ghost wfh-btn-compact" onClick={() => refetchDevices()}>
-                Refresh
-              </button>
+          <div className="wfh-rail-toolbar">
+            <label className="wfh-date-field" htmlFor="wfhActivityDate">
+              <span className="wfh-date-label">Date</span>
+              <input
+                id="wfhActivityDate"
+                type="date"
+                className="wfh-date-input"
+                value={selectedDate}
+                max={todayKey}
+                onChange={(e) => {
+                  const next = e.target.value || todayKey;
+                  setSelectedDate(next > todayKey ? todayKey : next);
+                }}
+              />
+            </label>
+            <div className="wfh-rail-meta">
+              <p className="wfh-rail-date-hint">
+                {formatDateHeading(selectedDate)}
+                {isToday ? ' · Today' : ''}
+              </p>
+              <div className="wfh-rail-actions">
+                <span className="wfh-rail-pc-count">
+                  {devices.length} PC{devices.length === 1 ? '' : 's'}
+                </span>
+                <button type="button" className="wfh-btn-ghost wfh-btn-compact" onClick={() => refetchDevices()}>
+                  Refresh
+                </button>
+              </div>
             </div>
           </div>
           {loadingDevices && !devices.length ? (
             <p className="wfh-muted">Loading…</p>
           ) : devices.length === 0 ? (
-            <p className="wfh-muted">No devices registered.</p>
+            <p className="wfh-muted">No PC activity on this date.</p>
           ) : (
             <ul className="wfh-device-list">
               {devices.map((d) => {
                 const active = String(selectedDeviceId) === String(d.id);
                 const paused = Number(d.active_is_paused) === 1;
-                const status = d.active_session_id ? (paused ? 'paused' : 'live') : 'idle';
-                const statusLabel = status === 'paused' ? 'Paused' : status === 'live' ? 'Live' : 'Idle';
+                const liveNow = isToday && d.active_session_id;
+                const status = liveNow ? (paused ? 'paused' : 'live') : 'idle';
+                const statusLabel = status === 'paused' ? 'Paused' : status === 'live' ? 'Live' : 'Activity';
                 return (
                   <li key={d.id}>
                     <button
@@ -405,7 +471,7 @@ export default function WfhMonitoringPage() {
                           </span>
                           <span>{d.os || 'Unknown OS'}</span>
                         </span>
-                        {d.active_employee_name ? (
+                        {d.active_employee_name && isToday ? (
                           <span className="wfh-device-user">{d.active_employee_name}</span>
                         ) : null}
                         <span className="wfh-device-seen">Seen {formatWhen(d.last_seen_at)}</span>
@@ -421,8 +487,12 @@ export default function WfhMonitoringPage() {
         <section className="wfh-main">
           {!selectedDevice ? (
             <div className="wfh-empty">
-              <h3>Select a device</h3>
-              <p>Choose a laptop to review sessions, pauses, and captures.</p>
+              <h3>{devices.length ? 'Select a PC' : 'No activity'}</h3>
+              <p>
+                {devices.length
+                  ? 'Choose a laptop to review sessions, pauses, and captures for this date.'
+                  : 'Pick another date to review previous WFH monitoring data.'}
+              </p>
             </div>
           ) : (
             <>
@@ -430,6 +500,9 @@ export default function WfhMonitoringPage() {
                 <div>
                   <h3>{selectedDevice.hostname || selectedDevice.device_uuid}</h3>
                   <p>
+                    {formatDateHeading(selectedDate)}
+                    {isToday ? ' · Today' : ''}
+                    {' · '}
                     {selectedDevice.os}
                     {selectedDevice.os_version ? ` ${selectedDevice.os_version}` : ''}
                     {' · '}
@@ -450,16 +523,16 @@ export default function WfhMonitoringPage() {
               <div className="wfh-session-strip">
                 <h4>Sessions on this PC</h4>
                 {sessions.length === 0 ? (
-                  <p className="wfh-muted">No sessions recorded yet.</p>
+                  <p className="wfh-muted">No sessions on this date.</p>
                 ) : (
                   <div className="wfh-session-cards">
                     {sessions.map((s) => {
                       const open = !s.ended_at;
                       const paused = Number(s.is_paused) === 1;
-                      const status = paused ? 'paused' : open ? 'live' : 'idle';
-                      const statusLabel = paused ? 'Paused' : open ? 'Active' : 'Ended';
+                      const status = paused ? 'paused' : open && isToday ? 'live' : 'idle';
+                      const statusLabel = paused ? 'Paused' : open && isToday ? 'Active' : open ? 'Open' : 'Ended';
                       return (
-                        <article key={s.id} className={`wfh-session-card${open ? ' is-open' : ''}`}>
+                        <article key={s.id} className={`wfh-session-card${open && isToday ? ' is-open' : ''}`}>
                           <div className="wfh-session-card-top">
                             <strong title={personLabel(s.employeeName, s.empNo, s.employee_id)}>
                               {personLabel(s.employeeName, s.empNo, s.employee_id)}
@@ -468,7 +541,7 @@ export default function WfhMonitoringPage() {
                           </div>
                           <p className="wfh-session-range">{sessionRangeLabel(s)}</p>
                           <div className="wfh-session-card-footer">
-                            <span className="wfh-session-worked">{sessionWorkedLabel(s, pauses)}</span>
+                            <span className="wfh-session-worked">{sessionWorkedLabel(s, pauses, dayBoundEndMs)}</span>
                             <button
                               type="button"
                               className="wfh-btn-link"
@@ -490,7 +563,7 @@ export default function WfhMonitoringPage() {
               <div className="wfh-timeline-wrap">
                 <h4>Activity timeline</h4>
                 {timeline.length === 0 ? (
-                  <p className="wfh-muted">No activity yet for this device.</p>
+                  <p className="wfh-muted">No activity on this date for this PC.</p>
                 ) : (
                   <ol className="wfh-timeline">
                     {timeline.map((ev, idx) => {

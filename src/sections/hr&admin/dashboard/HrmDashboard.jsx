@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Area,
@@ -29,7 +29,10 @@ import {
   FaBirthdayCake,
   FaUmbrellaBeach,
 } from 'react-icons/fa';
-import { useGetHrmDashboardSummaryQuery } from '../../../api/services NodeJs/hrLeaveApi';
+import {
+  useGetHrmDashboardSummaryQuery,
+  useLazyGetHrmDashboardBreakdownQuery,
+} from '../../../api/services NodeJs/hrLeaveApi';
 import { withCurrentWingSearch } from '../../../config/wingRouteGuard';
 import {
   exportHrmAttendanceExcel,
@@ -39,6 +42,7 @@ import {
   exportHrmSummaryExcel,
   exportHrmWorkforceExcel,
 } from './hrmDashboardExport';
+import HrmDashboardBreakdownModal from './HrmDashboardBreakdownModal';
 import {
   buildPeriodOptions,
   defaultPeriodKey,
@@ -92,14 +96,46 @@ function ExcelButton({ onClick, label = 'Export Excel' }) {
   );
 }
 
-function StatCard({ icon: Icon, label, value, hint, accent = 'purple' }) {
+function StatCard({ icon: Icon, label, value, hint, accent = 'purple', onClick, hintOnClick }) {
+  const clickable = typeof onClick === 'function';
   return (
-    <div className={`hrm-dash-stat hrm-dash-stat--${accent}`}>
+    <div
+      className={`hrm-dash-stat hrm-dash-stat--${accent}${clickable ? ' hrm-dash-stat--clickable' : ''}`}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onClick={clickable ? onClick : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onClick();
+              }
+            }
+          : undefined
+      }
+      title={clickable ? 'Click to view who is included' : undefined}
+    >
       <div className="hrm-dash-stat-icon" aria-hidden><Icon /></div>
       <div className="hrm-dash-stat-body">
         <span className="hrm-dash-stat-label">{label}</span>
         <strong className="hrm-dash-stat-value">{value}</strong>
-        {hint ? <span className="hrm-dash-stat-hint">{hint}</span> : null}
+        {hint ? (
+          typeof hintOnClick === 'function' ? (
+            <button
+              type="button"
+              className="hrm-dash-stat-hint hrm-dash-stat-hint--link"
+              onClick={(e) => {
+                e.stopPropagation();
+                hintOnClick();
+              }}
+            >
+              {hint}
+            </button>
+          ) : (
+            <span className="hrm-dash-stat-hint">{hint}</span>
+          )
+        ) : null}
       </div>
     </div>
   );
@@ -137,6 +173,11 @@ export default function HrmDashboard({ embedded = false }) {
   const location = useLocation();
   const [periodType, setPeriodType] = useState('month');
   const [periodKey, setPeriodKey] = useState(() => defaultPeriodKey('month'));
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [breakdownError, setBreakdownError] = useState(null);
+  const [breakdownData, setBreakdownData] = useState(null);
+
+  const [fetchBreakdown, { isFetching: breakdownLoading }] = useLazyGetHrmDashboardBreakdownQuery();
 
   useEffect(() => {
     if (embedded) return undefined;
@@ -155,6 +196,30 @@ export default function HrmDashboard({ embedded = false }) {
     setPeriodKey(defaultPeriodKey(nextType));
   };
 
+  const openBreakdown = useCallback(async (payload) => {
+    setBreakdownOpen(true);
+    setBreakdownError(null);
+    setBreakdownData(null);
+    try {
+      const result = await fetchBreakdown({
+        periodType,
+        periodKey,
+        ...payload,
+      }).unwrap();
+      setBreakdownData(result);
+    } catch (err) {
+      setBreakdownError(
+        err?.data?.message || err?.error || err?.message || 'Failed to load breakdown details.',
+      );
+    }
+  }, [fetchBreakdown, periodType, periodKey]);
+
+  const closeBreakdown = useCallback(() => {
+    setBreakdownOpen(false);
+    setBreakdownError(null);
+    setBreakdownData(null);
+  }, []);
+
   const workforce = data?.workforce || {};
   const attendance = data?.attendance || {};
   const leave = data?.leave || {};
@@ -172,8 +237,22 @@ export default function HrmDashboard({ embedded = false }) {
 
   const leavePieData = leaveBreakdown.map((row, index) => ({
     name: formatStatusLabel(row.status),
+    status: row.status,
     value: row.count,
     fill: LEAVE_COLORS[index % LEAVE_COLORS.length],
+  }));
+
+  const deptBarData = deptHeadcountChart.map((row) => ({
+    name: shortDeptLabel(row.departmentName || row.departmentCode),
+    fullName: row.departmentName || row.departmentCode,
+    departmentCode: row.departmentCode,
+    count: row.headcount,
+  }));
+
+  const smartBarData = smartBreakdown.map((row) => ({
+    name: formatStatusLabel(row.status),
+    status: row.status,
+    count: row.count,
   }));
 
   const periodLabel = useMemo(
@@ -181,7 +260,9 @@ export default function HrmDashboard({ embedded = false }) {
     [periodType, periodKey],
   );
 
-  const attendanceTrendSubtitle = periodType === 'year' ? 'Monthly' : 'Daily';
+  const attendanceTrendSubtitle = periodType === 'year'
+    ? 'Monthly · click a point for names'
+    : 'Daily · click a point for names';
 
   const exportCtx = useMemo(() => ({
     data,
@@ -205,7 +286,11 @@ export default function HrmDashboard({ embedded = false }) {
         <header className="hrm-dash-header">
           <div>
             <h1>HRM Dashboard</h1>
-            <p className="hrm-dash-subtitle">{periodLabel}</p>
+            <p className="hrm-dash-subtitle">
+              {periodLabel}
+              {' · '}
+              Click a card, bar, or pie slice to see who is included
+            </p>
           </div>
         </header>
       ) : null}
@@ -270,6 +355,7 @@ export default function HrmDashboard({ embedded = false }) {
           value={workforce.totalEmployees ?? '—'}
           hint={`${workforce.totalDepartments ?? 0} departments`}
           accent="purple"
+          onClick={() => openBreakdown({ metric: 'total_employees' })}
         />
         <StatCard
           icon={FaUserCheck}
@@ -277,6 +363,7 @@ export default function HrmDashboard({ embedded = false }) {
           value={attendance.presentCount ?? '—'}
           hint={attendance.attendanceRate != null ? `${attendance.attendanceRate}% rate` : 'No attendance records'}
           accent="green"
+          onClick={() => openBreakdown({ metric: 'present' })}
         />
         <StatCard
           icon={FaCalendarAlt}
@@ -284,6 +371,8 @@ export default function HrmDashboard({ embedded = false }) {
           value={leave.onLeaveToday ?? '—'}
           hint={`${leave.pendingApprovals ?? 0} pending approvals`}
           accent="blue"
+          onClick={() => openBreakdown({ metric: 'on_leave_today' })}
+          hintOnClick={() => openBreakdown({ metric: 'pending_approvals' })}
         />
         <StatCard
           icon={FaClipboardCheck}
@@ -291,6 +380,8 @@ export default function HrmDashboard({ embedded = false }) {
           value={workforce.openVacancies ?? '—'}
           hint={`${workforce.unassignedEmployees ?? 0} unassigned`}
           accent="amber"
+          onClick={() => openBreakdown({ metric: 'open_vacancies' })}
+          hintOnClick={() => openBreakdown({ metric: 'unassigned' })}
         />
         <StatCard
           icon={FaChartLine}
@@ -298,6 +389,7 @@ export default function HrmDashboard({ embedded = false }) {
           value={kpi.system?.averageScore ?? kpi.smart?.averageScore ?? '—'}
           hint={kpi.system?.topPerformer?.employee_name ? `Top: ${kpi.system.topPerformer.employee_name}` : 'System + SMART KPI'}
           accent="violet"
+          onClick={() => openBreakdown({ metric: 'avg_kpi' })}
         />
       </section>
 
@@ -322,24 +414,68 @@ export default function HrmDashboard({ embedded = false }) {
               <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748b' }} width={32} />
               <Tooltip />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="present" name="Present" stroke="#6b4c8a" fill="url(#hrmPresentFill)" strokeWidth={2} />
-              <Area type="monotone" dataKey="absent" name="Absent" stroke="#ef4444" fill="transparent" strokeWidth={2} />
+              <Area
+                type="monotone"
+                dataKey="present"
+                name="Present"
+                stroke="#6b4c8a"
+                fill="url(#hrmPresentFill)"
+                strokeWidth={2}
+                activeDot={{
+                  r: 5,
+                  cursor: 'pointer',
+                  onClick: (_e, payload) => {
+                    const bucket = payload?.payload?.label;
+                    if (bucket) openBreakdown({ metric: 'present', bucket });
+                  },
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="absent"
+                name="Absent"
+                stroke="#ef4444"
+                fill="transparent"
+                strokeWidth={2}
+                activeDot={{
+                  r: 5,
+                  cursor: 'pointer',
+                  onClick: (_e, payload) => {
+                    const bucket = payload?.payload?.label;
+                    if (bucket) openBreakdown({ metric: 'absent', bucket });
+                  },
+                }}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </ChartPanel>
 
         <ChartPanel
           title="Leave requests"
-          subtitle="By status"
+          subtitle="By status · click a slice"
           empty={!leavePieData.length}
           onExport={() => exportHrmLeaveExcel(exportCtx)}
           exportLabel="Export leave detail to Excel"
         >
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
             <PieChart>
-              <Pie data={leavePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={78} label>
+              <Pie
+                data={leavePieData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={78}
+                label
+                style={{ cursor: 'pointer' }}
+                onClick={(entry) => {
+                  if (entry?.status) {
+                    openBreakdown({ metric: 'leave_status', status: entry.status });
+                  }
+                }}
+              >
                 {leavePieData.map((entry) => (
-                  <Cell key={entry.name} fill={entry.fill} />
+                  <Cell key={entry.name} fill={entry.fill} style={{ cursor: 'pointer' }} />
                 ))}
               </Pie>
               <Tooltip />
@@ -352,24 +488,32 @@ export default function HrmDashboard({ embedded = false }) {
       <section className="hrm-dash-grid hrm-dash-grid--2">
         <ChartPanel
           title="Headcount by department"
-          subtitle={`${workforce.totalEmployees ?? 0} employees`}
-          empty={!deptHeadcountChart.length}
+          subtitle={`${workforce.totalEmployees ?? 0} employees · click a bar`}
+          empty={!deptBarData.length}
           onExport={() => exportHrmWorkforceExcel(exportCtx)}
           exportLabel="Export workforce detail to Excel"
         >
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <BarChart data={deptHeadcountChart.map((row) => ({
-              name: shortDeptLabel(row.departmentName || row.departmentCode),
-              fullName: row.departmentName || row.departmentCode,
-              count: row.headcount,
-            }))}
-            >
+            <BarChart data={deptBarData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-24} textAnchor="end" height={48} />
               <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748b' }} width={32} />
               <Tooltip formatter={(value, _name, props) => [value, props.payload.fullName]} />
-              <Bar dataKey="count" name="Employees" radius={[4, 4, 0, 0]}>
-                {deptHeadcountChart.map((_, index) => (
+              <Bar
+                dataKey="count"
+                name="Employees"
+                radius={[4, 4, 0, 0]}
+                cursor="pointer"
+                onClick={(entry) => {
+                  if (entry?.departmentCode) {
+                    openBreakdown({
+                      metric: 'department_headcount',
+                      departmentCode: entry.departmentCode,
+                    });
+                  }
+                }}
+              >
+                {deptBarData.map((_, index) => (
                   <Cell key={index} fill={DEPT_COLORS[index % DEPT_COLORS.length]} />
                 ))}
               </Bar>
@@ -379,23 +523,29 @@ export default function HrmDashboard({ embedded = false }) {
 
         <ChartPanel
           title="SMART KPI reviews"
-          subtitle={`${kpi.smart?.reviewCount ?? 0} reviews`}
-          empty={!smartBreakdown.length}
+          subtitle={`${kpi.smart?.reviewCount ?? 0} reviews · click a bar`}
+          empty={!smartBarData.length}
           onExport={() => exportHrmKpiExcel(exportCtx)}
           exportLabel="Export KPI detail to Excel"
         >
           <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-            <BarChart data={smartBreakdown.map((row) => ({
-              name: formatStatusLabel(row.status),
-              count: row.count,
-            }))}
-            >
+            <BarChart data={smartBarData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-18} textAnchor="end" height={44} />
               <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: '#64748b' }} width={32} />
               <Tooltip />
-              <Bar dataKey="count" name="Reviews" radius={[4, 4, 0, 0]}>
-                {smartBreakdown.map((_, index) => (
+              <Bar
+                dataKey="count"
+                name="Reviews"
+                radius={[4, 4, 0, 0]}
+                cursor="pointer"
+                onClick={(entry) => {
+                  if (entry?.status) {
+                    openBreakdown({ metric: 'smart_kpi_status', status: entry.status });
+                  }
+                }}
+              >
+                {smartBarData.map((_, index) => (
                   <Cell key={index} fill={SMART_STATUS_COLORS[index % SMART_STATUS_COLORS.length]} />
                 ))}
               </Bar>
@@ -482,6 +632,14 @@ export default function HrmDashboard({ embedded = false }) {
           })}
         </div>
       </section>
+
+      <HrmDashboardBreakdownModal
+        open={breakdownOpen}
+        loading={breakdownLoading}
+        error={breakdownError}
+        data={breakdownData}
+        onClose={closeBreakdown}
+      />
     </div>
   );
 }

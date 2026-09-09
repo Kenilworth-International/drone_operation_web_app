@@ -70,28 +70,75 @@
   min-width: 0;
 }
 
-.wfh-rail-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.wfh-rail-toolbar {
   margin: 0 4px 12px;
-  padding-bottom: 10px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #eef2f5;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wfh-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.wfh-date-label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5f7080;
+}
+
+.wfh-date-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #c9d5dd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  color: #152028;
+  background: #fff;
+  line-height: 1.2;
+}
+
+.wfh-date-input:focus {
+  outline: none;
+  border-color: #1a5c4c;
+  box-shadow: 0 0 0 3px rgba(26, 92, 76, 0.12);
+}
+
+.wfh-rail-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wfh-rail-date-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #6a7c8a;
+  min-width: 0;
+  flex: 1;
 }
 
 .wfh-rail-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
 }
 
-.wfh-rail-head h3 {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.wfh-rail-pc-count {
+  font-size: 0.78rem;
+  font-weight: 600;
   color: #5f7080;
+  white-space: nowrap;
 }
 
 .wfh-main-head h3 {
