@@ -338,10 +338,13 @@ export default function WfhMonitoringPage() {
   const {
     data: listData,
     isLoading: loadingDevices,
+    error: devicesError,
     refetch: refetchList,
   } = useListWfhDevicesQuery({ date: selectedDate });
 
   const devices = listData?.devices || [];
+  const devicesErrorMessage =
+    devicesError?.data?.message || devicesError?.error || null;
 
   useEffect(() => {
     setSelectedDeviceId('');
@@ -440,7 +443,9 @@ export default function WfhMonitoringPage() {
               </div>
             </div>
           </div>
-          {loadingDevices && !devices.length ? (
+          {devicesErrorMessage ? (
+            <p className="wfh-error">{devicesErrorMessage}</p>
+          ) : loadingDevices && !devices.length ? (
             <p className="wfh-muted">Loading…</p>
           ) : devices.length === 0 ? (
             <p className="wfh-muted">No PC activity on this date.</p>
