@@ -177,6 +177,27 @@ const WingHubHome = () => {
       <header className="wing-hub-header">
         <div className="wing-hub-header-inner">
           <div className="wing-hub-header-left">
+            <button
+              type="button"
+              className="wing-hub-mail-btn cursor-target"
+              title="Open company webmail"
+              aria-label="Open company webmail"
+              onClick={() => navigate('/mail')}
+            >
+              <svg
+                className="wing-hub-mail-btn-icon"
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path
+                  fill="#0a2342"
+                  d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4-8 5-8-5V6l8 5 8-5v2z"
+                />
+              </svg>
+            </button>
             <img className="wing-hub-brand-logo" src={LOGO_SRC} alt="Kenilworth International" />
           </div>
 

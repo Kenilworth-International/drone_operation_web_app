@@ -104,6 +104,7 @@ export const baseApi = createApi({
     'VehicleApp', 'PoolVehicleTasks',
     'EmpOrgStructure',
     'SystemMaintenance',
+    'Webmail', 'WebmailFolders', 'WebmailMessages', 'WebmailSignature', 'WebmailContacts',
     // Auth Controls / feature permissions
     'FeaturePermissions', 'FeatureDefinitions', 'GroupedPermissions', 'MyPermissions',
     'JobRoles', 'FeatureEligibleUsers', 'UserFeaturePermissions',

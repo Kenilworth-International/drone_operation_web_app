@@ -462,6 +462,10 @@
   border-radius: 14px;
   box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
 }
+.hrm-dash-breakdown-modal--wide {
+  width: min(1280px, 98vw);
+  max-height: min(88vh, 960px);
+}
 .hrm-dash-breakdown-header {
   display: flex;
   align-items: flex-start;
@@ -518,8 +522,12 @@
 }
 .hrm-dash-breakdown-table {
   width: 100%;
+  min-width: 720px;
   border-collapse: collapse;
   font-size: 12px;
+}
+.hrm-dash-breakdown-modal--wide .hrm-dash-breakdown-table {
+  min-width: 1100px;
 }
 .hrm-dash-breakdown-table th,
 .hrm-dash-breakdown-table td {
@@ -527,6 +535,7 @@
   padding: 8px 10px;
   border-bottom: 1px solid #e2e8f0;
   vertical-align: top;
+  white-space: nowrap;
 }
 .hrm-dash-breakdown-table th {
   position: sticky;

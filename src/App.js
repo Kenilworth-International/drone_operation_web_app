@@ -117,6 +117,7 @@ import WeatherPredictionPage from './sections/geo-spatial/weather/WeatherPredict
 import { useAppSelector } from './store/hooks';
 import SessionWatchdog from './components/SessionWatchdog';
 import SupportHrApp from './pages/SupportHrApp';
+import WebmailApp from './sections/webmail/WebmailApp';
 
 // ProtectedRoute component to check authentication
 const ProtectedRoute = ({ children }) => {
@@ -160,6 +161,14 @@ function App() {
 
         {/* HR Employee Self-Service Support Portal — isolated auth, own session */}
         <Route path="/support/hr/*" element={<SupportHrApp />} />
+        <Route
+          path="/mail"
+          element={
+            <ProtectedRoute>
+              <WebmailApp />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/docs"
           element={

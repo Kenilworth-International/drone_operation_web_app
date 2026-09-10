@@ -48,6 +48,7 @@ import {
   defaultPeriodKey,
   periodLabel as formatPeriodLabel,
 } from '../kpi/kpiPeriodHelpers';
+import { leaveStatusLabel } from '../../../utils/hrStatusLabels';
 import '../../../styles/hrmDashboard.css';
 import '../../../styles/employeeKpi.css';
 
@@ -236,7 +237,7 @@ export default function HrmDashboard({ embedded = false }) {
   const smartBreakdown = kpi.smart?.statusBreakdown || [];
 
   const leavePieData = leaveBreakdown.map((row, index) => ({
-    name: formatStatusLabel(row.status),
+    name: leaveStatusLabel(row.status),
     status: row.status,
     value: row.count,
     fill: LEAVE_COLORS[index % LEAVE_COLORS.length],
@@ -359,9 +360,13 @@ export default function HrmDashboard({ embedded = false }) {
         />
         <StatCard
           icon={FaUserCheck}
-          label="Present"
-          value={attendance.presentCount ?? '—'}
-          hint={attendance.attendanceRate != null ? `${attendance.attendanceRate}% rate` : 'No attendance records'}
+          label="Present today"
+          value={attendance.presentTodayCount ?? attendance.presentCount ?? '—'}
+          hint={
+            attendance.attendanceRate != null
+              ? `Period rate ${attendance.attendanceRate}%`
+              : 'No attendance records today'
+          }
           accent="green"
           onClick={() => openBreakdown({ metric: 'present' })}
         />
