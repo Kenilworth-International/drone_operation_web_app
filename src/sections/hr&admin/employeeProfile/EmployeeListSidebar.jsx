@@ -1,5 +1,26 @@
 import React, { useMemo, useState } from 'react';
-import { employeeInitials, getEmployeePhotoUrl, getEmployeeDisplayName } from './employeeProfileUtils';
+import {
+  employeeInitials,
+  getEmployeePhotoUrl,
+  getEmployeeDisplayName,
+  parseEmpNoSuffix,
+} from './employeeProfileUtils';
+
+function empNoSortKey(emp) {
+  const raw = String(emp?.empNo || emp?.emp_no || '').trim();
+  const suffix = parseEmpNoSuffix(raw);
+  if (suffix !== '') return { num: Number(suffix), raw: raw.toUpperCase() };
+  const digits = raw.replace(/\D/g, '');
+  if (digits) return { num: Number(digits), raw: raw.toUpperCase() };
+  return { num: Number.POSITIVE_INFINITY, raw: raw.toUpperCase() };
+}
+
+function compareByEmpNo(a, b) {
+  const ka = empNoSortKey(a);
+  const kb = empNoSortKey(b);
+  if (ka.num !== kb.num) return ka.num - kb.num;
+  return ka.raw.localeCompare(kb.raw);
+}
 
 export default function EmployeeListSidebar({
   employees,
@@ -11,14 +32,16 @@ export default function EmployeeListSidebar({
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return employees;
-    return employees.filter((emp) => {
-      const preferred = (emp.preferredName || '').toLowerCase();
-      const fullName = (emp.employeeName || '').toLowerCase();
-      const empNo = (emp.empNo || '').toLowerCase();
-      const nic = (emp.nic || '').toLowerCase();
-      return preferred.includes(q) || fullName.includes(q) || empNo.includes(q) || nic.includes(q);
-    });
+    const list = !q
+      ? [...employees]
+      : employees.filter((emp) => {
+          const preferred = (emp.preferredName || '').toLowerCase();
+          const fullName = (emp.employeeName || '').toLowerCase();
+          const empNo = (emp.empNo || '').toLowerCase();
+          const nic = (emp.nic || '').toLowerCase();
+          return preferred.includes(q) || fullName.includes(q) || empNo.includes(q) || nic.includes(q);
+        });
+    return list.sort(compareByEmpNo);
   }, [employees, search]);
 
   return (

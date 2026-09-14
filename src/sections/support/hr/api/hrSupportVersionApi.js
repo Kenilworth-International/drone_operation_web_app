@@ -1,7 +1,7 @@
 import { getNodeBackendUrl } from '../../../../api/services NodeJs/nodeBackendUrl';
 
 export const HR_APP_ID = 'com.kenilworth.dsms_hr';
-export const HR_APP_VERSION = '1.3.3';
+export const HR_APP_VERSION = '1.3.4';
 
 export async function checkHrAppVersion(platform = 'android') {
   const base = getNodeBackendUrl();

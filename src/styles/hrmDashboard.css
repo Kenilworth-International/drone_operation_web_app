@@ -537,6 +537,12 @@
   vertical-align: top;
   white-space: nowrap;
 }
+.hrm-dash-breakdown-table td.hrm-dash-breakdown-notes {
+  white-space: normal;
+  max-width: 340px;
+  line-height: 1.35;
+  color: #475569;
+}
 .hrm-dash-breakdown-table th {
   position: sticky;
   top: 0;

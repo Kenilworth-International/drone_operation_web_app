@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bars } from 'react-loader-spinner';
+import '../../../styles/attendanceDayView.css';
 import {
   useAcceptHrLieuLeaveMutation,
   useGetHrAttendanceDayViewQuery,
@@ -15,6 +16,7 @@ import {
   lieuStatusLabel,
   locationValidLabel,
   nopayDayLabel,
+  nopayDayHint,
   requestModeLabel,
 } from '../../../utils/hrStatusLabels';
 
@@ -248,6 +250,7 @@ function EmployeeDetailPanel({
         {att?.nopay ? (
           <div className="att-day-alert att-day-alert--danger">
             <strong>{nopayDayLabel(att.nopayReason)}</strong>
+            <p>{nopayDayHint(att.nopayReason)}</p>
           </div>
         ) : null}
         {att?.autoShortLeave ? (

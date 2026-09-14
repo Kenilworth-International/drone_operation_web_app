@@ -64,7 +64,9 @@ import Employees from './sections/hr&admin/Employees';
 import JDManagement from './sections/hr&admin/JDManagement';
 import EmployeeAssignment from './sections/hr&admin/EmployeeAssignment';
 import MonthlyRoaster from './sections/hr&admin/roaster/MonthlyRoaster';
-import AttendanceRoasterHub from './sections/hr&admin/roaster/AttendanceRoasterHub';
+import AttendanceDayView from './sections/hr&admin/roaster/AttendanceDayView';
+import RoasterPlanning from './sections/hr&admin/roaster/RoasterPlanning';
+import HolidaysFlexPage from './sections/hr&admin/leave/HolidaysFlexPage';
 import LeaveManagement from './sections/hr&admin/leave/LeaveManagement';
 import WfhMonitoringPage from './sections/hr&admin/wfhMonitoring/WfhMonitoringPage';
 import EmployeeKpiDashboard from './sections/hr&admin/kpi/EmployeeKpiDashboard';
@@ -143,6 +145,22 @@ function FleetUpdateRedirect() {
   }
   const search = next.toString();
   return <Navigate to={`/home/transport/hr${search ? `?${search}` : ''}`} replace />;
+}
+
+/**
+ * Legacy `/home/employeeProfileDetails` and `/home/employeeRegistration`
+ * → merged Employees page, preserving `?employee=` and `?wing=`.
+ */
+function EmployeeProfileRedirect() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  // `?employee=` is the canonical param; also accept legacy `?employeeId=`
+  if (!params.get('employee') && params.get('employeeId')) {
+    params.set('employee', params.get('employeeId'));
+    params.delete('employeeId');
+  }
+  const search = params.toString();
+  return <Navigate to={`/home/employees${search ? `?${search}` : ''}`} replace />;
 }
 
 /** Legacy `#/home/plantationPlanRequestQueue` → merged requests queue. */
@@ -757,11 +775,7 @@ function App() {
           />
           <Route
             path="employeeRegistration"
-            element={
-              <ProtectedRoute>
-                <EmployeeProfileDetails />
-              </ProtectedRoute>
-            }
+            element={<EmployeeProfileRedirect />}
           />
           <Route
             path="employees"
@@ -773,11 +787,7 @@ function App() {
           />
           <Route
             path="employeeProfileDetails"
-            element={
-              <ProtectedRoute>
-                <EmployeeProfileDetails />
-              </ProtectedRoute>
-            }
+            element={<EmployeeProfileRedirect />}
           />
           <Route
             path="organizationStructure"
@@ -820,10 +830,26 @@ function App() {
             }
           />
           <Route
+            path="attendance/daily-attendance"
+            element={
+              <ProtectedRoute>
+                <AttendanceDayView />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="attendance/roaster-planning"
             element={
               <ProtectedRoute>
-                <AttendanceRoasterHub />
+                <RoasterPlanning />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="attendance/holidays-flex"
+            element={
+              <ProtectedRoute>
+                <HolidaysFlexPage />
               </ProtectedRoute>
             }
           />

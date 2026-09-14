@@ -19,7 +19,7 @@ import {
   useSubmitPlanEditMutation,
   useGetWebPlanCustomizationLogQuery,
 } from '../../../api/services NodeJs/plantationEstateManagerApi';
-import '../../../styles/dayendprocess.css';
+import '../../../styles/planCustomization.css';
 
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
   <div className="custom-date-input-pl-cuz" ref={ref} onClick={onClick}>

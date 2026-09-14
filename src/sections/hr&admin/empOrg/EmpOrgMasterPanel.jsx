@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { withCurrentWingSearch } from '../../../config/wingRouteGuard';
 import {
   useGetEmpDepartmentsQuery,
   useSaveEmpDepartmentMutation,
@@ -129,6 +130,7 @@ function resolveDeptIdFromWing(departments, search) {
 
 export default function EmpOrgMasterPanel() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [tab, setTab] = useState('departments');
   const [chiefTabRefresh, setChiefTabRefresh] = useState(0);
   const [hodTabRefresh, setHodTabRefresh] = useState(0);
@@ -447,6 +449,13 @@ export default function EmpOrgMasterPanel() {
             <h3 className="emp-org-master-title">Employee org master data</h3>
             <p className="emp-org-master-sub">Manage departments, HOD assignments, sub-divisions, roles, chief roles, specializations, and auto-generated designations.</p>
           </div>
+          <button
+            type="button"
+            className="org-btn org-btn--secondary"
+            onClick={() => navigate(withCurrentWingSearch('/home/organizationStructure', location.search))}
+          >
+            ← Structure
+          </button>
         </div>
         <Msg text={msg?.text} type={msg?.type} />
 

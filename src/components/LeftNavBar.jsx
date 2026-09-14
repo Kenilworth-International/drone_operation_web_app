@@ -80,6 +80,9 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
   const [expandedSubItems, setExpandedSubItems] = useState(() => {
     return JSON.parse(localStorage.getItem('leftnav_expanded_subitems') || 'null') || {
       'Finance Approvals': true,
+      'Organization': true,
+      'Time & Attendance': true,
+      'Performance': true,
     };
   });
 

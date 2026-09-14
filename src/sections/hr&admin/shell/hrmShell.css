@@ -1,0 +1,160 @@
+/* ===================================================
+   HRM Shell – shared layout primitives for HRM pages
+   =================================================== */
+
+/* ---- Page header ---- */
+.hrm-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.hrm-page-header-left {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.hrm-page-title {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.hrm-page-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.hrm-page-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.hrm-wing-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.hrm-page-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ---- Sub-tab bar ---- */
+.hrm-sub-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 24px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-wrap: wrap;
+}
+
+.hrm-sub-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.hrm-sub-tab {
+  padding: 7px 16px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 4px 4px 0 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.hrm-sub-tab:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hrm-sub-tab--active {
+  color: #fff;
+  border-bottom-color: #a78bfa;
+  background: rgba(255, 255, 255, 0.07);
+  font-weight: 600;
+}
+
+/* ---- Split layout ---- */
+.hrm-split-layout {
+  display: flex;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hrm-split-rail {
+  width: 260px;
+  min-width: 200px;
+  max-width: 320px;
+  flex-shrink: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.hrm-split-detail {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+/* ---- Utility header block (used in HolidaysFlexPage, etc.) ---- */
+.hrm-page-header-block {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hrm-page-header-block .hrm-page-title {
+  margin: 0 0 4px;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.hrm-page-header-block .hrm-page-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Responsive */
+@media (max-width: 700px) {
+  .hrm-split-layout {
+    flex-direction: column;
+  }
+  .hrm-split-rail {
+    width: 100%;
+    max-width: none;
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    max-height: 220px;
+  }
+  .hrm-page-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+}

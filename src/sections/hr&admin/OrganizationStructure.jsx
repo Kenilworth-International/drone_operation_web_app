@@ -4,12 +4,14 @@ import {
   useGetDepartmentHeadcountQuery,
   useGetVacancyReportQuery,
 } from '../../api/services NodeJs/employeeProfileApi';
+import { useGetEmpJobRolesQuery } from '../../api/services NodeJs/empOrgStructureApi';
 import '../../styles/organizationStructure.css';
 import OrgChartTree from './employeeProfile/OrgChartTree';
 import OrgChartViewport from './employeeProfile/OrgChartViewport';
 import { HeadcountReportViz, VacancyReportViz } from './empOrg/OrgStructureReports';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { withCurrentWingSearch } from '../../config/wingRouteGuard';
+import { HrmPageHeader, HrmSubTabs } from './shell/HrmShell';
 
 function filterTree(nodes, query) {
   if (!query.trim()) return nodes;
@@ -34,6 +36,250 @@ function filterTree(nodes, query) {
   return nodes.map(walk).filter(Boolean);
 }
 
+/** Hide posts with nobody assigned (vacant roles / empty HOD cards). */
+function pruneUnassignedPosts(nodes) {
+  function walk(node) {
+    if (!node) return null;
+
+    const walkedChildren = [];
+    (node.children || []).forEach((child) => {
+      const result = walk(child);
+      if (!result) return;
+      if (Array.isArray(result)) walkedChildren.push(...result);
+      else walkedChildren.push(result);
+    });
+
+    // Never list empty job roles
+    if (node.nodeType === 'job_role') {
+      const empty = Boolean(node.vacant) || Number(node.headcount || 0) === 0;
+      if (empty) return null;
+    }
+
+    // Vacant HOD: don't show the empty seat — lift children up
+    if (node.nodeType === 'hod' && (node.vacant || !node.employeeId)) {
+      return walkedChildren.length ? walkedChildren : null;
+    }
+
+    // Vacant chief/CEO with no filled children: hide
+    if ((node.nodeType === 'chief' || node.nodeType === 'ceo') && node.vacant && walkedChildren.length === 0) {
+      return null;
+    }
+
+    // Empty department with nothing under it: hide
+    if (node.nodeType === 'department' && walkedChildren.length === 0) {
+      return null;
+    }
+
+    return { ...node, children: walkedChildren, vacant: false };
+  }
+
+  const out = [];
+  (nodes || []).forEach((node) => {
+    const result = walk(node);
+    if (!result) return;
+    if (Array.isArray(result)) out.push(...result);
+    else out.push(result);
+  });
+  return out;
+}
+
+/**
+ * Structure mode: stack sibling job roles as a vertical power ladder
+ * (highest power on top, one role under the next). Sort staff under each role by power then EMP no.
+ */
+function chainStructureRolesByPower(nodes, powerByCode = new Map()) {
+  const rolePower = (node) => {
+    if (node.power != null && node.power !== '') return Number(node.power) || 0;
+    const code = String(node.subtitle || '').trim().toLowerCase();
+    if (code && powerByCode.has(code)) return Number(powerByCode.get(code)) || 0;
+    return 0;
+  };
+
+  const byPowerThenEmpNo = (a, b) => {
+    const diff = rolePower(b) - rolePower(a);
+    if (diff !== 0) return diff;
+    return String(a.empNo || '').localeCompare(String(b.empNo || ''), undefined, { numeric: true });
+  };
+
+  const sortStaffDeep = (list) => {
+    const items = list || [];
+    const employees = items.filter((n) => n.nodeType === 'employee');
+    const others = items.filter((n) => n.nodeType !== 'employee');
+    const walkEmp = (n) => ({
+      ...n,
+      children: n.children?.length ? sortStaffDeep(n.children) : [],
+    });
+    const walkOther = (n) => ({
+      ...n,
+      children: n.children?.length ? sortStaffDeep(n.children) : (n.children || []),
+    });
+    const sortedEmp = [...employees].sort(byPowerThenEmpNo).map(walkEmp);
+    const walkedOthers = others.map(walkOther);
+    if (sortedEmp.length && walkedOthers.length) return [...sortedEmp, ...walkedOthers];
+    if (sortedEmp.length) return sortedEmp;
+    return walkedOthers;
+  };
+
+  const chainRoles = (roleNodes) => {
+    if (!roleNodes.length) return [];
+    const sorted = [...roleNodes].sort((a, b) => {
+      const diff = rolePower(b) - rolePower(a);
+      if (diff !== 0) return diff;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    if (sorted.length === 1) {
+      return sorted.map((n) => ({
+        ...n,
+        children: sortStaffDeep(
+          chainStructureRolesByPower(n.children || [], powerByCode),
+        ),
+      }));
+    }
+
+    const chained = sorted.map((n) => ({
+      ...n,
+      children: sortStaffDeep(
+        chainStructureRolesByPower(n.children || [], powerByCode),
+      ),
+    }));
+    for (let i = 0; i < chained.length - 1; i += 1) {
+      const existing = (chained[i].children || []).filter((c) => c.nodeType !== 'job_role');
+      chained[i] = { ...chained[i], children: [...existing, chained[i + 1]] };
+    }
+    return [chained[0]];
+  };
+
+  return (nodes || []).map((node) => {
+    const children = node.children || [];
+    const roleChildren = children.filter((c) => c.nodeType === 'job_role');
+    const otherChildren = children.filter((c) => c.nodeType !== 'job_role');
+
+    if (roleChildren.length > 1 && (node.nodeType === 'department' || node.nodeType === 'hod')) {
+      return {
+        ...node,
+        children: [
+          ...sortStaffDeep(
+            otherChildren.map((c) => chainStructureRolesByPower([c], powerByCode)[0]).filter(Boolean),
+          ),
+          ...chainRoles(roleChildren),
+        ],
+      };
+    }
+
+    return {
+      ...node,
+      children: sortStaffDeep(
+        children.flatMap((c) => chainStructureRolesByPower([c], powerByCode)),
+      ),
+    };
+  });
+}
+
+/** Collect every employee node under a subtree (flattens role wrappers). */
+function collectEmployeeNodes(node, into = []) {
+  if (!node) return into;
+  if (node.nodeType === 'employee' || (node.nodeType === 'hod' && node.employeeId)) {
+    into.push({
+      ...node,
+      nodeType: 'employee',
+      id: `emp-${node.employeeId || node.id}`,
+      children: [],
+      subtitle: null,
+    });
+  }
+  (node.children || []).forEach((child) => collectEmployeeNodes(child, into));
+  return into;
+}
+
+/**
+ * Employees mode: under each department, reporting-officer tree of names only (no role boxes).
+ */
+function toEmployeesReportingView(nodes) {
+  const rebuildForestFromOriginal = (originalChildren) => {
+    const flat = [];
+    (originalChildren || []).forEach((c) => collectEmployeeNodes(c, flat));
+    // De-dupe by employeeId
+    const unique = [];
+    const seen = new Set();
+    flat.forEach((n) => {
+      const id = Number(n.employeeId || String(n.id || '').replace(/^emp-/, ''));
+      if (!Number.isFinite(id) || seen.has(id)) return;
+      seen.add(id);
+      unique.push({ ...n, employeeId: id, id: `emp-${id}` });
+    });
+    if (!unique.length) return [];
+
+    const parentOf = new Map();
+    const walk = (list, parentEmpId = null) => {
+      (list || []).forEach((n) => {
+        // Role / HOD wrappers are not reporting parents — only employee→employee links.
+        if (n.nodeType === 'job_role' || n.nodeType === 'hod') {
+          walk(n.children, null);
+          return;
+        }
+        if (n.nodeType === 'employee') {
+          const id = Number(n.employeeId || String(n.id || '').replace(/^emp-/, ''));
+          if (parentEmpId != null && Number.isFinite(id)) parentOf.set(id, parentEmpId);
+          walk(n.children, id);
+          return;
+        }
+        walk(n.children, parentEmpId);
+      });
+    };
+    walk(originalChildren);
+
+    const byId = new Map();
+    unique.forEach((n) => {
+      byId.set(n.employeeId, {
+        ...n,
+        nodeType: 'employee',
+        subtitle: null,
+        children: [],
+      });
+    });
+
+    const roots = [];
+    byId.forEach((node, id) => {
+      const mgrId = node.reportingOfficerId != null && node.reportingOfficerId !== ''
+        ? Number(node.reportingOfficerId)
+        : parentOf.get(id);
+      if (mgrId && byId.has(mgrId) && mgrId !== id) {
+        byId.get(mgrId).children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    const byPowerThenEmpNo = (a, b) => {
+      const diff = Number(b.power || 0) - Number(a.power || 0);
+      if (diff !== 0) return diff;
+      return String(a.empNo || '').localeCompare(String(b.empNo || ''), undefined, { numeric: true });
+    };
+    const sortTree = (list) => {
+      list.sort(byPowerThenEmpNo);
+      list.forEach((n) => {
+        if (n.children?.length) sortTree(n.children);
+      });
+    };
+    sortTree(roots);
+    return roots;
+  };
+
+  return (nodes || []).map((node) => {
+    const children = node.children || [];
+    if (node.nodeType === 'department') {
+      return {
+        ...node,
+        children: rebuildForestFromOriginal(children),
+      };
+    }
+    return {
+      ...node,
+      children: toEmployeesReportingView(children),
+    };
+  });
+}
+
 function countNodes(nodes) {
   let n = 0;
   const walk = (list) => {
@@ -48,8 +294,8 @@ function countNodes(nodes) {
 
 const CHART_MODES = [
   { id: 'structure', label: 'Structure' },
-  { id: 'mixed', label: 'Mixed' },
   { id: 'employees', label: 'Employees' },
+  { id: 'mixed', label: 'Mixed' },
 ];
 
 const CHART_LEGEND = [
@@ -65,7 +311,7 @@ const OrganizationStructure = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [view, setView] = useState('chart');
-  const [chartMode, setChartMode] = useState('mixed');
+  const [chartMode, setChartMode] = useState('structure');
   const [search, setSearch] = useState('');
 
   useEffect(() => {
@@ -75,10 +321,26 @@ const OrganizationStructure = () => {
   }, []);
 
   const { data: chartData, isLoading: loadingChart } = useGetOrgChartQuery(chartMode);
+  const { data: jobRolesData } = useGetEmpJobRolesQuery();
   const { data: headcountData, isLoading: loadingHeadcount } = useGetDepartmentHeadcountQuery();
   const { data: vacancyData, isLoading: loadingVacancy } = useGetVacancyReportQuery();
 
-  const roots = chartData?.data?.roots || [];
+  const powerByCode = useMemo(() => {
+    const map = new Map();
+    const roles = Array.isArray(jobRolesData) ? jobRolesData : (jobRolesData?.data || []);
+    roles.forEach((r) => {
+      const code = String(r.jr_code || '').trim().toLowerCase();
+      if (code) map.set(code, Number(r.power || 0));
+    });
+    return map;
+  }, [jobRolesData]);
+
+  const roots = useMemo(() => {
+    const pruned = pruneUnassignedPosts(chartData?.data?.roots || []);
+    if (chartMode === 'employees') return toEmployeesReportingView(pruned);
+    if (chartMode === 'structure') return chainStructureRolesByPower(pruned, powerByCode);
+    return pruned;
+  }, [chartData, chartMode, powerByCode]);
   const totalEmployees = chartData?.data?.totalEmployees ?? 0;
   const headcount = headcountData?.data || [];
   const vacancies = vacancyData?.data || [];
@@ -93,23 +355,29 @@ const OrganizationStructure = () => {
     [vacancies],
   );
 
+  const ORG_TABS = [
+    { key: 'chart', label: 'Org Chart' },
+    { key: 'headcount', label: 'Department Headcount' },
+    { key: 'vacancy', label: 'Vacancy Report' },
+  ];
+
   return (
     <div className="org-shell">
-      <div className="org-shell-top">
-        <div className="org-page-header org-page-header--row">
-          <div>
-            <h1 className="org-title">Organization structure</h1>
-            <p className="org-subtitle">Org chart, department headcount, and vacancy overview.</p>
-          </div>
+      <HrmPageHeader
+        title="Organization Structure"
+        hint="Org chart, department headcount, and vacancy overview."
+        actions={
           <button
             type="button"
-            className="org-btn org-btn--primary"
+            className="org-btn org-btn--secondary"
             onClick={() => navigate(withCurrentWingSearch('/home/empOrgMaster', location.search))}
           >
-            Employee org master data
+            Org Master Data
           </button>
-        </div>
+        }
+      />
 
+      <div className="org-shell-top">
         <div className="org-stats">
           <div className="org-stat-card">
             <span className="org-stat-label">Total employees</span>
@@ -128,18 +396,9 @@ const OrganizationStructure = () => {
         </div>
       </div>
 
+      <HrmSubTabs tabs={ORG_TABS} active={view} onChange={setView} />
+
       <div className="org-panel">
-        <div className="org-tabs">
-          <button type="button" className={`org-tab ${view === 'chart' ? 'active' : ''}`} onClick={() => setView('chart')}>
-            Org chart
-          </button>
-          <button type="button" className={`org-tab ${view === 'headcount' ? 'active' : ''}`} onClick={() => setView('headcount')}>
-            Department headcount
-          </button>
-          <button type="button" className={`org-tab ${view === 'vacancy' ? 'active' : ''}`} onClick={() => setView('vacancy')}>
-            Vacancy report
-          </button>
-        </div>
 
         {view === 'chart' && (
           <div className="org-panel-body">
@@ -170,8 +429,8 @@ const OrganizationStructure = () => {
                   {visibleCount} node{visibleCount === 1 ? '' : 's'}
                   {search.trim() ? ` · matching “${search.trim()}”` : ''}
                   {' · '}
-                  {chartMode === 'structure' && 'roles and structure only'}
-                  {chartMode === 'employees' && 'people and reporting lines'}
+                  {chartMode === 'structure' && 'below department: roles by power, one under another'}
+                  {chartMode === 'employees' && 'below department: reporting lines (names only)'}
                   {chartMode === 'mixed' && 'structure with assigned staff'}
                 </p>
               </div>
@@ -190,16 +449,23 @@ const OrganizationStructure = () => {
                       printTitle="Organization structure"
                       legend={(
                         <div className="org-chart-legend">
-                          {CHART_LEGEND.map((item) => (
+                          {(chartMode === 'employees'
+                            ? CHART_LEGEND.filter((item) => item.type !== 'job_role' && item.type !== 'hod')
+                            : CHART_LEGEND
+                          ).map((item) => (
                             <span key={item.type} className="org-chart-legend-item">
                               <span className={`org-chart-legend-dot org-chart-legend-dot--${item.type}`} />
-                              {item.label}
+                              {item.type === 'employee' && chartMode === 'employees' ? 'Person' : item.label}
                             </span>
                           ))}
                         </div>
                       )}
                     >
-                      <OrgChartTree roots={filteredRoots} />
+                      <OrgChartTree
+                        roots={filteredRoots}
+                        stackBelowDepartment={chartMode === 'structure' || chartMode === 'employees'}
+                        nameOnlyPeople={chartMode === 'employees'}
+                      />
                     </OrgChartViewport>
                   </>
                 )}

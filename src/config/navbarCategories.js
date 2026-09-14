@@ -35,6 +35,8 @@ import {
   FaServer,
   FaBullhorn,
   FaLaptop,
+  FaExchangeAlt,
+  FaIdCard,
 } from 'react-icons/fa';
 
 const navbarCategories = [
@@ -106,15 +108,39 @@ const navbarCategories = [
     icon: FaUsers,
     children: [
       { path: '/home/hrm/dashboard', label: 'Dashboard', icon: FaTachometerAlt },
-      { path: '/home/employeeProfileDetails', label: 'Employee Profile', icon: FaUserTie },
       { path: '/home/employees', label: 'Employees', icon: FaUsers },
-      { path: '/home/organizationStructure', label: 'Organization Structure', icon: FaUsers },
-      { path: '/home/jdManagement', label: 'JD Management', icon: FaClipboardList },
-      { path: '/home/employeeAssignment', label: 'Employee Dynamics', icon: FaUserTie },
-      { path: '/home/attendance/roaster-planning', label: 'Attendance & Roaster', icon: FaClock },
-      { path: '/home/attendance/employee-kpi', label: 'Employee KPI', icon: FaChartLine },
-      { path: '/home/attendance/leave-management', label: 'Leave Management', icon: FaCalendarAlt },
-      { path: '/home/attendance/wfh-monitoring', label: 'WFH Manage', icon: FaLaptop },
+      {
+        path: '/home/organizationStructure',
+        label: 'Organization',
+        icon: FaSitemap,
+        subItems: [
+          { path: '/home/organizationStructure', label: 'Structure', icon: FaProjectDiagram },
+          { path: '/home/empOrgMaster', label: 'Org Master', icon: FaCogs },
+          { path: '/home/jdManagement', label: 'Job Descriptions', icon: FaClipboardList },
+        ],
+      },
+      { path: '/home/employeeAssignment', label: 'Assignments', icon: FaExchangeAlt },
+      {
+        path: '/home/attendance/daily-attendance',
+        label: 'Time & Attendance',
+        icon: FaClock,
+        subItems: [
+          { path: '/home/attendance/daily-attendance', label: 'Daily Attendance', icon: FaIdCard },
+          { path: '/home/attendance/roaster-planning', label: 'Roaster Planning', icon: FaCalendarAlt },
+          { path: '/home/attendance/wfh-monitoring', label: 'WFH Monitoring', icon: FaLaptop },
+          { path: '/home/attendance/holidays-flex', label: 'Holidays & Flex', icon: FaCalendarCheck },
+        ],
+      },
+      { path: '/home/attendance/leave-management', label: 'Leave Setup', icon: FaCalendarAlt },
+      {
+        path: '/home/attendance/employee-kpi',
+        label: 'Performance',
+        icon: FaChartLine,
+        subItems: [
+          { path: '/home/attendance/employee-kpi', label: 'SMART KPI', icon: FaChartLine },
+          { path: '/home/attendance/smart-kpi-templates', label: 'KPI Templates', icon: FaClipboardList },
+        ],
+      },
     ],
   },
   {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import SmartKpiTab from './SmartKpiTab';
 import EmployeeKpiSystemMetrics from './EmployeeKpiSystemMetrics';
+import { HrmPageHeader } from '../shell/HrmShell';
 import '../../../styles/employeeKpi.css';
 
 function buildSmartKpiTemplatesUrl(wing) {
@@ -30,11 +31,11 @@ export default function EmployeeKpiDashboard() {
 
   return (
     <div className="employee-kpi-container">
-      <div className="employee-kpi-header">
-        <h1>Employee KPI</h1>
-        <p>SMART goal management per employee and auto-computed system metrics from HR data.</p>
-        {wingLabel ? <span className="employee-kpi-wing-badge">{wingLabel}</span> : null}
-      </div>
+      <HrmPageHeader
+        title="Performance"
+        hint="SMART goal management per employee and auto-computed system metrics from HR data."
+        wingLabel={wingLabel || undefined}
+      />
 
       <div className="employee-kpi-tabs">
         <button

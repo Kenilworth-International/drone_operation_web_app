@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { FaTimes } from 'react-icons/fa';
-import { leaveStatusLabel } from '../../../utils/hrStatusLabels';
+import { formatAttendanceNotesDisplay, leaveStatusLabel } from '../../../utils/hrStatusLabels';
 
 function cellValue(value, columnKey, metric) {
   if (value == null || value === '') return '—';
@@ -10,6 +10,9 @@ function cellValue(value, columnKey, metric) {
     ['on_leave_today', 'pending_approvals', 'leave_status'].includes(String(metric || ''))
   ) {
     return leaveStatusLabel(value);
+  }
+  if (columnKey === 'notes') {
+    return formatAttendanceNotesDisplay(value);
   }
   return String(value);
 }
@@ -109,7 +112,12 @@ export default function HrmDashboardBreakdownModal({
                     {rows.map((row, idx) => (
                       <tr key={row.employeeId || row.leaveRequestId || row.reviewId || row.recordId || idx}>
                         {columns.map((col) => (
-                          <td key={col.key}>{cellValue(row[col.key], col.key, data?.metric)}</td>
+                          <td
+                            key={col.key}
+                            className={col.key === 'notes' ? 'hrm-dash-breakdown-notes' : undefined}
+                          >
+                            {cellValue(row[col.key], col.key, data?.metric)}
+                          </td>
                         ))}
                       </tr>
                     ))}

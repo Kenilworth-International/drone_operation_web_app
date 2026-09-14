@@ -169,7 +169,7 @@ export default function EmployeeKpiSystemMetrics() {
   };
 
   const profileHref = selectedEmployeeId
-    ? `#/home/employeeProfileDetails?employeeId=${selectedEmployeeId}${wingLabel ? `&wing=${encodeURIComponent(wingLabel)}` : ''}`
+    ? `#/home/employees?employee=${selectedEmployeeId}${wingLabel ? `&wing=${encodeURIComponent(wingLabel)}` : ''}`
     : '#';
 
   return (

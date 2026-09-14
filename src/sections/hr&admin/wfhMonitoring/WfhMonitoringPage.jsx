@@ -4,6 +4,7 @@ import {
   useListWfhCapturesQuery,
   useListWfhDevicesQuery,
 } from '../../../api/services NodeJs/wfhMonitoringApi';
+import { HrmPageHeader } from '../shell/HrmShell';
 import '../../../styles/wfhMonitoring.css';
 
 function formatWhen(value) {
@@ -411,6 +412,10 @@ export default function WfhMonitoringPage() {
 
   return (
     <div className="wfh-page">
+      <HrmPageHeader
+        title="WFH Monitoring"
+        hint="Monitor remote-work sessions, desktop agent activity, and screenshot captures."
+      />
       <div className="wfh-shell">
         <aside className="wfh-device-rail">
           <div className="wfh-rail-toolbar">

@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSearchParams, useLocation } from 'react-router-dom';
 import { useGetAllEmployeeRegistrationsQuery } from '../../api/services NodeJs/jdManagementApi';
+import { AddEmployeeModal } from './employeeProfile/EmployeeProfileCoreTabs';
+import EmployeeListSidebar from './employeeProfile/EmployeeListSidebar';
 import EmployeeProfileTabbedView from './employeeProfile/EmployeeProfileTabbedView';
-import EmployeeAvatar from './employeeProfile/EmployeeAvatar';
-import { getEmployeeDisplayName } from './employeeProfile/employeeProfileUtils';
+import { useNavbarPermissions } from '../../hooks/useNavbarPermissions';
 import '../../styles/employeeProfileDetails.css';
 import '../../styles/employees.css';
 
@@ -26,10 +27,18 @@ const Employees = () => {
   const wingQuery = getWingFromUrl(searchParams, location);
   const employeeParam = searchParams.get('employee') || '';
 
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(employeeParam);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  const { data: employeesData, isLoading, error } = useGetAllEmployeeRegistrationsQuery();
+  // Determine if this user has edit access (was allowed /home/employeeProfileDetails)
+  const { allowedPaths } = useNavbarPermissions();
+  const canEdit = allowedPaths.includes('/home/employeeProfileDetails') || allowedPaths.includes('/home/employees');
+
+  const {
+    data: employeesData,
+    isLoading: loadingEmployees,
+    refetch: refetchEmployees,
+  } = useGetAllEmployeeRegistrationsQuery();
 
   const employees = useMemo(() => {
     if (!employeesData) return [];
@@ -48,22 +57,6 @@ const Employees = () => {
     setSelectedEmployeeId(employeeParam);
   }, [employeeParam]);
 
-  const filteredEmployees = useMemo(() => {
-    if (!searchTerm.trim()) return employees;
-    const q = searchTerm.toLowerCase();
-    return employees.filter((employee) => (
-      (employee.preferredName && employee.preferredName.toLowerCase().includes(q))
-      || (employee.employeeName && employee.employeeName.toLowerCase().includes(q))
-      || (employee.empNo && employee.empNo.toLowerCase().includes(q))
-      || (employee.nic && employee.nic.toLowerCase().includes(q))
-      || (employee.emailAddress && employee.emailAddress.toLowerCase().includes(q))
-      || (employee.mobileNumber && employee.mobileNumber.includes(searchTerm))
-      || (employee.employeeJobRoleName && employee.employeeJobRoleName.toLowerCase().includes(q))
-      || (employee.departmentName && employee.departmentName.toLowerCase().includes(q))
-      || (employee.designation_title && employee.designation_title.toLowerCase().includes(q))
-    ));
-  }, [employees, searchTerm]);
-
   const handleSelectEmployee = (id) => {
     const idStr = String(id);
     setSelectedEmployeeId(idStr);
@@ -77,99 +70,67 @@ const Employees = () => {
     ? decodeURIComponent(wingQuery.replace(/\+/g, ' '))
     : null;
 
-        return (
-    <div className="epd-container ep-shell ep-employees-directory">
+  return (
+    <div className="epd-container ep-shell">
       <div className="epd-header-row ep-page-header">
         <div>
           <h2 className="epd-title">Employees</h2>
           <p className="ep-page-hint">
-            Click an employee to view their full profile (read-only).
+            {canEdit
+              ? 'Select an employee to view and manage their full HR profile.'
+              : 'Select an employee to view their full profile.'}
           </p>
-          </div>
-        {wingLabel && (
-          <span className="ep-employees-wing-badge">{wingLabel}</span>
-        )}
-          </div>
-
-      <div className="ep-layout ep-employees-layout">
-        <aside className="ep-employees-list-panel" aria-label="Employee directory">
-          <div className="ep-employees-list-search">
-            <input
-              type="search"
-              placeholder="Search by name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-              className="ep-employees-search-input"
-          />
-          {searchTerm && (
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {wingLabel && <span className="ep-employees-wing-badge">{wingLabel}</span>}
+          {canEdit && (
             <button
-                type="button"
-                className="ep-employees-search-clear"
-              onClick={() => setSearchTerm('')}
-              aria-label="Clear search"
+              type="button"
+              className="epd-btn epd-btn-primary"
+              onClick={() => setShowAddModal(true)}
             >
-              ×
+              + Add Employee
             </button>
           )}
+        </div>
       </div>
 
-          {isLoading && <p className="ep-employees-list-message">Loading employees…</p>}
-      {error && (
-            <p className="ep-employees-list-message ep-employees-list-message--error">
-              {error?.data?.message || error?.message || 'Failed to load employees.'}
-            </p>
-          )}
-
-          {!isLoading && !error && filteredEmployees.length === 0 && (
-            <p className="ep-employees-list-message">
-              {searchTerm ? 'No employees match your search.' : 'No employees registered yet.'}
-            </p>
-          )}
-
-          {!isLoading && !error && filteredEmployees.length > 0 && (
-            <ul className="ep-employees-cards" aria-label="Employee list">
-              {filteredEmployees.map((employee) => {
-                const idStr = String(employee.id);
-                const isSelected = selectedEmployeeId === idStr;
-                const name = getEmployeeDisplayName(employee, 'Unnamed');
-                return (
-                  <li key={employee.id}>
-                  <button 
-                      type="button"
-                      className={`ep-employees-card${isSelected ? ' ep-employees-card--selected' : ''}`}
-                      onClick={() => handleSelectEmployee(employee.id)}
-                      aria-current={isSelected ? 'true' : undefined}
-                    >
-                      <EmployeeAvatar employee={employee} name={name} size="lg" />
-                      <span className="ep-employees-card-name">{name}</span>
-                  </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-
-          {!isLoading && !error && filteredEmployees.length > 0 && (
-            <p className="ep-employees-count">
-              {filteredEmployees.length}
-              {' '}
-              employee
-              {filteredEmployees.length === 1 ? '' : 's'}
-            </p>
-          )}
-        </aside>
+      <div className="ep-layout">
+        <EmployeeListSidebar
+          employees={employees}
+          selectedId={selectedEmployeeId}
+          onSelect={handleSelectEmployee}
+          isLoading={loadingEmployees}
+        />
 
         <main className="ep-main">
           {!selectedEmployeeId ? (
             <div className="ep-main-empty">
               <h3>Select an employee</h3>
-              <p>Choose someone from the list to view their profile.</p>
+              <p>Choose someone from the list on the left to view their profile.</p>
             </div>
           ) : (
-            <EmployeeProfileTabbedView employeeId={selectedEmployeeId} readOnly />
+            <EmployeeProfileTabbedView
+              employeeId={selectedEmployeeId}
+              key={selectedEmployeeId}
+              readOnly={!canEdit}
+            />
           )}
         </main>
-        </div>
+      </div>
+
+      {showAddModal && canEdit && (
+        <AddEmployeeModal
+          onClose={() => setShowAddModal(false)}
+          onCreated={(data) => {
+            refetchEmployees();
+            if (data?.id) {
+              handleSelectEmployee(String(data.id));
+            }
+            setShowAddModal(false);
+          }}
+        />
+      )}
     </div>
   );
 };

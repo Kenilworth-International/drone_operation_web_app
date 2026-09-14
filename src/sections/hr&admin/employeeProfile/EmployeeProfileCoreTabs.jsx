@@ -545,17 +545,14 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
     const category = form?.employmentCategory || '';
     return jobRoles.filter((r) => {
       if (Number(r.activated) !== 1) return false;
+      if (Number(r.chief) === 1) return false; // Assigned only via Org Master → Chief job roles
       if (!jobRoleMatchesEmploymentCategory(r, category)) return false;
-      // Chief roles: show for the selected category (do not hide by department link)
-      if (Number(r.chief) === 1) return Boolean(deptId);
       if (!deptId) return false;
       return (r.dept_ids || []).includes(Number(deptId));
     });
   }, [jobRoles, deptId, form?.employmentCategory]);
 
-  const selectedIsChief = Boolean(
-    roleId && jobRoles.find((r) => Number(r.id) === Number(roleId) && Number(r.chief) === 1),
-  );
+  const selectedIsChief = false;
   const isSeniorManagement = isSeniorManagementCategory(form?.employmentCategory);
 
   const workLocations = useMemo(() => {
@@ -867,7 +864,7 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
                   ? 'Select employment category first.'
                   : !deptId
                     ? 'Select a department first to see roles for this category.'
-                    : 'Shows job roles (including chief) for the selected employment category. Roles at max headcount are disabled.'
+                    : 'Shows job roles for the selected employment category. Roles at max headcount are disabled. Chief roles are assigned under Org Master → Chief job roles.'
               }
             >
               <select
@@ -878,10 +875,10 @@ export function EmploymentTab({ employeeId, readOnly = false }) {
               >
                 <option value="">-- Select --</option>
                 {selectableJobRoles.map((r) => {
-                  const atCapacity = deptId && !Number(r.chief) && !isRoleSelectable(r.id);
+                  const atCapacity = deptId && !isRoleSelectable(r.id);
                   return (
                     <option key={r.id} value={r.id} disabled={atCapacity}>
-                      {r.job_role}{Number(r.chief) === 1 ? ' (chief)' : ''}{atCapacity ? ' (full)' : ''}
+                      {r.job_role}{atCapacity ? ' (full)' : ''}
                     </option>
                   );
                 })}

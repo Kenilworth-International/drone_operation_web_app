@@ -22,6 +22,7 @@ import {
   useResolveEmpDesignationMutation,
 } from '../../api/services NodeJs/empOrgStructureApi';
 import { isSeniorManagementCategory, getEmployeeDisplayName } from './employeeProfile/employeeProfileUtils';
+import { HrmPageHeader } from './shell/HrmShell';
 import '../../styles/employeeAssignment.css';
 
 const EMPTY_LIST = [];
@@ -79,6 +80,21 @@ function buildAssignmentFromEmployee(employee, allDesignations, workLocations) {
     toEmpSpecializationId: des?.specialization_id ? String(des.specialization_id) : '',
     toWorkLocationId: locationId ? String(locationId) : '',
     toReportingOfficerId: employee.reportofficer ? String(employee.reportofficer) : '',
+    effectiveDate: new Date(),
+    reason: '',
+    referenceNo: '',
+  };
+}
+
+function buildEmptyAssignment() {
+  return {
+    eventType: 'assignment',
+    toEmpDepartmentId: '',
+    toEmpSubDivisionId: '',
+    toEmpJobRoleId: '',
+    toEmpSpecializationId: '',
+    toWorkLocationId: '',
+    toReportingOfficerId: '',
     effectiveDate: new Date(),
     reason: '',
     referenceNo: '',
@@ -210,6 +226,27 @@ const EmployeeAssignment = () => {
     return Array.from(map.values());
   }, [assignedEmployees, nonAssignedEmployees, allEmployees]);
 
+  const chiefHolderIds = useMemo(() => {
+    const ids = new Set();
+    chiefRoles.forEach((r) => {
+      if (Number(r.activated) === 1 && r.holder_employee_id != null && r.holder_employee_id !== '') {
+        ids.add(Number(r.holder_employee_id));
+      }
+    });
+    return ids;
+  }, [chiefRoles]);
+
+  const isChiefLevelEmployee = useCallback((employee) => {
+    if (!employee) return false;
+    if (chiefHolderIds.has(Number(employee.id))) return true;
+    if (isSeniorManagementCategory(employee.employmentCategory)) return true;
+    const des = allDesignations.find((d) => Number(d.id) === Number(employee.emp_designation_id));
+    if (des && Number(des.chief) === 1) return true;
+    const role = jobRoles.find((r) => Number(r.id) === Number(des?.job_role_id));
+    if (role && Number(role.chief) === 1) return true;
+    return false;
+  }, [chiefHolderIds, allDesignations, jobRoles]);
+
   const employeesToShow = useMemo(() => {
     const queueMeta = new Map();
     [...assignedEmployees, ...nonAssignedEmployees].forEach((employee) => {
@@ -239,6 +276,7 @@ const EmployeeAssignment = () => {
     baseSource.forEach((employee) => {
       const id = String(employee.id);
       if (seen.has(id)) return;
+      if (isChiefLevelEmployee(employee)) return; // Chief / Senior Management assigned via Org Master
       if (!employeeMatchesDepartment(employee, departmentFilter, departments)) return;
       seen.add(id);
       list.push(employee);
@@ -248,7 +286,7 @@ const EmployeeAssignment = () => {
     else if (queueFilter === 'not_assigned') list = list.filter((employee) => !isAssigned(employee));
 
     return list.map(enrich);
-  }, [queueFilter, departmentFilter, assignedEmployees, nonAssignedEmployees, mergedEmployees, departments]);
+  }, [queueFilter, departmentFilter, assignedEmployees, nonAssignedEmployees, mergedEmployees, departments, isChiefLevelEmployee]);
 
   const isLoadingList = (loadingQueues || fetchingQueues || loadingEmployees || fetchingEmployees)
     && employeesToShow.length === 0
@@ -258,14 +296,6 @@ const EmployeeAssignment = () => {
   const listLoadError = queueError || employeeListError;
 
   const historyItems = historyResponse?.data || [];
-
-  const chiefDeptMap = useMemo(() => {
-    const map = new Map();
-    chiefRoles.forEach((r) => {
-      map.set(Number(r.id), new Set((r.dept_ids || []).map(Number)));
-    });
-    return map;
-  }, [chiefRoles]);
 
   const roleLimitById = useMemo(() => {
     const map = new Map();
@@ -281,16 +311,18 @@ const EmployeeAssignment = () => {
 
   const selectableJobRoles = useMemo(() => jobRoles.filter((r) => {
     if (Number(r.activated) !== 1) return false;
+    if (Number(r.chief) === 1) return false; // Chief roles are assigned only via Org Master → Chief job roles
     if (!deptId) return false;
-    if (Number(r.chief) === 1) {
-      return chiefDeptMap.get(Number(r.id))?.has(Number(deptId));
-    }
     return (r.dept_ids || []).includes(Number(deptId));
-  }), [jobRoles, deptId, chiefDeptMap]);
+  }), [jobRoles, deptId]);
 
-  const selectedIsChief = Boolean(
-    roleId && jobRoles.find((r) => Number(r.id) === Number(roleId) && Number(r.chief) === 1),
-  );
+  const heldChiefRole = useMemo(() => {
+    const empId = selectedEmployee?.id;
+    if (!empId) return null;
+    return chiefRoles.find((r) => Number(r.holder_employee_id) === Number(empId) && Number(r.activated) === 1) || null;
+  }, [chiefRoles, selectedEmployee?.id]);
+
+  const selectedIsChief = Boolean(heldChiefRole);
 
   const selectedRoleLimit = roleId ? roleLimitById.get(Number(roleId)) : null;
   const selectedRoleAtCapacity = Boolean(
@@ -350,6 +382,15 @@ const EmployeeAssignment = () => {
     }
 
     const fullEmployee = fromAll || target;
+    if (isChiefLevelEmployee(fullEmployee)) {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('employee');
+        return next;
+      }, { replace: true });
+      return;
+    }
+
     setLoadingEmployeeId(String(fullEmployee.id));
     setSelectedEmployee(fullEmployee);
     setAssignmentData(buildAssignmentFromEmployee(fullEmployee, allDesignations, workLocations));
@@ -368,7 +409,21 @@ const EmployeeAssignment = () => {
     fetchingEmployees,
     fetchingQueues,
     setSearchParams,
+    isChiefLevelEmployee,
   ]);
+
+  useEffect(() => {
+    if (!selectedEmployee) return;
+    if (!isChiefLevelEmployee(selectedEmployee)) return;
+    setSelectedEmployee(null);
+    setAssignmentData(buildEmptyAssignment());
+    setResolvedDesignation(null);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('employee');
+      return next;
+    }, { replace: true });
+  }, [selectedEmployee, isChiefLevelEmployee, setSearchParams]);
 
   const isLoadingEmployeeDetails = Boolean(
     loadingEmployeeId
@@ -525,6 +580,7 @@ const EmployeeAssignment = () => {
 
   return (
     <div className="employee-assignment-container-ea">
+      
       <div className="ea-content-ea">
         <div className="ea-left-panel-ea">
           <div className="ea-panel-header-ea">
@@ -699,28 +755,46 @@ const EmployeeAssignment = () => {
                   </div>
                   <div className="ea-form-group-ea">
                     <label htmlFor="toEmpJobRoleId">Job role</label>
-                    <select
-                      id="toEmpJobRoleId"
-                      name="toEmpJobRoleId"
-                      value={assignmentData.toEmpJobRoleId}
-                      onChange={handleAssignmentChange}
-                      className="ea-select-ea"
-                      disabled={!deptId}
-                    >
-                      <option value="">— Select job role —</option>
-                      {selectableJobRoles.map((r) => {
-                        const atCapacity = deptId && !Number(r.chief) && !isRoleSelectable(r.id);
-                        return (
-                          <option key={r.id} value={r.id} disabled={atCapacity}>
-                            {r.job_role}{Number(r.chief) === 1 ? ' (chief)' : ''}{atCapacity ? ' (full)' : ''}
-                          </option>
-                        );
-                      })}
-                    </select>
-                    {selectedRoleAtCapacity && (
-                      <p className="ea-field-hint-ea ea-field-hint--warn">
-                        Maximum headcount ({selectedRoleLimit.max_limit}) reached for this role.
-                      </p>
+                    {heldChiefRole ? (
+                      <>
+                        <input
+                          id="toEmpJobRoleId"
+                          type="text"
+                          className="ea-select-ea"
+                          value={`${heldChiefRole.job_role} (chief)`}
+                          readOnly
+                          disabled
+                        />
+                        <span className="ea-field-hint-ea">
+                          This employee already holds a chief post — that is their job-role assignment. Change it under Org Master → Chief job roles.
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <select
+                          id="toEmpJobRoleId"
+                          name="toEmpJobRoleId"
+                          value={assignmentData.toEmpJobRoleId}
+                          onChange={handleAssignmentChange}
+                          className="ea-select-ea"
+                          disabled={!deptId}
+                        >
+                          <option value="">— Select job role —</option>
+                          {selectableJobRoles.map((r) => {
+                            const atCapacity = deptId && !isRoleSelectable(r.id);
+                            return (
+                              <option key={r.id} value={r.id} disabled={atCapacity}>
+                                {r.job_role}{atCapacity ? ' (full)' : ''}
+                              </option>
+                            );
+                          })}
+                        </select>
+                        {selectedRoleAtCapacity && (
+                          <p className="ea-field-hint-ea ea-field-hint--warn">
+                            Maximum headcount ({selectedRoleLimit.max_limit}) reached for this role.
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

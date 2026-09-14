@@ -305,7 +305,8 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
   return (
     <div className="emp-org-panel">
       <p className="emp-org-hint">
-        Chief-level roles (C-suite) oversee multiple departments. Assign the employee who holds each post.
+        Chief-level roles (C-suite) oversee multiple departments. Assign the employee who holds each post —
+        that assignment is also their employee job role (no need to set it again under Assignments or Profile).
         Higher power means higher authority — CEO should have the highest power.
         Job descriptions here apply to the chief role company-wide (not per department).
       </p>
@@ -459,7 +460,8 @@ export default function ChiefJobRoleTab({ notify, refreshToken = 0 }) {
               ))}
             </select>
             <span className="emp-org-field-hint">
-              Employee who currently holds this chief post. One employee can hold only one chief role.
+              Employee who currently holds this chief post — this is their job-role assignment.
+              One employee can hold only one chief role.
             </span>
           </label>
           <label className="emp-org-field">

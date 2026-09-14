@@ -493,6 +493,27 @@
     transition: box-shadow 0.2s ease, background 0.2s ease;
 }
 
+/* Pin the day/date header so it stays visible while scrolling a long employee list. */
+.timeline-header-roaster {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: #fcfcfc;
+    border-radius: 0;
+    border-bottom: 2px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(12, 35, 64, 0.07);
+    /* Slightly tighten the gap for the header so it does not dominate the board. */
+    padding-bottom: 4px;
+}
+
+/* Stick the "Employee" label cell to the left on horizontal scroll. */
+.timeline-header-roaster .employee-col-roaster {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: #f7f9fc;
+}
+
 .timeline-row-roaster.timeline-row-unsaved-roaster {
     background: rgba(254, 243, 199, 0.45);
     box-shadow: inset 3px 0 0 0 #f59e0b;
@@ -592,8 +613,8 @@
 }
 
 .day-header-roaster.weekend {
-    background: #bfdbfe;
-    color: #1e3a8a;
+    background: #dbeafe;
+    color: #1e40af;
 }
 
 .day-cell-roaster {
@@ -603,8 +624,8 @@
     max-height: 32px;
     box-sizing: border-box;
     border-radius: 8px;
-    border: none;
-    background: #ffffff;
+    border: 1px solid #d1d5db;
+    background: #e5e7eb;
     cursor: pointer;
     transition: all 0.15s ease;
     position: relative;
@@ -619,7 +640,8 @@
 }
 
 .day-cell-roaster.weekend {
-    background: #bfdbfe;
+    background: #dbeafe;
+    border-color: #93c5fd;
 }
 
 .day-cell-roaster:hover {
@@ -759,21 +781,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(2px);
+    padding: 24px;
+    background: rgba(15, 23, 42, 0.35);
 }
 
 .roaster-attendance-modal {
-    width: min(640px, 100%);
-    max-height: calc(100vh - 32px);
+    width: 60%;
+    max-width: 920px;
+    min-width: 320px;
+    max-height: calc(100vh - 48px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
     background: #ffffff;
-    border-radius: 18px;
-    border: 1px solid #dbe3ee;
-    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
 }
 
 .roaster-attendance-modal__header {
@@ -781,9 +804,10 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    padding: 20px 22px 18px;
-    background: linear-gradient(135deg, #0f4c75 0%, #0891b2 100%);
-    color: #fff;
+    padding: 18px 22px;
+    background: #ffffff;
+    border-bottom: 1px solid #eef2f7;
+    color: #0f172a;
 }
 
 .roaster-attendance-modal__header-main {
@@ -793,45 +817,47 @@
 .roaster-attendance-modal__eyebrow {
     margin: 0 0 4px;
     font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    opacity: 0.82;
+    color: #94a3b8;
 }
 
 .roaster-attendance-modal__title {
     margin: 0;
-    font-size: 22px;
-    line-height: 1.2;
-    font-weight: 700;
+    font-size: 18px;
+    line-height: 1.3;
+    font-weight: 650;
+    color: #0f172a;
 }
 
 .roaster-attendance-modal__date {
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     font-size: 13px;
-    opacity: 0.92;
+    color: #64748b;
 }
 
 .roaster-attendance-modal__close {
     flex: 0 0 auto;
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.16);
-    color: #fff;
-    font-size: 22px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 20px;
     line-height: 1;
     cursor: pointer;
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, color 0.15s ease;
 }
 
 .roaster-attendance-modal__close:hover {
-    background: rgba(255, 255, 255, 0.28);
+    background: #f8fafc;
+    color: #0f172a;
 }
 
 .roaster-attendance-modal__body {
-    padding: 18px 20px 20px;
+    padding: 18px 22px 22px;
     overflow: auto;
     display: flex;
     flex-direction: column;
@@ -839,7 +865,7 @@
 }
 
 .roaster-attendance-modal__empty {
-    padding: 28px 20px 32px;
+    padding: 32px 22px;
     text-align: center;
     color: #64748b;
     font-size: 14px;
@@ -847,65 +873,65 @@
 
 .roaster-attendance-alert {
     padding: 10px 12px;
-    border-radius: 10px;
+    border-radius: 8px;
     font-size: 13px;
     line-height: 1.45;
-    font-weight: 600;
-}
-
-.roaster-attendance-alert--warn {
-    background: #fff7ed;
-    border: 1px solid #fdba74;
-    color: #9a3412;
+    font-weight: 500;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1e40af;
 }
 
 .roaster-attendance-summary {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 10px;
+    gap: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #ffffff;
 }
 
 .roaster-attendance-summary__item {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
+    padding: 14px 16px;
+    background: #ffffff;
+    border-right: 1px solid #eef2f7;
 }
 
-.roaster-attendance-summary__item--accent {
-    background: #ecfeff;
-    border-color: #a5f3fc;
+.roaster-attendance-summary__item:last-child {
+    border-right: none;
 }
 
 .roaster-attendance-summary__label {
     display: block;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b;
+    letter-spacing: 0.04em;
+    color: #94a3b8;
     margin-bottom: 6px;
 }
 
 .roaster-attendance-summary__value {
     display: block;
-    font-size: 18px;
-    font-weight: 800;
+    font-size: 17px;
+    font-weight: 650;
     color: #0f172a;
-    line-height: 1.1;
+    line-height: 1.15;
+    font-variant-numeric: tabular-nums;
 }
 
 .roaster-attendance-summary__meta {
     display: block;
     margin-top: 4px;
     font-size: 11px;
-    color: #64748b;
+    color: #94a3b8;
 }
 
 .roaster-attendance-site-card {
     padding: 14px 16px;
-    border-radius: 14px;
-    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border-radius: 10px;
+    background: #ffffff;
     border: 1px solid #e2e8f0;
 }
 
@@ -914,31 +940,31 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .roaster-attendance-site-card__head h4 {
     margin: 0;
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 650;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #334155;
+    letter-spacing: 0.04em;
+    color: #64748b;
 }
 
 .roaster-attendance-site-card__code {
-    padding: 4px 8px;
-    border-radius: 999px;
-    background: #e0f2fe;
-    color: #0369a1;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: #475569;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 600;
 }
 
 .roaster-attendance-site-card__name {
     margin: 0 0 12px;
-    font-size: 18px;
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 600;
     color: #0f172a;
 }
 
@@ -950,19 +976,19 @@
 }
 
 .roaster-attendance-meta-grid dt {
-    margin: 0 0 4px;
+    margin: 0 0 2px;
     font-size: 11px;
-    font-weight: 700;
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #64748b;
+    color: #94a3b8;
 }
 
 .roaster-attendance-meta-grid dd {
     margin: 0;
     font-size: 13px;
-    font-weight: 600;
-    color: #0f172a;
+    font-weight: 500;
+    color: #334155;
     word-break: break-word;
 }
 
@@ -970,26 +996,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 8px 12px;
-    border-radius: 10px;
+    padding: 7px 12px;
+    border-radius: 8px;
     background: #ffffff;
-    border: 1px solid #cbd5e1;
-    color: #0369a1;
+    border: 1px solid #e2e8f0;
+    color: #334155;
     font-size: 12px;
-    font-weight: 700;
+    font-weight: 600;
     text-decoration: none;
-    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .roaster-att-site-map-btn:hover {
-    background: #f0f9ff;
-    border-color: #7dd3fc;
-}
-
-.roaster-attendance-mark-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
+    background: #f8fafc;
+    border-color: #cbd5e1;
 }
 
 .roaster-attendance-section-head {
@@ -997,182 +1016,145 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .roaster-attendance-section-head h4 {
     margin: 0;
-    font-size: 13px;
-    font-weight: 800;
+    font-size: 12px;
+    font-weight: 650;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #334155;
+    letter-spacing: 0.04em;
+    color: #64748b;
 }
 
 .roaster-attendance-section-head span {
     font-size: 11px;
-    color: #64748b;
-    font-weight: 600;
+    color: #94a3b8;
+    font-weight: 500;
 }
 
 .roaster-attendance-timeline {
     display: flex;
     flex-direction: column;
     gap: 0;
-    padding: 14px;
-    border-radius: 14px;
+    padding: 4px 0 0;
+    border: none;
+    background: transparent;
+}
+
+.roaster-att-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 14px;
     border: 1px solid #e2e8f0;
-    background: #f8fafc;
+    border-bottom: none;
+    background: #ffffff;
 }
 
-.roaster-att-timeline-item {
-    display: grid;
-    grid-template-columns: 28px minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px 0;
+.roaster-att-row:first-of-type {
+    border-radius: 10px 10px 0 0;
 }
 
-.roaster-att-timeline-item + .roaster-att-timeline-item {
-    border-top: 1px dashed #dbe3ee;
+.roaster-att-row:last-of-type {
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 0 0 10px 10px;
 }
 
-.roaster-att-timeline-item__rail {
-    display: flex;
-    justify-content: center;
-    padding-top: 8px;
-}
-
-.roaster-att-timeline-item__dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 999px;
-    border: 3px solid #fff;
-    box-shadow: 0 0 0 1px #cbd5e1;
-}
-
-.roaster-att-timeline-item__dot--in {
-    background: #059669;
-}
-
-.roaster-att-timeline-item__dot--out {
-    background: #0284c7;
-}
-
-.roaster-att-timeline-item--warn .roaster-att-timeline-item__dot--out,
-.roaster-att-timeline-item--warn .roaster-att-timeline-item__dot--in {
-    background: #ea580c;
-}
-
-.roaster-att-timeline-item__body {
+.roaster-att-row__main {
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 4px;
 }
 
-.roaster-att-timeline-item__head {
+.roaster-att-row__label {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 
-.roaster-att-timeline-item__eyebrow {
-    margin: 0 0 2px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #64748b;
-}
-
-.roaster-att-timeline-item__title {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 800;
-    color: #0f172a;
-}
-
-.roaster-att-timeline-item__time {
-    font-size: 30px;
-    line-height: 1;
-    font-weight: 800;
-    color: #0f172a;
-}
-
-.roaster-att-timeline-item__empty {
-    margin: 0;
+.roaster-att-row__kind {
     font-size: 12px;
+    font-weight: 600;
     color: #64748b;
 }
 
-.roaster-att-meter {
+.roaster-att-row__status {
+    font-size: 11px;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+.roaster-att-row__status.is-ok {
+    color: #64748b;
+}
+
+.roaster-att-row__status.is-outside {
+    color: #2563eb;
+}
+
+.roaster-att-row__time {
+    font-size: 20px;
+    font-weight: 650;
+    color: #0f172a;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+}
+
+.roaster-att-row__meta {
     display: flex;
     flex-direction: column;
+    align-items: flex-end;
     gap: 6px;
+    flex: 0 0 auto;
 }
 
-.roaster-att-meter--empty {
+.roaster-att-row__distance {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+    font-variant-numeric: tabular-nums;
+}
+
+.roaster-att-row.is-outside .roaster-att-row__distance {
+    color: #2563eb;
+}
+
+.roaster-att-row__map {
     font-size: 12px;
-    color: #64748b;
+    font-weight: 600;
+    color: #475569;
+    text-decoration: none;
+    border-bottom: 1px solid #cbd5e1;
 }
 
-.roaster-att-meter__track {
-    position: relative;
-    height: 10px;
-    border-radius: 999px;
-    background: #e2e8f0;
-    overflow: hidden;
-}
-
-.roaster-att-meter__fill {
-    height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #22c55e 0%, #16a34a 100%);
-}
-
-.roaster-att-meter--warn .roaster-att-meter__fill {
-    background: linear-gradient(90deg, #fb923c 0%, #ea580c 100%);
-}
-
-.roaster-att-meter__threshold {
-    position: absolute;
-    top: -2px;
-    bottom: -2px;
-    width: 2px;
-    margin-left: -1px;
-    background: #0f172a;
-    opacity: 0.35;
-}
-
-.roaster-att-meter__meta {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-    font-size: 12px;
-    color: #64748b;
-}
-
-.roaster-att-meter__meta strong {
-    font-size: 15px;
+.roaster-att-row__map:hover {
     color: #0f172a;
-}
-
-.roaster-att-meter--warn .roaster-att-meter__meta strong {
-    color: #9a3412;
+    border-color: #94a3b8;
 }
 
 .roaster-attendance-month-table-wrap {
-    padding: 14px;
-    border-radius: 14px;
+    padding: 0;
+    border-radius: 10px;
     border: 1px solid #e2e8f0;
     background: #ffffff;
+    overflow: hidden;
+}
+
+.roaster-attendance-month-table-wrap .roaster-attendance-section-head {
+    padding: 12px 14px 0;
+    margin-bottom: 8px;
 }
 
 .roaster-attendance-month-table-scroll {
     overflow: auto;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid #eef2f7;
 }
 
 .roaster-attendance-month-table {
@@ -1183,7 +1165,7 @@
 
 .roaster-attendance-month-table th,
 .roaster-attendance-month-table td {
-    padding: 10px 12px;
+    padding: 9px 12px;
     text-align: left;
     border-bottom: 1px solid #eef2f7;
     white-space: nowrap;
@@ -1192,10 +1174,10 @@
 .roaster-attendance-month-table th {
     background: #f8fafc;
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 650;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    color: #64748b;
+    color: #94a3b8;
 }
 
 .roaster-attendance-month-table td span {
@@ -1203,130 +1185,28 @@
     margin-top: 2px;
     font-size: 10px;
     color: #94a3b8;
-    font-weight: 600;
+    font-weight: 500;
 }
 
 .roaster-attendance-month-table tr.is-selected td {
-    background: #ecfeff;
-}
-
-.roaster-attendance-month-table td.is-inside {
-    color: #047857;
-    font-weight: 700;
-}
-
-.roaster-attendance-month-table td.is-outside {
-    color: #b45309;
-    font-weight: 800;
-    background: #fff7ed;
-}
-
-.roaster-att-mark-card {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    background: #ffffff;
-    min-height: 168px;
-}
-
-.roaster-att-mark-card--ok {
-    border-color: #86efac;
-    background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
-}
-
-.roaster-att-mark-card--warn {
-    border-color: #fdba74;
-    background: linear-gradient(180deg, #fff7ed 0%, #ffffff 100%);
-}
-
-.roaster-att-mark-card--neutral {
     background: #f8fafc;
 }
 
-.roaster-att-mark-card__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.roaster-att-mark-card__label {
-    font-size: 12px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.roaster-attendance-month-table td.is-inside {
     color: #475569;
+    font-weight: 500;
 }
 
-.roaster-att-status-pill {
-    padding: 4px 8px;
-    border-radius: 999px;
-    font-size: 10px;
-    font-weight: 800;
-    white-space: nowrap;
+.roaster-attendance-month-table td.is-outside {
+    color: #2563eb;
+    font-weight: 600;
+    background: #eff6ff;
 }
 
-.roaster-att-status-pill--ok {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.roaster-att-status-pill--warn {
-    background: #ffedd5;
-    color: #9a3412;
-}
-
-.roaster-att-status-pill--neutral {
-    background: #e2e8f0;
-    color: #475569;
-}
-
-.roaster-att-mark-card__time {
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1;
-    color: #0f172a;
-}
-
-.roaster-att-mark-card__distance {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 12px;
-    color: #64748b;
-}
-
-.roaster-att-mark-card__distance strong {
-    font-size: 16px;
-    color: #0f172a;
-}
-
-.roaster-att-map-link {
-    margin-top: auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: #ffffff;
-    border: 1px solid #cbd5e1;
-    color: #0369a1;
-    font-size: 12px;
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.roaster-att-map-link:hover {
-    background: #f0f9ff;
-    border-color: #7dd3fc;
-}
-
-.roaster-att-map-link--disabled {
-    opacity: 0.65;
-    cursor: default;
+@media (max-width: 900px) {
+    .roaster-attendance-modal {
+        width: min(92vw, 100%);
+    }
 }
 
 @media (max-width: 640px) {
@@ -1335,12 +1215,26 @@
         grid-template-columns: 1fr;
     }
 
-    .roaster-attendance-modal__title {
-        font-size: 19px;
+    .roaster-attendance-summary__item {
+        border-right: none;
+        border-bottom: 1px solid #eef2f7;
     }
 
-    .roaster-att-timeline-item__time {
-        font-size: 24px;
+    .roaster-attendance-summary__item:last-child {
+        border-bottom: none;
+    }
+
+    .roaster-attendance-modal__title {
+        font-size: 16px;
+    }
+
+    .roaster-att-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .roaster-att-row__meta {
+        align-items: flex-start;
     }
 
     .roaster-attendance-section-head {
@@ -1351,13 +1245,13 @@
 }
 
 .roaster-distance-ok {
-    color: #047857;
+    color: #64748b;
     font-weight: 600;
 }
 
 .roaster-distance-warn {
-    color: #b45309;
-    font-weight: 700;
+    color: #2563eb;
+    font-weight: 600;
 }
 
 .location-outside-pill-roaster {

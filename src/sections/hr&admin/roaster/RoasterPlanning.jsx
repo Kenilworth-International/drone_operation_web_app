@@ -13,6 +13,26 @@ import {
   formatAttendanceDistanceDetail,
   isOutsideGeofenceRange,
 } from '../../../utils/hrStatusLabels';
+import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
+
+/** Roster labels: preferred name, then EMP no — never full legal name (matches Employee Assignment). */
+function getRoasterEmployeeLabel(empLike, id) {
+  const preferred = String(empLike?.preferredName || empLike?.preferred_name || '').trim();
+  if (preferred) return preferred;
+  const empNo = String(empLike?.empNo || empLike?.emp_no || '').trim();
+  if (empNo) return empNo;
+  const fromHelper = getEmployeeDisplayName(
+    {
+      preferredName: empLike?.preferredName,
+      preferred_name: empLike?.preferred_name,
+      empNo: empLike?.empNo,
+      emp_no: empLike?.emp_no,
+    },
+    ''
+  );
+  if (fromHelper) return fromHelper;
+  return id != null ? `Employee ${id}` : 'Employee';
+}
 
 const formatDate = (year, month, day) => {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -238,7 +258,10 @@ const RoasterPlanning = ({ embedded = false }) => {
   const [savingBeforeNav, setSavingBeforeNav] = useState(false);
   const saveHelpRef = useRef(null);
   const { data: employeeResponse } = useGetAllEmployeeRegistrationsQuery();
-  const employeesRaw = employeeResponse?.data || employeeResponse?.employees || [];
+  // The query returns a plain array directly; guard against legacy wrapped shapes too.
+  const employeesRaw = Array.isArray(employeeResponse)
+    ? employeeResponse
+    : (Array.isArray(employeeResponse?.data) ? employeeResponse.data : (employeeResponse?.employees || []));
   const {
     data: rosterResponse,
     refetch,
@@ -375,8 +398,10 @@ const RoasterPlanning = ({ embedded = false }) => {
       if (!byEmployee[id]) {
         byEmployee[id] = {
           id,
-          name: entry.preferredName || entry.employeeName || `Employee ${id}`,
-          role: entry.employeeJobRoleName || '-',
+          name: getRoasterEmployeeLabel(entry, id),
+          preferredName: String(entry.preferredName || entry.preferred_name || '').trim(),
+          empNo: String(entry.empNo || entry.emp_no || '').trim(),
+          role: entry.employeeJobRoleName || entry.designation_title || entry.designation || '-',
           workLocation: getEmployeeWorkLocation(entry),
           isBulkLeaveEligible: Number(entry.bulkLeaveAvailable ?? entry.bulk_leave_available ?? 0) === 1,
           leaveDays: [],
@@ -449,21 +474,32 @@ const RoasterPlanning = ({ embedded = false }) => {
       }
     });
 
+    // Primary: all registered employees (with roster data merged in where it exists).
+    const seenIds = new Set();
     const normalized = (employeesRaw || []).map((emp) => {
       const id = Number(emp.id);
+      seenIds.add(id);
+      const empNo = String(emp.empNo || emp.emp_no || '').trim();
+      const preferredName = String(emp.preferredName || emp.preferred_name || '').trim();
+      const role =
+        emp.employeeJobRoleName || emp.designation_title || emp.designation || byEmployee[id]?.role || '-';
       if (byEmployee[id]) {
         return {
           ...byEmployee[id],
-          name: emp.preferredName || emp.employeeName || emp.name || byEmployee[id].name || `Employee ${id}`,
-          role: emp.employeeJobRoleName || emp.designation || byEmployee[id].role || '-',
+          name: getRoasterEmployeeLabel(emp, id),
+          preferredName,
+          empNo,
+          role: role || '-',
           workLocation: getEmployeeWorkLocation(emp) || byEmployee[id].workLocation || '-',
           isBulkLeaveEligible: Number(emp.bulkLeaveAvailable ?? byEmployee[id].isBulkLeaveEligible ?? 0) === 1,
         };
       }
       return {
         id,
-        name: emp.preferredName || emp.employeeName || emp.name || `Employee ${id}`,
-        role: emp.employeeJobRoleName || emp.designation || '-',
+        name: getRoasterEmployeeLabel(emp, id),
+        preferredName,
+        empNo,
+        role: role || '-',
         workLocation: getEmployeeWorkLocation(emp),
         isBulkLeaveEligible: Number(emp.bulkLeaveAvailable ?? 0) === 1,
         leaveDays: [],
@@ -473,10 +509,40 @@ const RoasterPlanning = ({ embedded = false }) => {
       };
     });
 
-    return normalized;
+    // Fallback: employees who appear only in roster/attendance entries but not in the registration list.
+    const rosterOnly = Object.values(byEmployee).filter((row) => !seenIds.has(Number(row.id)));
+
+    return [...normalized, ...rosterOnly];
   }, [employeesRaw, rosterEntries, attendanceRows, leaveRequestRows]);
 
-  const roster = localRoster.length ? localRoster : rosterFromServer;
+  // Prefer live preferredName from employee registration even when a draft localRoster is active.
+  const roster = useMemo(() => {
+    const base = localRoster.length ? localRoster : rosterFromServer;
+    if (!employeesRaw?.length) return base;
+    const byId = new Map(
+      employeesRaw.map((emp) => [Number(emp.id), emp]).filter(([id]) => Number.isFinite(id))
+    );
+    return base.map((row) => {
+      const emp = byId.get(Number(row.id));
+      if (!emp) return row;
+      const preferredName = String(emp.preferredName || emp.preferred_name || '').trim();
+      const empNo = String(emp.empNo || emp.emp_no || row.empNo || '').trim();
+      return {
+        ...row,
+        preferredName,
+        empNo,
+        name: getRoasterEmployeeLabel(emp, row.id),
+        role:
+          emp.employeeJobRoleName
+          || emp.designation_title
+          || emp.designation
+          || row.role
+          || '-',
+        workLocation: getEmployeeWorkLocation(emp) || row.workLocation || '-',
+      };
+    });
+  }, [localRoster, rosterFromServer, employeesRaw]);
+
   const attendanceDetailsByKey = useMemo(() => {
     const map = new Map();
     (attendanceRows || []).forEach((row) => {
@@ -514,12 +580,16 @@ const RoasterPlanning = ({ embedded = false }) => {
       if (!locationMatches) return false;
       if (!normalizedName) return true;
       const employeeName = normalizeFilterText(emp.name);
+      const preferredName = normalizeFilterText(emp.preferredName);
       const employeeRole = normalizeFilterText(emp.role);
       const employeeLocation = normalizeFilterText(emp.workLocation);
+      const employeeEmpNo = normalizeFilterText(emp.empNo || emp.emp_no || '');
       return (
         employeeName.includes(normalizedName) ||
+        preferredName.includes(normalizedName) ||
         employeeRole.includes(normalizedName) ||
-        employeeLocation.includes(normalizedName)
+        employeeLocation.includes(normalizedName) ||
+        (employeeEmpNo && employeeEmpNo.includes(normalizedName))
       );
     });
   }, [designationFilter, workLocationFilter, nameFilter, roster]);
@@ -887,28 +957,6 @@ const RoasterPlanning = ({ embedded = false }) => {
       .filter(Boolean);
   };
 
-  const renderDistanceMeter = (distanceDetail, radiusMeters) => {
-    const distance = Number(String(distanceDetail?.text || '').replace(/[^\d.]/g, ''));
-    if (!Number.isFinite(distance)) {
-      return <div className="roaster-att-meter roaster-att-meter--empty">Distance not recorded</div>;
-    }
-    const outside = distanceDetail?.outsideRange;
-    const fillPct = Math.min(100, Math.round((distance / Math.max(radiusMeters * 2, distance)) * 100));
-    const thresholdPct = 50;
-    return (
-      <div className={`roaster-att-meter${outside ? ' roaster-att-meter--warn' : ' roaster-att-meter--ok'}`}>
-        <div className="roaster-att-meter__track" aria-hidden>
-          <div className="roaster-att-meter__fill" style={{ width: `${fillPct}%` }} />
-          <span className="roaster-att-meter__threshold" style={{ left: `${thresholdPct}%` }} />
-        </div>
-        <div className="roaster-att-meter__meta">
-          <strong>{Math.round(distance)} m</strong>
-          <span>{outside ? `${radiusMeters} m+ · outside range` : `Within ${radiusMeters} m`}</span>
-        </div>
-      </div>
-    );
-  };
-
   const renderAttendanceTimelineEvent = ({
     kind,
     time,
@@ -918,35 +966,32 @@ const RoasterPlanning = ({ embedded = false }) => {
     radiusMeters,
   }) => {
     const hasTime = time && time !== '-';
-    const tone = distanceDetail?.outsideRange ? 'warn' : hasTime ? 'ok' : 'neutral';
+    const outside = Boolean(distanceDetail?.outsideRange);
+    const distanceText = distanceDetail?.text && distanceDetail.text !== '-'
+      ? distanceDetail.text
+      : null;
     return (
-      <article className={`roaster-att-timeline-item roaster-att-timeline-item--${kind} roaster-att-timeline-item--${tone}`}>
-        <div className="roaster-att-timeline-item__rail" aria-hidden>
-          <span className={`roaster-att-timeline-item__dot roaster-att-timeline-item__dot--${kind}`} />
-        </div>
-        <div className="roaster-att-timeline-item__body">
-          <div className="roaster-att-timeline-item__head">
-            <div>
-              <p className="roaster-att-timeline-item__eyebrow">{kind === 'in' ? 'Arrival' : 'Departure'}</p>
-              <h4 className="roaster-att-timeline-item__title">{kind === 'in' ? 'Mark in' : 'Mark out'}</h4>
-            </div>
-            <span className={`roaster-att-status-pill roaster-att-status-pill--${tone}`}>
-              {hasTime ? validLabel : 'Not recorded'}
+      <div className={`roaster-att-row${outside ? ' is-outside' : ''}`}>
+        <div className="roaster-att-row__main">
+          <div className="roaster-att-row__label">
+            <span className="roaster-att-row__kind">{kind === 'in' ? 'Mark in' : 'Mark out'}</span>
+            <span className={`roaster-att-row__status${outside ? ' is-outside' : hasTime ? ' is-ok' : ''}`}>
+              {hasTime ? (outside ? `Outside ${radiusMeters} m` : validLabel) : 'Not recorded'}
             </span>
           </div>
-          <div className="roaster-att-timeline-item__time">{hasTime ? time : '—'}</div>
-          {hasTime ? renderDistanceMeter(distanceDetail, radiusMeters) : (
-            <p className="roaster-att-timeline-item__empty">No location data for this event.</p>
-          )}
+          <div className="roaster-att-row__time">{hasTime ? time : '—'}</div>
+        </div>
+        <div className="roaster-att-row__meta">
+          <span className="roaster-att-row__distance">
+            {hasTime && distanceText ? distanceText : 'No location'}
+          </span>
           {mapUrl ? (
-            <a className="roaster-att-map-link" href={mapUrl} target="_blank" rel="noreferrer">
-              Open GPS on map
+            <a className="roaster-att-row__map" href={mapUrl} target="_blank" rel="noreferrer">
+              Map
             </a>
-          ) : hasTime ? (
-            <span className="roaster-att-map-link roaster-att-map-link--disabled">GPS map unavailable</span>
           ) : null}
         </div>
-      </article>
+      </div>
     );
   };
 
@@ -1125,7 +1170,7 @@ const RoasterPlanning = ({ embedded = false }) => {
                   onClick={() => handleExportEmployee(employee)}
                   title="Download this employee daily Excel"
                 >
-                  {employee.name}
+                  {employee.preferredName || employee.empNo || employee.name}
                 </button>
                 <small className="employee-role-roaster">{employee.role}</small>
                 {employee.workLocation && employee.workLocation !== '-' ? (
@@ -1341,8 +1386,8 @@ const RoasterPlanning = ({ embedded = false }) => {
             {attendancePopup.detail ? (
               <div className="roaster-attendance-modal__body">
                 {attendancePopup.detail.locationIssue ? (
-                  <div className="roaster-attendance-alert roaster-attendance-alert--warn">
-                    One or more marks were recorded outside the {attendancePopup.detail.geofenceRadiusMeters} m office range.
+                  <div className="roaster-attendance-alert">
+                    One or more marks were outside the {attendancePopup.detail.geofenceRadiusMeters} m office range.
                   </div>
                 ) : null}
 
@@ -1355,7 +1400,7 @@ const RoasterPlanning = ({ embedded = false }) => {
                     <span className="roaster-attendance-summary__label">Mark out</span>
                     <span className="roaster-attendance-summary__value">{attendancePopup.detail.markOut}</span>
                   </div>
-                  <div className="roaster-attendance-summary__item roaster-attendance-summary__item--accent">
+                  <div className="roaster-attendance-summary__item">
                     <span className="roaster-attendance-summary__label">Worked</span>
                     <span className="roaster-attendance-summary__value">{attendancePopup.detail.workedHours}</span>
                     {attendancePopup.detail.workingMinutes != null ? (
@@ -1366,8 +1411,8 @@ const RoasterPlanning = ({ embedded = false }) => {
 
                 <section className="roaster-attendance-timeline">
                   <div className="roaster-attendance-section-head">
-                    <h4>Mark in &amp; mark out</h4>
-                    <span>Allowed range {attendancePopup.detail.geofenceRadiusMeters} m from office</span>
+                    <h4>Check-in details</h4>
+                    <span>Range {attendancePopup.detail.geofenceRadiusMeters} m</span>
                   </div>
                   {renderAttendanceTimelineEvent({
                     kind: 'in',
@@ -1393,17 +1438,17 @@ const RoasterPlanning = ({ embedded = false }) => {
                   return (
                     <section className="roaster-attendance-month-table-wrap">
                       <div className="roaster-attendance-section-head">
-                        <h4>Location distance this month</h4>
-                        <span>Red = {attendancePopup.detail.geofenceRadiusMeters} m+ from office</span>
+                        <h4>This month</h4>
+                        <span>Blue = outside {attendancePopup.detail.geofenceRadiusMeters} m</span>
                       </div>
                       <div className="roaster-attendance-month-table-scroll">
                         <table className="roaster-attendance-month-table">
                           <thead>
                             <tr>
                               <th>Day</th>
-                              <th>Mark in</th>
+                              <th>In</th>
                               <th>In dist.</th>
-                              <th>Mark out</th>
+                              <th>Out</th>
                               <th>Out dist.</th>
                             </tr>
                           </thead>
@@ -1436,18 +1481,18 @@ const RoasterPlanning = ({ embedded = false }) => {
 
                 <section className="roaster-attendance-site-card">
                   <div className="roaster-attendance-site-card__head">
-                    <h4>Assigned work location</h4>
+                    <h4>Work location</h4>
                     <span className="roaster-attendance-site-card__code">{attendancePopup.detail.workLocationCode}</span>
                   </div>
                   <p className="roaster-attendance-site-card__name">{attendancePopup.detail.workLocationName}</p>
                   <dl className="roaster-attendance-meta-grid">
                     <div>
-                      <dt>Office coordinates</dt>
+                      <dt>Coordinates</dt>
                       <dd>{attendancePopup.detail.workLocationCoords}</dd>
                     </div>
                     <div>
                       <dt>Allowed range</dt>
-                      <dd>{attendancePopup.detail.geofenceRadiusMeters} metres</dd>
+                      <dd>{attendancePopup.detail.geofenceRadiusMeters} m</dd>
                     </div>
                   </dl>
                   {attendancePopup.detail.workLocationMapUrl ? (
@@ -1457,14 +1502,14 @@ const RoasterPlanning = ({ embedded = false }) => {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      Open office on map
+                      Open office map
                     </a>
                   ) : null}
                 </section>
               </div>
             ) : (
               <div className="roaster-attendance-modal__empty">
-                <p>No attendance details are available for this day.</p>
+                <p>No attendance details for this day.</p>
               </div>
             )}
           </div>
