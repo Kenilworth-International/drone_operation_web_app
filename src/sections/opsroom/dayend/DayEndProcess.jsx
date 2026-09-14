@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import '../../../styles/dayendprocess.css';
-import { FaCalendarAlt, FaRegArrowAltCircleRight, FaArrowCircleDown, FaArrowCircleUp, FaCheck, FaTimes, FaMinus } from 'react-icons/fa';
+import { FaCalendarAlt, FaArrowCircleDown, FaArrowCircleUp, FaCheck, FaTimes, FaMinus } from 'react-icons/fa';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Bars } from 'react-loader-spinner';
@@ -101,9 +101,24 @@ const DayEndProcess = () => {
   const { data: allDjiImagesData } = useGetAllDjiImagesQuery({ date: selectedDateStr });
   const allDjiImages = allDjiImagesData?.data || [];
 
-  // Separate linked and unlinked images
-  const unlinkedDjiImages = allDjiImages.filter(img => !img.linked_task || img.linked_task === 0);
-  const linkedDjiImages = allDjiImages.filter(img => img.linked_task && img.linked_task !== 0);
+  // Only images for the field currently open in the DJI popup
+  const fieldScopedDjiImages = useMemo(() => {
+    const targetFieldId = Number(currentField?.field_id || currentTask?.field_id || 0);
+    if (!targetFieldId) return allDjiImages;
+    const targetName = String(currentField?.field_name || '').trim().toLowerCase();
+    return allDjiImages.filter((img) => {
+      if (Number(img.field_id) === targetFieldId) return true;
+      if (!targetName) return false;
+      return String(img.field_name || '').trim().toLowerCase() === targetName;
+    });
+  }, [allDjiImages, currentField?.field_id, currentField?.field_name, currentTask?.field_id]);
+
+  const unlinkedDjiImages = fieldScopedDjiImages.filter(
+    (img) => !img.linked_task || img.linked_task === 0
+  );
+  const linkedDjiImages = fieldScopedDjiImages.filter(
+    (img) => img.linked_task && img.linked_task !== 0
+  );
 
   const [fetchDayOverview] = useLazyGetDayOverviewQuery();
   const [fetchPlanSummary] = useLazyGetDayEndPlanSummaryQuery();
@@ -462,9 +477,46 @@ const DayEndProcess = () => {
       const summaryResult = await fetchPlanSummary(missionId);
       const response = summaryResult.data;
       if (response) {
-        setSelectedMission({ ...response, id: missionId });
-        // Fetch cancel status for all tasks in this plan
+        const mission = { ...response, id: missionId };
+        setSelectedMission(mission);
         fetchCancelStatus(missionId);
+
+        // Load every field's tasks immediately so the viewer can show all task cards
+        const fields = (mission.divisions || []).flatMap((d) => d.checkedFields || []);
+        if (fields.length > 0) {
+          const results = await Promise.all(
+            fields.map(async (field) => {
+              try {
+                const taskResult = await fetchTasksByPlanAndField(
+                  { planId: missionId, fieldId: field.field_id },
+                  true
+                );
+                const tasks = (taskResult.data?.tasks || []).map((task) => ({
+                  ...task,
+                  task_image: task.task_image ? `${task.task_image}?${Date.now()}` : null,
+                  dji_image: task.dji_image ? `${task.dji_image}?${Date.now()}` : null,
+                  expanded: true,
+                  _field: field,
+                  _divisionId: null,
+                }));
+                return { fieldId: field.field_id, tasks, field };
+              } catch (err) {
+                console.error(`Error fetching tasks for field ${field.field_id}:`, err);
+                return { fieldId: field.field_id, tasks: [], field };
+              }
+            })
+          );
+
+          const nextFieldTasks = {};
+          results.forEach(({ fieldId, tasks }) => {
+            nextFieldTasks[fieldId] = {
+              tasks,
+              field_id: fieldId,
+              mission_id: missionId,
+            };
+          });
+          setFieldTasks(nextFieldTasks);
+        }
       } else {
         setSelectedMission(null);
       }
@@ -857,19 +909,69 @@ const DayEndProcess = () => {
     // eslint-disable-next-line
   }, [showReportPopup, currentTask, showTaskPopup]);
 
+  // ── helpers ──────────────────────────────────────────────────
+  const getPlanRowClass = (mission) => {
+    if (mission.activated === 0) return 'dep-plan-row--cancelled';
+    if (mission.team_assigned === 0) return 'dep-plan-row--noteam';
+    if (mission.completed === 1) return 'dep-plan-row--completed';
+    return 'dep-plan-row--pending';
+  };
+  const getPlanStatusDotClass = (mission) => {
+    if (mission.activated === 0) return 'dep-plan-row-status--cancelled';
+    if (mission.team_assigned === 0) return 'dep-plan-row-status--noteam';
+    if (mission.completed === 1) return 'dep-plan-row-status--completed';
+    return 'dep-plan-row-status--pending';
+  };
+  const getTaskChipClass = (statusText) => {
+    if (!statusText) return 'dep-task-chip--default';
+    const s = statusText.toLowerCase();
+    if (s === 'complete' || s === 'completed') return 'dep-task-chip--complete';
+    if (s === 'cancel' || s === 'cancelled') return 'dep-task-chip--cancel';
+    if (s === 'pending') return 'dep-task-chip--pending';
+    return 'dep-task-chip--default';
+  };
+
+  const sortedMissions = useMemo(() => [...missions].sort((a, b) => {
+    if (a.activated === 0 && b.activated !== 0) return 1;
+    if (a.activated !== 0 && b.activated === 0) return -1;
+    if (a.team_assigned !== 0 && b.team_assigned === 0) return -1;
+    if (a.team_assigned === 0 && b.team_assigned !== 0) return 1;
+    if (a.total_sub_task_ops_room_pending_subs !== 0 && b.total_sub_task_ops_room_pending_subs === 0) return -1;
+    if (a.total_sub_task_ops_room_pending_subs === 0 && b.total_sub_task_ops_room_pending_subs !== 0) return 1;
+    if (a.total_sub_task_ops_room_rejected_subs !== 0 && b.total_sub_task_ops_room_rejected_subs === 0) return -1;
+    if (a.total_sub_task_ops_room_rejected_subs === 0 && b.total_sub_task_ops_room_rejected_subs !== 0) return 1;
+    return a.id - b.id;
+  }), [missions]);
+
+  const pendingCount = missions.filter(m => m.activated !== 0 && m.team_assigned !== 0 && m.completed !== 1).length;
+  const doneCount    = missions.filter(m => m.completed === 1).length;
+
   return (
     <div className="dayendprocess">
-      <div className="dayendprocess-header">
+
+      {/* ══ HEADER BAR (dark navy) ══════════════════════════════════ */}
+      <div className="dep-hdr">
         <button
-          className="dayendprocess-back-btn"
+          className="dep-hdr-back"
           onClick={() => navigate({ pathname: '/home/workflowDashboard', search: routerLocation.search })}
-          title="Go back to Workflow Dashboard"
+          title="Back to Workflow Dashboard"
         >
-          <span className="back-btn-icon-dayend">←</span>
+          ←
         </button>
-        <h1 className="dayendprocess-title">Day End Process</h1>
-        <div className="date-area-dayendprocess-header">
-          <label>Plan Date: </label>
+        <h1 className="dep-hdr-title">Day End Process</h1>
+
+        {/* Plan count summary */}
+        {missions.length > 0 && (
+          <div className="dep-hdr-badge">
+            <span className="dep-hdr-badge-pill dep-hdr-badge-pill--total">{missions.length} Plans</span>
+            {pendingCount > 0 && <span className="dep-hdr-badge-pill dep-hdr-badge-pill--pending">{pendingCount} Pending</span>}
+            {doneCount > 0 && <span className="dep-hdr-badge-pill dep-hdr-badge-pill--done">{doneCount} Done</span>}
+          </div>
+        )}
+
+        {/* Date picker */}
+        <div className="dep-hdr-date">
+          <label>Date</label>
           <DatePicker
             selected={selectedDate}
             onChange={handleDateChange}
@@ -878,291 +980,473 @@ const DayEndProcess = () => {
           />
         </div>
       </div>
-      <div className="dayendprocess-content">
-        <div className="left-dayend">
-          <div className="dayendprocess-missions-list">
-            {loadingMissions ? (
-              <Bars height="50" width="50" color="#004B71" ariaLabel="loading" />
-            ) : (
-              [...missions]
-                .sort((a, b) => {
-                  // Missions with activated === 0 go to the end
-                  if (a.activated === 0 && b.activated !== 0) return 1;
-                  if (a.activated !== 0 && b.activated === 0) return -1;
-                  // Missions with team_assigned === 0 go before activated === 0 but after others
-                  if (a.team_assigned !== 0 && b.team_assigned === 0) return -1;
-                  if (a.team_assigned === 0 && b.team_assigned !== 0) return 1;
-                  // Missions with pending subs (total_sub_task_ops_room_pending_subs !== 0) go first
-                  if (a.total_sub_task_ops_room_pending_subs !== 0 && b.total_sub_task_ops_room_pending_subs === 0) return -1;
-                  if (a.total_sub_task_ops_room_pending_subs === 0 && b.total_sub_task_ops_room_pending_subs !== 0) return 1;
 
-                  // Missions with rejected subs (total_sub_task_ops_room_rejected_subs !== 0) go next
-                  if (a.total_sub_task_ops_room_rejected_subs !== 0 && b.total_sub_task_ops_room_rejected_subs === 0) return -1;
-                  if (a.total_sub_task_ops_room_rejected_subs === 0 && b.total_sub_task_ops_room_rejected_subs !== 0) return 1;
+      {/* ══ MAIN BODY ════════════════════════════════════════════════ */}
+      <div className="dep-body">
 
-                  // For the rest, maintain original order or sort by another criterion (e.g., id)
-                  return a.id - b.id;
-                })
-                .map((mission) => (
-                  <div
-                    key={mission.id}
-                    className={`dayendprocess-mission-container ${mission.activated === 0
-                      ? 'mission-canceled-byops'
-                      : mission.team_assigned === 0
-                        ? 'team-not-assigned'
-                        : mission.completed === 1
-                          ? 'completed-mission'
-                          : 'incomplete-mission'
-                      } ${selectedMissionId === mission.id ? 'clicked-one' : ''}`}
-                    onClick={() => handleContainerClick(mission.id)}
-                  >
-                    <div className="mission-container-left">
-                      <p><strong>{mission.group} - ({mission.id})</strong> </p>
-                      <p><strong>Ops Assignment: </strong>{mission.operator_name && mission.operator_name.trim() !== '' ? mission.operator_name : 'Not Assigned'}</p>
-                      {mission.completionStats && mission.completionStats.totalFields > 0 && (
-                        <div className="ops-completion-stats-dayend">
-                          <span className="ops-completion-label-dayend">OPS Completed - {mission.completionStats.completionPercentage}%</span>
-                          <span className="ops-completion-detail-dayend">
-                            ({mission.completionStats.completedFields}/{mission.completionStats.totalFields})
-                          </span>
-                        </div>
-                      )}
-                      {showDirOpsApprovalFeature && (
-                        <div className="completion-checkbox" onClick={(e) => e.stopPropagation()}>
-                          <label className="dir-opstext">
-                            Dir-Ops Approval
-                            <input
-                              type="checkbox"
-                              checked={mission.completed === 1}
-                              disabled={
-                                !showDirOpsApprovalFeature ||
-                                mission.activated === 0 ||
-                                mission.team_assigned === 0
-                              }
-                              onChange={async (e) => {
-                                if (!showDirOpsApprovalFeature) {
-                                  toast.error("You don't have permission to modify Dir-Ops approvals");
-                                  return;
-                                }
-                                const newStatus = e.target.checked ? 1 : 0;
-                                try {
-                                  const updatedMissions = missions.map((m) =>
-                                    m.id === mission.id ? { ...m, completed: newStatus } : m
-                                  );
-                                  setMissions(updatedMissions);
-                                  const response = await updateOpsApproval({
-                                    planId: mission.id,
-                                    status: newStatus,
-                                  }).unwrap();
-                                  if (response.status === 'true' || response.success === true) {
-                                    toast.success('Status updated successfully');
-                                    await handleDateChange(selectedDate);
-                                  } else {
-                                    setMissions(missions);
-                                    toast.error(response.message || 'Update failed');
-                                  }
-                                } catch (error) {
-                                  console.error('Update error:', error);
-                                  setMissions(missions);
-                                  toast.error('Failed to update status');
-                                }
-                              }}
-                            />
-                          </label>
-                        </div>
-                      )}
-                      {mission.activated === 0 && (
-                        <div className="deactivate_alert">Deactivated Plan</div>
-                      )}
-                      {mission.team_assigned === 0 && (
-                        <div className="deactivate_alert">Team Not Assigned</div>
-                      )}
-                    </div>
-                    <div className="mission-container-right">
-                      <FaRegArrowAltCircleRight />
-                    </div>
-                  </div>
-                ))
+        {/* ── LEFT: PLAN SELECTOR ─────────────────────────────────── */}
+        <div className="dep-plans">
+          <div className="dep-plans-hdr">
+            <span className="dep-plans-hdr-label">Plans</span>
+            {missions.length > 0 && (
+              <span className="dep-plans-hdr-count">{missions.length}</span>
             )}
           </div>
-        </div>
-        <div className="right-dayend">
-          {loadingMissionDetails && (
-            <Bars height="50" width="50" color="#004B71" ariaLabel="loading" />
-          )}
-          {(!loadingMissionDetails && selectedMission) ? (
-            <div className="mission-details-container">
-              <h3>
-                {selectedMission?.estateName ?? 'Unknown Estate'} - {calculateTotalExtent()} Ha
-              </h3>
-              {selectedMission.divisions && selectedMission.divisions.length > 0 ? (
-                selectedMission.divisions.map((division) => (
-                  <div key={division.divisionId} className="division-container">
+
+          <div className="dep-plans-list">
+            {loadingMissions ? (
+              <div className="dep-plans-loading">
+                <Bars height="36" width="36" color="#2563eb" ariaLabel="loading" />
+              </div>
+            ) : sortedMissions.length === 0 ? (
+              <div className="dep-plans-empty">
+                <div className="dep-plans-empty-icon">📋</div>
+                <div className="dep-plans-empty-title">No plans found</div>
+                <div className="dep-plans-empty-hint">
+                  No missions for {selectedDate.toLocaleDateString('en-CA')}. Try another date.
+                </div>
+              </div>
+            ) : (
+              sortedMissions.map((mission) => {
+                const isSelected = selectedMissionId === mission.id;
+                const isDeactivated = mission.activated === 0;
+                const isNoTeam = mission.team_assigned === 0;
+                const disableToggle = !showDirOpsApprovalFeature || isDeactivated || isNoTeam;
+                const pct = mission.completionStats?.completionPercentage ?? 0;
+
+                return (
+                  <div
+                    key={mission.id}
+                    className={`dep-plan-card ${getPlanRowClass(mission)} ${isSelected ? 'dep-plan-row--selected' : ''}`}
+                  >
                     <div
-                      className="division-header"
-                      onClick={() => toggleDivision(division.divisionId)}
+                      className="dep-plan-row"
+                      title={`${mission.group} — Plan #${mission.id}`}
+                      onClick={() => handleContainerClick(mission.id)}
                     >
-                      <span>{division.divisionName}</span>
-                      <span className="division-total-dayend">
-                        {division.checkedFields
-                          .reduce((sum, field) => sum + (parseFloat(field.field_area) || 0), 0)
-                          .toFixed(2)} Ha
-                        {expandedDivisions.includes(division.divisionId) ? (
-                          <FaArrowCircleUp className="toggle-icon" />
-                        ) : (
-                          <FaArrowCircleDown className="toggle-icon" />
-                        )}
-                      </span>
-                    </div>
-                    {expandedDivisions.includes(division.divisionId) && (
-                      <div className="fields-list">
-                        {division.checkedFields.map((field) => (
-                          <div
-                            key={field.field_id}
-                            className={`field-item ${field.field_pilots?.status === 'false' ? 'field-pilot-warning' : ''}`}
-                          >
-                            <div
-                              className="field-header"
-                              onClick={() => handleFieldClick(field.field_id)}
-                            >
-                              <span>
-                                <span
-                                  style={{
-                                    color: field.activated ? '#4CAF50' : '#f44336',
-                                    fontSize: '25px',
-                                  }}
-                                  title={field.activated ? 'Active Field' : 'Inactive Field'}
-                                >
-                                  ●
-                                </span>
-                                {field.field_name} - ({field.field_id})
+                      <div className="dep-plan-row-info">
+                        <div className="dep-plan-row-name">{mission.group}</div>
+                        <div className="dep-plan-row-meta">
+                          <span className="dep-plan-row-id">#{mission.id}</span>
+                          <span className="dep-plan-row-op">
+                            {mission.operator_name?.trim() || 'No operator'}
+                          </span>
+                        </div>
+                        {(isDeactivated || isNoTeam) && (
+                          <div className="dep-plan-alerts">
+                            {isDeactivated && (
+                              <span className="dep-plan-alert dep-plan-alert--deactivated">
+                                Deactivated plan
                               </span>
-                              <span>
-                                {field.field_pilots?.status === 'false' && (
-                                  <span className="warning-badge">⚠️ No Pilot Assigned</span>
-                                )}
-                                {field.field_area} Ha
-                                {loadingFields[field.field_id] ? (
-                                  <Bars height="20" width="20" color="#004B71" />
-                                ) : expandedFields.includes(field.field_id) ? (
-                                  <FaArrowCircleUp className="toggle-icon" />
-                                ) : (
-                                  <FaArrowCircleDown className="toggle-icon" />
-                                )}
+                            )}
+                            {isNoTeam && !isDeactivated && (
+                              <span className="dep-plan-alert dep-plan-alert--noteam">
+                                Team not assigned
                               </span>
-                            </div>
-                            {expandedFields.includes(field.field_id) && (
-                              <div className="field-tasks-container">
-                                {(fieldTasks[field.field_id]?.tasks || []).map((task, taskIndex) => (
-                                  <div key={`task-${task.task_id}-${taskIndex}`} className="task-details-dayend">
-                                    <div
-                                      className={`task-header ${(taskCancelStatusMap[task.task_id]?.pilot_cancel_id || taskCancelStatusMap[task.task_id]?.ops_cancel_id) ? 'task-header-cancelled' : ''}`}
-                                      style={{
-                                        backgroundColor: (taskCancelStatusMap[task.task_id]?.pilot_cancel_id || taskCancelStatusMap[task.task_id]?.ops_cancel_id) ? '#ffebee' : getStatusBackground(task.task_status_text),
-                                        transition: 'all 0.3s ease',
-                                      }}
-                                      onClick={() => toggleTaskExpansion(field.field_id, taskIndex)}
-                                    >
-                                      <h4>
-                                        Task {taskIndex + 1} : {task.drone_tag} - {task.pilot}
-                                        {taskCancelStatusMap[task.task_id]?.pilot_cancel_id > 0 && (
-                                          <span className="cancelled-badge cancelled-badge-pilot">Pilot Cancelled</span>
-                                        )}
-                                        {taskCancelStatusMap[task.task_id]?.ops_cancel_id > 0 && (
-                                          <span className="cancelled-badge cancelled-badge-ops">Ops Cancelled</span>
-                                        )}
-                                      </h4>
-                                      {task.expanded ? <FaArrowCircleUp /> : <FaArrowCircleDown />}
-                                    </div>
-                                    {task.expanded && (
-                                      <div className="tasks-all">
-                                        <div className="task-content">
-                                          <div className="task-content-left">
-                                            <div className="task-text">
-                                              <p>Task ID: {task.task_id}</p>
-                                              <p>Field Area: {parseFloat(task.task_fieldArea || 0).toFixed(2)} Ha</p>
-                                              <p>Sprayed Area: {parseFloat(task.task_sprayedArea || 0).toFixed(2)}</p>
-                                              <p>Obstacle Area: {parseFloat(task.task_obstacleArea || 0).toFixed(2)}</p>
-                                            </div>
-                                            <div className="task-text">
-                                              <p>Margin Area: {parseFloat(task.task_marginArea || 0).toFixed(2)}</p>
-                                              <p>Liters Used: {parseFloat(task.task_sprayedLiters || 0).toFixed(2)}</p>
-                                              <p>Status: {task.task_status_text}</p>
-                                              <p>Pilot: {task.pilot}</p>
-                                              <p>Drone: {task.drone_tag}</p>
-                                            </div>
-                                          </div>
-                                          <div className="task-image-container">
-                                            <img
-                                              src={task.task_image || '/assets/images/no-plan-found.png'}
-                                              alt="Field task"
-                                              className="task-image"
-                                              onClick={() => openImage(task.task_image)}
-                                            />
-                                          </div>
-                                        </div>
-                                        {/* Show pilot cancel reason */}
-                                        {taskCancelStatusMap[task.task_id]?.pilot_cancel_id > 0 && (
-                                          <div className="cancel-reason-display cancel-reason-pilot">
-                                            <span className="cancel-reason-label">Pilot Cancel:</span>
-                                            <span className="cancel-reason-value">
-                                              {taskCancelStatusMap[task.task_id].pilot_cancel_reason || 'Unknown'}
-                                            </span>
-                                          </div>
-                                        )}
-                                        {/* Show ops room cancel reason */}
-                                        {taskCancelStatusMap[task.task_id]?.ops_cancel_id > 0 && (
-                                          <div className="cancel-reason-display cancel-reason-ops">
-                                            <span className="cancel-reason-label">Ops Cancel:</span>
-                                            <span className="cancel-reason-value">
-                                              {taskCancelStatusMap[task.task_id].ops_cancel_reason || 'Unknown'}
-                                            </span>
-                                          </div>
-                                        )}
-                                        <div className="button-set-dayend">
-                                          <button
-                                            className="confirm-button-dayend"
-                                            onClick={() => handleTaskApproveClick(field.field_id, task)}
-                                            disabled={taskLoading === task.task_id}
-                                          >
-                                            {taskLoading === task.task_id ? 'Loading...' : 'Task'}
-                                          </button>
-                                          <button
-                                            className={`cancel-button-dayend ${Number(taskCancelStatusMap[task.task_id]?.ops_cancel_id) > 0 ? 'cancel-button-edit' : ''}`}
-                                            onClick={() => handleCancelTaskClick(field.field_id, task)}
-                                          >
-                                            {Number(taskCancelStatusMap[task.task_id]?.ops_cancel_id) > 0
-                                              ? 'Edit Cancel Reason'
-                                              : 'Cancel Task'}
-                                          </button>
-                                          {taskCancelStatusMap[task.task_id]?.pilot_cancel_id > 0 && (
-                                            <button
-                                              className="reset-button-dayend"
-                                              onClick={() => handleResetPilotCancel(field.field_id, task)}
-                                              title="Reset pilot cancel status"
-                                            >
-                                              Pilot Cancel Reset
-                                            </button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
+                            )}
+                            {isNoTeam && isDeactivated && (
+                              <span className="dep-plan-alert dep-plan-alert--noteam">
+                                Team not assigned
+                              </span>
                             )}
                           </div>
-                        ))}
+                        )}
+                      </div>
+                      {isDeactivated ? (
+                        <span className="dep-plan-state-tag dep-plan-state-tag--off">OFF</span>
+                      ) : isNoTeam ? (
+                        <span className="dep-plan-state-tag dep-plan-state-tag--noteam">NO TEAM</span>
+                      ) : (
+                        <span className={`dep-plan-row-status ${getPlanStatusDotClass(mission)}`} />
+                      )}
+                    </div>
+
+                    {mission.completionStats?.totalFields > 0 && (
+                      <div className="dep-plan-ops" onClick={() => handleContainerClick(mission.id)}>
+                        <div className="dep-plan-ops-row">
+                          <span className="dep-plan-ops-label">OPS Completion</span>
+                          <span className="dep-plan-ops-pct">
+                            {pct}% ({mission.completionStats.completedFields}/{mission.completionStats.totalFields})
+                          </span>
+                        </div>
+                        <div className="dep-plan-ops-bg">
+                          <div
+                            className={`dep-plan-ops-fill ${pct >= 100 ? 'dep-plan-ops-fill--done' : ''}`}
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {showDirOpsApprovalFeature && (
+                      <div className="dep-plan-dirops" onClick={(e) => e.stopPropagation()}>
+                        <span className="dep-plan-dirops-label">
+                          Dir-Ops Approval
+                          {disableToggle && (
+                            <span className="dep-plan-dirops-blocked">
+                              {isDeactivated ? ' — blocked (deactivated)' : ' — blocked (no team)'}
+                            </span>
+                          )}
+                        </span>
+                        <label
+                          className="dep-sw"
+                          title={
+                            isDeactivated
+                              ? 'Cannot approve: plan is deactivated'
+                              : isNoTeam
+                                ? 'Cannot approve: team not assigned'
+                                : ''
+                          }
+                        >
+                          <input
+                            type="checkbox"
+                            checked={mission.completed === 1}
+                            disabled={disableToggle}
+                            onChange={async (e) => {
+                              if (!showDirOpsApprovalFeature) {
+                                toast.error("You don't have permission to modify Dir-Ops approvals");
+                                return;
+                              }
+                              const newStatus = e.target.checked ? 1 : 0;
+                              try {
+                                setMissions(missions.map((m) =>
+                                  m.id === mission.id ? { ...m, completed: newStatus } : m
+                                ));
+                                const response = await updateOpsApproval({ planId: mission.id, status: newStatus }).unwrap();
+                                if (response.status === 'true' || response.success === true) {
+                                  toast.success('Status updated successfully');
+                                  await handleDateChange(selectedDate);
+                                } else {
+                                  setMissions(missions);
+                                  toast.error(response.message || 'Update failed');
+                                }
+                              } catch (error) {
+                                console.error('Update error:', error);
+                                setMissions(missions);
+                                toast.error('Failed to update status');
+                              }
+                            }}
+                          />
+                          <span className="dep-sw-track">
+                            <span className="dep-sw-thumb" />
+                          </span>
+                        </label>
                       </div>
                     )}
                   </div>
-                ))
-              ) : (
-                <div className="placeholder-text">Select a mission to view details</div>
-              )}
-            </div>
-          ) : null}
+                );
+              })
+            )}
+          </div>
         </div>
+
+        {/* ── RIGHT: PLAN VIEWER ──────────────────────────────────── */}
+        <div className="dep-viewer">
+
+          {/* Loading */}
+          {loadingMissionDetails && (
+            <div className="dep-viewer-loading">
+              <Bars height="44" width="44" color="#2563eb" ariaLabel="loading" />
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loadingMissionDetails && !selectedMission && (
+            <div className="dep-viewer-empty">
+              <div className="dep-viewer-empty-icon">🗺</div>
+              <div className="dep-viewer-empty-title">Select a plan</div>
+              <div className="dep-viewer-empty-hint">
+                Click any plan from the left panel to view its fields and tasks here.
+              </div>
+            </div>
+          )}
+
+          {/* Plan viewer */}
+          {!loadingMissionDetails && selectedMission && (
+            <>
+              {/* ── Plan Hero (dark stats bar) ─────────────────────── */}
+              <div className="dep-hero">
+                <span className="dep-hero-name">
+                  {selectedMission?.estateName ?? 'Unknown Estate'}
+                </span>
+                <div className="dep-hero-stats">
+                  <div className="dep-hero-stat">
+                    <span className="dep-hero-stat-value">{calculateTotalExtent()} Ha</span>
+                    <span className="dep-hero-stat-label">Total Area</span>
+                  </div>
+                  {selectedMission.completionStats && (
+                    <div className="dep-hero-ops">
+                      <div className="dep-hero-ops-top">
+                        <span className="dep-hero-ops-label">OPS</span>
+                        <span className="dep-hero-ops-pct">{selectedMission.completionStats.completionPercentage ?? 0}%</span>
+                      </div>
+                      <div className="dep-hero-ops-bg">
+                        <div
+                          className="dep-hero-ops-fill"
+                          style={{ width: `${Math.min(selectedMission.completionStats.completionPercentage ?? 0, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                  <div className="dep-hero-stat">
+                    <span className="dep-hero-stat-value">
+                      {selectedMission.divisions?.reduce((acc, d) => acc + d.checkedFields.length, 0) ?? 0}
+                    </span>
+                    <span className="dep-hero-stat-label">Fields</span>
+                  </div>
+                  <div className="dep-hero-stat">
+                    <span className="dep-hero-stat-value">{selectedMission.divisions?.length ?? 0}</span>
+                    <span className="dep-hero-stat-label">Divisions</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Division task cards ────────────────────────────── */}
+              <div className="dep-tree-wrap">
+                {selectedMission.divisions && selectedMission.divisions.length > 0 ? (
+                  selectedMission.divisions.map((division) => {
+                    const divisionTasks = (division.checkedFields || []).flatMap((field) => {
+                      const tasks = fieldTasks[field.field_id]?.tasks || [];
+                      return tasks.map((task, taskIndex) => ({
+                        task,
+                        taskIndex,
+                        field,
+                      }));
+                    });
+                    const divisionHa = (division.checkedFields || [])
+                      .reduce((s, f) => s + (parseFloat(f.field_area) || 0), 0)
+                      .toFixed(2);
+
+                    return (
+                      <section key={division.divisionId} className="dep-div-section">
+                        <div className="dep-div-banner">
+                          <span className="dep-div-name">{division.divisionName}</span>
+                          <div className="dep-div-meta">
+                            <span className="dep-div-ha">{divisionHa} Ha</span>
+                            <span className="dep-task-count-chip">
+                              {divisionTasks.length} task{divisionTasks.length !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        </div>
+
+                        {divisionTasks.length === 0 ? (
+                          <div className="dep-div-empty">No tasks in this division</div>
+                        ) : (
+                          <div className="dep-task-card-grid">
+                            {divisionTasks.map(({ task, field }) => {
+                              const hasPilotCancel = taskCancelStatusMap[task.task_id]?.pilot_cancel_id > 0;
+                              const hasOpsCancel = taskCancelStatusMap[task.task_id]?.ops_cancel_id > 0;
+                              const isCancelled = hasPilotCancel || hasOpsCancel;
+
+                              return (
+                                <article
+                                  key={`task-card-${task.task_id}`}
+                                  className={`dep-task-card ${isCancelled ? 'dep-task-card--cancelled' : ''}`}
+                                >
+                                  <div className="dep-task-card-top">
+                                    <div className="dep-task-card-title-row">
+                                      <span className="dep-task-card-id">Task #{task.task_id}</span>
+                                      <span className={`dep-task-chip ${getTaskChipClass(task.task_status_text)}`}>
+                                        {task.task_status_text || '—'}
+                                      </span>
+                                      {hasPilotCancel && (
+                                        <span className="dep-cancel-badge dep-cancel-badge--pilot">Pilot ✕</span>
+                                      )}
+                                      {hasOpsCancel && (
+                                        <span className="dep-cancel-badge dep-cancel-badge--ops">OPS ✕</span>
+                                      )}
+                                    </div>
+                                    <div className="dep-task-card-sub">
+                                      <span>{field.field_name}</span>
+                                      <span>·</span>
+                                      <span>{task.drone_tag || '—'}</span>
+                                      <span>·</span>
+                                      <span>{task.pilot || '—'}</span>
+                                      {field.field_pilots?.status === 'false' && (
+                                        <span className="dep-no-pilot-chip">⚠ No Pilot</span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="dep-task-card-body">
+                                    <div className="dep-metrics-compare">
+                                      <div className="dep-metrics-col">
+                                        <div className="dep-metrics-col-title">Pilot</div>
+                                        <div className="dep-metrics-grid dep-metrics-grid--card">
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Field Area</span>
+                                            <span className="dep-metric-value">
+                                              {parseFloat(task.task_fieldArea || field.field_area || 0).toFixed(2)} Ha
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Sprayed Area</span>
+                                            <span className="dep-metric-value">
+                                              {parseFloat(task.task_sprayedArea || 0).toFixed(2)} Ha
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Obstacle</span>
+                                            <span className="dep-metric-value">
+                                              {parseFloat(task.task_obstacleArea || 0).toFixed(2)} Ha
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Margin</span>
+                                            <span className="dep-metric-value">
+                                              {parseFloat(task.task_marginArea || 0).toFixed(2)} Ha
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Liters</span>
+                                            <span className="dep-metric-value">
+                                              {parseFloat(task.task_sprayedLiters || 0).toFixed(2)}
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Plan Ha</span>
+                                            <span className="dep-metric-value">{field.field_area} Ha</span>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      <div className="dep-metrics-col">
+                                        <div className="dep-metrics-col-title">Opsroom (DJI)</div>
+                                        <div className="dep-metrics-grid dep-metrics-grid--card">
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">DJI Field Area</span>
+                                            <span className="dep-metric-value">
+                                              {task.dji_field_area != null && task.dji_field_area !== ''
+                                                ? `${parseFloat(task.dji_field_area || 0).toFixed(2)} Ha`
+                                                : '—'}
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">DJI Spray Area</span>
+                                            <span className="dep-metric-value">
+                                              {task.dji_spraying_area != null && task.dji_spraying_area !== ''
+                                                ? `${parseFloat(task.dji_spraying_area || 0).toFixed(2)} Ha`
+                                                : '—'}
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">DJI Liters</span>
+                                            <span className="dep-metric-value">
+                                              {task.dji_spraying_litres != null && task.dji_spraying_litres !== ''
+                                                ? parseFloat(task.dji_spraying_litres || 0).toFixed(2)
+                                                : '—'}
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Fly Duration</span>
+                                            <span className="dep-metric-value">
+                                              {task.dji_flying_duration != null && task.dji_flying_duration !== ''
+                                                ? `${parseFloat(task.dji_flying_duration || 0).toFixed(1)} min`
+                                                : '—'}
+                                            </span>
+                                          </div>
+                                          <div className="dep-metric-cell">
+                                            <span className="dep-metric-label">Flights</span>
+                                            <span className="dep-metric-value">
+                                              {task.dji_no_of_flights != null && task.dji_no_of_flights !== ''
+                                                ? parseFloat(task.dji_no_of_flights || 0).toFixed(0)
+                                                : '—'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="dep-map-links">
+                                      {(() => {
+                                        const pilotMap = String(task.task_image || '').trim();
+                                        const opsMap =
+                                          String(task.dji_image || '').trim() ||
+                                          (task.image_crop
+                                            ? getResourceUrl('DJI_SCREEN_IMAGE', task.image_crop)
+                                            : '');
+                                        return (
+                                          <>
+                                            <button
+                                              type="button"
+                                              className={`dep-map-link ${pilotMap ? 'dep-map-link--ok' : 'dep-map-link--missing'}`}
+                                              disabled={!pilotMap}
+                                              onClick={() => pilotMap && openImage(pilotMap)}
+                                              title={pilotMap ? 'Open pilot map fullscreen' : 'No pilot map'}
+                                            >
+                                              pilot map {pilotMap ? '✅' : '❌'}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              className={`dep-map-link ${opsMap ? 'dep-map-link--ok' : 'dep-map-link--missing'}`}
+                                              disabled={!opsMap}
+                                              onClick={() => opsMap && openImage(opsMap)}
+                                              title={opsMap ? 'Open opsroom map fullscreen' : 'No opsroom map'}
+                                            >
+                                              opsroom map {opsMap ? '✅' : '❌'}
+                                            </button>
+                                          </>
+                                        );
+                                      })()}
+                                    </div>
+                                  </div>
+
+                                  {hasPilotCancel && (
+                                    <div className="dep-cancel-reason dep-cancel-reason-pilot">
+                                      <span className="dep-cancel-reason-label">Pilot Cancel:</span>
+                                      <span>{taskCancelStatusMap[task.task_id].pilot_cancel_reason || 'Unknown'}</span>
+                                    </div>
+                                  )}
+                                  {hasOpsCancel && (
+                                    <div className="dep-cancel-reason dep-cancel-reason-ops">
+                                      <span className="dep-cancel-reason-label">OPS Cancel:</span>
+                                      <span>{taskCancelStatusMap[task.task_id].ops_cancel_reason || 'Unknown'}</span>
+                                    </div>
+                                  )}
+
+                                  <div className="dep-task-card-actions">
+                                    <button
+                                      className="dep-task-btn dep-task-btn--dji"
+                                      onClick={() => handleTaskApproveClick(field.field_id, task)}
+                                      disabled={taskLoading === task.task_id}
+                                    >
+                                      {taskLoading === task.task_id ? 'Loading…' : 'DJI'}
+                                    </button>
+                                    <button
+                                      className={`dep-task-btn ${hasOpsCancel ? 'dep-task-btn--edit' : 'dep-task-btn--cancel'}`}
+                                      onClick={() => handleCancelTaskClick(field.field_id, task)}
+                                    >
+                                      {hasOpsCancel ? 'Edit Cancel' : 'Cancel'}
+                                    </button>
+                                    {hasPilotCancel && (
+                                      <button
+                                        className="dep-task-btn dep-task-btn--reset"
+                                        onClick={() => handleResetPilotCancel(field.field_id, task)}
+                                      >
+                                        Pilot Reset
+                                      </button>
+                                    )}
+                                  </div>
+                                </article>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })
+                ) : (
+                  <div className="dep-viewer-empty" style={{ flex: 'initial', padding: '40px 24px' }}>
+                    <div className="dep-viewer-empty-icon" style={{ fontSize: 32 }}>📂</div>
+                    <div className="dep-viewer-empty-title" style={{ fontSize: 16 }}>No divisions</div>
+                    <div className="dep-viewer-empty-hint">This plan has no field divisions configured.</div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
         {/* Full-screen image modal - Using Portal to render outside component hierarchy */}
         {selectedImage && createPortal(
           <div className="image_modal" onClick={closeImage}>
@@ -1276,15 +1560,18 @@ const DayEndProcess = () => {
                         }}
                       >
                         <option value="">Select DJI Image</option>
-                        {/* Show unlinked images (selectable) */}
                         {unlinkedDjiImages.map((image) => (
                           <option key={image.id} value={image.id}>
                             {image.auto_generated_id} {image.is_plantation === 1 ? `(${image.estate_name} - ${image.field_name})` : `(NIC: ${image.nic})`}
                           </option>
                         ))}
-                        {/* Show linked images (disabled, not selectable) */}
+                        {unlinkedDjiImages.length === 0 && (
+                          <option value="" disabled>
+                            No unused DJI images for this field
+                          </option>
+                        )}
                         {linkedDjiImages.length > 0 && (
-                          <optgroup label="Already Used (Not Available)">
+                          <optgroup label={`Already Used for ${currentField?.field_name || 'this field'}`}>
                             {linkedDjiImages.map((image) => (
                               <option key={image.id} value={image.id} disabled style={{ color: '#999', fontStyle: 'italic' }}>
                                 {image.auto_generated_id} {image.is_plantation === 1 ? `(${image.estate_name} - ${image.field_name})` : `(NIC: ${image.nic})`} - Used
@@ -1629,7 +1916,6 @@ const DayEndProcess = () => {
             </div>
           </div>
         )}
-      </div>
 
       {/* ─── Cancel Task Popup ─── */}
       {showCancelPopup && createPortal(

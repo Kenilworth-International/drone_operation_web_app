@@ -52,6 +52,7 @@ function policyDraftFromRow(row) {
     short_mode_only: String(Number(row.short_mode_only ?? 0) === 1 ? 1 : 0),
     requires_attachment_after_days: row.requires_attachment_after_days ?? '',
     min_calendar_years_after_join: row.min_calendar_years_after_join ?? '',
+    min_advance_days: row.min_advance_days ?? '',
     counts_working_days_only: String(Number(row.counts_working_days_only ?? 1) === 1 ? 1 : 0),
     excluded_weekdays: parseExcludedWeekdays(row.excluded_weekdays),
     eligible_job_categories: row.eligible_job_categories || '',
@@ -107,6 +108,7 @@ export default function LeavePoliciesPanel({ onMessage }) {
           : null,
         requires_attachment_after_days: isShortModeOnly || draft.requires_attachment_after_days === '' ? null : Number(draft.requires_attachment_after_days),
         min_calendar_years_after_join: isShortModeOnly || draft.min_calendar_years_after_join === '' ? null : parseInt(draft.min_calendar_years_after_join, 10),
+        min_advance_days: isShortModeOnly || draft.min_advance_days === '' ? null : parseInt(draft.min_advance_days, 10),
         short_mode_only: isShortModeOnly ? 1 : 0,
         counts_working_days_only: isShortModeOnly ? 0 : (parseInt(draft.counts_working_days_only, 10) === 1 ? 1 : 0),
         excluded_weekdays: isShortModeOnly ? null : serializeExcludedWeekdays(draft.excluded_weekdays || []),
@@ -139,14 +141,15 @@ export default function LeavePoliciesPanel({ onMessage }) {
                 <th>Short leave (min)</th>
                 <th>Medical file after (days)</th>
                 <th>Available after (years)</th>
+                <th>Min advance (days)</th>
                 <th />
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={9}>Loading…</td></tr>
+                <tr><td colSpan={10}>Loading…</td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9}>No policies found. Add leave types first.</td></tr>
+                <tr><td colSpan={10}>No policies found. Add leave types first.</td></tr>
               ) : (
                 rows.map((row) => (
                   <tr key={row.leave_type_code}>
@@ -161,6 +164,7 @@ export default function LeavePoliciesPanel({ onMessage }) {
                     <td>{displayLimit(row.max_short_minutes)}</td>
                     <td>{displayLimit(row.requires_attachment_after_days)}</td>
                     <td>{displayLimit(row.min_calendar_years_after_join)}</td>
+                    <td>{displayLimit(row.min_advance_days)}</td>
                     <td>
                       <button type="button" className="leave-btn-leavemgt leave-btn-secondary-leavemgt" onClick={() => openEdit(row)}>
                         Edit policy
@@ -299,6 +303,19 @@ export default function LeavePoliciesPanel({ onMessage }) {
                   value={draft.min_calendar_years_after_join}
                   disabled={lockDayFields}
                   onChange={(e) => setDraft((p) => ({ ...p, min_calendar_years_after_join: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className={`leave-holiday-modal-label-leavemgt${lockDayFields ? ' leave-policy-label-locked-leavemgt' : ''}`}>Minimum advance notice (days)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className={inputClass(lockDayFields)}
+                  placeholder="e.g. 3 = request 3 days before start"
+                  value={draft.min_advance_days}
+                  disabled={lockDayFields}
+                  onChange={(e) => setDraft((p) => ({ ...p, min_advance_days: e.target.value }))}
                 />
               </div>
               <div className="leave-admin-form-span-2-leavemgt">

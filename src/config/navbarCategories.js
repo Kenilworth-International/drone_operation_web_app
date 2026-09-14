@@ -110,7 +110,7 @@ const navbarCategories = [
       { path: '/home/employees', label: 'Employees', icon: FaUsers },
       { path: '/home/organizationStructure', label: 'Organization Structure', icon: FaUsers },
       { path: '/home/jdManagement', label: 'JD Management', icon: FaClipboardList },
-      { path: '/home/employeeAssignment', label: 'Employee Assignment', icon: FaUserTie },
+      { path: '/home/employeeAssignment', label: 'Employee Dynamics', icon: FaUserTie },
       { path: '/home/attendance/roaster-planning', label: 'Attendance & Roaster', icon: FaClock },
       { path: '/home/attendance/employee-kpi', label: 'Employee KPI', icon: FaChartLine },
       { path: '/home/attendance/leave-management', label: 'Leave Management', icon: FaCalendarAlt },

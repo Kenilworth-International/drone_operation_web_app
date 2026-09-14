@@ -1,4 +1,4 @@
-/* Employee Assignment Container — inherits --wing-nav-primary from HomePage wing theme */
+/* Employee Dynamics Container — inherits --wing-nav-primary from HomePage wing theme */
 .employee-assignment-container-ea {
   --ea-primary: var(--wing-nav-primary, var(--ea-primary));
   --ea-primary-dark: color-mix(in srgb, var(--ea-primary) 78%, #000);

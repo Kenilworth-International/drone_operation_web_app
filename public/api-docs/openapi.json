@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 842\n- **Route files:** 73\n- **Schema overlays applied:** 325\n- **Generated:** 2026-09-10T09:55:13.893Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 850\n- **Route files:** 73\n- **Schema overlays applied:** 325\n- **Generated:** 2026-09-14T06:11:47.022Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
   },
   "servers": [
     {
@@ -49,12 +49,12 @@
       "description": "Ad-hoc emergency equipment relocation requests."
     },
     {
-      "name": "Employee Assignment",
-      "description": "Employee-to-role/department assignment."
-    },
-    {
       "name": "Employee Documents",
       "description": "Employee document upload and retrieval."
+    },
+    {
+      "name": "Employee Dynamics",
+      "description": "Employee-to-role/department assignment."
     },
     {
       "name": "Employee Org Structure",
@@ -13415,9 +13415,9 @@
     "/api/employee-assignment/queues": {
       "post": {
         "summary": "Queues",
-        "description": "Module: Employee Assignment",
+        "description": "Module: Employee Dynamics",
         "tags": [
-          "Employee Assignment"
+          "Employee Dynamics"
         ],
         "responses": {
           "200": {
@@ -13457,9 +13457,9 @@
     "/api/employee-assignment/history": {
       "post": {
         "summary": "History",
-        "description": "Module: Employee Assignment",
+        "description": "Module: Employee Dynamics",
         "tags": [
-          "Employee Assignment"
+          "Employee Dynamics"
         ],
         "responses": {
           "200": {
@@ -13499,9 +13499,9 @@
     "/api/employee-assignment/apply": {
       "post": {
         "summary": "Apply",
-        "description": "Module: Employee Assignment",
+        "description": "Module: Employee Dynamics",
         "tags": [
-          "Employee Assignment"
+          "Employee Dynamics"
         ],
         "responses": {
           "200": {
@@ -34242,6 +34242,48 @@
         ]
       }
     },
+    "/api/hr/leave/cancel": {
+      "post": {
+        "summary": "Cancel",
+        "description": "Module: HR Mobile",
+        "tags": [
+          "HR Mobile"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/hr/leave/overlooking/decide": {
       "post": {
         "summary": "Decide",
@@ -38356,6 +38398,90 @@
         ]
       }
     },
+    "/api/webmail/messages/outbox/retry": {
+      "post": {
+        "summary": "Retry",
+        "description": "Module: Webmail",
+        "tags": [
+          "Webmail"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/webmail/messages/outbox/delete": {
+      "post": {
+        "summary": "Delete",
+        "description": "Module: Webmail",
+        "tags": [
+          "Webmail"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/webmail/signature/get": {
       "post": {
         "summary": "Get",
@@ -38401,6 +38527,216 @@
     "/api/webmail/signature/save": {
       "post": {
         "summary": "Save",
+        "description": "Module: Webmail",
+        "tags": [
+          "Webmail"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/webmail/signature/apply": {
+      "post": {
+        "summary": "Apply",
+        "description": "Module: Webmail",
+        "tags": [
+          "Webmail"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/webmail/signature/delete": {
+      "post": {
+        "summary": "Delete",
+        "description": "Module: Webmail",
+        "tags": [
+          "Webmail"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/webmail/contacts/list": {
+      "post": {
+        "summary": "List",
+        "description": "Module: Webmail",
+        "tags": [
+          "Webmail"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/webmail/contacts/save": {
+      "post": {
+        "summary": "Save",
+        "description": "Module: Webmail",
+        "tags": [
+          "Webmail"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/webmail/contacts/delete": {
+      "post": {
+        "summary": "Delete",
         "description": "Module: Webmail",
         "tags": [
           "Webmail"
@@ -43801,7 +44137,7 @@
         "Employee Profile",
         "Employee Documents",
         "Organization",
-        "Employee Assignment",
+        "Employee Dynamics",
         "Employee Org Structure",
         "HR Leave",
         "HR Mobile",
