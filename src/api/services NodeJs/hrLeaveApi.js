@@ -101,6 +101,71 @@ export const hrLeaveApi = baseApi.injectEndpoints({
         nodeBackendBaseQuery({ url: '/api/hr-leave/attendance/lieu-leave/accept', method: 'POST', body }, {}, {}),
       invalidatesTags: ['HrAttendance', 'HrLeave'],
     }),
+    getHrLeaveOpsOverview: builder.query({
+      queryFn: async (body = {}) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/overview', method: 'POST', body: body || {} },
+          {},
+          {},
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+      providesTags: ['HrLeaveOps'],
+    }),
+    getHrLeaveOpsBalances: builder.query({
+      queryFn: async (body = {}) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/balances/get', method: 'POST', body: body || {} },
+          {},
+          {},
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+      providesTags: ['HrLeaveOps'],
+    }),
+    getHrLeaveOpsDayEmployees: builder.query({
+      queryFn: async (body = {}) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/day-employees', method: 'POST', body: body || {} },
+          {},
+          {},
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+      providesTags: ['HrLeaveOps'],
+    }),
+    adjustHrLeaveBalance: builder.mutation({
+      queryFn: async (body) =>
+        nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/balances/adjust', method: 'POST', body },
+          {},
+          {},
+        ),
+      invalidatesTags: ['HrLeaveOps', 'HrLeave'],
+    }),
+    createHrOpsLeave: builder.mutation({
+      queryFn: async (body) =>
+        nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/leave/create', method: 'POST', body },
+          {},
+          {},
+        ),
+      invalidatesTags: ['HrLeaveOps', 'HrLeave', 'HrAttendance'],
+    }),
+    estimateHrOpsLeave: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/leave/estimate-days', method: 'POST', body },
+          {},
+          {},
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || result.data || null };
+      },
+    }),
     listHrLeaveAdminTypes: builder.query({
       queryFn: async (body = {}) =>
         nodeBackendBaseQuery({ url: '/api/hr-leave/admin/types/list', method: 'POST', body }, {}, {}),
@@ -162,6 +227,12 @@ export const {
   useSaveHrHolidayMarkMutation,
   useGetHrAttendanceDayViewQuery,
   useAcceptHrLieuLeaveMutation,
+  useGetHrLeaveOpsOverviewQuery,
+  useLazyGetHrLeaveOpsBalancesQuery,
+  useLazyGetHrLeaveOpsDayEmployeesQuery,
+  useAdjustHrLeaveBalanceMutation,
+  useCreateHrOpsLeaveMutation,
+  useEstimateHrOpsLeaveMutation,
   useListHrLeaveAdminTypesQuery,
   useSaveHrLeaveAdminTypeMutation,
   useSetHrLeaveAdminTypeStatusMutation,

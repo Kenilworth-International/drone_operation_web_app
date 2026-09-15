@@ -41,6 +41,12 @@ const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
 /** DJI field area below this ratio of pilot field area requires a partial (flag h) cancel reason. */
 const PARTIAL_DJI_AREA_RATIO = 0.7;
 
+/** True when value is a finite number greater than zero (empty / 0 not allowed). */
+const hasRequiredPositiveNumber = (value) => {
+  const n = Number(String(value ?? '').replace(/,/g, '').trim());
+  return Number.isFinite(n) && n > 0;
+};
+
 const DayEndProcess = () => {
   const navigate = useNavigate();
   const routerLocation = useLocation();
@@ -768,6 +774,18 @@ const DayEndProcess = () => {
       toast.warning('Pilot Field Area (Ha) and Task Image are required before submitting DJI data.');
       return;
     }
+    if (
+      !hasRequiredPositiveNumber(djiData.dji_field_area) ||
+      !hasRequiredPositiveNumber(djiData.dji_spraying_area) ||
+      !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
+      !hasRequiredPositiveNumber(djiData.dji_flying_duration) ||
+      !hasRequiredPositiveNumber(djiData.dji_no_of_flights)
+    ) {
+      toast.warning(
+        'DJI Field Area, Spraying Area, Sprayed Liters, Flying Duration, and No of Flights are required.',
+      );
+      return;
+    }
 
     if (isBelowPartialThreshold && !hasSubmittedCancelReason()) {
       setCancelPopupMode('partial');
@@ -796,7 +814,7 @@ const DayEndProcess = () => {
         dji_spraying_area: formatNumber(djiData.dji_spraying_area),
         dji_spraying_litres: formatNumber(djiData.dji_spraying_litres),
         dji_flying_duration: formatNumber(djiData.dji_flying_duration),
-        dji_no_of_flights: formatNumber(djiData.dji_no_of_flights),
+        dji_no_of_flights: formatNumber(djiData.dji_no_of_flights, 0),
       }).unwrap();
 
       if (response?.success || response?.status === 'true') {
@@ -1693,6 +1711,8 @@ const DayEndProcess = () => {
                       <label>DJI Flying Duration (mins):</label>
                       <input
                         type="number"
+                        min="0.1"
+                        step="0.1"
                         value={djiData.dji_flying_duration}
                         onChange={(e) =>
                           setDjiData((prev) => ({
@@ -1700,12 +1720,20 @@ const DayEndProcess = () => {
                             dji_flying_duration: e.target.value,
                           }))
                         }
+                        required
                       />
+                      {!hasRequiredPositiveNumber(djiData.dji_flying_duration) && (
+                        <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                          DJI Flying Duration is required.
+                        </span>
+                      )}
                     </div>
                     <div className="data-item">
                       <label>DJI No of Flights:</label>
                       <input
                         type="number"
+                        min="1"
+                        step="1"
                         value={djiData.dji_no_of_flights}
                         onChange={(e) =>
                           setDjiData((prev) => ({
@@ -1713,7 +1741,13 @@ const DayEndProcess = () => {
                             dji_no_of_flights: e.target.value,
                           }))
                         }
+                        required
                       />
+                      {!hasRequiredPositiveNumber(djiData.dji_no_of_flights) && (
+                        <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                          DJI No of Flights is required.
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="data-row submit-row">
@@ -1724,11 +1758,11 @@ const DayEndProcess = () => {
                         isSubmitting ||
                         !Number(currentTask?.task_fieldArea || currentField?.field_area || 0) ||
                         !String(currentTask?.task_image || '').trim() ||
-                        !djiData.dji_flying_duration ||
-                        !djiData.dji_no_of_flights ||
-                        !djiData.dji_field_area ||
-                        !djiData.dji_spraying_litres ||
-                        !djiData.dji_spraying_area ||
+                        !hasRequiredPositiveNumber(djiData.dji_flying_duration) ||
+                        !hasRequiredPositiveNumber(djiData.dji_no_of_flights) ||
+                        !hasRequiredPositiveNumber(djiData.dji_field_area) ||
+                        !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
+                        !hasRequiredPositiveNumber(djiData.dji_spraying_area) ||
                         parseFloat(djiData.dji_field_area) > parseFloat(currentField?.field_area || currentTask.task_fieldArea || 0) ||
                         parseFloat(djiData.dji_spraying_area) > parseFloat(currentField?.field_area || currentTask.task_fieldArea || 0)
                       }

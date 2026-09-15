@@ -64,7 +64,7 @@ import Employees from './sections/hr&admin/Employees';
 import JDManagement from './sections/hr&admin/JDManagement';
 import EmployeeAssignment from './sections/hr&admin/EmployeeAssignment';
 import MonthlyRoaster from './sections/hr&admin/roaster/MonthlyRoaster';
-import AttendanceDayView from './sections/hr&admin/roaster/AttendanceDayView';
+import AttendanceLeaveHub from './sections/hr&admin/roaster/AttendanceLeaveHub';
 import RoasterPlanning from './sections/hr&admin/roaster/RoasterPlanning';
 import HolidaysFlexPage from './sections/hr&admin/leave/HolidaysFlexPage';
 import LeaveManagement from './sections/hr&admin/leave/LeaveManagement';
@@ -833,7 +833,7 @@ function App() {
             path="attendance/daily-attendance"
             element={
               <ProtectedRoute>
-                <AttendanceDayView />
+                <AttendanceLeaveHub />
               </ProtectedRoute>
             }
           />

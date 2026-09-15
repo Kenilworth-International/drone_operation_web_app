@@ -1,0 +1,257 @@
+.drone-ops-report {
+  width: 100%;
+  min-width: 0;
+}
+
+.drone-ops-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.drone-ops-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px 16px;
+  flex: 1 1 auto;
+}
+
+.drone-ops-field {
+  display: grid;
+  grid-template-rows: auto 38px;
+  row-gap: 6px;
+  align-content: end;
+  margin: 0;
+  min-width: 0;
+}
+
+.drone-ops-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  line-height: 1.25;
+  margin: 0;
+}
+
+.drone-ops-field--date {
+  flex: 0 0 168px;
+  width: 168px;
+}
+
+.drone-ops-report .drone-ops-datepicker-wrap {
+  display: block !important;
+  flex-grow: 0 !important;
+  width: 100% !important;
+  height: 38px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.drone-ops-report .drone-ops-datepicker-wrap .react-datepicker__input-container {
+  display: block !important;
+  width: 100% !important;
+  height: 38px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.drone-ops-date-input {
+  width: 100% !important;
+  height: 38px !important;
+  box-sizing: border-box;
+  padding: 0 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  color: #0f172a !important;
+  background: #fff !important;
+}
+
+.drone-ops-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.drone-ops-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.drone-ops-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.drone-ops-btn--generate {
+  background: #004b71;
+  color: #fff;
+}
+
+.drone-ops-btn--pdf {
+  background: #fff;
+  color: #004b71;
+  border-color: #004b71;
+}
+
+.drone-ops-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  width: 100%;
+  padding: 28px 8px;
+  box-sizing: border-box;
+}
+
+.drone-ops-empty {
+  padding: 28px 8px;
+  text-align: center;
+  color: #64748b;
+}
+
+.drone-ops-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.drone-ops-kpi {
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.drone-ops-kpi-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+
+.drone-ops-kpi-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.drone-ops-section {
+  margin-bottom: 20px;
+}
+
+.drone-ops-section h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.drone-ops-notes {
+  padding: 12px 14px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  color: #78350f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.drone-ops-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.drone-ops-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+  font-size: 13px;
+  table-layout: auto;
+}
+
+.drone-ops-table th,
+.drone-ops-table td {
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: middle;
+  background: #fff;
+  color: #0f172a;
+  font-weight: 400;
+  min-height: 0;
+  border-radius: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.drone-ops-table th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.drone-ops-table tbody tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
+.drone-ops-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.drone-ops-table .drone-ops-date {
+  font-weight: 600;
+  color: #0f172a;
+  vertical-align: middle;
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 0 !important;
+  min-height: 0 !important;
+  display: table-cell !important;
+  flex-direction: unset !important;
+  align-items: unset !important;
+  justify-content: unset !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.drone-ops-table tfoot td {
+  background: #eef2f7;
+  font-weight: 700;
+}
+
+.drone-ops-table .drone-ops-reason-cell {
+  white-space: pre-line;
+  min-width: 180px;
+  max-width: 360px;
+  line-height: 1.45;
+}

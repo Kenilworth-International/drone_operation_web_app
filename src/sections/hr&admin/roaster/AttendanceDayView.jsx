@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bars } from 'react-loader-spinner';
 import '../../../styles/attendanceDayView.css';
+import '../../../styles/hrmDashboard.css';
 import {
   useAcceptHrLieuLeaveMutation,
   useGetHrAttendanceDayViewQuery,
@@ -19,6 +20,110 @@ import {
   nopayDayHint,
   requestModeLabel,
 } from '../../../utils/hrStatusLabels';
+import HrmDashboardBreakdownModal from '../dashboard/HrmDashboardBreakdownModal';
+
+const ATT_DAY_KPI_COLUMNS = [
+  { key: 'empNo', label: 'Emp No' },
+  { key: 'employeeName', label: 'Name' },
+  { key: 'department', label: 'Department' },
+  { key: 'designation', label: 'Designation' },
+  { key: 'status', label: 'Status' },
+  { key: 'detail', label: 'Detail' },
+];
+
+const ATT_DAY_KPIS = [
+  { id: 'total', label: 'Total', tone: '', summaryKey: 'totalEmployees' },
+  { id: 'attended', label: 'Attended', tone: 'ok', summaryKey: 'attendedCount' },
+  { id: 'completed', label: 'Completed', tone: 'ok', summaryKey: 'completedCount' },
+  { id: 'not_marked', label: 'Not marked', tone: 'warn', summaryKey: 'notMarkedCount' },
+  { id: 'pending_leave', label: 'Pending leave', tone: '', summaryKey: 'pendingLeaveCount' },
+  { id: 'auto_short_leave', label: 'Auto short leave', tone: 'info', summaryKey: 'autoShortLeaveCount' },
+  { id: 'nopay', label: 'No pay', tone: 'danger', summaryKey: 'nopayCount' },
+];
+
+function matchesAttDayKpi(row, kpiId) {
+  switch (kpiId) {
+    case 'total':
+      return true;
+    case 'attended':
+      return row.attendanceStatus !== 'not_marked';
+    case 'completed':
+      return row.attendanceStatus === 'completed';
+    case 'not_marked':
+      return row.attendanceStatus === 'not_marked';
+    case 'pending_leave':
+      return Array.isArray(row.pendingLeaves) && row.pendingLeaves.length > 0;
+    case 'auto_short_leave':
+      return Array.isArray(row.autoShortLeaves) && row.autoShortLeaves.length > 0;
+    case 'nopay':
+      return Boolean(row.attendance?.nopay);
+    default:
+      return false;
+  }
+}
+
+function employeeBreakdownBase(row) {
+  return {
+    employeeId: row.employeeId,
+    empNo: row.empNo || '—',
+    employeeName: row.employeeName || row.preferredName || '—',
+    department: row.department || row.departmentName || row.emp_dept_name || '—',
+    designation:
+      row.designation || row.jobRole || row.employeeJobRoleName || row.employeeJobRole || '—',
+    status: attendanceDayStatusLabel(row.attendanceStatus),
+  };
+}
+
+function buildAttDayKpiBreakdown(employees, kpiId, dateKey) {
+  const kpi = ATT_DAY_KPIS.find((item) => item.id === kpiId) || ATT_DAY_KPIS[0];
+  const matched = (employees || []).filter((row) => matchesAttDayKpi(row, kpi.id));
+  let rows;
+
+  // Pending / auto short leave KPIs count leave records, not unique employees.
+  if (kpi.id === 'pending_leave') {
+    rows = matched.flatMap((row) =>
+      (row.pendingLeaves || []).map((leave) => ({
+        ...employeeBreakdownBase(row),
+        status: leaveStatusLabel(leave.status) || 'Pending',
+        detail: leave.leaveType || leave.type || leave.leave_type || 'Leave',
+      })),
+    );
+  } else if (kpi.id === 'auto_short_leave') {
+    rows = matched.flatMap((row) =>
+      (row.autoShortLeaves || []).map((leave) => ({
+        ...employeeBreakdownBase(row),
+        status: leaveStatusLabel(leave.status) || 'Auto short leave',
+        detail: autoReasonLabel(leave.reason || leave.autoReason) || leave.leaveType || 'Short leave',
+      })),
+    );
+  } else {
+    rows = matched.map((row) => {
+      let detail = '—';
+      if (kpi.id === 'nopay') {
+        detail = nopayDayLabel(row.attendance?.nopayReason) || 'No pay';
+      } else if (row.attendance?.markIn || row.attendance?.mark_in) {
+        const markIn = row.attendance.markIn || row.attendance.mark_in || '—';
+        const markOut = row.attendance.markOut || row.attendance.mark_out || '—';
+        detail = `${markIn} → ${markOut}`;
+      }
+      return {
+        ...employeeBreakdownBase(row),
+        detail,
+      };
+    });
+  }
+
+  return {
+    metric: kpi.id,
+    title: kpi.label,
+    description: `${kpi.label} for ${dateKey}`,
+    columns: ATT_DAY_KPI_COLUMNS,
+    rows,
+    total: rows.length,
+    truncated: false,
+    period: { periodType: 'day', periodKey: dateKey },
+  };
+}
 
 const toIsoDate = (date = new Date()) => {
   const y = date.getFullYear();
@@ -372,6 +477,8 @@ export default function AttendanceDayView() {
   const [workLocationCode, setWorkLocationCode] = useState('');
   const [acceptingKey, setAcceptingKey] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(null);
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [breakdownData, setBreakdownData] = useState(null);
 
   const { data: departmentsData } = useGetEmpDepartmentsQuery();
   const { data: workLocationsData } = useGetWorkLocationsQuery();
@@ -463,6 +570,16 @@ export default function AttendanceDayView() {
     }
   };
 
+  const openKpiBreakdown = useCallback((kpiId) => {
+    setBreakdownData(buildAttDayKpiBreakdown(employees, kpiId, selectedDate));
+    setBreakdownOpen(true);
+  }, [employees, selectedDate]);
+
+  const closeKpiBreakdown = useCallback(() => {
+    setBreakdownOpen(false);
+    setBreakdownData(null);
+  }, []);
+
   return (
     <div className="att-day-view">
       <div className="att-day-hero">
@@ -539,34 +656,22 @@ export default function AttendanceDayView() {
         </div>
 
         <div className="att-day-kpi-grid">
-          <div className="att-day-kpi">
-            <span>Total</span>
-            <strong>{summary.totalEmployees ?? employees.length}</strong>
-          </div>
-          <div className="att-day-kpi att-day-kpi--ok">
-            <span>Attended</span>
-            <strong>{summary.attendedCount ?? 0}</strong>
-          </div>
-          <div className="att-day-kpi att-day-kpi--ok">
-            <span>Completed</span>
-            <strong>{summary.completedCount ?? 0}</strong>
-          </div>
-          <div className="att-day-kpi att-day-kpi--warn">
-            <span>Not marked</span>
-            <strong>{summary.notMarkedCount ?? 0}</strong>
-          </div>
-          <div className="att-day-kpi">
-            <span>Pending leave</span>
-            <strong>{summary.pendingLeaveCount ?? 0}</strong>
-          </div>
-          <div className="att-day-kpi att-day-kpi--info">
-            <span>Auto short leave</span>
-            <strong>{summary.autoShortLeaveCount ?? 0}</strong>
-          </div>
-          <div className="att-day-kpi att-day-kpi--danger">
-            <span>No pay</span>
-            <strong>{summary.nopayCount ?? 0}</strong>
-          </div>
+          {ATT_DAY_KPIS.map((kpi) => {
+            const value = summary[kpi.summaryKey];
+            const display = value ?? (kpi.id === 'total' ? employees.length : 0);
+            return (
+              <button
+                key={kpi.id}
+                type="button"
+                className={`att-day-kpi${kpi.tone ? ` att-day-kpi--${kpi.tone}` : ''} att-day-kpi--clickable`}
+                onClick={() => openKpiBreakdown(kpi.id)}
+                title={`View ${kpi.label.toLowerCase()} details`}
+              >
+                <span>{kpi.label}</span>
+                <strong>{display}</strong>
+              </button>
+            );
+          })}
         </div>
 
         <p className="att-day-policy-note">
@@ -580,7 +685,7 @@ export default function AttendanceDayView() {
       </div>
 
       {isFetching ? (
-        <div className="att-day-loading">
+        <div className="att-day-loading" aria-busy="true" aria-live="polite">
           <Bars height="48" width="48" color="#004b71" visible />
         </div>
       ) : (
@@ -625,6 +730,14 @@ export default function AttendanceDayView() {
           />
         </div>
       )}
+
+      <HrmDashboardBreakdownModal
+        open={breakdownOpen}
+        loading={false}
+        error={null}
+        data={breakdownData}
+        onClose={closeKpiBreakdown}
+      />
     </div>
   );
 }

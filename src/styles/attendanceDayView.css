@@ -152,6 +152,25 @@
   gap: 4px;
 }
 
+.att-day-kpi--clickable {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.att-day-kpi--clickable:hover {
+  border-color: #94a3b8;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.att-day-kpi--clickable:focus-visible {
+  outline: 2px solid #64748b;
+  outline-offset: 2px;
+}
+
 .att-day-kpi span {
   font-size: 12px;
   color: #64748b;
@@ -209,7 +228,10 @@
 
 .att-day-loading {
   display: flex;
+  align-items: center;
   justify-content: center;
+  min-height: min(520px, calc(100vh - 280px));
+  width: 100%;
   padding: 48px 0;
 }
 

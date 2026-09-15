@@ -27,6 +27,8 @@ import PilotRevenueDaily from '../sections/corporate/charts/PilotRevenueDaily';
 import PilotSummaryMonthly from '../sections/corporate/charts/PilotSummaryMonthly';
 import IndividualPilotSummary from '../sections/corporate/charts/IndividualPilotSummary';
 import PlanExecutionReasonReport from '../sections/management/reports/PlanExecutionReasonReport';
+import DailyDronePerformanceReport from '../sections/management/reports/DailyDronePerformanceReport';
+import DailyDroneOperationsSummaryReport from '../sections/management/reports/DailyDroneOperationsSummaryReport';
 import DeactivatedPlansReport from '../sections/corporate/reports/DeactivatedPlansReport';
 import ManagerApprovedCanceledReport from '../sections/corporate/reports/ManagerApprovedCanceledReport';
 
@@ -123,6 +125,22 @@ const ModernReportSection = ({ category = null }) => {
           icon: FaTimesCircle,
           component: DeactivatedPlansReport,
           metrics: { label: 'Plans', value: 'Deactivated' }
+        },
+        {
+          id: 'daily_drone_performance_month',
+          name: 'Daily Drone Performance (Month-wise)',
+          description: 'Drone × pilot DJI area, flight time and flights by day for the selected month',
+          icon: FaPlane,
+          component: DailyDronePerformanceReport,
+          metrics: { label: 'Month', value: 'PDF' }
+        },
+        {
+          id: 'daily_drone_operations_summary',
+          name: 'Daily Drone Operations Summary',
+          description: 'Day-wise KPIs, major issues and cancellation summary for management',
+          icon: FaChartPie,
+          component: DailyDroneOperationsSummaryReport,
+          metrics: { label: 'Day', value: 'PDF' }
         }
       ]
     },

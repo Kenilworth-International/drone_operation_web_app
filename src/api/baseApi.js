@@ -95,7 +95,7 @@ export const baseApi = createApi({
     'Calendar', 'Reasons', 'ASC', 'Chemicals', 'TimeOfDays', 'HrMasterOptions',
     'IncidentTypes', 'IncidentEquipment',
     // HR Leave and Attendance
-    'HrLeave', 'HrLeaveAdmin', 'HrAttendance', 'HrRoster', 'KpiDefinitions', 'KpiRatingBands', 'KpiLeaderboard', 'SmartKpiTemplates', 'SmartKpiFieldTypes', 'SmartKpiReviews', 'SmartKpiScopeStatus', 'HrmDashboard',
+    'HrLeave', 'HrLeaveAdmin', 'HrLeaveOps', 'HrAttendance', 'HrRoster', 'KpiDefinitions', 'KpiRatingBands', 'KpiLeaderboard', 'SmartKpiTemplates', 'SmartKpiFieldTypes', 'SmartKpiReviews', 'SmartKpiScopeStatus', 'HrmDashboard',
     'WfhMonitoring',
     // Financial cards / fuel approvals
     'FinancialCards', 'FinancialCardTransactions', 'Transactions', 'FuelApprovals', 'FuelTransportVouchers',
