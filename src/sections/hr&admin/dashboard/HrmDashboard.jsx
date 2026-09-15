@@ -211,38 +211,6 @@ export default function HrmDashboard({ embedded = false }) {
     setBreakdownError(null);
     setBreakdownData(null);
     try {
-      // Prefer full employee directory for total-employees so Senior Management is included
-      // even before the dashboard API is redeployed.
-      if (payload?.metric === 'total_employees' || payload?.metric === 'workforce') {
-        if (allEmployees.length > 0) {
-          const rows = allEmployees.map((e) => {
-            const isSm = isSeniorManagementCategory(e.employmentCategory);
-            return {
-              empNo: e.empNo || '',
-              employeeName: e.preferredName || e.employeeName || '',
-              departmentName: e.departmentName || e.department || (isSm ? 'Senior Management' : 'Unassigned'),
-              jobRole: e.employeeJobRoleName || e.designation_title || e.designation || '',
-              workStatus: e.workStatus || '',
-            };
-          });
-          setBreakdownData({
-            metric: 'total_employees',
-            title: 'Total employees',
-            description: 'All registered employees, including Senior Management.',
-            columns: [
-              { key: 'empNo', label: 'Emp No' },
-              { key: 'employeeName', label: 'Name' },
-              { key: 'departmentName', label: 'Department' },
-              { key: 'jobRole', label: 'Job role' },
-              { key: 'workStatus', label: 'Work status' },
-            ],
-            rows,
-            total: rows.length,
-            truncated: false,
-          });
-          return;
-        }
-      }
       const result = await fetchBreakdown({
         periodType,
         periodKey,
@@ -254,7 +222,7 @@ export default function HrmDashboard({ embedded = false }) {
         err?.data?.message || err?.error || err?.message || 'Failed to load breakdown details.',
       );
     }
-  }, [fetchBreakdown, periodType, periodKey, allEmployees]);
+  }, [fetchBreakdown, periodType, periodKey]);
 
   const closeBreakdown = useCallback(() => {
     setBreakdownOpen(false);
@@ -268,10 +236,12 @@ export default function HrmDashboard({ embedded = false }) {
     const apiTotal = Number(base.totalEmployees || 0);
     const totalEmployees = Math.max(apiTotal, registrationTotal);
 
-    const outsideDept = allEmployees.filter((e) => (
-      e.emp_department_id == null || e.emp_department_id === ''
-    ));
-    const smCount = outsideDept.length;
+    const apiSm = base.seniorManagementCount;
+    const localSmCount = allEmployees.filter((e) => {
+      const noDept = e.emp_department_id == null || e.emp_department_id === '';
+      return noDept && isSeniorManagementCategory(e.employmentCategory);
+    }).length;
+    const smCount = apiSm != null ? Number(apiSm) : localSmCount;
 
     let departmentHeadcount = [...(base.departmentHeadcount || [])];
     const hasSmBucket = departmentHeadcount.some(
@@ -292,7 +262,7 @@ export default function HrmDashboard({ embedded = false }) {
     return {
       ...base,
       totalEmployees,
-      seniorManagementCount: base.seniorManagementCount ?? smCount,
+      seniorManagementCount: smCount,
       departmentHeadcount,
     };
   }, [data, allEmployees]);

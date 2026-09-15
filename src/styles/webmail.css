@@ -622,6 +622,53 @@
   padding: 10px 14px;
 }
 
+.webmail-auth-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 12px 14px 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(185, 28, 28, 0.28);
+  background: rgba(185, 28, 28, 0.08);
+  color: var(--wm-ink, #1a2332);
+}
+
+.webmail-auth-banner--warn {
+  border-color: rgba(180, 120, 20, 0.35);
+  background: rgba(180, 120, 20, 0.1);
+}
+
+.webmail-auth-banner--error {
+  border-color: rgba(185, 28, 28, 0.28);
+  background: rgba(185, 28, 28, 0.08);
+}
+
+.webmail-auth-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.webmail-auth-banner-content strong {
+  display: block;
+  font-size: 0.92rem;
+  margin-bottom: 2px;
+}
+
+.webmail-auth-banner-content p {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--wm-muted, #5b6b7c);
+  line-height: 1.4;
+}
+
+.webmail-connect .webmail-auth-banner {
+  margin: 0 0 14px;
+}
+
 .webmail-toast {
   position: fixed;
   bottom: 24px;

@@ -31,10 +31,12 @@ export function resolveLogoutReason(error) {
 
 export function isSessionExpiredError(error) {
   if (!error) return false;
-  const status = Number(error?.status);
-  if (status === 401) return true;
   const payload = error?.data || {};
   const code = String(payload?.code || '').toUpperCase();
+  // Mailbox IMAP auth failure is not a DSMS login/session expiry.
+  if (code === 'IMAP_AUTH_FAILED' || code === 'IMAP_CONNECT_FAILED') return false;
+  const status = Number(error?.status);
+  if (status === 401) return true;
   const message = String(payload?.message || payload?.error || '').toLowerCase();
   return (
     code === 'TOKEN_EXPIRED' ||

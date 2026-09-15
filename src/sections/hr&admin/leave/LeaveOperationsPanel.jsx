@@ -30,6 +30,8 @@ function buildBreakdown(title, description, columns, rows, metric) {
     rows: rows || [],
     total: (rows || []).length,
     truncated: false,
+    wide: true,
+    dense: true,
   };
 }
 

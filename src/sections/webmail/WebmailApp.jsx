@@ -236,7 +236,7 @@ function appendAddress(current, email) {
   return [...parts, next].join(', ');
 }
 
-function ConnectPanel({ status, onConnected }) {
+function ConnectPanel({ status, onConnected, reconnectReason }) {
   const [password, setPassword] = useState('');
   const [connect, { isLoading, error }] = useConnectWebmailMutation();
   const errMsg = error?.data?.message || error?.error;
@@ -258,7 +258,7 @@ function ConnectPanel({ status, onConnected }) {
         <div className="webmail-connect-icon-wrap" aria-hidden>
           <MailIcon name="envelope" />
         </div>
-        <h1>Connect your mailbox</h1>
+        <h1>{reconnectReason === 'auth' ? 'Reconnect your mailbox' : 'Connect your mailbox'}</h1>
         <p>
           Use your Kenilworth company email password. It is stored encrypted for this DSMS account
           and used only to open your mail securely.
@@ -269,6 +269,16 @@ function ConnectPanel({ status, onConnected }) {
             <dd>{status?.email || '—'}</dd>
           </div>
         </dl>
+        {reconnectReason === 'auth' ? (
+          <div className="webmail-auth-banner" role="alert">
+            <div className="webmail-auth-banner-content">
+              <div>
+                <strong>Authentication failed</strong>
+                <p>Your mailbox password may have changed. Enter your current email password to reconnect.</p>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {status?.previousEmailCleared ? (
           <p className="webmail-muted">
             Company email changed from <strong>{status.previousEmailCleared}</strong>.
@@ -1066,7 +1076,6 @@ export default function WebmailApp() {
   const navigate = useNavigate();
   const { data: status, isLoading: statusLoading, refetch: refetchStatus, error: statusError } =
     useGetWebmailStatusQuery(undefined, { refetchOnMountOrArgChange: true });
-  const connected = Boolean(status?.connected) && !status?.emailMismatch;
   const [folder, setFolder] = useState('inbox');
   const [page, setPage] = useState(1);
   const [searchInput, setSearchInput] = useState('');
@@ -1078,7 +1087,9 @@ export default function WebmailApp() {
   const [sigOpen, setSigOpen] = useState(false);
   const [contactsOpen, setContactsOpen] = useState(false);
   const [toast, setToast] = useState(null);
-  const [disconnect] = useDisconnectWebmailMutation();
+  const [reconnectReason, setReconnectReason] = useState(null);
+  const [forceDisconnected, setForceDisconnected] = useState(false);
+  const [disconnect, { isLoading: disconnecting }] = useDisconnectWebmailMutation();
   const [saveContact] = useSaveWebmailContactMutation();
   const [retryOutbox, { isLoading: retryingOutbox }] = useRetryWebmailOutboxMutation();
   const [deleteOutbox, { isLoading: deletingOutbox }] = useDeleteWebmailOutboxMutation();
@@ -1090,6 +1101,8 @@ export default function WebmailApp() {
     window.setTimeout(() => setToast(null), 2800);
   };
 
+  const connected = Boolean(status?.connected) && !status?.emailMismatch && !forceDisconnected;
+
   const listArgs = useMemo(
     () => ({ folder, page, pageSize: 30, query: query || undefined }),
     [folder, page, query]
@@ -1097,6 +1110,7 @@ export default function WebmailApp() {
 
   const {
     refetch: refetchFolders,
+    error: foldersError,
   } = useGetWebmailFoldersQuery(undefined, { skip: !connected });
 
   const {
@@ -1206,6 +1220,63 @@ export default function WebmailApp() {
   const listBusy = listFetching && !messages.length;
   const listRefreshing = listFetching && messages.length > 0;
 
+  const imapErrorCode = listError?.data?.code || foldersError?.data?.code;
+  const imapErrorMessage = String(
+    listError?.data?.message || foldersError?.data?.message || ''
+  ).toLowerCase();
+  const imapAuthFailed = Boolean(
+    imapErrorCode === 'IMAP_AUTH_FAILED' ||
+    imapErrorMessage.includes('authentication failed') ||
+    imapErrorMessage.includes('invalid credentials') ||
+    imapErrorMessage.includes('password may have changed') ||
+    imapErrorMessage.includes('please reconnect')
+  );
+  const imapConnectFailed = Boolean(
+    !imapAuthFailed && (
+      imapErrorCode === 'IMAP_CONNECT_FAILED' ||
+      imapErrorMessage.includes('could not connect to mail server')
+    )
+  );
+
+  // Backend clears stale credentials on IMAP_AUTH_FAILED — refresh status so ConnectPanel appears.
+  useEffect(() => {
+    if (!imapAuthFailed) return;
+    setReconnectReason('auth');
+    setForceDisconnected(true);
+    refetchStatus();
+  }, [imapAuthFailed, refetchStatus]);
+
+  const handleReconnect = async () => {
+    setReconnectReason('auth');
+    setForceDisconnected(true);
+    try {
+      await disconnect().unwrap();
+    } catch (err) {
+      // Still show connect form even if server disconnect fails.
+      showToast(err?.data?.message || 'Could not clear saved password on server — reconnect with the new password', 'err');
+    }
+    refetchStatus();
+  };
+
+  const handleDisconnect = async () => {
+    const ok = await askConfirm({
+      title: 'Log out of mailbox',
+      message: 'Log out of webmail on this device? Your company email stays the same — you can sign in again with your email password.',
+      confirmLabel: 'Log out',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await disconnect().unwrap();
+      setReconnectReason(null);
+      setForceDisconnected(true);
+      showToast('Logged out of mailbox', 'ok');
+      refetchStatus();
+    } catch (err) {
+      showToast(err?.data?.message || 'Log out failed', 'err');
+    }
+  };
+
   if (statusLoading) {
     return (
       <div className="webmail-boot">
@@ -1248,7 +1319,16 @@ export default function WebmailApp() {
           </div>
           <div />
         </header>
-        <ConnectPanel status={status} onConnected={() => { refetchStatus(); refetchFolders(); }} />
+        <ConnectPanel
+          status={status}
+          reconnectReason={reconnectReason}
+          onConnected={() => {
+            setReconnectReason(null);
+            setForceDisconnected(false);
+            refetchStatus();
+            refetchFolders();
+          }}
+        />
       </div>
     );
   }
@@ -1290,18 +1370,9 @@ export default function WebmailApp() {
           <button
             type="button"
             className="webmail-icon-btn"
-            title="Disconnect mailbox"
-            onClick={async () => {
-              const ok = await askConfirm({
-                title: 'Disconnect mailbox',
-                message: 'Remove the saved mailbox password from DSMS? You can reconnect later with your email password.',
-                confirmLabel: 'Disconnect',
-                danger: true,
-              });
-              if (!ok) return;
-              await disconnect();
-              refetchStatus();
-            }}
+            title="Log out of mailbox"
+            disabled={disconnecting}
+            onClick={handleDisconnect}
           >
             <MailIcon name="signOut" />
           </button>
@@ -1366,8 +1437,44 @@ export default function WebmailApp() {
             </form>
           </div>
 
-          {listError ? (
-            <p className="webmail-error">{listError?.data?.message || 'Failed to load messages'}</p>
+          {imapAuthFailed ? (
+            <div className="webmail-auth-banner" role="alert">
+              <div className="webmail-auth-banner-content">
+                <MailIcon name="signOut" size={20} />
+                <div>
+                  <strong>Authentication failed</strong>
+                  <p>Your mailbox password may have changed. Please reconnect with your current email password.</p>
+                </div>
+              </div>
+              <button type="button" className="webmail-btn webmail-btn--primary" onClick={handleReconnect}>
+                Reconnect
+              </button>
+            </div>
+          ) : imapConnectFailed ? (
+            <div className="webmail-auth-banner webmail-auth-banner--warn" role="alert">
+              <div className="webmail-auth-banner-content">
+                <MailIcon name="sync" size={20} />
+                <div>
+                  <strong>Mail server unreachable</strong>
+                  <p>{listError?.data?.message || foldersError?.data?.message || 'Could not connect to the mail server. Please try again later.'}</p>
+                </div>
+              </div>
+              <button type="button" className="webmail-btn webmail-btn--ghost" onClick={() => { refetchList(); refetchFolders(); }}>
+                Retry
+              </button>
+            </div>
+          ) : listError ? (
+            <div className="webmail-auth-banner webmail-auth-banner--error" role="alert">
+              <div className="webmail-auth-banner-content">
+                <div>
+                  <strong>Failed to load messages</strong>
+                  <p>{listError?.data?.message || 'An unexpected error occurred.'}</p>
+                </div>
+              </div>
+              <button type="button" className="webmail-btn webmail-btn--ghost" onClick={() => refetchList()}>
+                Retry
+              </button>
+            </div>
           ) : null}
 
           {listBusy ? (

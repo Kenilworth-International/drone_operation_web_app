@@ -137,19 +137,20 @@
 
 .att-day-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .att-day-kpi {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .att-day-kpi--clickable {
@@ -172,16 +173,18 @@
 }
 
 .att-day-kpi span {
-  font-size: 12px;
+  font-size: 10.5px;
   color: #64748b;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
 .att-day-kpi strong {
-  font-size: 22px;
+  font-size: 18px;
   color: #0f172a;
   font-weight: 700;
   line-height: 1.1;
+  font-variant-numeric: tabular-nums;
 }
 
 .att-day-kpi--ok {
@@ -665,6 +668,10 @@
 @media (max-width: 960px) {
   .att-day-toolbar {
     grid-template-columns: 1fr;
+  }
+
+  .att-day-kpi-grid {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
 
   .att-day-date-trigger {

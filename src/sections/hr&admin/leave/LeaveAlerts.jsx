@@ -3,7 +3,7 @@ import React from 'react';
 const ALERTS = [
   { key: 'excessiveLeave', label: 'Excessive leave', hint: 'Used ≥ 80% of available quota', tone: 'rose' },
   { key: 'longDuration', label: 'Long-duration leave', hint: 'Single request ≥ 7 calendar days', tone: 'amber' },
-  { key: 'withoutApproval', label: 'Leave without approval', hint: 'Auto / HR auto-approved', tone: 'violet' },
+  { key: 'withoutApproval', label: 'Leave without approval', hint: '', tone: 'violet' },
   { key: 'pendingApproval', label: 'Pending approval', hint: 'Waiting RO or HOD', tone: 'sky' },
   { key: 'highBalances', label: 'High leave balances', hint: 'High remaining annual leave', tone: 'teal' },
 ];

@@ -57,7 +57,7 @@ export default function HrmDashboardBreakdownModal({
       }}
     >
       <div
-        className={`hrm-dash-breakdown-modal${data?.wide || columns.length >= 9 ? ' hrm-dash-breakdown-modal--wide' : ''}`}
+        className={`hrm-dash-breakdown-modal${data?.wide || columns.length >= 9 ? ' hrm-dash-breakdown-modal--wide' : ''}${data?.dense ? ' hrm-dash-breakdown-modal--dense' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="hrm-dash-breakdown-title"

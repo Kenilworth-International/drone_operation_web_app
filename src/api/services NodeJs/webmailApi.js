@@ -15,7 +15,10 @@ async function webmailJson(url, body, api) {
   const json = await result.json().catch(() => ({}));
   if (!result.ok || json.status === false) {
     const error = { status: result.status, data: json };
-    if (api) forceLogoutFromApi(api, error);
+    // Do not force DSMS logout for mailbox credential / IMAP connectivity failures.
+    if (api && json?.code !== 'IMAP_AUTH_FAILED' && json?.code !== 'IMAP_CONNECT_FAILED') {
+      forceLogoutFromApi(api, error);
+    }
     return { error };
   }
   return { data: json.data !== undefined ? json.data : json };
@@ -33,7 +36,9 @@ async function webmailForm(url, formData, api) {
   const json = await result.json().catch(() => ({}));
   if (!result.ok || json.status === false) {
     const error = { status: result.status, data: json };
-    if (api) forceLogoutFromApi(api, error);
+    if (api && json?.code !== 'IMAP_AUTH_FAILED' && json?.code !== 'IMAP_CONNECT_FAILED') {
+      forceLogoutFromApi(api, error);
+    }
     return { error };
   }
   return { data: json.data !== undefined ? json.data : json };

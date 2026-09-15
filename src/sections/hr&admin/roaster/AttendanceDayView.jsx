@@ -121,6 +121,8 @@ function buildAttDayKpiBreakdown(employees, kpiId, dateKey) {
     rows,
     total: rows.length,
     truncated: false,
+    wide: true,
+    dense: true,
     period: { periodType: 'day', periodKey: dateKey },
   };
 }
