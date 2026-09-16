@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 858\n- **Route files:** 73\n- **Schema overlays applied:** 325\n- **Generated:** 2026-09-15T11:02:23.076Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 859\n- **Route files:** 73\n- **Schema overlays applied:** 325\n- **Generated:** 2026-09-16T07:34:59.877Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
   },
   "servers": [
     {
@@ -35613,6 +35613,48 @@
     "/api/hr-leave/admin/ops/day-employees": {
       "post": {
         "summary": "Day Employees",
+        "description": "Module: HR Leave",
+        "tags": [
+          "HR Leave"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/hr-leave/admin/ops/leave/calendar": {
+      "post": {
+        "summary": "Calendar",
         "description": "Module: HR Leave",
         "tags": [
           "HR Leave"

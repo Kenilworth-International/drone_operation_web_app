@@ -21,6 +21,7 @@ import {
   requestModeLabel,
 } from '../../../utils/hrStatusLabels';
 import HrmDashboardBreakdownModal from '../dashboard/HrmDashboardBreakdownModal';
+import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
 
 const ATT_DAY_KPI_COLUMNS = [
   { key: 'empNo', label: 'Emp No' },
@@ -36,7 +37,7 @@ const ATT_DAY_KPIS = [
   { id: 'attended', label: 'Attended', tone: 'ok', summaryKey: 'attendedCount' },
   { id: 'completed', label: 'Completed', tone: 'ok', summaryKey: 'completedCount' },
   { id: 'not_marked', label: 'Not marked', tone: 'warn', summaryKey: 'notMarkedCount' },
-  { id: 'pending_leave', label: 'Pending leave', tone: '', summaryKey: 'pendingLeaveCount' },
+  { id: 'pending_leave', label: 'Pending leave', tone: 'pending', summaryKey: 'pendingLeaveCount' },
   { id: 'auto_short_leave', label: 'Auto short leave', tone: 'info', summaryKey: 'autoShortLeaveCount' },
   { id: 'nopay', label: 'No pay', tone: 'danger', summaryKey: 'nopayCount' },
 ];
@@ -66,7 +67,7 @@ function employeeBreakdownBase(row) {
   return {
     employeeId: row.employeeId,
     empNo: row.empNo || '—',
-    employeeName: row.employeeName || row.preferredName || '—',
+    employeeName: getEmployeeDisplayName(row, '—'),
     department: row.department || row.departmentName || row.emp_dept_name || '—',
     designation:
       row.designation || row.jobRole || row.employeeJobRoleName || row.employeeJobRole || '—',
@@ -153,6 +154,121 @@ const formatTime = (value) => {
   return parsed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+function parseMarkInTimestamp(row) {
+  const markIn = row?.attendance?.markIn || row?.attendance?.mark_in;
+  if (!markIn) return null;
+  const parsed = new Date(String(markIn).replace(' ', 'T'));
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+function isWfhLeaveRow(lr) {
+  const code = String(lr?.leaveTypeCode || lr?.leave_type_code || '').toLowerCase();
+  return code === 'work_from_home' || code === 'wfh';
+}
+
+/** Compact location badge for the employee list (Office / WFH / Outside). */
+function getAttendanceLocationIndicator(row) {
+  const leaves = Array.isArray(row?.leaveRequests) ? row.leaveRequests : [];
+  const hasWfh = leaves.some((lr) => {
+    if (!isWfhLeaveRow(lr)) return false;
+    const status = String(lr.currentStatus || lr.current_status || '').toLowerCase();
+    return status === 'approved' || status === 'pending_l1' || status === 'pending_l2';
+  });
+  if (hasWfh) {
+    const approved = leaves.some(
+      (lr) => isWfhLeaveRow(lr) && String(lr.currentStatus || lr.current_status || '').toLowerCase() === 'approved',
+    );
+    return {
+      key: 'wfh',
+      label: approved ? 'WFH' : 'WFH pending',
+      title: approved ? 'Work from home leave for this day' : 'Work from home leave pending approval',
+    };
+  }
+
+  const att = row?.attendance;
+  if (!att?.markIn && !att?.mark_in) {
+    if (row?.workLocation) {
+      return {
+        key: 'assigned',
+        label: String(row.workLocation).length > 18
+          ? `${String(row.workLocation).slice(0, 17)}…`
+          : String(row.workLocation),
+        title: `Assigned work location: ${row.workLocation}`,
+      };
+    }
+    return null;
+  }
+
+  const valid = att.markInLocationValid;
+  if (valid != null && valid !== '') {
+    if (Number(valid) === 1) {
+      return {
+        key: 'office',
+        label: 'Office',
+        title: locationValidLabel(valid),
+      };
+    }
+    const meters = Number(att.markInDistanceMeters);
+    const distanceLabel = Number.isFinite(meters)
+      ? (meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`)
+      : null;
+    return {
+      key: 'outside',
+      label: distanceLabel ? `Off ${distanceLabel}` : 'Off-site',
+      title: locationValidLabel(valid),
+    };
+  }
+
+  const hasCoords =
+    att.markInLatitude != null
+    && att.markInLongitude != null
+    && att.markInLatitude !== ''
+    && att.markInLongitude !== '';
+  if (hasCoords) {
+    return { key: 'gps', label: 'GPS', title: 'Mark-in GPS recorded (geofence not checked)' };
+  }
+
+  if (row?.workLocation) {
+    return {
+      key: 'assigned',
+      label: String(row.workLocation).length > 18
+        ? `${String(row.workLocation).slice(0, 17)}…`
+        : String(row.workLocation),
+      title: `Assigned work location: ${row.workLocation}`,
+    };
+  }
+
+  return null;
+}
+
+/** KPI card tone for employee list styling (matches att-day-kpi--* colors). */
+function getEmployeeListTone(row) {
+  if (row.attendance?.nopay) return 'danger';
+  if (Array.isArray(row.autoShortLeaves) && row.autoShortLeaves.length) return 'info';
+  if (Array.isArray(row.pendingLeaves) && row.pendingLeaves.length) return 'pending';
+  if (row.attendanceStatus === 'completed') return 'ok';
+  if (row.attendanceStatus === 'in_progress') return 'ok';
+  if (row.attendanceStatus !== 'not_marked') return 'ok';
+  return 'warn';
+}
+
+function sortEmployeesForDayList(rows) {
+  return [...(rows || [])].sort((a, b) => {
+    const aMarked = a.attendanceStatus !== 'not_marked';
+    const bMarked = b.attendanceStatus !== 'not_marked';
+    if (aMarked && !bMarked) return -1;
+    if (!aMarked && bMarked) return 1;
+    if (aMarked && bMarked) {
+      const aTime = parseMarkInTimestamp(a);
+      const bTime = parseMarkInTimestamp(b);
+      if (aTime != null && bTime != null && aTime !== bTime) return aTime - bTime;
+      if (aTime != null && bTime == null) return -1;
+      if (aTime == null && bTime != null) return 1;
+    }
+    return getEmployeeDisplayName(a, '').localeCompare(getEmployeeDisplayName(b, ''));
+  });
+}
+
 const formatMinutes = (mins) => {
   const total = Math.max(0, Number(mins) || 0);
   const h = Math.floor(total / 60);
@@ -175,12 +291,14 @@ const leaveTypeLabel = (lr) =>
   'Leave';
 
 const statusTone = (row) => {
-  if (row.attendance?.nopay) return 'nopay';
-  if (row.pendingLeaves?.length) return 'pending';
-  if (row.attendanceStatus === 'completed') return 'completed';
-  if (row.attendanceStatus === 'in_progress') return 'in-progress';
-  if (row.autoShortLeaves?.length) return 'auto';
-  if (row.attendanceStatus === 'not_marked') return 'absent';
+  const tone = getEmployeeListTone(row);
+  if (tone === 'ok') {
+    return row.attendanceStatus === 'completed' ? 'completed' : 'in-progress';
+  }
+  if (tone === 'warn') return 'absent';
+  if (tone === 'info') return 'auto';
+  if (tone === 'danger') return 'nopay';
+  if (tone === 'pending') return 'pending';
   return 'neutral';
 };
 
@@ -286,7 +404,7 @@ function EmployeeDetailPanel({
     <div className="att-day-detail-panel">
       <header className="att-day-detail-header">
         <div>
-          <h3 className="att-day-detail-name">{row.employeeName}</h3>
+          <h3 className="att-day-detail-name">{getEmployeeDisplayName(row)}</h3>
           <p className="att-day-detail-meta">
             {row.empNo || '—'} · {row.department || '—'}
             {row.designation ? ` · ${row.designation}` : ''}
@@ -521,6 +639,7 @@ export default function AttendanceDayView() {
 
   const payload = response?.data?.data || response?.data || response || null;
   const employees = payload?.employees || [];
+  const sortedEmployees = useMemo(() => sortEmployeesForDayList(employees), [employees]);
   const summary = payload?.summary || {};
   const policy = payload?.policy || {};
   const holiday = payload?.holiday;
@@ -538,15 +657,17 @@ export default function AttendanceDayView() {
   );
 
   useEffect(() => {
-    if (!employees.length) {
+    if (!sortedEmployees.length) {
       setSelectedEmployeeId(null);
       return;
     }
-    const stillVisible = employees.some((row) => Number(row.employeeId) === Number(selectedEmployeeId));
+    const stillVisible = sortedEmployees.some(
+      (row) => Number(row.employeeId) === Number(selectedEmployeeId),
+    );
     if (!stillVisible) {
-      setSelectedEmployeeId(employees[0].employeeId);
+      setSelectedEmployeeId(sortedEmployees[0].employeeId);
     }
-  }, [employees, selectedEmployeeId]);
+  }, [sortedEmployees, selectedEmployeeId]);
 
   const shiftDate = (deltaDays) => {
     const parsed = new Date(`${selectedDate}T12:00:00`);
@@ -693,27 +814,50 @@ export default function AttendanceDayView() {
       ) : (
         <div className="att-day-split">
           <aside className="att-day-employee-list" aria-label="Employees for selected date">
-            {employees.length === 0 ? (
+            {sortedEmployees.length === 0 ? (
               <div className="att-day-empty">No employees found for this date.</div>
             ) : (
-              employees.map((row) => {
-                const tone = statusTone(row);
+              sortedEmployees.map((row) => {
+                const listTone = getEmployeeListTone(row);
+                const dotTone = statusTone(row);
                 const leaveCount = (row.leaveRequests || []).length;
                 const isSelected = Number(row.employeeId) === Number(selectedEmployeeId);
+                const markInLabel = formatTime(row.attendance?.markIn || row.attendance?.mark_in);
+                const arrivedToday = row.attendanceStatus !== 'not_marked';
+                const locationIndicator = getAttendanceLocationIndicator(row);
 
                 return (
                   <button
                     key={row.employeeId}
                     type="button"
-                    className={`att-day-employee-item${isSelected ? ' att-day-employee-item--active' : ''}`}
+                    className={`att-day-employee-item att-day-employee-item--${listTone}${
+                      isSelected ? ' att-day-employee-item--active' : ''
+                    }`}
                     onClick={() => setSelectedEmployeeId(row.employeeId)}
                   >
-                    <span className={`att-day-employee-dot att-day-employee-dot--${tone}`} aria-hidden />
+                    <span className={`att-day-employee-dot att-day-employee-dot--${dotTone}`} aria-hidden />
                     <span className="att-day-employee-item-body">
-                      <span className="att-day-employee-item-name">{row.employeeName}</span>
+                      <span className="att-day-employee-item-name">{getEmployeeDisplayName(row)}</span>
                       <span className="att-day-employee-item-meta">
-                        {row.empNo || '—'} · {attendanceDayStatusLabel(row.attendanceStatus)}
-                        {leaveCount ? ` · ${leaveCount} leave` : ''}
+                        <span className="att-day-employee-item-meta-text">
+                          {arrivedToday && markInLabel ? `${markInLabel} · ` : ''}
+                          {row.empNo || '—'}
+                          {' · '}
+                          {row.attendanceStatus === 'completed'
+                            ? 'Done'
+                            : row.attendanceStatus === 'in_progress'
+                              ? 'In'
+                              : 'Not marked'}
+                          {leaveCount ? ` · ${leaveCount} leave` : ''}
+                        </span>
+                        {locationIndicator ? (
+                          <span
+                            className={`att-day-loc-badge att-day-loc-badge--${locationIndicator.key}`}
+                            title={locationIndicator.title}
+                          >
+                            {locationIndicator.label}
+                          </span>
+                        ) : null}
                       </span>
                     </span>
                   </button>

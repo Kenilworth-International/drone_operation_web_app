@@ -110,7 +110,19 @@ export default function HrmDashboardBreakdownModal({
                   </thead>
                   <tbody>
                     {rows.map((row, idx) => (
-                      <tr key={row.employeeId || row.leaveRequestId || row.reviewId || row.recordId || idx}>
+                      <tr
+                        key={
+                          row.leaveRequestId != null
+                            ? `leave-${row.leaveRequestId}`
+                            : row.recordId != null
+                              ? `att-${row.recordId}`
+                              : row.reviewId != null
+                                ? `kpi-${row.reviewId}`
+                                : row.employeeId != null
+                                  ? `emp-${row.employeeId}-${idx}`
+                                  : `row-${idx}`
+                        }
+                      >
                         {columns.map((col) => (
                           <td
                             key={col.key}

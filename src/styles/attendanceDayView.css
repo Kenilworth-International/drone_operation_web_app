@@ -223,6 +223,15 @@
   color: #dc2626;
 }
 
+.att-day-kpi--pending {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.att-day-kpi--pending strong {
+  color: #334155;
+}
+
 .att-day-policy-note {
   font-size: 13px;
   color: #64748b;
@@ -248,30 +257,84 @@
 .att-day-employee-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   max-height: 72vh;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
-  padding: 8px;
+  /* Tight left; extra right so badges clear the scrollbar */
+  padding: 4px 14px 4px 2px;
   background: #f8fafc;
 }
 
 .att-day-employee-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 4px;
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-left-width: 3px;
+  border-left-color: transparent;
+  border-radius: 8px;
   background: #fff;
-  padding: 10px 12px;
+  padding: 8px 6px 8px 2px;
+  margin: 0;
   cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.att-day-employee-item--ok {
+  border-left-color: #a7f3d0;
+  background: #f0fdf4;
+}
+
+.att-day-employee-item--ok .att-day-employee-item-name {
+  color: #059669;
+}
+
+.att-day-employee-item--warn {
+  border-left-color: #fdba74;
+  background: #fffbeb;
+}
+
+.att-day-employee-item--warn .att-day-employee-item-name {
+  color: #c2410c;
+}
+
+.att-day-employee-item--info {
+  border-left-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.att-day-employee-item--info .att-day-employee-item-name {
+  color: #2563eb;
+}
+
+.att-day-employee-item--danger {
+  border-left-color: #fecaca;
+  background: #fef2f2;
+}
+
+.att-day-employee-item--danger .att-day-employee-item-name {
+  color: #dc2626;
+}
+
+.att-day-employee-item--pending {
+  border-left-color: #cbd5e1;
+  background: #f8fafc;
+}
+
+.att-day-employee-item--pending .att-day-employee-item-name {
+  color: #334155;
 }
 
 .att-day-employee-item:hover {
   border-color: #cbd5e1;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
 }
 
 .att-day-employee-item--active {
@@ -280,11 +343,31 @@
   background: #f0f9ff;
 }
 
+.att-day-employee-item--active.att-day-employee-item--ok {
+  background: #ecfdf5;
+}
+
+.att-day-employee-item--active.att-day-employee-item--warn {
+  background: #fff7ed;
+}
+
+.att-day-employee-item--active.att-day-employee-item--info {
+  background: #eff6ff;
+}
+
+.att-day-employee-item--active.att-day-employee-item--danger {
+  background: #fef2f2;
+}
+
+.att-day-employee-item--active.att-day-employee-item--pending {
+  background: #f1f5f9;
+}
+
 .att-day-employee-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
-  margin-top: 6px;
+  margin-top: 5px;
   flex-shrink: 0;
   background: #94a3b8;
 }
@@ -302,7 +385,7 @@
 }
 
 .att-day-employee-dot--auto {
-  background: #7c3aed;
+  background: #2563eb;
 }
 
 .att-day-employee-dot--nopay {
@@ -318,17 +401,81 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 
 .att-day-employee-item-name {
+  display: block;
   font-size: 14px;
   font-weight: 600;
   color: #0f172a;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.att-day-loc-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  padding: 2px 5px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.att-day-loc-badge--office {
+  color: #047857;
+  background: #d1fae5;
+  border-color: #a7f3d0;
+}
+
+.att-day-loc-badge--outside {
+  color: #b45309;
+  background: #ffedd5;
+  border-color: #fdba74;
+}
+
+.att-day-loc-badge--wfh {
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-color: #bfdbfe;
+}
+
+.att-day-loc-badge--gps {
+  color: #475569;
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.att-day-loc-badge--assigned {
+  color: #57534e;
+  background: #f5f5f4;
+  border-color: #e7e5e4;
 }
 
 .att-day-employee-item-meta {
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11px;
   color: #64748b;
+  line-height: 1.35;
+}
+
+.att-day-employee-item-meta-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .att-day-detail-panel,

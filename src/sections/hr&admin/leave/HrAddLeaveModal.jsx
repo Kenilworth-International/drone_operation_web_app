@@ -7,6 +7,7 @@ import {
   useLazyGetHrLeaveOpsBalancesQuery,
 } from '../../../api/services NodeJs/hrLeaveApi';
 import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
+import HrLeaveDatePicker from './HrLeaveDatePicker';
 
 const DEFAULT_SHORT_LEAVE_MINUTES = 120;
 
@@ -46,6 +47,8 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
   const [balanceDetail, setBalanceDetail] = useState(null);
   const [dayEstimate, setDayEstimate] = useState(null);
   const [estimating, setEstimating] = useState(false);
+  const [showEmployeePicker, setShowEmployeePicker] = useState(false);
+  const [autoConfirmOpen, setAutoConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -62,6 +65,8 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
     setShowAllTypes(false);
     setBalanceDetail(null);
     setDayEstimate(null);
+    setShowEmployeePicker(false);
+    setAutoConfirmOpen(false);
   }, [open]);
 
   const selectedEmployee = useMemo(
@@ -116,6 +121,29 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
     };
   }, [open, employeeId, startDate, fetchBalances]);
 
+  const estimateInputsKey = useMemo(
+    () => [
+      open ? '1' : '0',
+      employeeId || '',
+      leaveTypeCode || '',
+      startDate || '',
+      endDate || '',
+      requestMode || '',
+      halfDaySession || '',
+      shortLeaveMinutes || '',
+    ].join('|'),
+    [
+      open,
+      employeeId,
+      leaveTypeCode,
+      startDate,
+      endDate,
+      requestMode,
+      halfDaySession,
+      shortLeaveMinutes,
+    ],
+  );
+
   useEffect(() => {
     if (!open || !employeeId || !startDate || !requestMode) {
       setDayEstimate(null);
@@ -126,6 +154,7 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
       try {
         const data = await estimateLeave({
           employeeId: Number(employeeId),
+          leaveTypeCode,
           requestMode,
           startDate,
           endDate: requestMode === 'full_day' ? (endDate || startDate) : startDate,
@@ -148,27 +177,19 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
       }
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [
-    open,
-    employeeId,
-    startDate,
-    endDate,
-    requestMode,
-    halfDaySession,
-    shortLeaveMinutes,
-    estimateLeave,
-  ]);
+  }, [estimateInputsKey, estimateLeave]);
 
   const filteredEmployees = useMemo(() => {
     const q = employeeSearch.trim().toLowerCase();
-    if (!q) return employees.slice(0, 80);
-    return employees
-      .filter((emp) => {
+    const list = !q
+      ? employees
+      : employees.filter((emp) => {
         const name = getEmployeeDisplayName(emp, '').toLowerCase();
         const empNo = String(emp.empNo || emp.emp_no || '').toLowerCase();
-        return name.includes(q) || empNo.includes(q);
-      })
-      .slice(0, 80);
+        const dept = String(emp.departmentName || emp.department || '').toLowerCase();
+        return name.includes(q) || empNo.includes(q) || dept.includes(q);
+      });
+    return list.slice(0, 60);
   }, [employees, employeeSearch]);
 
   if (!open) return null;
@@ -192,26 +213,21 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!employeeId || !leaveTypeCode || !startDate) {
-      toast.warning('Employee, leave type, and start date are required.');
-      return;
-    }
-    if (dayEstimate?.hasConflicts) {
-      toast.error(dayEstimate.conflictMessage || 'Selected dates conflict with existing leave.');
-      return;
-    }
-    if (dayEstimate && !dayEstimate.error && Number(dayEstimate.units || 0) <= 0) {
-      toast.warning(dayEstimate.message || 'No chargeable leave days in this range (weekends/holidays skipped).');
-      return;
-    }
-    if (approvalMode === 'auto') {
-      const ok = window.confirm(
-        'Auto-approved leave skips RO and HOD approval and will be approved immediately. Continue?',
-      );
-      if (!ok) return;
-    }
+  const selectEmployee = (emp) => {
+    setEmployeeId(String(emp.id));
+    setLeaveTypeCode('');
+    setEmployeeSearch('');
+    setShowEmployeePicker(false);
+  };
+
+  const clearEmployee = () => {
+    setEmployeeId('');
+    setLeaveTypeCode('');
+    setEmployeeSearch('');
+    setShowEmployeePicker(true);
+  };
+
+  const submitLeave = async () => {
     try {
       const effectiveMode =
         String(leaveTypeCode).toLowerCase() === 'short_leave' ? 'short' : requestMode;
@@ -245,11 +261,33 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
           ? `Leave created and auto-approved${units != null ? ` (${units} day(s))` : ''}.`
           : `Leave created and sent for RO/HOD approval${units != null ? ` (${units} day(s))` : ''}.`,
       );
+      setAutoConfirmOpen(false);
       onSuccess?.();
       onClose?.();
     } catch (err) {
       toast.error(err?.data?.message || err?.error || err?.message || 'Failed to create leave');
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!employeeId || !leaveTypeCode || !startDate) {
+      toast.warning('Employee, leave type, and start date are required.');
+      return;
+    }
+    if (dayEstimate?.hasConflicts) {
+      toast.error(dayEstimate.conflictMessage || 'Selected dates conflict with existing leave.');
+      return;
+    }
+    if (dayEstimate && !dayEstimate.error && Number(dayEstimate.units || 0) <= 0) {
+      toast.warning(dayEstimate.message || 'No chargeable leave days in this range (weekends/holidays skipped).');
+      return;
+    }
+    if (approvalMode === 'auto') {
+      setAutoConfirmOpen(true);
+      return;
+    }
+    await submitLeave();
   };
 
   const weekendsSkipped = Array.isArray(dayEstimate?.skipped?.weekends)
@@ -261,6 +299,16 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
   const bulkSkipped = Array.isArray(dayEstimate?.skipped?.bulkLeave)
     ? dayEstimate.skipped.bulkLeave
     : [];
+
+  const selectedEmpNo = selectedEmployee
+    ? (selectedEmployee.empNo || selectedEmployee.emp_no || '—')
+    : '';
+  const selectedEmpName = selectedEmployee
+    ? getEmployeeDisplayName(selectedEmployee)
+    : '';
+  const selectedEmpDept = selectedEmployee
+    ? (selectedEmployee.departmentName || selectedEmployee.department || '')
+    : '';
 
   return (
     <div className="leave-ops-modal-overlay" onClick={onClose} role="presentation">
@@ -277,33 +325,64 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
         </header>
         <form onSubmit={handleSubmit}>
           <div className="leave-ops-modal-body">
-            <label>
-              Search employee
-              <input
-                type="text"
-                value={employeeSearch}
-                onChange={(e) => setEmployeeSearch(e.target.value)}
-                placeholder="Name or EMP no"
-              />
-            </label>
-            <label>
-              Employee
-              <select
-                value={employeeId}
-                onChange={(e) => {
-                  setEmployeeId(e.target.value);
-                  setLeaveTypeCode('');
-                }}
-                required
-              >
-                <option value="">Select employee</option>
-                {filteredEmployees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.empNo || emp.emp_no || '—'} · {getEmployeeDisplayName(emp)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <div className="leave-ops-emp-picker">
+              <span className="leave-ops-emp-picker-label">Employee</span>
+              {selectedEmployee ? (
+                <div className="leave-ops-emp-selected">
+                  <div className="leave-ops-emp-selected-main">
+                    <strong>{selectedEmpNo} · {selectedEmpName}</strong>
+                    {selectedEmpDept ? (
+                      <span className="leave-ops-emp-selected-meta">{selectedEmpDept}</span>
+                    ) : null}
+                  </div>
+                  <button
+                    type="button"
+                    className="leave-ops-btn leave-ops-btn--tiny"
+                    onClick={clearEmployee}
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    value={employeeSearch}
+                    onChange={(e) => {
+                      setEmployeeSearch(e.target.value);
+                      setShowEmployeePicker(true);
+                    }}
+                    onFocus={() => setShowEmployeePicker(true)}
+                    placeholder="Search by name, EMP no, or department"
+                    autoComplete="off"
+                  />
+                  {showEmployeePicker ? (
+                    <ul className="leave-ops-emp-results" role="listbox">
+                      {filteredEmployees.length === 0 ? (
+                        <li className="leave-ops-emp-results-empty">No employees match</li>
+                      ) : (
+                        filteredEmployees.map((emp) => (
+                          <li key={emp.id}>
+                            <button
+                              type="button"
+                              className="leave-ops-emp-result-btn"
+                              onClick={() => selectEmployee(emp)}
+                            >
+                              <span className="leave-ops-emp-result-name">
+                                {emp.empNo || emp.emp_no || '—'} · {getEmployeeDisplayName(emp)}
+                              </span>
+                              <span className="leave-ops-emp-result-meta">
+                                {emp.departmentName || emp.department || '—'}
+                              </span>
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  ) : null}
+                </>
+              )}
+            </div>
 
             {employeeId ? (
               <div className="leave-ops-add-meta">
@@ -395,32 +474,16 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
               </label>
             ) : null}
 
-            <div className="leave-ops-date-row">
-              <label>
-                Start date
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setStartDate(next);
-                    if (requestMode !== 'full_day' || !endDate) setEndDate(next);
-                  }}
-                  required
-                />
-              </label>
-              {requestMode === 'full_day' ? (
-                <label>
-                  End date
-                  <input
-                    type="date"
-                    value={endDate}
-                    min={startDate || undefined}
-                    onChange={(e) => setEndDate(e.target.value)}
-                  />
-                </label>
-              ) : null}
-            </div>
+            <HrLeaveDatePicker
+              employeeId={employeeId}
+              requestMode={requestMode}
+              startDate={startDate}
+              endDate={endDate}
+              onStartChange={setStartDate}
+              onEndChange={setEndDate}
+              disabled={!employeeId}
+            />
+            <input type="hidden" value={startDate} required readOnly />
 
             {(estimating || dayEstimate) && (
               <div
@@ -465,6 +528,11 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
                 <option value="auto">Auto-approved (no RO/HOD)</option>
               </select>
             </label>
+            {approvalMode === 'auto' ? (
+              <p className="leave-ops-approval-hint">
+                Auto-approved leave skips RO and HOD and is approved immediately.
+              </p>
+            ) : null}
             <label>
               Reason
               <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -483,6 +551,35 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
             </button>
           </div>
         </form>
+
+        {autoConfirmOpen ? (
+          <div className="leave-ops-confirm-overlay" role="presentation">
+            <div className="leave-ops-confirm-panel" role="dialog" aria-modal="true">
+              <h4>Confirm auto-approval</h4>
+              <p>
+                This leave will skip RO and HOD approval and be approved immediately. Continue?
+              </p>
+              <div className="leave-ops-confirm-actions">
+                <button
+                  type="button"
+                  className="leave-ops-btn"
+                  onClick={() => setAutoConfirmOpen(false)}
+                  disabled={isLoading}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  className="leave-ops-btn leave-ops-btn--primary"
+                  onClick={submitLeave}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Saving…' : 'Yes, auto-approve'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

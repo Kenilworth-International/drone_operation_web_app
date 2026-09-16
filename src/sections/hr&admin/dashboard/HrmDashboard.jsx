@@ -70,6 +70,11 @@ function shortDeptLabel(name, max = 12) {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
 }
 
+function chartTitleWithPeriod(title, period) {
+  const label = String(period || '').trim();
+  return label ? `${title} · ${label}` : title;
+}
+
 function daysUntilLabel(daysUntil) {
   const days = Number(daysUntil);
   if (!Number.isFinite(days)) return '';
@@ -454,7 +459,7 @@ export default function HrmDashboard({ embedded = false }) {
 
       <section className="hrm-dash-grid hrm-dash-grid--2">
         <ChartPanel
-          title="Attendance trend"
+          title={chartTitleWithPeriod('Attendance trend', periodLabel)}
           subtitle={attendanceTrendSubtitle}
           empty={!attendanceTrend.length}
           onExport={() => exportHrmAttendanceExcel(exportCtx)}
@@ -510,7 +515,7 @@ export default function HrmDashboard({ embedded = false }) {
         </ChartPanel>
 
         <ChartPanel
-          title="Leave requests"
+          title={chartTitleWithPeriod('Leave requests', periodLabel)}
           subtitle="By status · click a slice"
           empty={!leavePieData.length}
           onExport={() => exportHrmLeaveExcel(exportCtx)}
@@ -546,7 +551,7 @@ export default function HrmDashboard({ embedded = false }) {
 
       <section className="hrm-dash-grid hrm-dash-grid--2">
         <ChartPanel
-          title="Headcount by department"
+          title={chartTitleWithPeriod('Headcount by department', periodLabel)}
           subtitle={`${workforce.totalEmployees ?? 0} employees · click a bar`}
           empty={!deptBarData.length}
           onExport={() => exportHrmWorkforceExcel(exportCtx)}
@@ -581,7 +586,7 @@ export default function HrmDashboard({ embedded = false }) {
         </ChartPanel>
 
         <ChartPanel
-          title="SMART KPI reviews"
+          title={chartTitleWithPeriod('SMART KPI reviews', periodLabel)}
           subtitle={`${kpi.smart?.reviewCount ?? 0} reviews · click a bar`}
           empty={!smartBarData.length}
           onExport={() => exportHrmKpiExcel(exportCtx)}

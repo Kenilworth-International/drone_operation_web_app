@@ -166,6 +166,17 @@ export const hrLeaveApi = baseApi.injectEndpoints({
         return { data: result.data?.data || result.data || null };
       },
     }),
+    getHrOpsLeaveCalendar: builder.query({
+      queryFn: async (body = {}) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/leave/calendar', method: 'POST', body: body || {} },
+          {},
+          {},
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+    }),
     listHrLeaveAdminTypes: builder.query({
       queryFn: async (body = {}) =>
         nodeBackendBaseQuery({ url: '/api/hr-leave/admin/types/list', method: 'POST', body }, {}, {}),
@@ -233,6 +244,8 @@ export const {
   useAdjustHrLeaveBalanceMutation,
   useCreateHrOpsLeaveMutation,
   useEstimateHrOpsLeaveMutation,
+  useGetHrOpsLeaveCalendarQuery,
+  useLazyGetHrOpsLeaveCalendarQuery,
   useListHrLeaveAdminTypesQuery,
   useSaveHrLeaveAdminTypeMutation,
   useSetHrLeaveAdminTypeStatusMutation,
