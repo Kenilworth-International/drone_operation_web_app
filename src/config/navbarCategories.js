@@ -126,7 +126,7 @@ const navbarCategories = [
         icon: FaClock,
         subItems: [
           { path: '/home/attendance/daily-attendance', label: 'Attendance/Leave', icon: FaIdCard },
-          { path: '/home/attendance/roaster-planning', label: 'Roaster Planning', icon: FaCalendarAlt },
+          { path: '/home/attendance/roaster-planning', label: 'Attendance Board', icon: FaCalendarAlt },
           { path: '/home/attendance/wfh-monitoring', label: 'WFH Monitoring', icon: FaLaptop },
           { path: '/home/attendance/holidays-flex', label: 'Holidays & Flex', icon: FaCalendarCheck },
         ],

@@ -3,7 +3,15 @@ import { toast } from 'react-toastify';
 import { useLazyGetHrOpsLeaveCalendarQuery } from '../../../api/services NodeJs/hrLeaveApi';
 import { leaveStatusLabel } from '../../../utils/hrStatusLabels';
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAYS = [
+  { key: 'sun', label: 'Su' },
+  { key: 'mon', label: 'Mo' },
+  { key: 'tue', label: 'Tu' },
+  { key: 'wed', label: 'We' },
+  { key: 'thu', label: 'Th' },
+  { key: 'fri', label: 'Fr' },
+  { key: 'sat', label: 'Sa' },
+];
 
 function pad2(n) {
   return String(n).padStart(2, '0');
@@ -256,8 +264,8 @@ export default function HrLeaveDatePicker({
 
       <div className="leave-ops-cal leave-ops-cal--picker">
         {WEEKDAYS.map((d) => (
-          <div key={d} className="leave-ops-cal-head">
-            {d}
+          <div key={d.key} className="leave-ops-cal-head">
+            {d.label}
           </div>
         ))}
         {calCells.map((cell) => {

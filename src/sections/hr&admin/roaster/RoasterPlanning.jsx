@@ -226,12 +226,19 @@ const toBoolText = (value) => locationValidLabel(value);
 const statusLabel = (status) => leaveStatusLabel(status);
 const formatTimeOnly = (value) => {
   if (!value) return '-';
-  const dt = new Date(String(value).replace(' ', 'T'));
-  if (Number.isNaN(dt.getTime())) {
-    const parts = String(value).split(' ');
-    return parts[1] || String(value);
+  const raw = String(value).trim();
+  const spaceParts = raw.split(/\s+/);
+  if (spaceParts.length >= 2 && /^\d{1,2}:\d{2}/.test(spaceParts[1])) {
+    return spaceParts[1].slice(0, 8);
   }
-  return dt.toLocaleTimeString();
+  const dt = new Date(raw.replace(' ', 'T'));
+  if (Number.isNaN(dt.getTime())) return raw;
+  return dt.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 };
 const formatWorkedHours = (minutesRaw) => {
   const total = Number(minutesRaw);
@@ -1105,25 +1112,21 @@ const RoasterPlanning = ({ embedded = false }) => {
       : null;
     return (
       <div className={`roaster-att-row${outside ? ' is-outside' : ''}`}>
-        <div className="roaster-att-row__main">
-          <div className="roaster-att-row__label">
-            <span className="roaster-att-row__kind">{kind === 'in' ? 'Mark in' : 'Mark out'}</span>
-            <span className={`roaster-att-row__status${outside ? ' is-outside' : hasTime ? ' is-ok' : ''}`}>
-              {hasTime ? (outside ? `Outside ${radiusMeters} m` : validLabel) : 'Not recorded'}
-            </span>
-          </div>
-          <div className="roaster-att-row__time">{hasTime ? time : '—'}</div>
-        </div>
-        <div className="roaster-att-row__meta">
-          <span className="roaster-att-row__distance">
-            {hasTime && distanceText ? distanceText : 'No location'}
-          </span>
-          {mapUrl ? (
-            <a className="roaster-att-row__map" href={mapUrl} target="_blank" rel="noreferrer">
-              Map
-            </a>
-          ) : null}
-        </div>
+        <span className="roaster-att-row__kind">{kind === 'in' ? 'In' : 'Out'}</span>
+        <span className="roaster-att-row__time">{hasTime ? time : '—'}</span>
+        <span className={`roaster-att-row__status${outside ? ' is-outside' : hasTime ? ' is-ok' : ''}`}>
+          {hasTime ? (outside ? `Outside ${radiusMeters} m` : validLabel) : 'Not recorded'}
+        </span>
+        <span className="roaster-att-row__distance">
+          {hasTime && distanceText ? distanceText : '—'}
+        </span>
+        {mapUrl ? (
+          <a className="roaster-att-row__map" href={mapUrl} target="_blank" rel="noreferrer">
+            Map
+          </a>
+        ) : (
+          <span className="roaster-att-row__map-placeholder" />
+        )}
       </div>
     );
   };
@@ -1543,9 +1546,12 @@ const RoasterPlanning = ({ embedded = false }) => {
           >
             <header className="roaster-attendance-modal__header">
               <div className="roaster-attendance-modal__header-main">
-                <p className="roaster-attendance-modal__eyebrow">Attendance record</p>
-                <h3 className="roaster-attendance-modal__title">{attendancePopup.employeeName}</h3>
-                <p className="roaster-attendance-modal__date">{formatPopupDate(attendancePopup.dateString)}</p>
+                <h3 className="roaster-attendance-modal__title">
+                  {attendancePopup.employeeName}
+                  <span className="roaster-attendance-modal__date">
+                    {formatPopupDate(attendancePopup.dateString)}
+                  </span>
+                </h3>
               </div>
               <button
                 type="button"
@@ -1561,77 +1567,87 @@ const RoasterPlanning = ({ embedded = false }) => {
               <div className="roaster-attendance-modal__body">
                 {attendancePopup.detail.locationIssue ? (
                   <div className="roaster-attendance-alert">
-                    One or more marks were outside the {attendancePopup.detail.geofenceRadiusMeters} m office range.
+                    Outside {attendancePopup.detail.geofenceRadiusMeters} m office range on one or more marks.
                   </div>
                 ) : null}
 
                 <div className="roaster-attendance-summary">
                   <div className="roaster-attendance-summary__item">
-                    <span className="roaster-attendance-summary__label">Mark in</span>
-                    <span className="roaster-attendance-summary__value">{attendancePopup.detail.markIn}</span>
+                    <span className="roaster-attendance-summary__label">In</span>
+                    <span className="roaster-attendance-summary__value">
+                      {attendancePopup.detail.markIn && attendancePopup.detail.markIn !== '-'
+                        ? attendancePopup.detail.markIn
+                        : '—'}
+                    </span>
                   </div>
                   <div className="roaster-attendance-summary__item">
-                    <span className="roaster-attendance-summary__label">Mark out</span>
-                    <span className="roaster-attendance-summary__value">{attendancePopup.detail.markOut}</span>
+                    <span className="roaster-attendance-summary__label">Out</span>
+                    <span className="roaster-attendance-summary__value">
+                      {attendancePopup.detail.markOut && attendancePopup.detail.markOut !== '-'
+                        ? attendancePopup.detail.markOut
+                        : '—'}
+                    </span>
                   </div>
                   <div className="roaster-attendance-summary__item">
                     <span className="roaster-attendance-summary__label">Worked</span>
-                    <span className="roaster-attendance-summary__value">{attendancePopup.detail.workedHours}</span>
-                    {attendancePopup.detail.workingMinutes != null ? (
-                      <span className="roaster-attendance-summary__meta">{attendancePopup.detail.workingMinutes} mins</span>
-                    ) : null}
+                    <span className="roaster-attendance-summary__value">
+                      {attendancePopup.detail.workedHours && attendancePopup.detail.workedHours !== '-'
+                        ? attendancePopup.detail.workedHours
+                        : '—'}
+                    </span>
                   </div>
                 </div>
 
                 {attendancePopup.detail.hrAudit ? (
                   <section className="roaster-attendance-hr-audit">
                     <div className="roaster-attendance-section-head">
-                      <h4>{attendancePopup.detail.hrAudit.isNoPayDay ? 'HR no-pay day' : 'HR-added attendance'}</h4>
-                      <span>{attendancePopup.detail.hrAudit.isNoPayDay ? 'Unpaid absence' : 'Manual backfill'}</span>
+                      <h4>{attendancePopup.detail.hrAudit.isNoPayDay ? 'HR no-pay day' : 'HR-added'}</h4>
+                      <span>{attendancePopup.detail.hrAudit.isNoPayDay ? 'Unpaid' : 'Manual backfill'}</span>
                     </div>
-                    <dl className="roaster-attendance-meta-grid">
+                    <dl className="roaster-attendance-kv">
                       <div>
                         <dt>Reason</dt>
                         <dd>{attendancePopup.detail.hrAudit.reason}</dd>
                       </div>
                       {attendancePopup.detail.hrAudit.markedByName ? (
                         <div>
-                          <dt>Added by</dt>
+                          <dt>By</dt>
                           <dd>
                             {attendancePopup.detail.hrAudit.markedByName}
                             {attendancePopup.detail.hrAudit.markedByUserId
-                              ? ` (user #${attendancePopup.detail.hrAudit.markedByUserId})`
+                              ? ` (#${attendancePopup.detail.hrAudit.markedByUserId})`
                               : ''}
                           </dd>
                         </div>
                       ) : null}
                       {attendancePopup.detail.hrAudit.markedAt ? (
                         <div>
-                          <dt>Added at</dt>
+                          <dt>At</dt>
                           <dd>{attendancePopup.detail.hrAudit.markedAt}</dd>
                         </div>
                       ) : null}
+                      {attendancePopup.detail.hrAudit.proofLinks?.length ? (
+                        <div>
+                          <dt>Ref image</dt>
+                          <dd className="roaster-attendance-hr-proofs">
+                            {attendancePopup.detail.hrAudit.proofLinks.map((p, idx) => (
+                              <React.Fragment key={p.filename}>
+                                {idx > 0 ? ', ' : null}
+                                <a href={p.url} target="_blank" rel="noreferrer">
+                                  {p.filename}
+                                </a>
+                              </React.Fragment>
+                            ))}
+                          </dd>
+                        </div>
+                      ) : null}
                     </dl>
-                    {attendancePopup.detail.hrAudit.proofLinks?.length ? (
-                      <div className="roaster-attendance-hr-proofs">
-                        <span className="roaster-attendance-summary__label">Proof</span>
-                        <ul>
-                          {attendancePopup.detail.hrAudit.proofLinks.map((p) => (
-                            <li key={p.filename}>
-                              <a href={p.url} target="_blank" rel="noreferrer">
-                                {p.filename}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
                   </section>
                 ) : null}
 
                 <section className="roaster-attendance-timeline">
                   <div className="roaster-attendance-section-head">
-                    <h4>Check-in details</h4>
+                    <h4>Check-in</h4>
                     <span>Range {attendancePopup.detail.geofenceRadiusMeters} m</span>
                   </div>
                   {renderAttendanceTimelineEvent({
@@ -1700,31 +1716,27 @@ const RoasterPlanning = ({ embedded = false }) => {
                 })()}
 
                 <section className="roaster-attendance-site-card">
-                  <div className="roaster-attendance-site-card__head">
-                    <h4>Work location</h4>
-                    <span className="roaster-attendance-site-card__code">{attendancePopup.detail.workLocationCode}</span>
+                  <div className="roaster-attendance-site-card__line">
+                    <div className="roaster-attendance-site-card__text">
+                      <span className="roaster-attendance-site-card__code">{attendancePopup.detail.workLocationCode}</span>
+                      <strong>{attendancePopup.detail.workLocationName}</strong>
+                      <span className="roaster-attendance-site-card__meta">
+                        {attendancePopup.detail.workLocationCoords}
+                        {' · '}
+                        {attendancePopup.detail.geofenceRadiusMeters} m
+                      </span>
+                    </div>
+                    {attendancePopup.detail.workLocationMapUrl ? (
+                      <a
+                        className="roaster-att-site-map-btn"
+                        href={attendancePopup.detail.workLocationMapUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Map
+                      </a>
+                    ) : null}
                   </div>
-                  <p className="roaster-attendance-site-card__name">{attendancePopup.detail.workLocationName}</p>
-                  <dl className="roaster-attendance-meta-grid">
-                    <div>
-                      <dt>Coordinates</dt>
-                      <dd>{attendancePopup.detail.workLocationCoords}</dd>
-                    </div>
-                    <div>
-                      <dt>Allowed range</dt>
-                      <dd>{attendancePopup.detail.geofenceRadiusMeters} m</dd>
-                    </div>
-                  </dl>
-                  {attendancePopup.detail.workLocationMapUrl ? (
-                    <a
-                      className="roaster-att-site-map-btn"
-                      href={attendancePopup.detail.workLocationMapUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Open office map
-                    </a>
-                  ) : null}
                 </section>
               </div>
             ) : (
@@ -1738,46 +1750,64 @@ const RoasterPlanning = ({ embedded = false }) => {
 
       {blankCellMenu ? (
         <div
-          className="roaster-blank-menu-backdrop"
+          className="leave-ops-modal-overlay"
           role="presentation"
           onClick={closeBlankCellMenu}
         >
           <div
-            className="roaster-blank-menu-panel"
+            className="leave-ops-modal leave-ops-modal--add-leave"
             role="dialog"
             aria-modal="true"
             aria-label="Add leave or attendance"
             onClick={(ev) => ev.stopPropagation()}
           >
-            <header className="roaster-blank-menu-header">
+            <header>
               <div>
-                <p className="roaster-blank-menu-eyebrow">No attendance or leave</p>
                 <h3>{blankCellMenu.employeeName}</h3>
-                <p>{formatPopupDate(blankCellMenu.dateString)}</p>
+                <p className="leave-ops-modal-sub">No attendance or leave · {formatPopupDate(blankCellMenu.dateString)}</p>
               </div>
-              <button type="button" className="roaster-attendance-modal__close" aria-label="Close" onClick={closeBlankCellMenu}>
-                ×
+              <button type="button" className="leave-ops-btn" onClick={closeBlankCellMenu}>
+                Close
               </button>
             </header>
-            <p className="roaster-blank-menu-hint">
-              HR can add leave, record attendance, or mark a no-pay day. Attendance requires proof; no-pay requires a reason.
-            </p>
-            <div className="roaster-blank-menu-actions">
-              <button type="button" className="roaster-blank-menu-btn" onClick={handleBlankCellAddLeave}>
-                Add leave
-              </button>
-              <button type="button" className="roaster-blank-menu-btn roaster-blank-menu-btn--primary" onClick={handleBlankCellAddAttendance}>
-                Add attendance
-              </button>
-              <button type="button" className="roaster-blank-menu-btn roaster-blank-menu-btn--danger" onClick={handleBlankCellAddNoPay}>
-                Mark no-pay day
-              </button>
-              {blankCellMenu.canToggleBulkLeave ? (
-                <button type="button" className="roaster-blank-menu-btn" onClick={handleBlankCellBulkLeave}>
-                  Mark bulk leave
-                </button>
+            <div className="leave-ops-modal-body">
+              {blankCellMenu.empNo ? (
+                <div className="leave-ops-balance-preview">
+                  <strong>{blankCellMenu.empNo}</strong>
+                  {' · '}
+                  {blankCellMenu.employeeName}
+                </div>
               ) : null}
-              <button type="button" className="roaster-blank-menu-btn roaster-blank-menu-btn--ghost" onClick={closeBlankCellMenu}>
+              <p className="leave-ops-approval-hint">
+                Same leave flow as Attendance/Leave → Leave. You can also record attendance (ref image optional) or mark a no-pay day.
+              </p>
+              <div className="leave-ops-action-stack">
+                <button
+                  type="button"
+                  className="leave-ops-btn leave-ops-btn--primary"
+                  onClick={handleBlankCellAddLeave}
+                >
+                  Add leave
+                </button>
+                <button type="button" className="leave-ops-btn" onClick={handleBlankCellAddAttendance}>
+                  Add attendance
+                </button>
+                <button
+                  type="button"
+                  className="leave-ops-btn leave-ops-btn--danger"
+                  onClick={handleBlankCellAddNoPay}
+                >
+                  Mark no-pay day
+                </button>
+                {blankCellMenu.canToggleBulkLeave ? (
+                  <button type="button" className="leave-ops-btn" onClick={handleBlankCellBulkLeave}>
+                    Mark bulk leave
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div className="leave-ops-modal-footer">
+              <button type="button" className="leave-ops-btn" onClick={closeBlankCellMenu}>
                 Cancel
               </button>
             </div>

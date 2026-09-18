@@ -62,10 +62,6 @@ export default function HrAddAttendanceModal({
       toast.warning('Please enter why HR is adding this attendance.');
       return;
     }
-    if (!proofFiles.length) {
-      toast.warning('Add at least one proof (image or PDF), e.g. Google Maps timeline.');
-      return;
-    }
 
     setUploading(true);
     try {
@@ -74,8 +70,8 @@ export default function HrAddAttendanceModal({
         const filename = await uploadAttendanceProof(file);
         if (filename) proofUrls.push(filename);
       }
-      if (!proofUrls.length) {
-        toast.error('Proof upload failed.');
+      if (proofFiles.length && !proofUrls.length) {
+        toast.error('Ref image upload failed.');
         return;
       }
 
@@ -92,7 +88,16 @@ export default function HrAddAttendanceModal({
         toast.error(result?.message || 'Failed to add attendance');
         return;
       }
-      toast.success('Attendance recorded by HR.');
+      const data = result?.data || {};
+      if (data.noPayApplied) {
+        toast.success('Attendance recorded. Late mark-in hit an automatic short-leave no-pay slot.');
+      } else if (data.autoShortLeave) {
+        toast.success('Attendance recorded. Automatic morning short leave was created.');
+      } else if (data.autoHalfDay) {
+        toast.success('Attendance recorded. Automatic morning half-day was applied.');
+      } else {
+        toast.success('Attendance recorded by HR.');
+      }
       onSuccess?.();
       onClose?.();
     } catch (err) {
@@ -126,8 +131,9 @@ export default function HrAddAttendanceModal({
               {attendanceDate}
             </div>
             <p className="leave-ops-approval-hint">
-              Same weekend rules as the HR app (Sat/Sun need bulk leave or approved WFH).
-              Your user is stored as who added this record. Proof is required.
+              Same late-arrival rules as the HR app: mark-in after 08:15 creates automatic morning short leave
+              (or half-day after the short-leave window). Sat/Sun need bulk leave or approved WFH.
+              Your user is stored as who added this record. Ref image is optional.
             </p>
 
             <div className="leave-ops-date-row">
@@ -162,7 +168,7 @@ export default function HrAddAttendanceModal({
             </label>
 
             <label>
-              Proof (image or PDF)
+              Ref image (optional)
               <input
                 type="file"
                 accept="image/*,.pdf,application/pdf"
@@ -180,7 +186,7 @@ export default function HrAddAttendanceModal({
               </div>
             ) : (
               <p className="leave-ops-approval-hint">
-                Example: Google Maps timeline screenshot showing they were at the office.
+                Optional: Maps timeline or other reference image/PDF.
               </p>
             )}
           </div>

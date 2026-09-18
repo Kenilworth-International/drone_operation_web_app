@@ -22,7 +22,7 @@ export default function AttendanceRoasterHub() {
           className={`create-bookings-tab ${activeTab === 'roaster' ? 'active' : ''}`}
           onClick={() => setActiveTab('roaster')}
         >
-          Roaster Planning
+          Attendance Board
         </button>
       </div>
 

@@ -11,6 +11,17 @@ import HrLeaveDatePicker from './HrLeaveDatePicker';
 
 const DEFAULT_SHORT_LEAVE_MINUTES = 120;
 
+const MODE_OPTIONS = [
+  { value: 'full_day', label: 'Full day' },
+  { value: 'half_day', label: 'Half day' },
+  { value: 'short', label: 'Short leave' },
+];
+
+const SESSION_OPTIONS = [
+  { value: 'morning', label: 'Morning' },
+  { value: 'evening', label: 'Evening' },
+];
+
 function parseAccessCodes(value) {
   if (Array.isArray(value)) {
     return value.map((c) => String(c || '').trim().toLowerCase()).filter(Boolean);
@@ -320,6 +331,11 @@ export default function HrAddLeaveModal({
   const selectedEmpDept = selectedEmployee
     ? (selectedEmployee.departmentName || selectedEmployee.department || '')
     : '';
+  const shortModeLocked = String(leaveTypeCode).toLowerCase() === 'short_leave';
+  const canSubmit = Boolean(employeeId && leaveTypeCode && startDate)
+    && !isLoading
+    && !estimating
+    && !dayEstimate?.hasConflicts;
 
   return (
     <div className="leave-ops-modal-overlay" onClick={onClose} role="presentation">
@@ -327,236 +343,311 @@ export default function HrAddLeaveModal({
         className="leave-ops-modal leave-ops-modal--add-leave"
         onClick={(ev) => ev.stopPropagation()}
         role="dialog"
+        aria-modal="true"
+        aria-labelledby="leave-ops-add-leave-title"
       >
-        <header>
-          <h3>Add leave</h3>
+        <header className="leave-ops-add-header">
+          <div>
+            <p className="leave-ops-add-eyebrow">HR leave operations</p>
+            <h3 id="leave-ops-add-leave-title">Add leave</h3>
+          </div>
           <button type="button" className="leave-ops-btn" onClick={onClose}>
             Close
           </button>
         </header>
-        <form onSubmit={handleSubmit}>
-          <div className="leave-ops-modal-body">
-            <div className="leave-ops-emp-picker">
-              <span className="leave-ops-emp-picker-label">Employee</span>
-              {selectedEmployee ? (
-                <div className="leave-ops-emp-selected">
-                  <div className="leave-ops-emp-selected-main">
-                    <strong>{selectedEmpNo} · {selectedEmpName}</strong>
-                    {selectedEmpDept ? (
-                      <span className="leave-ops-emp-selected-meta">{selectedEmpDept}</span>
-                    ) : null}
+
+        <form className="leave-ops-add-form" onSubmit={handleSubmit}>
+          <div className="leave-ops-modal-body leave-ops-add-body">
+            <section className="leave-ops-add-section">
+              <div className="leave-ops-add-section-head">
+                <h4>1. Employee</h4>
+              </div>
+              <div className="leave-ops-emp-picker">
+                {selectedEmployee ? (
+                  <div className="leave-ops-emp-selected">
+                    <div className="leave-ops-emp-selected-main">
+                      <strong>{selectedEmpNo} · {selectedEmpName}</strong>
+                      {selectedEmpDept ? (
+                        <span className="leave-ops-emp-selected-meta">{selectedEmpDept}</span>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      className="leave-ops-btn leave-ops-btn--tiny"
+                      onClick={clearEmployee}
+                    >
+                      Change
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="leave-ops-btn leave-ops-btn--tiny"
-                    onClick={clearEmployee}
-                  >
-                    Change
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    value={employeeSearch}
-                    onChange={(e) => {
-                      setEmployeeSearch(e.target.value);
-                      setShowEmployeePicker(true);
-                    }}
-                    onFocus={() => setShowEmployeePicker(true)}
-                    placeholder="Search by name, EMP no, or department"
-                    autoComplete="off"
-                  />
-                  {showEmployeePicker ? (
-                    <ul className="leave-ops-emp-results" role="listbox">
-                      {filteredEmployees.length === 0 ? (
-                        <li className="leave-ops-emp-results-empty">No employees match</li>
-                      ) : (
-                        filteredEmployees.map((emp) => (
-                          <li key={emp.id}>
-                            <button
-                              type="button"
-                              className="leave-ops-emp-result-btn"
-                              onClick={() => selectEmployee(emp)}
-                            >
-                              <span className="leave-ops-emp-result-name">
-                                {emp.empNo || emp.emp_no || '—'} · {getEmployeeDisplayName(emp)}
-                              </span>
-                              <span className="leave-ops-emp-result-meta">
-                                {emp.departmentName || emp.department || '—'}
-                              </span>
-                            </button>
-                          </li>
-                        ))
-                      )}
-                    </ul>
-                  ) : null}
-                </>
-              )}
-            </div>
-
-            {employeeId ? (
-              <div className="leave-ops-add-meta">
-                {balanceDetail?.employee?.bulkLeaveAvailable ? (
-                  <span className="leave-ops-pill leave-ops-pill--warn">Weekends count (bulk leave)</span>
-                ) : (
-                  <span className="leave-ops-pill">Weekends skipped</span>
-                )}
-                {accessCodes.length ? (
-                  <span className="leave-ops-pill">{accessCodes.length} leave type(s) assigned</span>
-                ) : (
-                  <span className="leave-ops-pill leave-ops-pill--muted">No leave availability set — showing all types</span>
-                )}
-              </div>
-            ) : null}
-
-            <label>
-              Leave type
-              <select
-                value={leaveTypeCode}
-                onChange={(e) => handleLeaveTypeChange(e.target.value)}
-                required
-                disabled={!employeeId}
-              >
-                <option value="">Select type</option>
-                {leaveTypes.map((t) => (
-                  <option key={t.code} value={t.code}>
-                    {t.name || t.code}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="leave-ops-check-row">
-              <input
-                type="checkbox"
-                checked={showAllTypes}
-                onChange={(e) => setShowAllTypes(e.target.checked)}
-              />
-              Show all leave types (HR override)
-            </label>
-
-            {selectedBalance ? (
-              <div className="leave-ops-balance-preview">
-                <strong>{selectedBalance.leaveTypeName || leaveTypeCode}</strong>
-                {' · '}
-                Quota {Number(selectedBalance.availableQuota || 0).toFixed(1)}
-                {' · '}
-                Used {Number(selectedBalance.used || 0).toFixed(1)}
-                {' · '}
-                Pending {Number(selectedBalance.pending || 0).toFixed(1)}
-                {' · '}
-                Remaining <strong>{Number(selectedBalance.remaining || 0).toFixed(1)}</strong>
-              </div>
-            ) : null}
-
-            <label>
-              Mode
-              <select
-                value={requestMode}
-                onChange={(e) => handleModeChange(e.target.value)}
-                disabled={String(leaveTypeCode).toLowerCase() === 'short_leave'}
-              >
-                <option value="full_day">Full day</option>
-                <option value="half_day">Half day</option>
-                <option value="short">Short leave</option>
-              </select>
-            </label>
-
-            {(requestMode === 'half_day' || requestMode === 'short') && (
-              <label>
-                Session
-                <select value={halfDaySession} onChange={(e) => setHalfDaySession(e.target.value)}>
-                  <option value="morning">Morning</option>
-                  <option value="evening">Evening</option>
-                </select>
-              </label>
-            )}
-
-            {requestMode === 'short' ? (
-              <label>
-                Short leave minutes
-                <input
-                  type="number"
-                  min={1}
-                  max={120}
-                  value={shortLeaveMinutes}
-                  onChange={(e) => setShortLeaveMinutes(e.target.value)}
-                />
-              </label>
-            ) : null}
-
-            <HrLeaveDatePicker
-              employeeId={employeeId}
-              requestMode={requestMode}
-              startDate={startDate}
-              endDate={endDate}
-              onStartChange={setStartDate}
-              onEndChange={setEndDate}
-              disabled={!employeeId}
-            />
-            <input type="hidden" value={startDate} required readOnly />
-
-            {(estimating || dayEstimate) && (
-              <div
-                className={`leave-ops-estimate${
-                  dayEstimate?.hasConflicts || dayEstimate?.error ? ' leave-ops-estimate--warn' : ''
-                }`}
-              >
-                {estimating ? (
-                  <span>Calculating leave days…</span>
-                ) : dayEstimate?.error ? (
-                  <span>{dayEstimate.message}</span>
                 ) : (
                   <>
-                    <strong>
-                      {Number(dayEstimate?.units || 0).toFixed(2)} day(s)
-                      {dayEstimate?.includeWeekends ? ' (weekends included)' : ' (weekends skipped)'}
-                    </strong>
-                    {dayEstimate?.message ? <div>{dayEstimate.message}</div> : null}
-                    {weekendsSkipped.length ? (
-                      <div>Skipped weekends: {weekendsSkipped.join(', ')}</div>
-                    ) : null}
-                    {holidaysSkipped.length ? (
-                      <div>Skipped holidays: {holidaysSkipped.join(', ')}</div>
-                    ) : null}
-                    {bulkSkipped.length ? (
-                      <div>Skipped roster leave days: {bulkSkipped.join(', ')}</div>
-                    ) : null}
-                    {dayEstimate?.hasConflicts ? (
-                      <div className="leave-ops-estimate-conflict">
-                        {dayEstimate.conflictMessage || 'Conflicts with existing leave.'}
-                      </div>
+                    <input
+                      type="text"
+                      value={employeeSearch}
+                      onChange={(e) => {
+                        setEmployeeSearch(e.target.value);
+                        setShowEmployeePicker(true);
+                      }}
+                      onFocus={() => setShowEmployeePicker(true)}
+                      placeholder="Search by name, EMP no, or department"
+                      autoComplete="off"
+                    />
+                    {showEmployeePicker ? (
+                      <ul className="leave-ops-emp-results" role="listbox">
+                        {filteredEmployees.length === 0 ? (
+                          <li className="leave-ops-emp-results-empty">No employees match</li>
+                        ) : (
+                          filteredEmployees.map((emp) => (
+                            <li key={emp.id}>
+                              <button
+                                type="button"
+                                className="leave-ops-emp-result-btn"
+                                onClick={() => selectEmployee(emp)}
+                              >
+                                <span className="leave-ops-emp-result-name">
+                                  {emp.empNo || emp.emp_no || '—'} · {getEmployeeDisplayName(emp)}
+                                </span>
+                                <span className="leave-ops-emp-result-meta">
+                                  {emp.departmentName || emp.department || '—'}
+                                </span>
+                              </button>
+                            </li>
+                          ))
+                        )}
+                      </ul>
                     ) : null}
                   </>
                 )}
               </div>
-            )}
+              {employeeId ? (
+                <div className="leave-ops-add-meta">
+                  {balanceDetail?.employee?.bulkLeaveAvailable ? (
+                    <span className="leave-ops-pill leave-ops-pill--warn">Weekends count (bulk leave)</span>
+                  ) : (
+                    <span className="leave-ops-pill">Weekends skipped</span>
+                  )}
+                  {accessCodes.length ? (
+                    <span className="leave-ops-pill">{accessCodes.length} leave type(s) assigned</span>
+                  ) : (
+                    <span className="leave-ops-pill leave-ops-pill--muted">No leave availability set — showing all types</span>
+                  )}
+                </div>
+              ) : null}
+            </section>
 
-            <label>
-              Approval
-              <select value={approvalMode} onChange={(e) => setApprovalMode(e.target.value)}>
-                <option value="normal">Normal (RO + HOD)</option>
-                <option value="auto">Auto-approved (no RO/HOD)</option>
-              </select>
-            </label>
-            {approvalMode === 'auto' ? (
-              <p className="leave-ops-approval-hint">
-                Auto-approved leave skips RO and HOD and is approved immediately.
-              </p>
-            ) : null}
-            <label>
-              Reason
-              <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
-            </label>
+            <section className={`leave-ops-add-section${!employeeId ? ' leave-ops-add-section--disabled' : ''}`}>
+              <div className="leave-ops-add-section-head">
+                <h4>2. Leave details</h4>
+              </div>
+
+              <div className="leave-ops-add-field-grid leave-ops-add-field-grid--type-mode">
+                <label className="leave-ops-add-field">
+                  <span>Leave type</span>
+                  <select
+                    value={leaveTypeCode}
+                    onChange={(e) => handleLeaveTypeChange(e.target.value)}
+                    required
+                    disabled={!employeeId}
+                  >
+                    <option value="">Select type</option>
+                    {leaveTypes.map((t) => (
+                      <option key={t.code} value={t.code}>
+                        {t.name || t.code}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="leave-ops-add-field">
+                  <span>Mode</span>
+                  <select
+                    value={requestMode}
+                    onChange={(e) => handleModeChange(e.target.value)}
+                    disabled={!employeeId || shortModeLocked}
+                  >
+                    {MODE_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="leave-ops-check-row">
+                <input
+                  type="checkbox"
+                  checked={showAllTypes}
+                  onChange={(e) => setShowAllTypes(e.target.checked)}
+                  disabled={!employeeId}
+                />
+                Show all leave types (HR override)
+              </label>
+
+              {selectedBalance ? (
+                <div className="leave-ops-balance-stats" aria-label="Leave balance">
+                  <div className="leave-ops-balance-stat">
+                    <span>Quota</span>
+                    <strong>{Number(selectedBalance.availableQuota || 0).toFixed(1)}</strong>
+                  </div>
+                  <div className="leave-ops-balance-stat">
+                    <span>Used</span>
+                    <strong>{Number(selectedBalance.used || 0).toFixed(1)}</strong>
+                  </div>
+                  <div className="leave-ops-balance-stat">
+                    <span>Pending</span>
+                    <strong>{Number(selectedBalance.pending || 0).toFixed(1)}</strong>
+                  </div>
+                  <div className="leave-ops-balance-stat leave-ops-balance-stat--remain">
+                    <span>Remaining</span>
+                    <strong>{Number(selectedBalance.remaining || 0).toFixed(1)}</strong>
+                  </div>
+                </div>
+              ) : null}
+
+              {(requestMode === 'half_day' || requestMode === 'short') ? (
+                <div className="leave-ops-add-field-grid">
+                  <div className="leave-ops-add-field">
+                    <span className="leave-ops-add-field-label">Session</span>
+                    <div className="leave-ops-segment" role="group" aria-label="Session">
+                      {SESSION_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className={`leave-ops-segment-btn${halfDaySession === opt.value ? ' is-active' : ''}`}
+                          onClick={() => setHalfDaySession(opt.value)}
+                          disabled={!employeeId}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {requestMode === 'short' ? (
+                    <label className="leave-ops-add-field">
+                      <span>Short leave minutes</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={120}
+                        value={shortLeaveMinutes}
+                        onChange={(e) => setShortLeaveMinutes(e.target.value)}
+                        disabled={!employeeId}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
+
+            <section className={`leave-ops-add-section${!employeeId ? ' leave-ops-add-section--disabled' : ''}`}>
+              <div className="leave-ops-add-section-head">
+                <h4>3. Dates</h4>
+                <p>
+                  {requestMode === 'full_day'
+                    ? 'Pick start, then end on the calendar'
+                    : 'Pick a single day'}
+                </p>
+              </div>
+              <HrLeaveDatePicker
+                employeeId={employeeId}
+                requestMode={requestMode}
+                startDate={startDate}
+                endDate={endDate}
+                onStartChange={setStartDate}
+                onEndChange={setEndDate}
+                disabled={!employeeId}
+              />
+              <input type="hidden" value={startDate} required readOnly />
+
+              {(estimating || dayEstimate) ? (
+                <div
+                  className={`leave-ops-estimate${
+                    dayEstimate?.hasConflicts || dayEstimate?.error ? ' leave-ops-estimate--warn' : ''
+                  }`}
+                >
+                  {estimating ? (
+                    <span>Calculating leave days…</span>
+                  ) : dayEstimate?.error ? (
+                    <span>{dayEstimate.message}</span>
+                  ) : (
+                    <>
+                      <strong>
+                        {Number(dayEstimate?.units || 0).toFixed(2)} day(s)
+                        {dayEstimate?.includeWeekends ? ' · weekends included' : ' · weekends skipped'}
+                      </strong>
+                      {dayEstimate?.message ? <div>{dayEstimate.message}</div> : null}
+                      {weekendsSkipped.length ? (
+                        <div>Skipped weekends: {weekendsSkipped.join(', ')}</div>
+                      ) : null}
+                      {holidaysSkipped.length ? (
+                        <div>Skipped holidays: {holidaysSkipped.join(', ')}</div>
+                      ) : null}
+                      {bulkSkipped.length ? (
+                        <div>Skipped roster leave days: {bulkSkipped.join(', ')}</div>
+                      ) : null}
+                      {dayEstimate?.hasConflicts ? (
+                        <div className="leave-ops-estimate-conflict">
+                          {dayEstimate.conflictMessage || 'Conflicts with existing leave.'}
+                        </div>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+              ) : null}
+            </section>
+
+            <section className={`leave-ops-add-section${!employeeId ? ' leave-ops-add-section--disabled' : ''}`}>
+              <div className="leave-ops-add-section-head">
+                <h4>4. Approval & reason</h4>
+              </div>
+              <div className="leave-ops-add-field">
+                <span className="leave-ops-add-field-label">Approval path</span>
+                <div className="leave-ops-segment" role="group" aria-label="Approval mode">
+                  <button
+                    type="button"
+                    className={`leave-ops-segment-btn${approvalMode === 'normal' ? ' is-active' : ''}`}
+                    onClick={() => setApprovalMode('normal')}
+                    disabled={!employeeId}
+                  >
+                    Normal (RO + HOD)
+                  </button>
+                  <button
+                    type="button"
+                    className={`leave-ops-segment-btn${approvalMode === 'auto' ? ' is-active' : ''}`}
+                    onClick={() => setApprovalMode('auto')}
+                    disabled={!employeeId}
+                  >
+                    Auto-approved
+                  </button>
+                </div>
+                {approvalMode === 'auto' ? (
+                  <p className="leave-ops-approval-hint">
+                    Skips RO and HOD — leave is approved immediately.
+                  </p>
+                ) : null}
+              </div>
+              <label className="leave-ops-add-field leave-ops-add-field--full">
+                <span>Reason (optional)</span>
+                <textarea
+                  rows={3}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Optional note for approvers / record"
+                  disabled={!employeeId}
+                />
+              </label>
+            </section>
           </div>
-          <div className="leave-ops-modal-footer">
+
+          <div className="leave-ops-modal-footer leave-ops-add-footer">
             <button type="button" className="leave-ops-btn" onClick={onClose}>
               Cancel
             </button>
             <button
               type="submit"
               className="leave-ops-btn leave-ops-btn--primary"
-              disabled={isLoading || estimating || Boolean(dayEstimate?.hasConflicts)}
+              disabled={!canSubmit}
             >
               {isLoading ? 'Saving…' : 'Create leave'}
             </button>

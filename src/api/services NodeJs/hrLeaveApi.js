@@ -257,6 +257,7 @@ export const {
   useGetHrAttendanceDayViewQuery,
   useAcceptHrLieuLeaveMutation,
   useGetHrLeaveOpsOverviewQuery,
+  useLazyGetHrLeaveOpsOverviewQuery,
   useLazyGetHrLeaveOpsBalancesQuery,
   useLazyGetHrLeaveOpsDayEmployeesQuery,
   useAdjustHrLeaveBalanceMutation,

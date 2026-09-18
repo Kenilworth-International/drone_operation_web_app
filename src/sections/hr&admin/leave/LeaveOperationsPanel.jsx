@@ -43,7 +43,6 @@ export default function LeaveOperationsPanel() {
   const [breakdownData, setBreakdownData] = useState(null);
 
   const year = Number(String(selectedDate).slice(0, 4));
-  const month = Number(String(selectedDate).slice(5, 7));
 
   const { data: departmentsData } = useGetEmpDepartmentsQuery();
   const { data: employeesResponse } = useGetAllEmployeeRegistrationsQuery();
@@ -51,7 +50,7 @@ export default function LeaveOperationsPanel() {
     date: selectedDate,
     departmentCode: departmentCode || undefined,
     year,
-    month,
+    month: null,
   });
 
   const departments = useMemo(() => {

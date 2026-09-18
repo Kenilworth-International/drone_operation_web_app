@@ -79,6 +79,30 @@
   background: linear-gradient(180deg, #14b8a6 0%, #0f766e 100%);
 }
 
+.leave-ops-btn--danger {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+
+.leave-ops-btn--danger:hover {
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+.leave-ops-action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leave-ops-action-stack .leave-ops-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 10px 14px;
+  text-align: center;
+}
+
 .leave-ops-section {
   margin-bottom: 28px;
 }
@@ -256,6 +280,32 @@
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.leave-ops-year-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.leave-ops-year-select-label {
+  font-size: 11px;
+  font-weight: 650;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.leave-ops-year-select select {
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  background: #fff;
+  min-width: 88px;
 }
 
 .leave-ops-excel-btn {
@@ -474,8 +524,11 @@
 
 .leave-ops-cal {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .leave-ops-cal-head {
@@ -486,11 +539,16 @@
   text-transform: uppercase;
   color: #94a3b8;
   padding: 0 0 8px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .leave-ops-cal-day {
   aspect-ratio: 1;
+  min-width: 0;
   min-height: 0;
+  width: 100%;
+  max-width: 100%;
   border-radius: 10px;
   background: transparent;
   border: 0;
@@ -498,6 +556,7 @@
   padding: 0;
   color: #64748b;
   position: relative;
+  box-sizing: border-box;
 }
 
 .leave-ops-cal-day--btn {
@@ -507,10 +566,13 @@
   justify-content: center;
   gap: 3px;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   font: inherit;
   cursor: pointer;
   color: #64748b;
   transition: background 0.12s ease, color 0.12s ease;
+  box-sizing: border-box;
 }
 
 .leave-ops-cal-day--btn:hover {
@@ -563,6 +625,8 @@
   background: #fffbeb;
   border: 1px dashed #fcd34d;
   cursor: not-allowed;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .leave-ops-cal-day-dot--blocked {
@@ -575,26 +639,72 @@
 }
 
 .leave-ops-cal--picker {
-  margin-top: 6px;
+  margin-top: 2px;
+  width: 100%;
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+  gap: 2px;
+}
+
+.leave-ops-cal--picker .leave-ops-cal-head {
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  padding: 0 0 2px;
+  line-height: 1.1;
+}
+
+.leave-ops-cal--picker .leave-ops-cal-day {
+  aspect-ratio: auto;
+  height: 32px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.leave-ops-cal--picker .leave-ops-cal-day--btn {
+  gap: 0;
+  height: 32px;
+}
+
+.leave-ops-cal--picker .leave-ops-cal-day--blocked {
+  gap: 1px;
+  height: 32px;
+}
+
+.leave-ops-cal--picker .leave-ops-cal-day-dot,
+.leave-ops-cal--picker .leave-ops-cal-day-dot--blocked {
+  width: 3px;
+  height: 3px;
+}
+
+.leave-ops-cal--picker .leave-ops-cal-day--btn.is-selected {
+  box-shadow: none;
 }
 
 .leave-ops-add-leave-cal {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
+  gap: 4px;
+  padding: 6px 8px;
   border: 1px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #f8fafc;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .leave-ops-add-leave-cal--disabled {
-  padding: 12px;
+  padding: 10px 12px;
   border: 1px dashed #cbd5e1;
-  border-radius: 12px;
+  border-radius: 8px;
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
   background: #f8fafc;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .leave-ops-add-leave-cal-head {
@@ -602,51 +712,55 @@
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 6px 12px;
+  gap: 2px 8px;
 }
 
 .leave-ops-add-leave-cal-label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 650;
   color: #475569;
 }
 
 .leave-ops-add-leave-cal-selected {
-  font-size: 12px;
+  font-size: 11px;
   color: #0f766e;
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .leave-ops-add-leave-cal-nav {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
+  min-width: 0;
 }
 
 .leave-ops-add-leave-cal-nav strong {
   flex: 1;
   text-align: center;
-  font-size: 14px;
+  font-size: 12px;
   color: #0f172a;
+  min-width: 0;
 }
 
 .leave-ops-add-leave-cal-loading {
-  font-size: 11px;
+  font-size: 10px;
   color: #94a3b8;
 }
 
 .leave-ops-add-leave-cal-legend {
   margin: 0;
-  font-size: 11px;
+  font-size: 10px;
   color: #64748b;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  line-height: 1.3;
 }
 
 .leave-ops-cal-legend-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -756,17 +870,25 @@
   background: rgba(15, 23, 42, 0.4);
   z-index: 1200;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 16px;
+  padding: 12px 16px 24px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .leave-ops-modal {
   width: min(560px, 100%);
-  max-height: 90vh;
-  overflow: auto;
+  max-height: calc(100vh - 36px);
+  margin: 12px auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   background: #fff;
-  border-radius: 14px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
   box-shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
 }
@@ -776,8 +898,257 @@
 }
 
 .leave-ops-modal--add-leave {
-  width: min(560px, 100%);
+  width: min(480px, 96vw);
+  max-width: 480px;
+  min-width: 0;
   position: relative;
+}
+
+.leave-ops-modal--add-leave:has(.leave-ops-add-form) {
+  max-height: calc(100vh - 36px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.leave-ops-add-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e0f2f1;
+  background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);
+  flex-shrink: 0;
+}
+
+.leave-ops-add-eyebrow {
+  margin: 0 0 1px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+}
+
+.leave-ops-add-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+.leave-ops-add-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.leave-ops-add-body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 10px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leave-ops-add-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.leave-ops-add-section--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.leave-ops-add-section-head {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 8px;
+}
+
+.leave-ops-add-section-head h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.leave-ops-add-section-head p {
+  margin: 0;
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.3;
+}
+
+.leave-ops-add-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+  align-items: end;
+}
+
+.leave-ops-add-field-grid--type-mode {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.9fr);
+}
+
+.leave-ops-add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.leave-ops-add-field--full {
+  grid-column: 1 / -1;
+}
+
+.leave-ops-add-field > span,
+.leave-ops-add-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.leave-ops-add-field input,
+.leave-ops-add-field select,
+.leave-ops-add-field textarea {
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  font: inherit;
+  color: #0f172a;
+  background: #fff;
+}
+
+.leave-ops-add-field textarea {
+  resize: vertical;
+  min-height: 52px;
+}
+
+.leave-ops-segment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.leave-ops-segment-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: center;
+}
+
+.leave-ops-segment-btn:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.leave-ops-segment-btn.is-active {
+  background: linear-gradient(180deg, #0d9488 0%, #0f766e 100%);
+  border-color: #0f766e;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(15, 118, 110, 0.2);
+}
+
+.leave-ops-segment-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.leave-ops-balance-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.leave-ops-balance-stat {
+  padding: 8px 6px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.leave-ops-balance-stat span {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.leave-ops-balance-stat strong {
+  font-size: 14px;
+  color: #0f172a;
+}
+
+.leave-ops-balance-stat--remain {
+  background: #f0fdfa;
+  border-color: #99f6e4;
+}
+
+.leave-ops-balance-stat--remain strong {
+  color: #0f766e;
+}
+
+.leave-ops-add-footer {
+  flex-shrink: 0;
+  border-top: 1px solid #e2e8f0;
+  background: #fafbfc;
+  padding: 8px 12px 10px;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .leave-ops-modal--add-leave {
+    width: min(96vw, 100%);
+    max-width: none;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .leave-ops-add-field-grid,
+  .leave-ops-add-field-grid--type-mode {
+    grid-template-columns: 1fr;
+  }
+
+  .leave-ops-balance-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .leave-ops-segment-btn {
+    flex: 1 1 calc(50% - 6px);
+  }
 }
 
 .leave-ops-emp-picker {
@@ -800,12 +1171,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   box-sizing: border-box;
-  padding: 10px 12px;
+  padding: 6px 8px;
   border: 1px solid #99f6e4;
-  border-radius: 10px;
+  border-radius: 6px;
   background: #f0fdfa;
 }
 
@@ -893,17 +1264,24 @@
   inset: 0;
   z-index: 5;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: rgba(15, 23, 42, 0.35);
-  border-radius: 14px;
+  border-radius: 12px;
 }
 
 .leave-ops-confirm-panel {
   width: min(360px, 100%);
-  padding: 16px;
-  border-radius: 12px;
+  margin: auto;
+  max-height: calc(100vh - 80px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 14px;
+  border-radius: 10px;
   background: #fff;
   border: 1px solid #e2e8f0;
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
@@ -978,19 +1356,19 @@
 }
 
 .leave-ops-estimate {
-  padding: 10px 12px;
-  border-radius: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
   background: #f0fdfa;
   border: 1px solid #99f6e4;
-  font-size: 12px;
+  font-size: 11px;
   color: #115e59;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .leave-ops-estimate strong {
   display: block;
-  margin-bottom: 4px;
-  font-size: 13px;
+  margin-bottom: 2px;
+  font-size: 12px;
   color: #0f766e;
 }
 
@@ -1018,7 +1396,7 @@
 
 .leave-ops-modal--day {
   width: min(1180px, 96vw);
-  max-height: 88vh;
+  max-height: calc(100vh - 36px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1027,7 +1405,9 @@
 .leave-ops-modal-body--day {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 12px 16px 16px;
 }
 
@@ -1103,9 +1483,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 10px 14px;
   border-bottom: 1px solid #e0f2f1;
   background: linear-gradient(180deg, #f0fdfa 0%, #ffffff 100%);
+  flex-shrink: 0;
 }
 
 .leave-ops-modal header h3 {
@@ -1124,10 +1505,13 @@
 }
 
 .leave-ops-modal-body {
-  padding: 16px 20px 20px;
+  padding: 12px 14px 14px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 10px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .leave-ops-modal-body label {
@@ -1185,15 +1569,16 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 12px 16px 16px;
+  padding: 8px 12px 12px;
+  flex-shrink: 0;
 }
 
 .leave-ops-balance-preview {
   background: #f0fdfa;
   border: 1px solid #ccfbf1;
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 13px;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
   color: #475569;
 }
 
@@ -1226,4 +1611,24 @@
   .leave-ops-month-cal-body {
     max-width: none;
   }
+}
+
+/* Add-leave modal: win over generic modal header/body cascade */
+.leave-ops-modal--add-leave > .leave-ops-add-header {
+  align-items: center;
+  padding: 10px 14px;
+}
+
+.leave-ops-modal--add-leave .leave-ops-add-body.leave-ops-modal-body {
+  padding: 10px 12px 8px;
+  gap: 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.leave-ops-modal--add-leave .leave-ops-add-footer.leave-ops-modal-footer {
+  border-top: 1px solid #e2e8f0;
+  background: #fafbfc;
+  padding: 8px 12px 10px;
 }
