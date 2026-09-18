@@ -210,11 +210,13 @@ function getAttendanceLocationIndicator(row) {
     }
     const meters = Number(att.markInDistanceMeters);
     const distanceLabel = Number.isFinite(meters)
-      ? (meters >= 1000 ? `${(meters / 1000).toFixed(1)}km` : `${Math.round(meters)}m`)
+      ? (meters >= 1000
+        ? `${(meters / 1000).toFixed(1)} km off`
+        : `${Math.round(meters)} m off`)
       : null;
     return {
       key: 'outside',
-      label: distanceLabel ? `Off ${distanceLabel}` : 'Off-site',
+      label: distanceLabel || 'Off-site',
       title: locationValidLabel(valid),
     };
   }

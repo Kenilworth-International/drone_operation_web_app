@@ -22,7 +22,15 @@ function parseAccessCodes(value) {
     .filter(Boolean);
 }
 
-export default function HrAddLeaveModal({ open, onClose, employees = [], onSuccess }) {
+export default function HrAddLeaveModal({
+  open,
+  onClose,
+  employees = [],
+  onSuccess,
+  initialEmployeeId = '',
+  initialStartDate = '',
+  initialEndDate = '',
+}) {
   const { data: typesResponse } = useGetHrLeaveTypesAllQuery(undefined, { skip: !open });
   const [createLeave, { isLoading }] = useCreateHrOpsLeaveMutation();
   const [estimateLeave] = useEstimateHrOpsLeaveMutation();
@@ -52,11 +60,14 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
 
   useEffect(() => {
     if (!open) return;
-    setEmployeeId('');
+    const prefEmp = initialEmployeeId ? String(initialEmployeeId) : '';
+    const prefStart = initialStartDate || '';
+    const prefEnd = initialEndDate || prefStart;
+    setEmployeeId(prefEmp);
     setLeaveTypeCode('');
     setRequestMode('full_day');
-    setStartDate('');
-    setEndDate('');
+    setStartDate(prefStart);
+    setEndDate(prefEnd);
     setReason('');
     setApprovalMode('normal');
     setHalfDaySession('morning');
@@ -65,9 +76,9 @@ export default function HrAddLeaveModal({ open, onClose, employees = [], onSucce
     setShowAllTypes(false);
     setBalanceDetail(null);
     setDayEstimate(null);
-    setShowEmployeePicker(false);
+    setShowEmployeePicker(!prefEmp);
     setAutoConfirmOpen(false);
-  }, [open]);
+  }, [open, initialEmployeeId, initialStartDate, initialEndDate]);
 
   const selectedEmployee = useMemo(
     () => (employees || []).find((emp) => Number(emp.id) === Number(employeeId)) || null,

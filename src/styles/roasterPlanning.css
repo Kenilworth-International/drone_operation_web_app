@@ -395,6 +395,18 @@
     color: #064e3b;
 }
 
+.blank-pill-roaster {
+    border-color: #94a3b8;
+    background: #f8fafc;
+    color: #475569;
+}
+
+.nopay-pill-roaster {
+    border-color: #b91c1c;
+    background: #fee2e2;
+    color: #7f1d1d;
+    font-weight: 600;
+}
 
 .editing-pill-roaster {
     border-color: #d79230;
@@ -576,6 +588,38 @@
     filter: none;
 }
 
+.day-cell-roaster.locked.blank-absent {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.day-cell-roaster.locked.nopay {
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+.day-cell-roaster.locked.nopay .attendance-info-hit-roaster {
+    pointer-events: auto;
+}
+
+.blank-add-hint-roaster {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    font-size: 11px;
+    line-height: 1;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.day-cell-roaster.blank-absent:hover .blank-add-hint-roaster {
+    color: #0f172a;
+    background: #e2e8f0;
+}
+
 .days-row-roaster {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(34px, 1fr));
@@ -669,11 +713,18 @@
     border: 1px solid #047857;
 }
 
+.day-cell-roaster.nopay {
+    background: #fecaca;
+    border: 1px solid #b91c1c;
+    color: #7f1d1d;
+}
+
 
 /* Restore holiday top accent after state borders (`.leave` etc. use `border` shorthand and would reset `border-top`). */
 .day-cell-roaster.leave.holiday-mercantile-roaster,
 .day-cell-roaster.requested.holiday-mercantile-roaster,
 .day-cell-roaster.attended.holiday-mercantile-roaster,
+.day-cell-roaster.nopay.holiday-mercantile-roaster,
 .day-cell-roaster.weekend.holiday-mercantile-roaster {
     border-top-width: 3px;
     border-top-style: solid;
@@ -683,6 +734,7 @@
 .day-cell-roaster.leave.holiday-poya-roaster,
 .day-cell-roaster.requested.holiday-poya-roaster,
 .day-cell-roaster.attended.holiday-poya-roaster,
+.day-cell-roaster.nopay.holiday-poya-roaster,
 .day-cell-roaster.weekend.holiday-poya-roaster {
     border-top-width: 3px;
     border-top-style: solid;
@@ -692,6 +744,7 @@
 .day-cell-roaster.leave.holiday-special-roaster,
 .day-cell-roaster.requested.holiday-special-roaster,
 .day-cell-roaster.attended.holiday-special-roaster,
+.day-cell-roaster.nopay.holiday-special-roaster,
 .day-cell-roaster.weekend.holiday-special-roaster {
     border-top-width: 3px;
     border-top-style: solid;
@@ -1414,4 +1467,146 @@
 
 .roaster-planning-embedded {
     padding-top: 0;
+}
+
+.day-cell-roaster.blank-absent:not(.locked) {
+    cursor: pointer;
+}
+
+.day-cell-roaster.locked.blank-absent {
+    cursor: pointer;
+    opacity: 1;
+}
+
+.roaster-blank-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.roaster-blank-menu-panel {
+    width: min(420px, 100%);
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.2);
+    padding: 18px 18px 16px;
+}
+
+.roaster-blank-menu-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 8px;
+}
+
+.roaster-blank-menu-eyebrow {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.roaster-blank-menu-header h3 {
+    margin: 2px 0 0;
+    font-size: 18px;
+    color: #0f172a;
+}
+
+.roaster-blank-menu-header p {
+    margin: 4px 0 0;
+    color: #475569;
+    font-size: 13px;
+}
+
+.roaster-blank-menu-hint {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: #64748b;
+    line-height: 1.45;
+}
+
+.roaster-blank-menu-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.roaster-blank-menu-btn {
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #0f172a;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+}
+
+.roaster-blank-menu-btn:hover {
+    background: #f8fafc;
+}
+
+.roaster-blank-menu-btn--primary {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #fff;
+}
+
+.roaster-blank-menu-btn--primary:hover {
+    background: #1e293b;
+}
+
+.roaster-blank-menu-btn--danger {
+    background: #fef2f2;
+    border-color: #fca5a5;
+    color: #991b1b;
+}
+
+.roaster-blank-menu-btn--danger:hover {
+    background: #fee2e2;
+}
+
+.roaster-blank-menu-btn--ghost {
+    border-color: transparent;
+    color: #64748b;
+    text-align: center;
+}
+
+.attendance-info-dot-roaster--nopay {
+    width: auto;
+    min-width: 18px;
+    padding: 0 3px;
+    font-size: 9px;
+    font-weight: 700;
+    background: #b91c1c;
+    color: #fff;
+}
+
+.roaster-attendance-hr-audit {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    background: #f8fafc;
+}
+
+.roaster-attendance-hr-proofs {
+    margin-top: 10px;
+}
+
+.roaster-attendance-hr-proofs ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.roaster-attendance-hr-proofs a {
+    color: #0f172a;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }

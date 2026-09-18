@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { Bars } from 'react-loader-spinner';
 import '../../../styles/roasterPlanning.css';
+import '../../../styles/leaveOperations.css';
 import { useGetHrRosterPlanQuery, useSaveHrRosterPlanMutation } from '../../../api/services NodeJs/hrLeaveApi';
 import { useGetAllEmployeeRegistrationsQuery } from '../../../api/services NodeJs/jdManagementApi';
 import {
@@ -13,7 +14,11 @@ import {
   formatAttendanceDistanceDetail,
   isOutsideGeofenceRange,
 } from '../../../utils/hrStatusLabels';
+import { getResourceUrl } from '../../../utils/resourceUrls';
 import { getEmployeeDisplayName } from '../employeeProfile/employeeProfileUtils';
+import HrAddLeaveModal from '../leave/HrAddLeaveModal';
+import HrAddAttendanceModal from './HrAddAttendanceModal';
+import HrAddNoPayDayModal from './HrAddNoPayDayModal';
 
 /** Roster labels: preferred name, then EMP no — never full legal name (matches Employee Assignment). */
 function getRoasterEmployeeLabel(empLike, id) {
@@ -67,6 +72,60 @@ const getApprovalRank = (status) => {
 
 const pickHigherApprovalStatus = (a, b) => {
   return getApprovalRank(b) > getApprovalRank(a) ? b : a;
+};
+
+const parseAttendanceNotes = (raw) => {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+  try {
+    return JSON.parse(String(raw));
+  } catch {
+    return {};
+  }
+};
+
+const buildHrAttendanceAudit = (row) => {
+  const notes = parseAttendanceNotes(row?.notes);
+  const source = String(row?.source || '').toLowerCase();
+  const payStatus = String(row?.pay_status || '').toLowerCase();
+  const isHrManual = source === 'hr' || notes.hrManual === true;
+  const isNoPay =
+    payStatus === 'nopay'
+    || notes.nopay === true
+    || notes.hrNoPayDay === true
+    || String(row?.status || '').toLowerCase() === 'absent';
+  if (!isHrManual && !isNoPay) return null;
+  const proofUrls = Array.isArray(notes.proofUrls)
+    ? notes.proofUrls.map((u) => String(u || '').trim()).filter(Boolean)
+    : [];
+  return {
+    isNoPayDay: Boolean(notes.hrNoPayDay || payStatus === 'nopay' || notes.nopay === true),
+    reason: String(notes.hrReason || notes.nopayReason || '').trim() || '—',
+    markedByName: String(notes.markedByName || '').trim() || (isHrManual ? 'HR user' : null),
+    markedByUserId: notes.markedByUserId != null ? Number(notes.markedByUserId) : null,
+    markedAt: notes.markedAt || null,
+    proofUrls,
+    proofLinks: proofUrls.map((filename) => ({
+      filename,
+      url: getResourceUrl('LEAVE_ATTACHMENT', filename),
+    })),
+  };
+};
+
+const isNoPayAttendanceRow = (row) => {
+  if (!row) return false;
+  if (row.mark_in) return false;
+  const notes = parseAttendanceNotes(row.notes);
+  const payStatus = String(row.pay_status || '').toLowerCase();
+  const status = String(row.status || '').toLowerCase();
+  return (
+    status === 'absent'
+    && (
+      payStatus === 'nopay'
+      || notes.nopay === true
+      || notes.hrNoPayDay === true
+    )
+  );
 };
 
 const buildApprovalDetailLines = (item) => {
@@ -247,9 +306,17 @@ const RoasterPlanning = ({ embedded = false }) => {
   const [localRoster, setLocalRoster] = useState([]);
   const [designationFilter, setDesignationFilter] = useState('all');
   const [workLocationFilter, setWorkLocationFilter] = useState('all');
+  const [bulkLeaveFilter, setBulkLeaveFilter] = useState('all');
   const [nameFilter, setNameFilter] = useState('');
   const [approvalPopup, setApprovalPopup] = useState(null);
   const [attendancePopup, setAttendancePopup] = useState(null);
+  const [blankCellMenu, setBlankCellMenu] = useState(null);
+  const [addLeaveOpen, setAddLeaveOpen] = useState(false);
+  const [addLeavePrefill, setAddLeavePrefill] = useState({ employeeId: '', startDate: '', endDate: '' });
+  const [addAttendanceOpen, setAddAttendanceOpen] = useState(false);
+  const [addAttendanceTarget, setAddAttendanceTarget] = useState(null);
+  const [addNoPayOpen, setAddNoPayOpen] = useState(false);
+  const [addNoPayTarget, setAddNoPayTarget] = useState(null);
   const [unsavedHighlightActive, setUnsavedHighlightActive] = useState(false);
   const [saveHelpOpen, setSaveHelpOpen] = useState(false);
   const [navConfirmOpen, setNavConfirmOpen] = useState(false);
@@ -407,7 +474,7 @@ const RoasterPlanning = ({ embedded = false }) => {
           leaveDays: [],
           requestedLeaveDays: [],
           requestedLeaveStatusByDate: {},
-          attendance: { attended: [], absent: [] },
+          attendance: { attended: [], absent: [], noPayDays: [] },
         };
       }
       const workDateKey = normalizeDateKey(entry.work_date_key || entry.work_date);
@@ -440,7 +507,7 @@ const RoasterPlanning = ({ embedded = false }) => {
           leaveDays: [],
           requestedLeaveDays: [],
           requestedLeaveStatusByDate: {},
-          attendance: { attended: [], absent: [] },
+          attendance: { attended: [], absent: [], noPayDays: [] },
         };
       }
       const leaveDateKey = normalizeDateKey(requestRow.leave_date);
@@ -462,12 +529,14 @@ const RoasterPlanning = ({ embedded = false }) => {
           leaveDays: [],
           requestedLeaveDays: [],
           requestedLeaveStatusByDate: {},
-          attendance: { attended: [], absent: [] },
+          attendance: { attended: [], absent: [], noPayDays: [] },
         };
       }
       const attendanceStatus = String(attendanceRow.status || '').toLowerCase();
       const dateKey = normalizeDateKey(attendanceRow.attendance_date);
-      if (attendanceStatus === 'present') {
+      if (isNoPayAttendanceRow(attendanceRow)) {
+        byEmployee[id].attendance.noPayDays.push(dateKey);
+      } else if (attendanceStatus === 'present') {
         byEmployee[id].attendance.attended.push(dateKey);
       } else if (attendanceStatus === 'absent') {
         byEmployee[id].attendance.absent.push(dateKey);
@@ -505,7 +574,7 @@ const RoasterPlanning = ({ embedded = false }) => {
         leaveDays: [],
         requestedLeaveDays: [],
         requestedLeaveStatusByDate: {},
-        attendance: { attended: [], absent: [] },
+        attendance: { attended: [], absent: [], noPayDays: [] },
       };
     });
 
@@ -578,6 +647,8 @@ const RoasterPlanning = ({ embedded = false }) => {
       if (!roleMatches) return false;
       const locationMatches = workLocationFilter === 'all' || String(emp.workLocation || '').trim() === workLocationFilter;
       if (!locationMatches) return false;
+      if (bulkLeaveFilter === 'enabled' && !emp.isBulkLeaveEligible) return false;
+      if (bulkLeaveFilter === 'disabled' && emp.isBulkLeaveEligible) return false;
       if (!normalizedName) return true;
       const employeeName = normalizeFilterText(emp.name);
       const preferredName = normalizeFilterText(emp.preferredName);
@@ -592,7 +663,7 @@ const RoasterPlanning = ({ embedded = false }) => {
         (employeeEmpNo && employeeEmpNo.includes(normalizedName))
       );
     });
-  }, [designationFilter, workLocationFilter, nameFilter, roster]);
+  }, [designationFilter, workLocationFilter, bulkLeaveFilter, nameFilter, roster]);
 
   const serverLeaveSetByEmployeeId = useMemo(() => buildServerLeaveSetById(rosterFromServer), [rosterFromServer]);
 
@@ -924,8 +995,70 @@ const RoasterPlanning = ({ embedded = false }) => {
         markOutDistance,
         markInMapUrl: buildMapUrl(detail.mark_in_latitude, detail.mark_in_longitude),
         markOutMapUrl: buildMapUrl(detail.mark_out_latitude, detail.mark_out_longitude),
+        hrAudit: buildHrAttendanceAudit(detail),
+        source: detail.source || null,
       },
     });
+  };
+
+  const openBlankCellMenu = (employee, dateString, canToggleBulkLeave) => {
+    setBlankCellMenu({
+      employeeId: employee.id,
+      employeeName: employee.name,
+      empNo: employee.empNo || employee.emp_no || '',
+      preferredName: employee.preferredName || employee.preferred_name || '',
+      dateString,
+      canToggleBulkLeave: Boolean(canToggleBulkLeave),
+    });
+  };
+
+  const closeBlankCellMenu = () => setBlankCellMenu(null);
+
+  const handleBlankCellAddLeave = () => {
+    if (!blankCellMenu) return;
+    setAddLeavePrefill({
+      employeeId: String(blankCellMenu.employeeId),
+      startDate: blankCellMenu.dateString,
+      endDate: blankCellMenu.dateString,
+    });
+    setAddLeaveOpen(true);
+    closeBlankCellMenu();
+  };
+
+  const handleBlankCellAddAttendance = () => {
+    if (!blankCellMenu) return;
+    setAddAttendanceTarget({
+      id: blankCellMenu.employeeId,
+      name: blankCellMenu.employeeName,
+      empNo: blankCellMenu.empNo,
+      preferredName: blankCellMenu.preferredName,
+      attendanceDate: blankCellMenu.dateString,
+    });
+    setAddAttendanceOpen(true);
+    closeBlankCellMenu();
+  };
+
+  const handleBlankCellAddNoPay = () => {
+    if (!blankCellMenu) return;
+    setAddNoPayTarget({
+      id: blankCellMenu.employeeId,
+      name: blankCellMenu.employeeName,
+      empNo: blankCellMenu.empNo,
+      preferredName: blankCellMenu.preferredName,
+      attendanceDate: blankCellMenu.dateString,
+    });
+    setAddNoPayOpen(true);
+    closeBlankCellMenu();
+  };
+
+  const handleBlankCellBulkLeave = () => {
+    if (!blankCellMenu?.canToggleBulkLeave) return;
+    handleDayClick(blankCellMenu.employeeId, blankCellMenu.dateString);
+    closeBlankCellMenu();
+  };
+
+  const handleHrOpsSuccess = () => {
+    refetch();
   };
 
   const getEmployeeMonthLocationRows = (employeeId) => {
@@ -1049,6 +1182,18 @@ const RoasterPlanning = ({ embedded = false }) => {
             ))}
           </select>
         </div>
+        <div className="control-field-roaster planning-filter-field-roaster">
+          <label htmlFor="planning-bulk-leave-filter">Bulk leave</label>
+          <select
+            id="planning-bulk-leave-filter"
+            value={bulkLeaveFilter}
+            onChange={(e) => setBulkLeaveFilter(e.target.value)}
+          >
+            <option value="all">All employees</option>
+            <option value="enabled">Bulk leave enabled</option>
+            <option value="disabled">Bulk leave disabled</option>
+          </select>
+        </div>
         <div className="roaster-toolbar-actions-roaster">
           <div className="roaster-save-help-group-roaster" ref={saveHelpRef}>
             <button
@@ -1057,10 +1202,10 @@ const RoasterPlanning = ({ embedded = false }) => {
               onClick={saveChanges}
               disabled={savingRoster || !canSaveRoster}
             >
-              {savingRoster ? 'Saving…' : 'Save roster'}
+              {savingRoster ? 'Saving…' : 'Save'}
             </button>
             <button type="button" className="roaster-export-btn-roaster" onClick={handleExportAll}>
-              Export Excel
+              Export
             </button>
             <button
               type="button"
@@ -1123,6 +1268,8 @@ const RoasterPlanning = ({ embedded = false }) => {
           <span className="legend-pill-roaster requested-pill-roaster">Leave Requested</span>
           <span className="legend-pill-roaster attended-pill-roaster">Attended</span>
           <span className="legend-pill-roaster location-outside-pill-roaster">Attended · {geofenceRadiusMeters} m+</span>
+          <span className="legend-pill-roaster nopay-pill-roaster">No pay</span>
+          <span className="legend-pill-roaster blank-pill-roaster">Empty · click to add</span>
           <span className="legend-pill-roaster holiday-mercantile-legend-roaster">Statutory holidays</span>
           <span className="legend-pill-roaster holiday-poya-legend-roaster">Poya holiday</span>
           <span className="legend-pill-roaster holiday-special-legend-roaster">Special holiday</span>
@@ -1196,6 +1343,7 @@ const RoasterPlanning = ({ embedded = false }) => {
                 const isRequested = employee.requestedLeaveDays.includes(day.dateString);
                 const requestedLeaveStatus = employee.requestedLeaveStatusByDate?.[day.dateString] || null;
                 const isAttended = employee.attendance.attended.includes(day.dateString);
+                const isNoPay = (employee.attendance.noPayDays || []).includes(day.dateString);
                 const attendanceDetail = attendanceDetailsByKey.get(attendanceKey(employee.id, day.dateString));
                 const locationOutsideRange = isAttended && hasAttendanceLocationIssue(attendanceDetail, geofenceRadiusMeters);
                 const hol = holidayMetaByDate[day.dateString]?.type;
@@ -1215,6 +1363,8 @@ const RoasterPlanning = ({ embedded = false }) => {
                   stateClass = 'requested';
                 } else if (isAttended) {
                   stateClass = 'attended';
+                } else if (isNoPay) {
+                  stateClass = 'nopay';
                 }
                 const holTitle = holidayHoverLine(day.dateString);
                 const serverLeaveSet = serverLeaveSetByEmployeeId.get(employee.id);
@@ -1224,17 +1374,19 @@ const RoasterPlanning = ({ embedded = false }) => {
                   localRoster.length > 0 &&
                   unsavedEmployeeIds.has(employee.id) &&
                   isLeave !== serverHasLeave;
+                const isBlank =
+                  !isLeave && !isRequested && !isAttended && !isNoPay;
                 return (
                   <div
                     key={`${employee.id}-${day.dateString}`}
                     role="button"
-                    tabIndex={locked ? -1 : 0}
+                    tabIndex={locked && !isAttended && !isNoPay && !isBlank ? -1 : 0}
                     className={`day-cell-roaster ${day.isWeekend ? 'weekend' : ''} ${stateClass} ${holClass} ${
                       locked ? 'locked' : ''
-                    } ${cellBulkLeaveDiff ? 'day-cell-bulk-leave-diff-roaster' : ''}`.trim()}
-                    title={`${day.dateString}${isLeave ? ' | Bulk leave' : ''}${isRequested ? ' | Leave Requested' : ''}${isAttended ? ' | Attended' : ''}${locationOutsideRange ? ` | Outside ${geofenceRadiusMeters} m range` : ''}${holTitle}`}
+                    } ${isBlank ? 'blank-absent' : ''} ${cellBulkLeaveDiff ? 'day-cell-bulk-leave-diff-roaster' : ''}`.trim()}
+                    title={`${day.dateString}${isLeave ? ' | Bulk leave' : ''}${isRequested ? ' | Leave Requested' : ''}${isAttended ? ' | Attended' : ''}${isNoPay ? ' | No pay day' : ''}${isBlank ? ' | No attendance/leave — click to add' : ''}${locationOutsideRange ? ` | Outside ${geofenceRadiusMeters} m range` : ''}${holTitle}`}
                     onClick={() => {
-                      if (isAttended) {
+                      if (isAttended || isNoPay) {
                         openAttendancePopup(
                           { stopPropagation: () => {}, preventDefault: () => {} },
                           employee.name,
@@ -1244,13 +1396,22 @@ const RoasterPlanning = ({ embedded = false }) => {
                         );
                         return;
                       }
+                      if (isBlank) {
+                        openBlankCellMenu(employee, day.dateString, !locked);
+                        return;
+                      }
                       if (!locked) handleDayClick(employee.id, day.dateString);
                     }}
                     onKeyDown={(ev) => {
                       if (ev.key !== 'Enter' && ev.key !== ' ') return;
-                      if (isAttended) {
+                      if (isAttended || isNoPay) {
                         ev.preventDefault();
                         openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation);
+                        return;
+                      }
+                      if (isBlank) {
+                        ev.preventDefault();
+                        openBlankCellMenu(employee, day.dateString, !locked);
                         return;
                       }
                       if (locked) return;
@@ -1301,6 +1462,19 @@ const RoasterPlanning = ({ embedded = false }) => {
                           {locationOutsideRange ? '!' : 'i'}
                         </span>
                       </span>
+                    ) : null}
+                    {isNoPay && !isAttended ? (
+                      <span
+                        className="attendance-info-hit-roaster"
+                        aria-label="Show no-pay day details"
+                        title="No pay day — click for details"
+                        onClick={(ev) => openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation)}
+                      >
+                        <span className="attendance-info-dot-roaster attendance-info-dot-roaster--nopay">NP</span>
+                      </span>
+                    ) : null}
+                    {isBlank ? (
+                      <span className="blank-add-hint-roaster" aria-hidden="true">+</span>
                     ) : null}
                   </div>
                 );
@@ -1409,6 +1583,52 @@ const RoasterPlanning = ({ embedded = false }) => {
                   </div>
                 </div>
 
+                {attendancePopup.detail.hrAudit ? (
+                  <section className="roaster-attendance-hr-audit">
+                    <div className="roaster-attendance-section-head">
+                      <h4>{attendancePopup.detail.hrAudit.isNoPayDay ? 'HR no-pay day' : 'HR-added attendance'}</h4>
+                      <span>{attendancePopup.detail.hrAudit.isNoPayDay ? 'Unpaid absence' : 'Manual backfill'}</span>
+                    </div>
+                    <dl className="roaster-attendance-meta-grid">
+                      <div>
+                        <dt>Reason</dt>
+                        <dd>{attendancePopup.detail.hrAudit.reason}</dd>
+                      </div>
+                      {attendancePopup.detail.hrAudit.markedByName ? (
+                        <div>
+                          <dt>Added by</dt>
+                          <dd>
+                            {attendancePopup.detail.hrAudit.markedByName}
+                            {attendancePopup.detail.hrAudit.markedByUserId
+                              ? ` (user #${attendancePopup.detail.hrAudit.markedByUserId})`
+                              : ''}
+                          </dd>
+                        </div>
+                      ) : null}
+                      {attendancePopup.detail.hrAudit.markedAt ? (
+                        <div>
+                          <dt>Added at</dt>
+                          <dd>{attendancePopup.detail.hrAudit.markedAt}</dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    {attendancePopup.detail.hrAudit.proofLinks?.length ? (
+                      <div className="roaster-attendance-hr-proofs">
+                        <span className="roaster-attendance-summary__label">Proof</span>
+                        <ul>
+                          {attendancePopup.detail.hrAudit.proofLinks.map((p) => (
+                            <li key={p.filename}>
+                              <a href={p.url} target="_blank" rel="noreferrer">
+                                {p.filename}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </section>
+                ) : null}
+
                 <section className="roaster-attendance-timeline">
                   <div className="roaster-attendance-section-head">
                     <h4>Check-in details</h4>
@@ -1515,6 +1735,87 @@ const RoasterPlanning = ({ embedded = false }) => {
           </div>
         </div>
       ) : null}
+
+      {blankCellMenu ? (
+        <div
+          className="roaster-blank-menu-backdrop"
+          role="presentation"
+          onClick={closeBlankCellMenu}
+        >
+          <div
+            className="roaster-blank-menu-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add leave or attendance"
+            onClick={(ev) => ev.stopPropagation()}
+          >
+            <header className="roaster-blank-menu-header">
+              <div>
+                <p className="roaster-blank-menu-eyebrow">No attendance or leave</p>
+                <h3>{blankCellMenu.employeeName}</h3>
+                <p>{formatPopupDate(blankCellMenu.dateString)}</p>
+              </div>
+              <button type="button" className="roaster-attendance-modal__close" aria-label="Close" onClick={closeBlankCellMenu}>
+                ×
+              </button>
+            </header>
+            <p className="roaster-blank-menu-hint">
+              HR can add leave, record attendance, or mark a no-pay day. Attendance requires proof; no-pay requires a reason.
+            </p>
+            <div className="roaster-blank-menu-actions">
+              <button type="button" className="roaster-blank-menu-btn" onClick={handleBlankCellAddLeave}>
+                Add leave
+              </button>
+              <button type="button" className="roaster-blank-menu-btn roaster-blank-menu-btn--primary" onClick={handleBlankCellAddAttendance}>
+                Add attendance
+              </button>
+              <button type="button" className="roaster-blank-menu-btn roaster-blank-menu-btn--danger" onClick={handleBlankCellAddNoPay}>
+                Mark no-pay day
+              </button>
+              {blankCellMenu.canToggleBulkLeave ? (
+                <button type="button" className="roaster-blank-menu-btn" onClick={handleBlankCellBulkLeave}>
+                  Mark bulk leave
+                </button>
+              ) : null}
+              <button type="button" className="roaster-blank-menu-btn roaster-blank-menu-btn--ghost" onClick={closeBlankCellMenu}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      <HrAddLeaveModal
+        open={addLeaveOpen}
+        onClose={() => setAddLeaveOpen(false)}
+        employees={employeesRaw}
+        initialEmployeeId={addLeavePrefill.employeeId}
+        initialStartDate={addLeavePrefill.startDate}
+        initialEndDate={addLeavePrefill.endDate}
+        onSuccess={handleHrOpsSuccess}
+      />
+
+      <HrAddAttendanceModal
+        open={addAttendanceOpen}
+        onClose={() => {
+          setAddAttendanceOpen(false);
+          setAddAttendanceTarget(null);
+        }}
+        employee={addAttendanceTarget}
+        attendanceDate={addAttendanceTarget?.attendanceDate || ''}
+        onSuccess={handleHrOpsSuccess}
+      />
+
+      <HrAddNoPayDayModal
+        open={addNoPayOpen}
+        onClose={() => {
+          setAddNoPayOpen(false);
+          setAddNoPayTarget(null);
+        }}
+        employee={addNoPayTarget}
+        attendanceDate={addNoPayTarget?.attendanceDate || ''}
+        onSuccess={handleHrOpsSuccess}
+      />
 
       {navConfirmOpen ? (
         <div className="roaster-nav-confirm-backdrop" role="presentation">

@@ -153,7 +153,25 @@ export const hrLeaveApi = baseApi.injectEndpoints({
           {},
           {},
         ),
-      invalidatesTags: ['HrLeaveOps', 'HrLeave', 'HrAttendance'],
+      invalidatesTags: ['HrLeaveOps', 'HrLeave', 'HrAttendance', 'HrRoster'],
+    }),
+    createHrOpsAttendance: builder.mutation({
+      queryFn: async (body) =>
+        nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/attendance/create', method: 'POST', body },
+          {},
+          {},
+        ),
+      invalidatesTags: ['HrLeaveOps', 'HrAttendance', 'HrRoster'],
+    }),
+    createHrOpsNoPayDay: builder.mutation({
+      queryFn: async (body) =>
+        nodeBackendBaseQuery(
+          { url: '/api/hr-leave/admin/ops/attendance/nopay', method: 'POST', body },
+          {},
+          {},
+        ),
+      invalidatesTags: ['HrLeaveOps', 'HrAttendance', 'HrRoster'],
     }),
     estimateHrOpsLeave: builder.mutation({
       queryFn: async (body) => {
@@ -243,6 +261,8 @@ export const {
   useLazyGetHrLeaveOpsDayEmployeesQuery,
   useAdjustHrLeaveBalanceMutation,
   useCreateHrOpsLeaveMutation,
+  useCreateHrOpsAttendanceMutation,
+  useCreateHrOpsNoPayDayMutation,
   useEstimateHrOpsLeaveMutation,
   useGetHrOpsLeaveCalendarQuery,
   useLazyGetHrOpsLeaveCalendarQuery,

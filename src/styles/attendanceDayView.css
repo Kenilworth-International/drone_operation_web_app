@@ -425,9 +425,6 @@
   border-radius: 999px;
   border: 1px solid transparent;
   white-space: nowrap;
-  max-width: 72px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .att-day-loc-badge--office {
