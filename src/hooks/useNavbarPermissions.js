@@ -8,6 +8,7 @@ import {
   getCategoryFullAccessFromPaths,
   getCategoryVisibility,
   getUserData,
+  expandPathPermissionsWithAliases,
 } from '../utils/authUtils';
 
 const categories = navbarCategories;
@@ -41,10 +42,8 @@ export function useNavbarPermissions() {
     if (!backendPermissions || Object.keys(backendPermissions).length === 0) {
       return {};
     }
-    if (backendPermissions.paths) {
-      return backendPermissions.paths;
-    }
-    return {};
+    const raw = backendPermissions.paths ? backendPermissions.paths : {};
+    return expandPathPermissionsWithAliases(raw);
   }, [backendPermissions]);
 
   const categoryVisibility = getCategoryVisibility(

@@ -132,13 +132,13 @@ export const maintenanceApi = baseApi.injectEndpoints({
 
     // Update maintenance status
     updateMaintenanceStatus: builder.mutation({
-      queryFn: async ({ id, status, status_reason, completed_date }) => {
+      queryFn: async ({ id, status, status_reason, completed_date, repair_notes }) => {
         try {
           const result = await nodeBackendBaseQuery(
             {
               url: `/api/maintenance/${id}/status`,
               method: 'PATCH',
-              body: { status, status_reason, completed_date },
+              body: { status, status_reason, completed_date, repair_notes },
             },
             {},
             {}

@@ -37,6 +37,7 @@ import {
   FaLaptop,
   FaExchangeAlt,
   FaIdCard,
+  FaWrench,
 } from 'react-icons/fa';
 
 const navbarCategories = [
@@ -149,14 +150,18 @@ const navbarCategories = [
     children: [
       { path: '/home/transport/hr', label: 'T. O. D.', icon: FaTruck },
       { path: '/home/generator-fuel-approvals', label: 'Generator Fuel Approvals', icon: FaTruck },
-      { path: '/home/fleet', label: 'Resource Allocation', icon: FaCogs },
-      { path: '/home/accident-reports', label: 'Incident Reports', icon: FaFileAlt },
-      { path: '/home/maintenance', label: 'Maintenance', icon: FaTools },
-      { path: '/home/stock-assets/supplier-registration', label: 'Supplier Management', icon: FaHandshake },
-      { path: '/home/stock-assets/inventory-items-registration', label: 'Inventory Items Registration', icon: FaBoxes },
       {
-        path: '/home/stock-assets/procurement-process',
-        label: 'Procurement Process',
+        path: '/home/stock-assets/catalog/suppliers',
+        label: 'Catalog',
+        icon: FaBoxes,
+        subItems: [
+          { path: '/home/stock-assets/catalog/suppliers', label: 'Suppliers', icon: FaHandshake },
+          { path: '/home/stock-assets/catalog/inventory', label: 'Inventory Items', icon: FaBoxes },
+        ],
+      },
+      {
+        path: '/home/stock-assets/procurement-process/requests',
+        label: 'Procurement',
         icon: FaShoppingCart,
         subItems: [
           { path: '/home/stock-assets/procurement-process/requests', label: 'Procurement Requests', icon: FaFileAlt },
@@ -171,8 +176,8 @@ const navbarCategories = [
         ],
       },
       {
-        path: '/home/stock-assets/central-stores',
-        label: 'Central Stores (GRN/GIN)',
+        path: '/home/stock-assets/central-stores/request-items-services',
+        label: 'Central Stores',
         icon: FaStore,
         subItems: [
           { path: '/home/stock-assets/central-stores/request-items-services', label: 'Request Items/Services', icon: FaFileInvoice },
@@ -181,8 +186,15 @@ const navbarCategories = [
           { path: '/home/stock-assets/central-stores/need-to-procure-queue', label: 'Need to Procure Queue', icon: FaShoppingCart },
         ],
       },
-      { path: '/home/stock-assets/asset-transfer', label: 'Asset/Item/Service Transfer', icon: FaTruck },
-      { path: '/home/stock-assets/asset-request', label: 'Asset/Item/Service Request', icon: FaFileInvoice },
+      {
+        path: '/home/stock-assets/transfers/transfer',
+        label: 'Transfers & Requests',
+        icon: FaTruck,
+        subItems: [
+          { path: '/home/stock-assets/transfers/transfer', label: 'Asset Transfer', icon: FaExchangeAlt },
+          { path: '/home/stock-assets/transfers/request', label: 'Asset Request', icon: FaFileInvoice },
+        ],
+      },
       {
         path: '/home/finance-approvals',
         label: 'Finance Approvals',
@@ -210,7 +222,12 @@ const navbarCategories = [
   {
     title: 'Fleet Management Wing',
     icon: FaTruck,
-    children: [],
+    children: [
+      { path: '/home/fleet', label: 'Resource Allocation', icon: FaCogs },
+      { path: '/home/accident-reports', label: 'Incident Reports', icon: FaFileAlt },
+      { path: '/home/maintenance', label: 'Maintenance', icon: FaTools },
+      { path: '/home/workshop', label: 'Workshop', icon: FaWrench },
+    ],
   },
   {
     title: 'Sales and Marketing Wing',

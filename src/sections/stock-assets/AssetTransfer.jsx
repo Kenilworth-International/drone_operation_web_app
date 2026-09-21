@@ -14,7 +14,7 @@ const ASSET_TYPES = [
   { key: 'remoteControls', label: 'Remote Controls', icon: FaGamepad },
 ];
 
-const AssetTransfer = () => {
+const AssetTransfer = ({ embedded = false }) => {
   const dispatch = useAppDispatch();
   const [selectedAssetType, setSelectedAssetType] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -288,16 +288,16 @@ const AssetTransfer = () => {
     const assetTypeLabel = ASSET_TYPES.find((t) => t.key === selectedAssetType)?.label;
 
     return (
-      <div className="assets-transfer-container">
+      <div className={`assets-transfer-container${embedded ? ' assets-transfer-container--embedded' : ''} admin-stock-body`}>
         <div className="assets-transfer-header">
-          <button type="button" className="back-button" onClick={handleBackToRegistry}>
+          <button type="button" className="back-button admin-stock-btn" onClick={handleBackToRegistry}>
             <FaArrowLeft /> Back to Registry
           </button>
           <h3>Transfer {assetTypeLabel}</h3>
         </div>
 
-        <div className="assets-transfer-table-container">
-          <table className="assets-transfer-table">
+        <div className="assets-transfer-table-container admin-stock-table-wrap">
+          <table className="assets-transfer-table admin-stock-table">
             <thead>{renderTableHeader()}</thead>
             <tbody>
               {assets.length === 0 ? (
@@ -382,7 +382,7 @@ const AssetTransfer = () => {
 
   // Card view
   return (
-    <div className="assets-transfer-container">
+    <div className={`assets-transfer-container${embedded ? ' assets-transfer-container--embedded' : ''} admin-stock-body`}>
       <div className="assets-transfer-grid">
         {displayedTypes.map((type) => {
           const Icon = type.icon;
@@ -400,7 +400,7 @@ const AssetTransfer = () => {
               <div className="transfer-button-container">
                 <button
                   type="button"
-                  className="transfer-button"
+                  className="transfer-button admin-stock-btn admin-stock-btn--primary"
                   onClick={() => handleTransfer(type.key)}
                 >
                   <FaExchangeAlt className="transfer-icon" />

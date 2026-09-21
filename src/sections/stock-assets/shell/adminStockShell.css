@@ -1,0 +1,389 @@
+/* Administration stock / procurement — modern professional shell */
+
+.admin-stock-page {
+  --admin-bg: #eef2f7;
+  --admin-bg-accent: #e8eef5;
+  --admin-surface: #ffffff;
+  --admin-border: #d8e0ea;
+  --admin-border-strong: #c5d0de;
+  --admin-text: #0f172a;
+  --admin-muted: #5b6b7c;
+  --admin-accent: #1a5f7a;
+  --admin-accent-hover: #134b61;
+  --admin-accent-soft: #e8f2f6;
+  --admin-accent-mid: #2a7a9b;
+  --admin-danger: #b91c1c;
+  --admin-ok: #047857;
+  --admin-radius: 14px;
+  --admin-radius-sm: 10px;
+  --admin-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 54, 82, 0.06);
+  --admin-shadow-lg: 0 4px 12px rgba(15, 23, 42, 0.06), 0 16px 40px rgba(15, 54, 82, 0.1);
+
+  min-height: 100%;
+  padding: 0 0 40px;
+  background:
+    radial-gradient(1200px 400px at 10% -10%, #dbe7f2 0%, transparent 55%),
+    radial-gradient(900px 320px at 90% 0%, #d4e8ef 0%, transparent 50%),
+    linear-gradient(180deg, var(--admin-bg-accent) 0%, var(--admin-bg) 40%, #f4f6f9 100%);
+  color: var(--admin-text);
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.admin-stock-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 28px 14px;
+  flex-wrap: wrap;
+}
+
+.admin-stock-header-left {
+  min-width: 0;
+}
+
+.admin-stock-title {
+  margin: 0 0 4px;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--admin-text);
+  letter-spacing: -0.02em;
+}
+
+.admin-stock-hint {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--admin-muted);
+  line-height: 1.45;
+}
+
+.admin-stock-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Segmented / pill tab bar */
+.admin-stock-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 12px 24px 0;
+  padding: 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--admin-shadow);
+  backdrop-filter: blur(8px);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-wrap: wrap;
+}
+
+.admin-stock-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-stock-tab {
+  padding: 9px 16px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--admin-muted);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  border-radius: 10px;
+  font: inherit;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-stock-tab:hover {
+  color: var(--admin-text);
+  background: #f1f5f9;
+}
+
+.admin-stock-tab--active {
+  color: #fff;
+  background: linear-gradient(135deg, var(--admin-accent) 0%, var(--admin-accent-mid) 100%);
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(26, 95, 122, 0.28);
+  font-weight: 650;
+}
+
+.admin-stock-body {
+  padding: 20px 24px 0;
+}
+
+.admin-stock-panel {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  padding: 22px 24px;
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-stock-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-stock-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius);
+  background: var(--admin-surface);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+.admin-stock-table th,
+.admin-stock-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid #edf1f6;
+  vertical-align: middle;
+}
+
+.admin-stock-table th {
+  background: linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
+  color: #3d5166;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.admin-stock-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.admin-stock-table tbody tr:hover {
+  background: #f5f9fc;
+}
+
+.admin-stock-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-stock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px 16px;
+  border-radius: var(--admin-radius-sm);
+  border: 1px solid var(--admin-border-strong);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.admin-stock-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #a8b8c9;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.admin-stock-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.admin-stock-btn--primary {
+  background: linear-gradient(135deg, var(--admin-accent) 0%, var(--admin-accent-mid) 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(26, 95, 122, 0.25);
+}
+
+.admin-stock-btn--primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--admin-accent-hover) 0%, var(--admin-accent) 100%);
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(26, 95, 122, 0.32);
+}
+
+.admin-stock-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.admin-stock-btn--ghost:hover:not(:disabled) {
+  background: var(--admin-accent-soft);
+  border-color: transparent;
+}
+
+.admin-stock-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.admin-stock-field label {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #475569;
+}
+
+.admin-stock-field input,
+.admin-stock-field select,
+.admin-stock-field textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border-strong);
+  border-radius: var(--admin-radius-sm);
+  font-size: 14px;
+  color: var(--admin-text);
+  background: #fff;
+  font: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admin-stock-field input:focus,
+.admin-stock-field select:focus,
+.admin-stock-field textarea:focus {
+  outline: none;
+  border-color: var(--admin-accent-mid);
+  box-shadow: 0 0 0 3px rgba(42, 122, 155, 0.18);
+}
+
+.admin-stock-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 18px;
+}
+
+@media (max-width: 720px) {
+  .admin-stock-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-stock-tabs {
+    margin: 10px 12px 0;
+  }
+
+  .admin-stock-body {
+    padding: 16px 12px 0;
+  }
+}
+
+.admin-stock-msg {
+  padding: 12px 14px;
+  border-radius: var(--admin-radius-sm);
+  font-size: 13.5px;
+  margin-bottom: 14px;
+  font-weight: 500;
+}
+
+.admin-stock-msg--ok {
+  background: #ecfdf5;
+  color: var(--admin-ok);
+  border: 1px solid #a7f3d0;
+}
+
+.admin-stock-msg--error {
+  background: #fef2f2;
+  color: var(--admin-danger);
+  border: 1px solid #fecaca;
+}
+
+.admin-stock-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--admin-muted);
+  font-size: 14px;
+}
+
+.admin-stock-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 35, 52, 0.5);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(2px);
+}
+
+.admin-stock-modal {
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid var(--admin-border);
+  box-shadow: var(--admin-shadow-lg);
+}
+
+.admin-stock-modal header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--admin-border);
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.admin-stock-modal header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+
+.admin-stock-modal-body {
+  padding: 18px;
+}
+
+.admin-stock-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 18px 18px;
+}
+
+/* Soft-map common legacy module roots into shell spacing */
+.admin-stock-page .procurement-process-page,
+.admin-stock-page .central-stores-page,
+.admin-stock-page .inventory-items-registration-container,
+.admin-stock-page .supplier-management-container,
+.admin-stock-page .assets-transfer-container,
+.admin-stock-page .asset-request-container {
+  background: transparent;
+  box-shadow: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-height: 0;
+}
+
+.admin-stock-page .inventory-items-registration-container--embedded .main-tabs-container-inventory-items,
+.admin-stock-page .supplier-management-container--embedded .main-tabs-container-supplier-management {
+  display: none;
+}
+
+/* Nested module tabs (Registration / List) sit under hub tabs */
+.admin-stock-page .supplier-management-container .admin-stock-tabs,
+.admin-stock-page .inventory-items-registration-container .admin-stock-tabs {
+  margin-top: 8px;
+  padding-top: 8px;
+}

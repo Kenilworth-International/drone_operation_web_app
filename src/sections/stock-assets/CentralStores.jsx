@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../../styles/centralStoresModule.css';
+import { AdminStockPage, AdminSubTabs } from './shell/AdminStockShell';
 import {
   useCreateCentralStoreRequestMutation,
   useGetCentralStoreRequestQuery,
@@ -170,24 +171,17 @@ const CentralStores = () => {
   };
 
   return (
-    <div className="central-stores-page">
-      <h2 className="central-stores-title">Central Stores (GRN/GIN)</h2>
-      <div className="central-stores-tabs">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => {
-              setActiveTab(tab.key);
-              navigate({ pathname: tab.path, search: routerLocation.search });
-            }}
-            className={`central-stores-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
+    <AdminStockPage>
+      <AdminSubTabs
+        tabs={TABS}
+        active={activeTab}
+        onChange={(key) => {
+          const tab = TABS.find((t) => t.key === key) || TABS[0];
+          setActiveTab(tab.key);
+          navigate({ pathname: tab.path, search: routerLocation.search });
+        }}
+      />
+      <div className="central-stores-page admin-stock-body">
       {activeTab === 'request' && (
         <form onSubmit={submitRequest} className="central-stores-form">
           <div className="central-stores-row-two central-stores-form-group">
@@ -426,7 +420,8 @@ const CentralStores = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </AdminStockPage>
   );
 };
 

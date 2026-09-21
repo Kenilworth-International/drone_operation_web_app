@@ -159,6 +159,56 @@ export default function DetailModal({
             </section>
 
             <section className="accidentreports-detail-section">
+              <h3>Investigation & approval</h3>
+              <div className="accidentreports-detail-grid">
+                <DetailField
+                  label="Investigation"
+                  value={
+                    report.investigation_status === 'i'
+                      ? 'In progress'
+                      : report.investigation_status === 'v'
+                        ? 'Under review'
+                        : report.investigation_status === 'c'
+                          ? 'Complete'
+                          : Number(report.investigation_required) === 1
+                            ? 'Required'
+                            : 'Not required / skipped'
+                  }
+                />
+                <DetailField
+                  label="Approved"
+                  value={report.approved_at ? formatDate(report.approved_at) : 'Not yet'}
+                />
+                <DetailField
+                  label="Maintenance"
+                  value={
+                    report.maintenanceId || report.maintenance_id
+                      ? `#${report.maintenanceId || report.maintenance_id}`
+                      : '—'
+                  }
+                />
+              </div>
+              {report.investigation_notes ? (
+                <div className="accidentreports-decline-reason">
+                  <strong>Investigation notes</strong>
+                  <p>{report.investigation_notes}</p>
+                </div>
+              ) : null}
+              {report.investigation_findings ? (
+                <div className="accidentreports-decline-reason">
+                  <strong>Investigation findings</strong>
+                  <p>{report.investigation_findings}</p>
+                </div>
+              ) : null}
+              {report.approval_suggestions ? (
+                <div className="accidentreports-decline-reason">
+                  <strong>Technician suggestions</strong>
+                  <p>{report.approval_suggestions}</p>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="accidentreports-detail-section">
               <h3>Attachments</h3>
 
               <div className="accidentreports-attachment-group">

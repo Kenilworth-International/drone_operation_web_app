@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
-  useGetUserJobDescriptionsQuery,
   useCreateUserJobDescriptionMutation,
-  useCreateMultipleUserJobDescriptionsMutation,
   useUpdateUserJobDescriptionMutation,
   useUpdateTaskOrdersMutation,
+  useGetStructuredJobDescriptionQuery,
+  useSaveJobSummaryMutation,
+  useSaveResponsibilityCategoryMutation,
+  useDeleteResponsibilityCategoryMutation,
 } from '../../api/services NodeJs/jdManagementApi';
 import {
   useGetEmpDepartmentsQuery,
@@ -20,15 +24,60 @@ function isChiefDesignation(des) {
   return CHIEF_JR_CODES.has(String(des.jr_code || '').toLowerCase());
 }
 
+function sortDesignationsForList(items) {
+  return [...items].sort((a, b) => {
+    const powerDiff = Number(b.power ?? 0) - Number(a.power ?? 0);
+    if (powerDiff !== 0) return powerDiff;
+    return String(a.designation_title || '').localeCompare(String(b.designation_title || ''));
+  });
+}
+
+/** Drop repeated dept prefix from titles shown under a department group. */
+function shortDesignationTitle(title, deptName) {
+  const raw = String(title || '').trim();
+  const dept = String(deptName || '').trim();
+  if (!raw) return '';
+  if (dept) {
+    const prefix = `${dept} - `;
+    if (raw.toLowerCase().startsWith(prefix.toLowerCase())) {
+      return raw.slice(prefix.length).trim() || raw;
+    }
+  }
+  const dash = raw.indexOf(' - ');
+  if (dash > 0) return raw.slice(dash + 3).trim() || raw;
+  return raw;
+}
+
+function getJdErrorMessage(err, fallback = 'Something went wrong') {
+  if (!err) return fallback;
+  const data = err.data;
+  if (typeof data === 'string' && data.trim()) {
+    const trimmed = data.trim();
+    if (trimmed.startsWith('<')) return fallback;
+    return trimmed.slice(0, 240);
+  }
+  const fromData = data?.message || data?.error;
+  if (fromData) return String(fromData).slice(0, 240);
+  if (err.error && typeof err.error === 'string') return err.error.slice(0, 240);
+  if (err.message && !/^rejected$/i.test(err.message)) return String(err.message).slice(0, 240);
+  if (err.status === 'FETCH_ERROR') return 'Cannot reach the API. Check your connection or backend.';
+  if (err.status === 404) return 'API endpoint not found. Deploy or point the app to dsms_backend_dev.';
+  if (err.status === 401) return 'Session expired. Please sign in again.';
+  if (err.status === 403) return 'You do not have permission for this action.';
+  if (err.status === 504) return 'API timed out. Try again in a moment.';
+  return fallback;
+}
+
 const JDManagement = () => {
   const { data: departments = [], isLoading: loadingDepts } = useGetEmpDepartmentsQuery();
   const { data: allDesignations = [], isLoading: loadingDes } = useGetEmpDesignationsQuery({ activated: 1 });
-  const { data: jobDescriptionsData, refetch: refetchJobDescriptions } = useGetUserJobDescriptionsQuery();
 
   const [createJobDescription, { isLoading: creatingDescription }] = useCreateUserJobDescriptionMutation();
-  const [createMultipleJobDescriptions, { isLoading: creatingMultipleDescriptions }] = useCreateMultipleUserJobDescriptionsMutation();
   const [updateJobDescription, { isLoading: updatingDescription }] = useUpdateUserJobDescriptionMutation();
-  const [updateTaskOrders, { isLoading: updatingTaskOrders }] = useUpdateTaskOrdersMutation();
+  const [updateTaskOrders] = useUpdateTaskOrdersMutation();
+  const [saveJobSummary, { isLoading: savingSummary }] = useSaveJobSummaryMutation();
+  const [saveCategory, { isLoading: savingCategory }] = useSaveResponsibilityCategoryMutation();
+  const [deleteCategory] = useDeleteResponsibilityCategoryMutation();
 
   const getCurrentUserId = () => {
     try {
@@ -39,27 +88,25 @@ const JDManagement = () => {
     }
   };
 
-  const [selectedDesignation, setSelectedDesignation] = useState(null);
-  const [jobDescriptions, setJobDescriptions] = useState([]);
-  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
-  const [descriptionFormData, setDescriptionFormData] = useState({
-    taskDescription: '',
-    status: 1,
-    selectedDesignationIds: [],
-  });
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [draggedTask, setDraggedTask] = useState(null);
-  const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [designationSearch, setDesignationSearch] = useState('');
-  const [showDesignationDropdown, setShowDesignationDropdown] = useState(false);
+  const [selectedDesignationId, setSelectedDesignationId] = useState(null);
   const [deptFilter, setDeptFilter] = useState('all');
   const [listSearch, setListSearch] = useState('');
+  const [formError, setFormError] = useState('');
+  const [editMode, setEditMode] = useState(false);
 
-  const allJobDescriptions = jobDescriptionsData?.data || [];
-  const prevDescriptionsHashRef = useRef('');
-  const prevSelectedDesIdRef = useRef(null);
+  const [summaryDraft, setSummaryDraft] = useState('');
+  const [showSummaryEditor, setShowSummaryEditor] = useState(false);
+
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState({ id: null, category_name: '' });
+
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [taskDraft, setTaskDraft] = useState({
+    id: null,
+    category_id: null,
+    taskDescription: '',
+    status: 1,
+  });
 
   const jdDesignations = useMemo(
     () => allDesignations.filter((d) => !isChiefDesignation(d)),
@@ -78,7 +125,8 @@ const JDManagement = () => {
     });
     return Array.from(map.values())
       .filter((g) => g.items.length > 0)
-      .sort((a, b) => String(a.dept.department_name).localeCompare(String(b.dept.department_name)));
+      .sort((a, b) => String(a.dept.department_name).localeCompare(String(b.dept.department_name)))
+      .map((g) => ({ ...g, items: sortDesignationsForList(g.items) }));
   }, [departments, jdDesignations]);
 
   const flatDesignations = useMemo(() => {
@@ -93,205 +141,305 @@ const JDManagement = () => {
         || String(d.des_code || '').toLowerCase().includes(q)
       );
     }
-    return list.sort((a, b) => String(a.designation_title).localeCompare(String(b.designation_title)));
+    return list;
   }, [jdDesignations, deptFilter, listSearch]);
 
+  /** Same order as the left list (dept groups → power). Used for reliable first-item select. */
+  const orderedVisibleDesignations = useMemo(() => {
+    const idSet = new Set(flatDesignations.map((d) => Number(d.id)));
+    const ordered = [];
+    designationsByDept
+      .filter((g) => deptFilter === 'all' || Number(g.dept.id) === Number(deptFilter))
+      .forEach((group) => {
+        group.items.forEach((des) => {
+          if (idSet.has(Number(des.id))) ordered.push(des);
+        });
+      });
+    return ordered;
+  }, [designationsByDept, flatDesignations, deptFilter]);
+
+  const selectedDesignation = useMemo(() => {
+    if (!orderedVisibleDesignations.length) return null;
+    if (selectedDesignationId != null) {
+      const found = orderedVisibleDesignations.find(
+        (d) => Number(d.id) === Number(selectedDesignationId),
+      );
+      if (found) return found;
+    }
+    return orderedVisibleDesignations[0];
+  }, [orderedVisibleDesignations, selectedDesignationId]);
+
+  const designationId = selectedDesignation?.id ? Number(selectedDesignation.id) : null;
+
+  const {
+    data: structuredJd,
+    isLoading: loadingStructured,
+    isFetching: fetchingStructured,
+    isError: structuredLoadFailed,
+    error: structuredLoadError,
+    refetch: refetchStructured,
+  } = useGetStructuredJobDescriptionQuery(
+    { emp_designation_id: designationId },
+    { skip: !designationId },
+  );
+
   useEffect(() => {
-    if (selectedDesignation && isChiefDesignation(selectedDesignation)) {
-      setSelectedDesignation(null);
+    setSummaryDraft(structuredJd?.jobSummary || '');
+    setShowSummaryEditor(false);
+    setEditMode(false);
+  }, [designationId, structuredJd?.jobSummary]);
+
+  // Keep selection id in sync when filter changes so the resolved first item stays stable.
+  useEffect(() => {
+    if (!orderedVisibleDesignations.length) {
+      if (selectedDesignationId != null) setSelectedDesignationId(null);
       return;
     }
-    if (selectedDesignation && !flatDesignations.some((d) => Number(d.id) === Number(selectedDesignation.id))) {
-      setSelectedDesignation(flatDesignations[0] || null);
-      return;
+    const stillVisible = orderedVisibleDesignations.some(
+      (d) => Number(d.id) === Number(selectedDesignationId),
+    );
+    if (!stillVisible) {
+      setSelectedDesignationId(Number(orderedVisibleDesignations[0].id));
     }
-    if (!selectedDesignation && flatDesignations.length > 0) {
-      setSelectedDesignation(flatDesignations[0]);
+  }, [orderedVisibleDesignations, selectedDesignationId]);
+
+  const activeCategories = useMemo(
+    () => (structuredJd?.categories || []).filter((c) => Number(c.status) === 1),
+    [structuredJd],
+  );
+  const inactiveCategories = useMemo(
+    () => (structuredJd?.categories || []).filter((c) => Number(c.status) !== 1),
+    [structuredJd],
+  );
+  const uncategorizedTasks = structuredJd?.uncategorizedTasks || [];
+
+  const visibleCategories = editMode
+    ? [...activeCategories, ...inactiveCategories]
+    : activeCategories;
+
+  const handleSaveSummary = async () => {
+    if (!designationId) return;
+    setFormError('');
+    try {
+      await saveJobSummary({
+        emp_designation_id: designationId,
+        job_summary: summaryDraft,
+        updatedBy: getCurrentUserId(),
+      }).unwrap();
+      setShowSummaryEditor(false);
+      toast.success('Job summary saved');
+      await refetchStructured();
+    } catch (err) {
+      toast.error(getJdErrorMessage(err, 'Failed to save job summary'));
     }
-  }, [flatDesignations, selectedDesignation]);
-
-  useEffect(() => {
-    const currentId = selectedDesignation?.id;
-    const descriptionsHash = allJobDescriptions
-      ? `${allJobDescriptions.length}-${allJobDescriptions.map((d) => d.id).join(',')}`
-      : '';
-    const descriptionsChanged = prevDescriptionsHashRef.current !== descriptionsHash;
-    const desChanged = prevSelectedDesIdRef.current !== currentId;
-
-    if (descriptionsChanged || desChanged) {
-      if (currentId && allJobDescriptions) {
-        const descriptions = allJobDescriptions
-          .filter((desc) => Number(desc.emp_designation_id) === Number(currentId))
-          .sort((a, b) => {
-            if (a.status !== b.status) return b.status - a.status;
-            return a.taskOrder - b.taskOrder;
-          });
-        setJobDescriptions(descriptions);
-      } else {
-        setJobDescriptions([]);
-      }
-      prevDescriptionsHashRef.current = descriptionsHash;
-      prevSelectedDesIdRef.current = currentId;
-    }
-  }, [selectedDesignation?.id, allJobDescriptions]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showDesignationDropdown && !event.target.closest('.jd-multi-select-container-jd-mgmt')) {
-        setShowDesignationDropdown(false);
-      }
-    };
-    if (showDesignationDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showDesignationDropdown]);
-
-  const handleDesignationSelect = (des) => {
-    setSelectedDesignation(des);
-    setEditingTaskId(null);
   };
 
-  const handleAddDescription = () => {
-    setDescriptionFormData({
+  const openAddCategory = () => {
+    setCategoryDraft({ id: null, category_name: '' });
+    setShowCategoryModal(true);
+    setFormError('');
+  };
+
+  const openEditCategory = (cat) => {
+    setCategoryDraft({ id: cat.id, category_name: cat.categoryName || '' });
+    setShowCategoryModal(true);
+    setFormError('');
+  };
+
+  const handleSaveCategory = async () => {
+    if (!designationId) return;
+    if (!String(categoryDraft.category_name || '').trim()) {
+      setFormError('Category name is required');
+      return;
+    }
+    setFormError('');
+    try {
+      await saveCategory({
+        id: categoryDraft.id || undefined,
+        emp_designation_id: designationId,
+        category_name: String(categoryDraft.category_name).trim(),
+        updatedBy: getCurrentUserId(),
+        createdBy: getCurrentUserId(),
+      }).unwrap();
+      setShowCategoryModal(false);
+      toast.success(categoryDraft.id ? 'Category updated' : 'Category added');
+      await refetchStructured();
+    } catch (err) {
+      const message = getJdErrorMessage(err, 'Failed to save category');
+      setFormError(message);
+      toast.error(message);
+    }
+  };
+
+  const handleDeactivateCategory = async (cat) => {
+    if (!window.confirm(`Deactivate category "${cat.categoryName}"? It can be activated again later.`)) return;
+    setFormError('');
+    try {
+      await deleteCategory({ id: cat.id }).unwrap();
+      toast.success('Category deactivated');
+      await refetchStructured();
+    } catch (err) {
+      toast.error(getJdErrorMessage(err, 'Failed to deactivate category'));
+    }
+  };
+
+  const handleActivateCategory = async (cat) => {
+    setFormError('');
+    try {
+      await saveCategory({
+        id: cat.id,
+        emp_designation_id: designationId,
+        category_name: cat.categoryName,
+        status: 1,
+        updatedBy: getCurrentUserId(),
+      }).unwrap();
+      toast.success('Category activated');
+      await refetchStructured();
+    } catch (err) {
+      toast.error(getJdErrorMessage(err, 'Failed to activate category'));
+    }
+  };
+
+  const openAddTask = (categoryId = null) => {
+    setTaskDraft({
+      id: null,
+      category_id: categoryId,
       taskDescription: '',
       status: 1,
-      selectedDesignationIds: selectedDesignation ? [selectedDesignation.id] : [],
     });
-    setEditingTaskId(null);
-    setShowDescriptionModal(true);
-    setError('');
-    setDesignationSearch('');
-    setShowDesignationDropdown(false);
+    setShowTaskModal(true);
+    setFormError('');
   };
 
-  const handleEditDescription = (task) => {
-    setDescriptionFormData({
+  const openEditTask = (task) => {
+    setTaskDraft({
+      id: task.id,
+      category_id: task.category_id || null,
       taskDescription: task.taskDescription || '',
-      status: task.status || 1,
-      selectedDesignationIds: [task.emp_designation_id],
+      status: task.status ?? 1,
     });
-    setEditingTaskId(task.id);
-    setShowDescriptionModal(true);
-    setError('');
+    setShowTaskModal(true);
+    setFormError('');
   };
 
-  const handleSaveDescription = async () => {
-    if (!descriptionFormData.taskDescription.trim()) {
-      setError('Please enter a task description');
+  const handleSaveTask = async () => {
+    if (!designationId) return;
+    if (!String(taskDraft.taskDescription || '').trim()) {
+      setFormError('Task description is required');
       return;
     }
-    if (descriptionFormData.selectedDesignationIds.length === 0) {
-      setError('Please select at least one designation');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
+    setFormError('');
     try {
-      const userId = getCurrentUserId();
-
-      if (editingTaskId) {
+      if (taskDraft.id) {
         await updateJobDescription({
-          id: editingTaskId,
-          taskDescription: descriptionFormData.taskDescription,
-          status: descriptionFormData.status,
-          updatedBy: userId,
-        }).unwrap();
-      } else if (descriptionFormData.selectedDesignationIds.length === 1) {
-        await createJobDescription({
-          emp_designation_id: descriptionFormData.selectedDesignationIds[0],
-          taskDescription: descriptionFormData.taskDescription,
-          status: descriptionFormData.status,
-          createdBy: userId,
+          id: taskDraft.id,
+          taskDescription: taskDraft.taskDescription.trim(),
+          category_id: taskDraft.category_id,
+          status: taskDraft.status,
+          updatedBy: getCurrentUserId(),
         }).unwrap();
       } else {
-        await createMultipleJobDescriptions({
-          emp_designation_ids: descriptionFormData.selectedDesignationIds,
-          taskDescription: descriptionFormData.taskDescription,
-          status: descriptionFormData.status,
-          createdBy: userId,
+        await createJobDescription({
+          emp_designation_id: designationId,
+          category_id: taskDraft.category_id,
+          taskDescription: taskDraft.taskDescription.trim(),
+          status: taskDraft.status,
+          createdBy: getCurrentUserId(),
         }).unwrap();
       }
-
-      await refetchJobDescriptions();
-      setShowDescriptionModal(false);
-      setDescriptionFormData({ taskDescription: '', status: 1, selectedDesignationIds: [] });
-      setEditingTaskId(null);
+      setShowTaskModal(false);
+      toast.success(taskDraft.id ? 'Task updated' : 'Task added');
+      await refetchStructured();
     } catch (err) {
-      setError(err?.data?.message || err?.message || 'Failed to save task');
-    } finally {
-      setLoading(false);
+      const message = getJdErrorMessage(err, 'Failed to save task');
+      setFormError(message);
+      toast.error(message);
     }
   };
 
-  const handleToggleDescriptionStatus = async (descriptionId, currentStatus) => {
+  const handleToggleTask = async (task) => {
     try {
-      const userId = getCurrentUserId();
-      const newStatus = currentStatus === 1 ? 0 : 1;
       await updateJobDescription({
-        id: descriptionId,
-        status: newStatus,
-        updatedBy: userId,
+        id: task.id,
+        status: Number(task.status) === 1 ? 0 : 1,
+        updatedBy: getCurrentUserId(),
       }).unwrap();
-      await refetchJobDescriptions();
+      await refetchStructured();
     } catch (err) {
-      setError(err?.data?.message || err?.message || 'Failed to update status');
-      await refetchJobDescriptions();
+      toast.error(getJdErrorMessage(err, 'Failed to update task status'));
     }
   };
 
-  const handleDragStart = (e, task, index) => {
-    setDraggedTask({ task, index });
-    e.dataTransfer.effectAllowed = 'move';
-    e.target.style.opacity = '0.5';
-  };
-
-  const handleDragOver = (e, index) => {
-    e.preventDefault();
-    setDragOverIndex(index);
-  };
-
-  const handleDragLeave = () => setDragOverIndex(null);
-
-  const handleDrop = async (e, dropIndex) => {
-    e.preventDefault();
-    setDragOverIndex(null);
-    if (!draggedTask || draggedTask.index === dropIndex || !selectedDesignation) {
-      setDraggedTask(null);
-      return;
-    }
-
-    const newTasks = [...jobDescriptions];
-    const [removed] = newTasks.splice(draggedTask.index, 1);
-    newTasks.splice(dropIndex, 0, removed);
-
-    const taskOrders = newTasks.map((task, index) => ({
-      id: task.id,
-      taskOrder: index + 1,
-    }));
-
+  const handleReorderTasksInCategory = async (categoryId, tasks, fromIndex, toIndex) => {
+    if (fromIndex === toIndex || !designationId) return;
+    const next = [...tasks];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    const taskOrders = next.map((t, i) => ({ id: t.id, taskOrder: i + 1 }));
     try {
-      setLoading(true);
       await updateTaskOrders({
-        emp_designation_id: selectedDesignation.id,
+        emp_designation_id: designationId,
         taskOrders,
       }).unwrap();
-      setJobDescriptions(newTasks.map((task, index) => ({ ...task, taskOrder: index + 1 })));
-      refetchJobDescriptions();
-    } catch {
-      setError('Failed to update task order. Please try again.');
-    } finally {
-      setLoading(false);
-      setDraggedTask(null);
+      await refetchStructured();
+    } catch (err) {
+      toast.error(getJdErrorMessage(err, 'Failed to reorder tasks'));
     }
   };
 
-  const handleDragEnd = (e) => {
-    e.target.style.opacity = '1';
-    setDraggedTask(null);
-    setDragOverIndex(null);
+  const renderTaskList = (tasks, categoryId) => {
+    const active = (tasks || []).filter((t) => Number(t.status) === 1);
+    const inactive = (tasks || []).filter((t) => Number(t.status) !== 1);
+    const ordered = [...active, ...inactive];
+    if (!ordered.length) {
+      return (
+        <div className="jd-empty-tasks-jd-mgmt">
+          No tasks in this category.
+          {editMode ? (
+            <button type="button" className="jd-link-btn-jd-mgmt" onClick={() => openAddTask(categoryId)}>
+              Add task
+            </button>
+          ) : null}
+        </div>
+      );
+    }
+    return (
+      <ul className="jd-structured-task-list-jd-mgmt">
+        {ordered.map((task, index) => (
+          <li
+            key={task.id}
+            className={`jd-structured-task-jd-mgmt${Number(task.status) !== 1 ? ' is-inactive' : ''}`}
+            draggable={editMode && Number(task.status) === 1}
+            onDragStart={(e) => {
+              e.dataTransfer.setData('text/plain', String(index));
+            }}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const from = Number(e.dataTransfer.getData('text/plain'));
+              if (Number.isFinite(from)) {
+                handleReorderTasksInCategory(categoryId, active, from, index);
+              }
+            }}
+          >
+            <span className="jd-structured-task-bullet-jd-mgmt">•</span>
+            <span className="jd-structured-task-text-jd-mgmt">{task.taskDescription}</span>
+            {editMode ? (
+              <span className="jd-structured-task-actions-jd-mgmt">
+                <button type="button" title="Edit" onClick={() => openEditTask(task)}>✎</button>
+                <button
+                  type="button"
+                  title={Number(task.status) === 1 ? 'Deactivate' : 'Activate'}
+                  onClick={() => handleToggleTask(task)}
+                >
+                  {Number(task.status) === 1 ? '✓' : '○'}
+                </button>
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    );
   };
 
   if (loadingDepts || loadingDes) {
@@ -302,15 +450,11 @@ const JDManagement = () => {
     );
   }
 
+  const busy = creatingDescription || updatingDescription || savingSummary || savingCategory;
+
   return (
     <div className="jd-management-container-jd-mgmt">
-      {error && (
-        <div className="jd-error-message-jd-mgmt" style={{
-          padding: '10px', margin: '10px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px',
-        }}>
-          {error}
-        </div>
-      )}
+      <ToastContainer position="top-right" autoClose={3500} newestOnTop closeOnClick pauseOnHover theme="light" />
 
       <div className="jd-top-filter-bar-jd-mgmt">
         <div className="jd-filter-group-jd-mgmt">
@@ -340,40 +484,43 @@ const JDManagement = () => {
       <div className="jd-management-content-jd-mgmt">
         <div className="jd-left-panel-jd-mgmt">
           <div className="jd-panel-header-jd-mgmt">
-            <h2 className="jd-panel-title-jd-mgmt">Emp designations</h2>
-            
+            <h2 className="jd-panel-title-jd-mgmt">Designations</h2>
           </div>
-
           <div className="jd-designations-list-jd-mgmt">
-            {flatDesignations.length === 0 ? (
-              <div className="jd-empty-state-jd-mgmt">No designations found. Run org migration and regenerate designations.</div>
+            {orderedVisibleDesignations.length === 0 ? (
+              <div className="jd-empty-state-jd-mgmt">No designations found.</div>
             ) : (
               designationsByDept
                 .filter((g) => deptFilter === 'all' || Number(g.dept.id) === Number(deptFilter))
                 .map((group) => {
-                  const items = group.items.filter((d) => flatDesignations.some((f) => f.id === d.id));
+                  const items = group.items.filter((d) =>
+                    orderedVisibleDesignations.some((f) => Number(f.id) === Number(d.id)),
+                  );
                   if (items.length === 0) return null;
                   return (
-                    <div key={group.dept.id}>
-                      <div style={{ padding: '8px 12px', fontWeight: 700, fontSize: '12px', color: '#004B71', background: '#f0f7fa' }}>
+                    <div key={group.dept.id} className="jd-dept-group-jd-mgmt">
+                      <div className="jd-dept-group-label-jd-mgmt">
                         {group.dept.department_name}
                       </div>
-                      {items.map((des) => (
-                        <div
-                          key={des.id}
-                          className={`jd-designation-item-jd-mgmt ${
-                            selectedDesignation?.id === des.id ? 'active-jd-mgmt' : ''
-                          } status-active-jd-mgmt`}
-                          onClick={() => handleDesignationSelect(des)}
-                        >
-                          <div className="jd-designation-content-jd-mgmt">
-                            <span className="jd-designation-name-jd-mgmt">{des.designation_title}</span>
-                            {des.des_code && (
-                              <span className="jd-member-type-jd-mgmt">{des.des_code}</span>
-                            )}
+                      {items.map((des) => {
+                        const isActive = Number(selectedDesignation?.id) === Number(des.id);
+                        return (
+                          <div
+                            key={des.id}
+                            className={`jd-designation-item-jd-mgmt${isActive ? ' active-jd-mgmt' : ''}`}
+                            onClick={() => setSelectedDesignationId(Number(des.id))}
+                          >
+                            <div className="jd-designation-content-jd-mgmt">
+                              <span className="jd-designation-name-jd-mgmt">
+                                {shortDesignationTitle(des.designation_title, group.dept.department_name)}
+                              </span>
+                              {des.des_code ? (
+                                <span className="jd-member-type-jd-mgmt">{des.des_code}</span>
+                              ) : null}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })
@@ -389,232 +536,260 @@ const JDManagement = () => {
               <div className="jd-details-header-jd-mgmt">
                 <div>
                   <h2 className="jd-selected-designation-jd-mgmt">{selectedDesignation.designation_title}</h2>
-                  <p style={{ margin: '5px 0', color: '#004B71', fontSize: '14px', fontWeight: '600' }}>
+                  <p className="jd-selected-meta-jd-mgmt">
                     {selectedDesignation.department_name || ''}
                     {selectedDesignation.job_role ? ` · ${selectedDesignation.job_role}` : ''}
                     {selectedDesignation.power != null ? ` · Power ${selectedDesignation.power}` : ''}
                   </p>
                 </div>
-              </div>
-
-              <div className="jd-description-section-jd-mgmt">
-                <div className="jd-description-header-jd-mgmt">
-                  <h3 className="jd-description-title-jd-mgmt">Job Description</h3>
-                  <button type="button" className="jd-add-task-button-jd-mgmt" onClick={handleAddDescription}>
-                    + Add Task
+                <div className="jd-header-actions-jd-mgmt">
+                  <button
+                    type="button"
+                    className={`jd-mode-btn-jd-mgmt${editMode ? ' is-active' : ''}`}
+                    onClick={() => {
+                      if (editMode) {
+                        setShowSummaryEditor(false);
+                        setSummaryDraft(structuredJd?.jobSummary || '');
+                        setShowCategoryModal(false);
+                        setShowTaskModal(false);
+                        setFormError('');
+                        setEditMode(false);
+                        return;
+                      }
+                      setEditMode(true);
+                    }}
+                  >
+                    {editMode ? 'Done editing' : 'Update'}
                   </button>
                 </div>
+              </div>
 
-                {jobDescriptions.length === 0 ? (
-                  <div className="jd-empty-tasks-jd-mgmt">
-                    No tasks defined. Click &quot;+ Add Task&quot; to add job description tasks.
-                  </div>
-                ) : (
-                  <div className="jd-tasks-list-jd-mgmt">
-                    {jobDescriptions.map((task, index) => {
-                      const sharedDesignations = allJobDescriptions
-                        .filter((desc) =>
-                          desc.taskDescription === task.taskDescription
-                          && desc.id !== task.id
-                          && desc.status === 1
-                        )
-                        .map((desc) => {
-                          const des = jdDesignations.find((d) => Number(d.id) === Number(desc.emp_designation_id));
-                          return des?.designation_title || null;
-                        })
-                        .filter(Boolean);
-
-                      const activeTasksCount = jobDescriptions.filter((t) => t.status === 1).length;
-                      const taskNumber = task.status === 1
-                        ? index + 1
-                        : activeTasksCount + (index - activeTasksCount + 1);
-
-                      return (
-                        <div
-                          key={task.id}
-                          draggable={task.status === 1}
-                          onDragStart={task.status === 1 ? (e) => handleDragStart(e, task, index) : undefined}
-                          onDragOver={task.status === 1 ? (e) => handleDragOver(e, index) : undefined}
-                          onDragLeave={task.status === 1 ? handleDragLeave : undefined}
-                          onDrop={task.status === 1 ? (e) => handleDrop(e, index) : undefined}
-                          onDragEnd={task.status === 1 ? handleDragEnd : undefined}
-                          className={`jd-task-item-jd-mgmt ${task.status === 0 ? 'inactive-task-jd-mgmt' : ''} ${
-                            dragOverIndex === index ? 'drag-over-jd-mgmt' : ''
-                          } ${draggedTask?.index === index ? 'dragging-jd-mgmt' : ''}`}
-                          style={{ cursor: task.status === 1 ? 'move' : 'default' }}
+              {loadingStructured && !structuredJd ? (
+                <div className="jd-empty-tasks-jd-mgmt">Loading job description…</div>
+              ) : structuredLoadFailed && !structuredJd ? (
+                <div className="jd-inline-alert-jd-mgmt" role="alert">
+                  <span>{getJdErrorMessage(structuredLoadError, 'Failed to load job description')}</span>
+                  <button type="button" onClick={() => refetchStructured()}>Retry</button>
+                </div>
+              ) : (
+                <div className={`jd-structured-body-jd-mgmt${fetchingStructured ? ' is-refreshing' : ''}`}>
+                  <section className="jd-structured-section-jd-mgmt">
+                    <div className="jd-structured-section-head-jd-mgmt">
+                      <h3>Job Summary</h3>
+                      {editMode && !showSummaryEditor ? (
+                        <button
+                          type="button"
+                          className="jd-add-task-button-jd-mgmt"
+                          onClick={() => {
+                            setSummaryDraft(structuredJd?.jobSummary || '');
+                            setShowSummaryEditor(true);
+                          }}
                         >
-                          <div className="jd-task-content-jd-mgmt">
-                            {task.status === 1 && (
-                              <span className="jd-drag-handle-jd-mgmt" title="Drag to reorder">☰</span>
-                            )}
-                            <span className="jd-task-number-jd-mgmt">{taskNumber}.</span>
-                            <div style={{ flex: 1 }}>
-                              <span className="jd-task-text-jd-mgmt">{task.taskDescription}</span>
-                              {sharedDesignations.length > 0 && task.status === 1 && (
-                                <div style={{ fontSize: '12px', color: '#666', marginTop: '5px', fontStyle: 'italic' }}>
-                                  Also used in: {sharedDesignations.join(', ')}
-                                </div>
+                          {structuredJd?.jobSummary ? 'Edit summary' : 'Add summary'}
+                        </button>
+                      ) : null}
+                    </div>
+                    {editMode && showSummaryEditor ? (
+                      <div className="jd-summary-editor-jd-mgmt">
+                        <textarea
+                          rows={5}
+                          value={summaryDraft}
+                          onChange={(e) => setSummaryDraft(e.target.value)}
+                          placeholder="Enter the job summary for this designation…"
+                        />
+                        <div className="jd-inline-actions-jd-mgmt">
+                          <button
+                            type="button"
+                            className="jd-btn-cancel-jd-mgmt"
+                            onClick={() => {
+                              setSummaryDraft(structuredJd?.jobSummary || '');
+                              setShowSummaryEditor(false);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button type="button" className="jd-btn-save-jd-mgmt" onClick={handleSaveSummary} disabled={busy}>
+                            {savingSummary ? 'Saving…' : 'Save summary'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="jd-summary-text-jd-mgmt">
+                        {structuredJd?.jobSummary
+                          ? structuredJd.jobSummary
+                          : 'No job summary yet.'}
+                      </p>
+                    )}
+                  </section>
+
+                  <section className="jd-structured-section-jd-mgmt">
+                    <div className="jd-structured-section-head-jd-mgmt">
+                      <h3>Key Responsibilities</h3>
+                      {editMode ? (
+                        <button type="button" className="jd-add-task-button-jd-mgmt" onClick={openAddCategory}>
+                          + Add category
+                        </button>
+                      ) : null}
+                    </div>
+
+                    {activeCategories.length === 0 && uncategorizedTasks.length === 0 && !(editMode && inactiveCategories.length) ? (
+                      <div className="jd-empty-tasks-jd-mgmt">
+                        No responsibilities yet.
+                        {editMode ? ' Add a category, then add tasks under it.' : ''}
+                      </div>
+                    ) : null}
+
+                    {visibleCategories.map((cat) => {
+                      const isActive = Number(cat.status) === 1;
+                      const letterIndex = isActive
+                        ? activeCategories.findIndex((c) => c.id === cat.id)
+                        : -1;
+                      return (
+                      <div
+                        key={cat.id}
+                        className={`jd-category-block-jd-mgmt${isActive ? '' : ' is-inactive-jd-mgmt'}`}
+                      >
+                        <div className="jd-category-head-jd-mgmt">
+                          <h4>
+                            {isActive
+                              ? `${String.fromCharCode(65 + (Math.max(letterIndex, 0) % 26))}. ${cat.categoryName}`
+                              : `${cat.categoryName} (inactive)`}
+                          </h4>
+                          {editMode ? (
+                            <div className="jd-category-actions-jd-mgmt">
+                              {isActive ? (
+                                <>
+                                  <button type="button" onClick={() => openAddTask(cat.id)}>+ Task</button>
+                                  <button type="button" onClick={() => openEditCategory(cat)}>Rename</button>
+                                  <button type="button" onClick={() => handleDeactivateCategory(cat)}>Deactivate</button>
+                                </>
+                              ) : (
+                                <button type="button" onClick={() => handleActivateCategory(cat)}>Activate</button>
                               )}
                             </div>
-                            {task.status === 1 && (
-                              <span className="jd-task-status-jd-mgmt active-task-badge-jd-mgmt">ACTIVE</span>
-                            )}
-                          </div>
-                          <div className="jd-task-actions-jd-mgmt">
-                            {task.status === 1 ? (
-                              <>
-                                <button type="button" className="jd-edit-task-button-jd-mgmt" onClick={() => handleEditDescription(task)} title="Edit Task">✎</button>
-                                <button type="button" className="jd-toggle-task-button-jd-mgmt" onClick={() => handleToggleDescriptionStatus(task.id, task.status)} title="Deactivate">✓</button>
-                              </>
-                            ) : (
-                              <button type="button" className="jd-toggle-task-button-jd-mgmt" onClick={() => handleToggleDescriptionStatus(task.id, task.status)} title="Activate">○</button>
-                            )}
-                          </div>
+                          ) : null}
                         </div>
+                        {isActive ? renderTaskList(cat.tasks || [], cat.id) : (
+                          <p className="jd-panel-hint-jd-mgmt">
+                            Inactive — tasks are kept. Activate to edit again.
+                          </p>
+                        )}
+                      </div>
                       );
                     })}
-                  </div>
-                )}
-              </div>
+
+                    {uncategorizedTasks.length > 0 ? (
+                      <div className="jd-category-block-jd-mgmt jd-category-block--legacy-jd-mgmt">
+                        <div className="jd-category-head-jd-mgmt">
+                          <h4>Uncategorized tasks</h4>
+                          {editMode ? (
+                            <div className="jd-category-actions-jd-mgmt">
+                              <button type="button" onClick={() => openAddTask(null)}>+ Task</button>
+                            </div>
+                          ) : null}
+                        </div>
+                        <p className="jd-panel-hint-jd-mgmt">
+                          Legacy tasks without a category. Edit a task and assign a category, or create categories above.
+                        </p>
+                        {renderTaskList(uncategorizedTasks, null)}
+                      </div>
+                    ) : null}
+                  </section>
+                </div>
+              )}
             </>
           ) : (
             <div className="jd-no-selection-jd-mgmt">
-              <p>Select a designation from the left panel to view job description tasks.</p>
+              <p>Select a designation from the left panel to view the job description.</p>
             </div>
           )}
         </div>
       </div>
 
-      {showDescriptionModal && (
-        <div className="jd-modal-overlay-jd-mgmt" onClick={() => setShowDescriptionModal(false)}>
-          <div className="jd-modal-content-jd-mgmt" onClick={(e) => e.stopPropagation()}>
+      {showCategoryModal ? (
+        <div className="jd-modal-overlay-jd-mgmt" onClick={() => setShowCategoryModal(false)} role="presentation">
+          <div className="jd-modal-content-jd-mgmt jd-structured-modal-jd-mgmt" onClick={(e) => e.stopPropagation()} role="dialog">
             <div className="jd-modal-header-jd-mgmt">
-              <h2>{editingTaskId ? 'Edit Task' : 'Add New Task'}</h2>
-              <button type="button" className="jd-modal-close-jd-mgmt" onClick={() => setShowDescriptionModal(false)}>×</button>
+              <h2>{categoryDraft.id ? 'Rename category' : 'Add category'}</h2>
+              <button type="button" className="jd-modal-close-jd-mgmt" onClick={() => setShowCategoryModal(false)}>×</button>
             </div>
             <div className="jd-modal-body-jd-mgmt">
-              {error && (
-                <div style={{ padding: '10px', marginBottom: '10px', backgroundColor: '#fee', color: '#c00', borderRadius: '4px' }}>
-                  {error}
-                </div>
-              )}
-              {!editingTaskId && (
-                <div className="jd-form-group-jd-mgmt">
-                  <label>Select designation(s): *</label>
-                  <p style={{ fontSize: '12px', color: '#666', marginBottom: '8px' }}>
-                    Select one or more emp designations to add the same task to all of them.
-                  </p>
-                  {descriptionFormData.selectedDesignationIds.length > 0 && (
-                    <div className="jd-selected-designations-jd-mgmt">
-                      {descriptionFormData.selectedDesignationIds.map((desId) => {
-                        const des = jdDesignations.find((d) => d.id === desId);
-                        if (!des) return null;
-                        return (
-                          <span key={desId} className="jd-selected-tag-jd-mgmt">
-                            {des.designation_title}
-                            <button
-                              type="button"
-                              className="jd-remove-tag-jd-mgmt"
-                              onClick={() => {
-                                setDescriptionFormData({
-                                  ...descriptionFormData,
-                                  selectedDesignationIds: descriptionFormData.selectedDesignationIds.filter((id) => id !== desId),
-                                });
-                              }}
-                            >
-                              ×
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                  <div className="jd-multi-select-container-jd-mgmt">
-                    <div className="jd-multi-select-input-jd-mgmt" onClick={() => setShowDesignationDropdown(!showDesignationDropdown)}>
-                      <input
-                        type="text"
-                        placeholder="Search designations…"
-                        value={designationSearch}
-                        onChange={(e) => {
-                          setDesignationSearch(e.target.value);
-                          setShowDesignationDropdown(true);
-                        }}
-                        onFocus={() => setShowDesignationDropdown(true)}
-                        className="jd-search-input-jd-mgmt"
-                      />
-                      <span className="jd-dropdown-arrow-jd-mgmt">▼</span>
-                    </div>
-                    {showDesignationDropdown && (
-                      <div className="jd-multi-select-dropdown-jd-mgmt">
-                        {jdDesignations
-                          .filter((d) => Number(d.activated) === 1)
-                          .filter((d) =>
-                            String(d.designation_title || '').toLowerCase().includes(designationSearch.toLowerCase())
-                            || String(d.des_code || '').toLowerCase().includes(designationSearch.toLowerCase())
-                          )
-                          .map((des) => {
-                            const isSelected = descriptionFormData.selectedDesignationIds.includes(des.id);
-                            return (
-                              <div
-                                key={des.id}
-                                className={`jd-multi-select-option-jd-mgmt ${isSelected ? 'selected-jd-mgmt' : ''}`}
-                                onClick={() => {
-                                  setDescriptionFormData({
-                                    ...descriptionFormData,
-                                    selectedDesignationIds: isSelected
-                                      ? descriptionFormData.selectedDesignationIds.filter((id) => id !== des.id)
-                                      : [...descriptionFormData.selectedDesignationIds, des.id],
-                                  });
-                                }}
-                              >
-                                <input type="checkbox" checked={isSelected} onChange={() => {}} className="jd-checkbox-jd-mgmt" />
-                                <span className="jd-option-text-jd-mgmt">
-                                  <strong>{des.designation_title}</strong>
-                                  {des.des_code && <span className="jd-option-code-jd-mgmt">({des.des_code})</span>}
-                                </span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {formError ? <div className="jd-form-error-jd-mgmt">{formError}</div> : null}
               <div className="jd-form-group-jd-mgmt">
-                <label>Task description: *</label>
+                <label>Category name *</label>
+                <input
+                  type="text"
+                  value={categoryDraft.category_name}
+                  onChange={(e) => setCategoryDraft({ ...categoryDraft, category_name: e.target.value })}
+                  placeholder="e.g. Human Resources Management"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="jd-modal-footer-jd-mgmt">
+              <button type="button" className="jd-btn-cancel-jd-mgmt" onClick={() => setShowCategoryModal(false)}>Cancel</button>
+              <button type="button" className="jd-btn-save-jd-mgmt" onClick={handleSaveCategory} disabled={busy}>
+                {savingCategory ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showTaskModal ? (
+        <div className="jd-modal-overlay-jd-mgmt" onClick={() => setShowTaskModal(false)} role="presentation">
+          <div className="jd-modal-content-jd-mgmt jd-structured-modal-jd-mgmt" onClick={(e) => e.stopPropagation()} role="dialog">
+            <div className="jd-modal-header-jd-mgmt">
+              <h2>{taskDraft.id ? 'Edit task' : 'Add task'}</h2>
+              <button type="button" className="jd-modal-close-jd-mgmt" onClick={() => setShowTaskModal(false)}>×</button>
+            </div>
+            <div className="jd-modal-body-jd-mgmt">
+              {formError ? <div className="jd-form-error-jd-mgmt">{formError}</div> : null}
+              <div className="jd-form-group-jd-mgmt">
+                <label>Category</label>
+                <select
+                  value={taskDraft.category_id || ''}
+                  onChange={(e) => setTaskDraft({
+                    ...taskDraft,
+                    category_id: e.target.value ? Number(e.target.value) : null,
+                  })}
+                >
+                  <option value="">Uncategorized</option>
+                  {activeCategories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.categoryName}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="jd-form-group-jd-mgmt">
+                <label>Task *</label>
                 <textarea
-                  value={descriptionFormData.taskDescription}
-                  onChange={(e) => setDescriptionFormData({ ...descriptionFormData, taskDescription: e.target.value })}
-                  placeholder="Enter task description"
-                  rows="4"
-                  autoFocus={!!editingTaskId}
+                  rows={4}
+                  value={taskDraft.taskDescription}
+                  onChange={(e) => setTaskDraft({ ...taskDraft, taskDescription: e.target.value })}
+                  placeholder="Enter responsibility / task"
+                  autoFocus
                 />
               </div>
               <div className="jd-form-group-jd-mgmt">
                 <label className="jd-checkbox-label-jd-mgmt">
                   <input
                     type="checkbox"
-                    checked={descriptionFormData.status === 1}
-                    onChange={(e) => setDescriptionFormData({ ...descriptionFormData, status: e.target.checked ? 1 : 0 })}
+                    checked={Number(taskDraft.status) === 1}
+                    onChange={(e) => setTaskDraft({ ...taskDraft, status: e.target.checked ? 1 : 0 })}
                   />
                   <span>Active</span>
                 </label>
               </div>
             </div>
             <div className="jd-modal-footer-jd-mgmt">
-              <button type="button" className="jd-btn-cancel-jd-mgmt" onClick={() => setShowDescriptionModal(false)}>Cancel</button>
-              <button
-                type="button"
-                className="jd-btn-save-jd-mgmt"
-                onClick={handleSaveDescription}
-                disabled={loading || creatingDescription || updatingDescription || creatingMultipleDescriptions || updatingTaskOrders}
-              >
-                {loading || creatingDescription || updatingDescription || creatingMultipleDescriptions ? 'Saving…' : (editingTaskId ? 'Update' : 'Add')}
+              <button type="button" className="jd-btn-cancel-jd-mgmt" onClick={() => setShowTaskModal(false)}>Cancel</button>
+              <button type="button" className="jd-btn-save-jd-mgmt" onClick={handleSaveTask} disabled={busy}>
+                {busy ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

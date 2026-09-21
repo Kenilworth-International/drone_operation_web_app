@@ -1,6 +1,14 @@
 import React from 'react';
-import { FaEye, FaBan, FaWrench } from 'react-icons/fa';
-import { formatDate, formatTime, getEquipmentLabel } from '../utils/formatters';
+import {
+  FaEye,
+  FaBan,
+  FaWrench,
+  FaSearch,
+  FaClipboardList,
+  FaCheckCircle,
+  FaFileAlt,
+} from 'react-icons/fa';
+import { formatDate, formatTime, getEquipmentLabel, getAvailableActions } from '../utils/formatters';
 import StatusBadge from './StatusBadge';
 import MediaIndicators from './MediaIndicators';
 
@@ -10,8 +18,7 @@ export default function ReportsTable({
   error,
   totalCount,
   onView,
-  onDecline,
-  onRepair,
+  onAction,
 }) {
   return (
     <div className="accidentreports-table-wrapper">
@@ -45,56 +52,99 @@ export default function ReportsTable({
               </td>
             </tr>
           ) : reports.length > 0 ? (
-            reports.map((report) => (
-              <tr key={report.id}>
-                <td>#{report.id}</td>
-                <td>{formatDate(report.date)}</td>
-                <td>{formatTime(report.time)}</td>
-                <td>{report.pilot_name || 'N/A'}</td>
-                <td>{report.estate_name || 'N/A'}</td>
-                <td>{report.incident_type_name || 'N/A'}</td>
-                <td className="accidentreports-cell-wrap">{getEquipmentLabel(report)}</td>
-                <td>{report.device_serial || 'N/A'}</td>
-                <td>
-                  <MediaIndicators report={report} />
-                </td>
-                <td>
-                  <StatusBadge report={report} />
-                </td>
-                <td>
-                  <div className="accidentreports-row-actions">
-                    <button
-                      type="button"
-                      onClick={() => onView(report)}
-                      className="accidentreports-view-button"
-                      title="View details"
-                    >
-                      <FaEye />
-                    </button>
-                    {!report.action ? (
-                      <>
+            reports.map((report) => {
+              const actions = getAvailableActions(report);
+              return (
+                <tr key={report.id}>
+                  <td>#{report.id}</td>
+                  <td>{formatDate(report.date)}</td>
+                  <td>{formatTime(report.time)}</td>
+                  <td>{report.pilot_name || 'N/A'}</td>
+                  <td>{report.estate_name || 'N/A'}</td>
+                  <td>{report.incident_type_name || 'N/A'}</td>
+                  <td className="accidentreports-cell-wrap">{getEquipmentLabel(report)}</td>
+                  <td>{report.device_serial || 'N/A'}</td>
+                  <td>
+                    <MediaIndicators report={report} />
+                  </td>
+                  <td>
+                    <StatusBadge report={report} />
+                  </td>
+                  <td>
+                    <div className="accidentreports-row-actions">
+                      <button
+                        type="button"
+                        onClick={() => onView(report)}
+                        className="accidentreports-view-button"
+                        title="View details"
+                      >
+                        <FaEye />
+                      </button>
+                      {actions.includes('decline') ? (
                         <button
                           type="button"
                           className="accidentreports-action-button accidentreports-action-button--decline"
-                          onClick={() => onDecline(report)}
+                          onClick={() => onAction(report, 'decline')}
                           title="Decline"
                         >
                           <FaBan />
                         </button>
+                      ) : null}
+                      {actions.includes('start_investigation') ? (
+                        <button
+                          type="button"
+                          className="accidentreports-action-button accidentreports-action-button--investigate"
+                          onClick={() => onAction(report, 'start_investigation')}
+                          title="Start investigation"
+                        >
+                          <FaSearch />
+                        </button>
+                      ) : null}
+                      {actions.includes('investigation_notes') ? (
+                        <button
+                          type="button"
+                          className="accidentreports-action-button accidentreports-action-button--notes"
+                          onClick={() => onAction(report, 'investigation_notes')}
+                          title="Investigation notes"
+                        >
+                          <FaFileAlt />
+                        </button>
+                      ) : null}
+                      {actions.includes('submit_review') ? (
+                        <button
+                          type="button"
+                          className="accidentreports-action-button accidentreports-action-button--review"
+                          onClick={() => onAction(report, 'submit_review')}
+                          title="Submit for review"
+                        >
+                          <FaClipboardList />
+                        </button>
+                      ) : null}
+                      {actions.includes('complete_investigation') ? (
+                        <button
+                          type="button"
+                          className="accidentreports-action-button accidentreports-action-button--complete-inv"
+                          onClick={() => onAction(report, 'complete_investigation')}
+                          title="Complete investigation"
+                        >
+                          <FaCheckCircle />
+                        </button>
+                      ) : null}
+                      {actions.includes('approve') ? (
                         <button
                           type="button"
                           className="accidentreports-action-button accidentreports-action-button--repair"
-                          onClick={() => onRepair(report)}
-                          title="Send for repair"
+                          onClick={() => onAction(report, 'approve')}
+                          title="Approve for technician"
                         >
                           <FaWrench />
                         </button>
-                      </>
-                    ) : null}
-                  </div>
-                </td>
-              </tr>
-            ))
+                      ) : null}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
               <td colSpan="11" className="accidentreports-empty-cell">

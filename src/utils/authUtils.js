@@ -12,6 +12,28 @@ import {
   hasForecastWingAccess,
 } from '../config/wingHubDisplay';
 
+/**
+ * Legacy Admin stock paths → new hub paths.
+ * Keeps navbar visibility when permissions still store the old URLs.
+ */
+export const STOCK_PATH_PERMISSION_ALIASES = {
+  '/home/stock-assets/supplier-registration': '/home/stock-assets/catalog/suppliers',
+  '/home/stock-assets/inventory-items-registration': '/home/stock-assets/catalog/inventory',
+  '/home/stock-assets/asset-transfer': '/home/stock-assets/transfers/transfer',
+  '/home/stock-assets/asset-request': '/home/stock-assets/transfers/request',
+};
+
+/** Copy grants from legacy stock paths onto their redesigned hub equivalents. */
+export const expandPathPermissionsWithAliases = (pathPermissions = {}) => {
+  const expanded = { ...pathPermissions };
+  Object.entries(STOCK_PATH_PERMISSION_ALIASES).forEach(([legacy, next]) => {
+    if (expanded[legacy] === true && expanded[next] !== true) {
+      expanded[next] = true;
+    }
+  });
+  return expanded;
+};
+
 /** Collect every routable path declared under a navbar category (including sub-items). */
 export const collectCategoryPaths = (category) => {
   const paths = [];
@@ -100,13 +122,13 @@ export const getCategoryVisibility = (userData, permissions, categories, pathPer
     result['Administration Wing'] = true;
   }
 
-  // Legacy ACL: Fleet Management items moved under Administration Wing
+  // Legacy ACL: Fleet Management → Fleet Management Wing
   if (
     permissions &&
     permissions['Fleet Management'] === true &&
-    Object.prototype.hasOwnProperty.call(result, 'Administration Wing')
+    Object.prototype.hasOwnProperty.call(result, 'Fleet Management Wing')
   ) {
-    result['Administration Wing'] = true;
+    result['Fleet Management Wing'] = true;
   }
 
   // Legacy ACL: single "HR and Admin" category split into two nav groups

@@ -1,61 +1,39 @@
+/* Central Stores — modern professional (Admin stock shell) */
+
 .central-stores-page {
-  padding: 20px;
-  background: #f5f7fb;
-  border-radius: 12px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .central-stores-title {
   margin: 0 0 16px;
-  font-size: 1.4rem;
-  color: #0f3550;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
 }
 
-.central-stores-tabs {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
+.central-stores-tabs,
 .central-stores-tab-btn {
-  padding: 10px 14px;
-  border-radius: 8px;
-  border: 1px solid #cad6e2;
-  background: #ffffff;
-  color: #29465f;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s ease;
-}
-
-.central-stores-tab-btn.active {
-  background: #0f4c6e;
-  color: #fff;
-  border-color: #0f4c6e;
-  box-shadow: 0 4px 10px rgba(15, 76, 110, 0.25);
-}
-
-.central-stores-tab-btn:hover {
-  transform: translateY(-1px);
-  border-color: #0f4c6e;
+  display: none;
 }
 
 .central-stores-form {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   max-width: 100%;
   width: 100%;
   background: #fff;
-  border: 1px solid #e5ebf1;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 6px 18px rgba(15, 54, 82, 0.08);
+  border: 1px solid #d8e0ea;
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 54, 82, 0.06);
 }
 
 .central-stores-row-two {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
 }
 
@@ -70,16 +48,16 @@
 
 .central-stores-form-group label {
   display: block;
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #29465f;
-  margin-bottom: 4px;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: #475569;
+  margin-bottom: 6px;
 }
 
 .central-stores-item-line {
   display: grid;
   grid-template-columns: 2fr 1fr auto;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   align-items: end;
 }
@@ -92,24 +70,25 @@
 
 .central-stores-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+  padding-top: 4px;
 }
 
 .central-stores-table-wrap {
   overflow-x: auto;
   background: #fff;
-  border: 1px solid #e5ebf1;
-  border-radius: 12px;
-  padding: 10px;
-  box-shadow: 0 6px 16px rgba(15, 54, 82, 0.06);
+  border: 1px solid #d8e0ea;
+  border-radius: 14px;
+  padding: 0;
   max-width: 100%;
   width: 100%;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 54, 82, 0.06);
 }
 
 .central-stores-issue-grid {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   max-width: 100%;
   width: 100%;
 }
@@ -123,28 +102,30 @@
 }
 
 .central-stores-issue-panel {
-  border: 1px solid #e5ebf1;
-  padding: 14px;
-  border-radius: 12px;
+  border: 1px solid #d8e0ea;
+  padding: 18px 20px;
+  border-radius: 14px;
   background: #fff;
-  box-shadow: 0 6px 16px rgba(15, 54, 82, 0.06);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 54, 82, 0.06);
 }
 
 .central-stores-issue-panel h4 {
-  margin: 0 0 10px;
-  color: #0f3550;
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .central-stores-issue-item-row {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 10px;
   align-items: end;
-  padding: 10px;
-  border-radius: 8px;
-  background: #f7faff;
-  border: 1px solid #e5ecf5;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f5f9fc;
+  border: 1px solid #e2eaf2;
 }
 
 .central-stores-issue-item-row .central-stores-form-group {
@@ -159,16 +140,23 @@
 
 .central-stores-page th,
 .central-stores-page td {
-  border-bottom: 1px solid #edf1f5;
+  border-bottom: 1px solid #edf1f6;
   text-align: left;
-  padding: 10px 8px;
-  font-size: 0.92rem;
+  padding: 12px 14px;
+  font-size: 13.5px;
 }
 
 .central-stores-page th {
-  background: #f3f7fc;
-  color: #24455f;
+  background: linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
+  color: #3d5166;
   font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.central-stores-page tbody tr:hover {
+  background: #f5f9fc;
 }
 
 .central-stores-page select,
@@ -185,51 +173,51 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  border: 1px solid #ccd7e3;
-  border-radius: 8px;
-  padding: 9px 10px;
+  border: 1px solid #c5d0de;
+  border-radius: 10px;
+  padding: 10px 12px;
   background: #fff;
-  color: #22384c;
+  color: #0f172a;
   outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .central-stores-page textarea {
-  min-height: 70px;
+  min-height: 80px;
   resize: vertical;
 }
 
 .central-stores-page select:focus,
 .central-stores-page input:focus,
 .central-stores-page textarea:focus {
-  border-color: #2d7fb5;
-  box-shadow: 0 0 0 3px rgba(45, 127, 181, 0.15);
+  border-color: #2a7a9b;
+  box-shadow: 0 0 0 3px rgba(42, 122, 155, 0.18);
 }
 
-.central-stores-page button:not(.central-stores-tab-btn) {
+.central-stores-page button:not(.central-stores-tab-btn):not(.admin-stock-tab) {
   border: none;
-  border-radius: 8px;
-  padding: 9px 13px;
-  background: #1f6f9f;
+  border-radius: 10px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #1a5f7a 0%, #2a7a9b 100%);
   color: #fff;
-  font-weight: 600;
+  font-weight: 650;
   cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(26, 95, 122, 0.25);
+  transition: filter 0.15s ease, box-shadow 0.15s ease;
 }
 
-.central-stores-page button:not(.central-stores-tab-btn):hover {
-  filter: brightness(0.95);
+.central-stores-page button:not(.central-stores-tab-btn):not(.admin-stock-tab):hover {
+  filter: brightness(1.05);
+  box-shadow: 0 6px 16px rgba(26, 95, 122, 0.32);
 }
 
-.central-stores-page button:not(.central-stores-tab-btn):disabled {
+.central-stores-page button:not(.central-stores-tab-btn):not(.admin-stock-tab):disabled {
   cursor: not-allowed;
-  opacity: 0.65;
+  opacity: 0.55;
+  box-shadow: none;
 }
 
 @media (max-width: 900px) {
-  .central-stores-page {
-    padding: 14px;
-  }
-
   .central-stores-row-two {
     grid-template-columns: 1fr;
   }

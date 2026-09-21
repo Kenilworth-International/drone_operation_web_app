@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../../styles/procurementProcessNew.css';
+import { AdminStockPage, AdminSubTabs } from './shell/AdminStockShell';
 import {
   useCreateGrnMutation,
   useCreateProcurementRequestMutation,
@@ -822,34 +823,17 @@ const ProcurementProcess = () => {
   };
 
   return (
-    <div className="procurement-process-page">
-      <div className="procurement-process-header-row">
-        <h2 className="procurement-process-title">Procurement Process</h2>
-        {activeTab === 'requests' && (
-          <button
-            type="button"
-            className="procurement-process-manual-btn"
-            onClick={() => setIsManualRequestModalOpen(true)}
-          >
-            Manual Request
-          </button>
-        )}
-      </div>
-      <div className="procurement-process-tabs">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            type="button"
-            onClick={() => {
-              setActiveTab(tab.key);
-              navigate({ pathname: tab.path, search: routerLocation.search });
-            }}
-            className={`procurement-process-tab-btn ${activeTab === tab.key ? 'active' : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+    <AdminStockPage>
+      <AdminSubTabs
+        tabs={TABS}
+        active={activeTab}
+        onChange={(key) => {
+          const tab = TABS.find((t) => t.key === key) || TABS[0];
+          setActiveTab(tab.key);
+          navigate({ pathname: tab.path, search: routerLocation.search });
+        }}
+      />
+      <div className="procurement-process-page admin-stock-body">
 
       {activeTab === 'requests' && (
         <div className="procurement-process-step procurement-process-section-grid">
@@ -859,7 +843,14 @@ const ProcurementProcess = () => {
               <div className="procurement-process-heading-actions">
                 <button
                   type="button"
-                  className="procurement-process-queue-btn"
+                  className="admin-stock-btn admin-stock-btn--primary procurement-process-manual-btn"
+                  onClick={() => setIsManualRequestModalOpen(true)}
+                >
+                  Manual Request
+                </button>
+                <button
+                  type="button"
+                  className="procurement-process-queue-btn admin-stock-btn"
                   onClick={handleCreateFromQueue}
                 >
                   Create Procurement
@@ -2264,7 +2255,8 @@ const ProcurementProcess = () => {
           </table>
         </div>
       )}
-    </div>
+      </div>
+    </AdminStockPage>
   );
 };
 

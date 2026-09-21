@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FaSearch, FaEdit, FaEye, FaTimes, FaPlus, FaClipboardList, FaList } from 'react-icons/fa';
 import '../../styles/inventoryItemsRegistration.css';
+import { AdminSubTabs } from './shell/AdminStockShell';
 import {
   useGetMainCategoriesQuery,
   useCreateMainCategoryMutation,
@@ -17,7 +18,12 @@ import {
   useGetLastItemCodeQuery,
 } from '../../api/services NodeJs/stockAssetsApi';
 
-const InventoryItemsRegistration = () => {
+const INNER_TABS = [
+  { key: 'registration', label: 'Register Item' },
+  { key: 'items', label: 'Registered Item List' },
+];
+
+const InventoryItemsRegistration = ({ embedded = false }) => {
   const userData = JSON.parse(localStorage.getItem('userData')) || {};
   const [activeTab, setActiveTab] = useState('registration');
   const [searchTerm, setSearchTerm] = useState('');
@@ -687,37 +693,40 @@ const InventoryItemsRegistration = () => {
   };
 
   return (
-    <div className="inventory-items-registration-container">
-      {/* Main Tab Navigation */}
-      <div className="main-tabs-container-inventory-items">
-        <button
-          type="button"
-          className={`main-tab-inventory-items ${activeTab === 'registration' ? 'active' : ''}`}
-          onClick={() => setActiveTab('registration')}
-        >
-          <FaClipboardList className="main-tab-icon-inventory-items" />
-          <span>Registration</span>
-        </button>
-        <button
-          type="button"
-          className={`main-tab-inventory-items ${activeTab === 'items' ? 'active' : ''}`}
-          onClick={() => setActiveTab('items')}
-        >
-          <FaList className="main-tab-icon-inventory-items" />
-          <span>Registered Item List</span>
-        </button>
-      </div>
+    <div className={`inventory-items-registration-container${embedded ? ' inventory-items-registration-container--embedded' : ''}`}>
+      {embedded ? (
+        <AdminSubTabs tabs={INNER_TABS} active={activeTab} onChange={setActiveTab} />
+      ) : (
+        <div className="main-tabs-container-inventory-items">
+          <button
+            type="button"
+            className={`main-tab-inventory-items ${activeTab === 'registration' ? 'active' : ''}`}
+            onClick={() => setActiveTab('registration')}
+          >
+            <FaClipboardList className="main-tab-icon-inventory-items" />
+            <span>Registration</span>
+          </button>
+          <button
+            type="button"
+            className={`main-tab-inventory-items ${activeTab === 'items' ? 'active' : ''}`}
+            onClick={() => setActiveTab('items')}
+          >
+            <FaList className="main-tab-icon-inventory-items" />
+            <span>Registered Item List</span>
+          </button>
+        </div>
+      )}
 
       {/* Tab Content */}
-      <div className="main-tab-content-inventory-items">
+      <div className="main-tab-content-inventory-items admin-stock-body">
         {message && (
-          <div className={`message-inventory-items ${messageType}`}>
+          <div className={`message-inventory-items ${messageType} admin-stock-msg ${messageType === 'success' ? 'admin-stock-msg--ok' : 'admin-stock-msg--error'}`}>
             {message}
           </div>
         )}
 
         {activeTab === 'registration' && (
-          <div className="registration-section-inventory-items">
+          <div className="registration-section-inventory-items admin-stock-panel">
         <form className="form-inventory-items-registration" onSubmit={handleCreateItem}>
           <div className="form-row-inventory-items">
             <div className="form-group-inventory-items-registration">

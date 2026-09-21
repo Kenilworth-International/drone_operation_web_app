@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaClipboardList, FaUsers } from 'react-icons/fa';
 import '../../styles/supplierRegistration.css';
+import { AdminPanel, AdminSubTabs } from './shell/AdminStockShell';
 import SuppliersList from './SuppliersList';
 import {
   useCreateSupplierMutation,
@@ -10,7 +11,12 @@ import {
   useGetSubSubCategoriesQuery,
 } from '../../api/services NodeJs/stockAssetsApi';
 
-const SupplierRegistration = () => {
+const INNER_TABS = [
+  { key: 'registration', label: 'Register Supplier' },
+  { key: 'suppliers', label: 'Supplier List' },
+];
+
+const SupplierRegistration = ({ embedded = false }) => {
   const [activeTab, setActiveTab] = useState('registration');
   const [createSupplier, { isLoading: isCreating }] = useCreateSupplierMutation();
   const [message, setMessage] = useState('');
@@ -146,42 +152,48 @@ const SupplierRegistration = () => {
   };
 
   return (
-    <div className="supplier-management-container">
-      <div className="main-tabs-container-supplier-management">
-        <button
-          type="button"
-          className={`main-tab-supplier-management ${activeTab === 'registration' ? 'active' : ''}`}
-          onClick={() => setActiveTab('registration')}
-        >
-          <FaClipboardList className="main-tab-icon-supplier-management" />
-          <span>Registration</span>
-        </button>
-        <button
-          type="button"
-          className={`main-tab-supplier-management ${activeTab === 'suppliers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('suppliers')}
-        >
-          <FaUsers className="main-tab-icon-supplier-management" />
-          <span>Suppliers</span>
-        </button>
-      </div>
+    <div className={`supplier-management-container${embedded ? ' supplier-management-container--embedded' : ''}`}>
+      {embedded ? (
+        <AdminSubTabs tabs={INNER_TABS} active={activeTab} onChange={setActiveTab} />
+      ) : (
+        <div className="main-tabs-container-supplier-management">
+          <button
+            type="button"
+            className={`main-tab-supplier-management ${activeTab === 'registration' ? 'active' : ''}`}
+            onClick={() => setActiveTab('registration')}
+          >
+            <FaClipboardList className="main-tab-icon-supplier-management" />
+            <span>Registration</span>
+          </button>
+          <button
+            type="button"
+            className={`main-tab-supplier-management ${activeTab === 'suppliers' ? 'active' : ''}`}
+            onClick={() => setActiveTab('suppliers')}
+          >
+            <FaUsers className="main-tab-icon-supplier-management" />
+            <span>Suppliers</span>
+          </button>
+        </div>
+      )}
 
-      <div className="main-tab-content-supplier-management">
+      <div className="main-tab-content-supplier-management admin-stock-body">
         {activeTab === 'registration' && (
-          <div className="registration-section-supplier-management">
-            <div className="supplier-registration-header">
-              <h1 className="heading-supplier-registration">Supplier Registration</h1>
-            </div>
+          <AdminPanel className="registration-section-supplier-management">
+            {!embedded && (
+              <div className="supplier-registration-header">
+                <h1 className="heading-supplier-registration">Supplier Registration</h1>
+              </div>
+            )}
 
             <div className="supplier-registration-content">
               {message && (
-                <div className={`message-supplier-management ${messageType}`}>
+                <div className={`admin-stock-msg ${messageType === 'success' ? 'admin-stock-msg--ok' : 'admin-stock-msg--error'} message-supplier-management ${messageType}`}>
                   {message}
                 </div>
               )}
               <form className="form-supplier-registration" onSubmit={handleSubmit}>
-                <div className="form-row-supplier-registration">
-                  <div className="form-group-supplier-registration">
+                <div className="form-row-supplier-registration admin-stock-grid-2">
+                  <div className="form-group-supplier-registration admin-stock-field">
                     <label className="label-supplier-registration" htmlFor="supplier_code">
                       Supplier Code <span className="required-supplier-registration">*</span>
                       <span style={{ fontSize: '12px', color: '#666', marginLeft: '8px', fontWeight: 'normal' }}>(Auto-generated)</span>
@@ -199,7 +211,7 @@ const SupplierRegistration = () => {
                     />
                   </div>
 
-                  <div className="form-group-supplier-registration">
+                  <div className="form-group-supplier-registration admin-stock-field">
                     <label className="label-supplier-registration" htmlFor="supplier_name">
                       Supplier Name <span className="required-supplier-registration">*</span>
                     </label>
@@ -363,20 +375,20 @@ const SupplierRegistration = () => {
                 </div>
 
                 <div className="form-actions-supplier-registration">
-                  <button type="submit" className="btn-submit-supplier-registration" disabled={isCreating}>
+                  <button type="submit" className="admin-stock-btn admin-stock-btn--primary btn-submit-supplier-registration" disabled={isCreating}>
                     {isCreating ? 'Registering...' : 'Register Supplier'}
                   </button>
-                  <button type="button" className="btn-cancel-supplier-registration" onClick={resetForm}>
+                  <button type="button" className="admin-stock-btn btn-cancel-supplier-registration" onClick={resetForm}>
                     Clear
                   </button>
                 </div>
               </form>
             </div>
-          </div>
+          </AdminPanel>
         )}
 
         {activeTab === 'suppliers' && (
-          <div className="suppliers-section-supplier-management">
+          <div className="suppliers-section-supplier-management admin-stock-body">
             <SuppliersList />
           </div>
         )}

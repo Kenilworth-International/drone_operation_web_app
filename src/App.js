@@ -74,6 +74,7 @@ import SmartKpiTemplatesPage from './sections/hr&admin/kpi/SmartKpiTemplatesPage
 import ResourceAllocation from './sections/administration/resource-allocation/ResourceAllocation';
 import AccidentReports from './sections/administration/accident-reports/AccidentReports';
 import Maintenance from './sections/administration/maintenance/Maintenance';
+import Workshop from './sections/administration/Workshop';
 import GeneratorFuelApprovals from './sections/hr&admin/fuelApprovals/GeneratorFuelApprovals';
 import DjiMapUpload from './sections/opsroom/dji/DjiMapUpload';
 import ManagerApprovalQueue from './sections/opsroom/manager-approval/ManagerApprovalQueue';
@@ -90,12 +91,10 @@ import DevelopmentBoard from './sections/ict/development/DevelopmentBoard';
 import ExtraWorkQueue from './sections/ict/development/ExtraWorkQueue';
 import MetricsDashboard from './sections/ict/development/MetricsDashboard';
 import IctDevCenter from './sections/ict/development/DevCenter';
-import SupplierRegistration from './sections/stock-assets/SupplierRegistration';
-import InventoryItemsRegistration from './sections/stock-assets/InventoryItemsRegistration';
+import CatalogHub from './sections/stock-assets/CatalogHub';
+import MovementHub from './sections/stock-assets/MovementHub';
 import ProcurementProcess from './sections/stock-assets/ProcurementProcess';
 import CentralStores from './sections/stock-assets/CentralStores';
-import AssetTransfer from './sections/stock-assets/AssetTransfer';
-import AssetRequest from './sections/stock-assets/AssetRequest';
 import MasterData from './sections/ict/masterData/MasterData';
 import PlantationDashboard from './sections/plantation/plantationDashboard/PlantationDashboard';
 import PlantationExternalShell from './sections/plantation/plantationDashboard/PlantationExternalShell';
@@ -167,6 +166,12 @@ function EmployeeProfileRedirect() {
 function PlantationPlanRequestQueueRedirect() {
   const location = useLocation();
   return <Navigate to={withCurrentWingSearch('/home/requestsQueue', location.search)} replace />;
+}
+
+/** Legacy stock-asset paths → Catalog / Transfers hubs (preserve ?wing=). */
+function StockAssetsRedirect({ to }) {
+  const location = useLocation();
+  return <Navigate to={withCurrentWingSearch(to, location.search, location.pathname)} replace />;
 }
 
 function App() {
@@ -910,6 +915,14 @@ function App() {
             }
           />
           <Route
+            path="workshop"
+            element={
+              <ProtectedRoute>
+                <Workshop />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="generator-fuel-approvals"
             element={
               <ProtectedRoute>
@@ -1042,20 +1055,20 @@ function App() {
             }
           />
           <Route
-            path="stock-assets/supplier-registration"
+            path="stock-assets/catalog/*"
             element={
               <ProtectedRoute>
-                <SupplierRegistration />
+                <CatalogHub />
               </ProtectedRoute>
             }
           />
           <Route
+            path="stock-assets/supplier-registration"
+            element={<StockAssetsRedirect to="/home/stock-assets/catalog/suppliers" />}
+          />
+          <Route
             path="stock-assets/inventory-items-registration"
-            element={
-              <ProtectedRoute>
-                <InventoryItemsRegistration />
-              </ProtectedRoute>
-            }
+            element={<StockAssetsRedirect to="/home/stock-assets/catalog/inventory" />}
           />
           <Route
             path="stock-assets/procurement-process/*"
@@ -1074,20 +1087,20 @@ function App() {
             }
           />
           <Route
-            path="stock-assets/asset-transfer"
+            path="stock-assets/transfers/*"
             element={
               <ProtectedRoute>
-                <AssetTransfer />
+                <MovementHub />
               </ProtectedRoute>
             }
           />
           <Route
+            path="stock-assets/asset-transfer"
+            element={<StockAssetsRedirect to="/home/stock-assets/transfers/transfer" />}
+          />
+          <Route
             path="stock-assets/asset-request"
-            element={
-              <ProtectedRoute>
-                <AssetRequest />
-              </ProtectedRoute>
-            }
+            element={<StockAssetsRedirect to="/home/stock-assets/transfers/request" />}
           />
           {/* Internal Plantation Dashboard */}
           <Route

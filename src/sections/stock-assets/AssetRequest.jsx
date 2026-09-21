@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import '../../styles/assetRequest.css';
 
-const AssetRequest = () => {
+const AssetRequest = ({ embedded = false }) => {
   const [formData, setFormData] = useState({
     requestNumber: '',
     requestType: '',
@@ -30,14 +30,16 @@ const AssetRequest = () => {
   };
 
   return (
-    <div className="asset-request-container">
-      <div className="asset-request-header">
-        <h1 className="heading-asset-request">Asset/Item/Service Request</h1>
-      </div>
+    <div className={`asset-request-container${embedded ? ' asset-request-container--embedded' : ''} admin-stock-body`}>
+      {!embedded && (
+        <div className="asset-request-header">
+          <h1 className="heading-asset-request">Asset/Item/Service Request</h1>
+        </div>
+      )}
 
-      <div className="asset-request-content">
+      <div className="asset-request-content admin-stock-panel">
         <form className="form-asset-request" onSubmit={handleSubmit}>
-          <div className="form-group-asset-request">
+          <div className="form-group-asset-request admin-stock-field">
             <label className="label-asset-request" htmlFor="requestNumber">
               Request Number <span className="required-asset-request">*</span>
             </label>

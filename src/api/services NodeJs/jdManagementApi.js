@@ -1,6 +1,41 @@
 import { baseApi } from '../baseApi';
 import { nodeBackendBaseQuery, getNodeBackendUrl, getToken } from './nodeBackendConfig';
 
+/** Normalize RTK/baseQuery failures into a consistent queryFn error. */
+function asQueryError(result, fallbackMessage) {
+  if (result?.error) {
+    const data = result.error.data;
+    const message =
+      (typeof data === 'string' && data.trim()) ||
+      data?.message ||
+      data?.error ||
+      result.error.error ||
+      fallbackMessage;
+    return {
+      error: {
+        ...result.error,
+        data: {
+          ...(typeof data === 'object' && data ? data : {}),
+          message: message || fallbackMessage,
+        },
+      },
+    };
+  }
+  const body = result?.data;
+  if (body && body.status === false) {
+    return {
+      error: {
+        status: body.code || 400,
+        data: {
+          ...body,
+          message: body.message || body.error || fallbackMessage,
+        },
+      },
+    };
+  }
+  return { data: body?.data !== undefined ? body.data : body };
+}
+
 export const jdManagementApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // =====================================================
@@ -738,7 +773,7 @@ export const jdManagementApi = baseApi.injectEndpoints({
           {},
           {}
         );
-        return result;
+        return asQueryError(result, 'Failed to create task');
       },
       invalidatesTags: ['UserJobDescriptions'],
     }),
@@ -770,7 +805,7 @@ export const jdManagementApi = baseApi.injectEndpoints({
           {},
           {}
         );
-        return result;
+        return asQueryError(result, 'Failed to update task');
       },
       invalidatesTags: (result, error, { id }) => [{ type: 'UserJobDescriptions', id }, 'UserJobDescriptions'],
     }),
@@ -862,7 +897,87 @@ export const jdManagementApi = baseApi.injectEndpoints({
           {},
           {}
         );
-        return result;
+        return asQueryError(result, 'Failed to reorder tasks');
+      },
+      invalidatesTags: ['UserJobDescriptions'],
+    }),
+
+    getStructuredJobDescription: builder.query({
+      queryFn: async (body = {}) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/user-job-descriptions/structured',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        return asQueryError(result, 'Failed to load job description');
+      },
+      providesTags: ['UserJobDescriptions'],
+    }),
+
+    saveJobSummary: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/user-job-descriptions/summary/save',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        return asQueryError(result, 'Failed to save job summary');
+      },
+      invalidatesTags: ['UserJobDescriptions'],
+    }),
+
+    saveResponsibilityCategory: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/user-job-descriptions/categories/save',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        return asQueryError(result, 'Failed to save category');
+      },
+      invalidatesTags: ['UserJobDescriptions'],
+    }),
+
+    deleteResponsibilityCategory: builder.mutation({
+      queryFn: async ({ id }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/user-job-descriptions/categories/delete',
+            method: 'POST',
+            body: { id },
+          },
+          {},
+          {}
+        );
+        return asQueryError(result, 'Failed to remove category');
+      },
+      invalidatesTags: ['UserJobDescriptions'],
+    }),
+
+    updateCategoryOrders: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/user-job-descriptions/categories/update-orders',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        return asQueryError(result, 'Failed to reorder categories');
       },
       invalidatesTags: ['UserJobDescriptions'],
     }),
@@ -1355,6 +1470,12 @@ export const {
   useFindDescriptionsByTaskTextQuery,
   useGetSharedDesignationsForTaskQuery,
   useUpdateTaskOrdersMutation,
+  useGetStructuredJobDescriptionQuery,
+  useLazyGetStructuredJobDescriptionQuery,
+  useSaveJobSummaryMutation,
+  useSaveResponsibilityCategoryMutation,
+  useDeleteResponsibilityCategoryMutation,
+  useUpdateCategoryOrdersMutation,
   useCreateEmployeeRegistrationMutation,
   useUpdateEmployeeRegistrationMutation,
   useForwardToPayrollMutation,

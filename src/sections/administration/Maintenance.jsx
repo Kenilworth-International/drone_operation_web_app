@@ -21,7 +21,7 @@ const Maintenance = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [statusForm, setStatusForm] = useState({ status: '', status_reason: '', completed_date: '' });
+  const [statusForm, setStatusForm] = useState({ status: '', status_reason: '', completed_date: '', repair_notes: '' });
   const [addForm, setAddForm] = useState({
     device_serial: '',
     technician_id: '',
@@ -104,6 +104,7 @@ const Maintenance = () => {
       status: record.status || 'p',
       status_reason: record.status_reason || '',
       completed_date: record.completed_date || '',
+      repair_notes: record.repair_notes || '',
     });
     setShowStatusModal(true);
   };
@@ -111,12 +112,18 @@ const Maintenance = () => {
   const handleCloseStatusModal = () => {
     setShowStatusModal(false);
     setSelectedMaintenance(null);
-    setStatusForm({ status: '', status_reason: '', completed_date: '' });
+    setStatusForm({ status: '', status_reason: '', completed_date: '', repair_notes: '' });
   };
 
   const handleStatusSubmit = async (e) => {
     e.preventDefault();
     if (!selectedMaintenance) return;
+
+    if ((statusForm.status === 'c' || statusForm.status === 'pc') && !String(statusForm.repair_notes || '').trim()) {
+      setMessage('Please enter what was repaired.');
+      setMessageType('warning');
+      return;
+    }
 
     try {
       await updateStatus({
@@ -124,6 +131,7 @@ const Maintenance = () => {
         status: statusForm.status,
         status_reason: statusForm.status_reason,
         completed_date: statusForm.completed_date || null,
+        repair_notes: statusForm.repair_notes || null,
       }).unwrap();
       handleCloseStatusModal();
       refetch();
@@ -447,6 +455,18 @@ const Maintenance = () => {
                 <strong>Description:</strong>
                 <p>{selectedMaintenance.description || 'N/A'}</p>
               </div>
+              {selectedMaintenance.suggestions ? (
+                <div className="maintenance-description-full-maintenance">
+                  <strong>Suggestions:</strong>
+                  <p>{selectedMaintenance.suggestions}</p>
+                </div>
+              ) : null}
+              {selectedMaintenance.repair_notes ? (
+                <div className="maintenance-description-full-maintenance">
+                  <strong>What was repaired:</strong>
+                  <p>{selectedMaintenance.repair_notes}</p>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -487,6 +507,19 @@ const Maintenance = () => {
                     className="maintenance-form-textarea-maintenance"
                     rows="4"
                     placeholder="Enter reason for this status"
+                  />
+                </div>
+              )}
+              {(statusForm.status === 'c' || statusForm.status === 'pc') && (
+                <div className="maintenance-form-group-maintenance">
+                  <label>What was repaired *</label>
+                  <textarea
+                    value={statusForm.repair_notes}
+                    onChange={(e) => setStatusForm(prev => ({ ...prev, repair_notes: e.target.value }))}
+                    required
+                    className="maintenance-form-textarea-maintenance"
+                    rows="4"
+                    placeholder="Describe what was repaired / work performed"
                   />
                 </div>
               )}

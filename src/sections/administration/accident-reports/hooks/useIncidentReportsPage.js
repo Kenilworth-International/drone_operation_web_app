@@ -4,11 +4,13 @@ import {
   useGetAccidentReportByIdQuery,
   useGetPilotsQuery,
   useDeclineAccidentReportMutation,
+  useStartInvestigationMutation,
+  useUpdateInvestigationNotesMutation,
+  useSubmitInvestigationReviewMutation,
+  useCompleteInvestigationMutation,
+  useApproveAccidentReportMutation,
 } from '../../../../api/services NodeJs/accidentReportsApi';
-import {
-  useCreateMaintenanceFromIncidentMutation,
-  useGetTechniciansQuery,
-} from '../../../../api/services NodeJs/maintenanceApi';
+import { useGetTechniciansQuery } from '../../../../api/services NodeJs/maintenanceApi';
 import { downloadResource, getResourceUrl } from '../utils/media';
 
 const EMPTY_FILTERS = {
@@ -24,6 +26,8 @@ const EMPTY_ACTION_FORM = {
   technician_id: '',
   description: '',
   scheduled_date: '',
+  notes: '',
+  findings: '',
 };
 
 function getCurrentUserId() {
@@ -64,7 +68,11 @@ export function useIncidentReportsPage() {
     skip: !showDetailsModal || !selectedReport?.id,
   });
   const [declineReport] = useDeclineAccidentReportMutation();
-  const [createMaintenance] = useCreateMaintenanceFromIncidentMutation();
+  const [startInvestigation] = useStartInvestigationMutation();
+  const [updateInvestigationNotes] = useUpdateInvestigationNotesMutation();
+  const [submitInvestigationReview] = useSubmitInvestigationReviewMutation();
+  const [completeInvestigation] = useCompleteInvestigationMutation();
+  const [approveReport] = useApproveAccidentReportMutation();
   const { data: techniciansData } = useGetTechniciansQuery();
 
   const reports = Array.isArray(reportsData) ? reportsData : reportsData ? [reportsData] : [];
@@ -111,7 +119,12 @@ export function useIncidentReportsPage() {
   const openAction = useCallback((report, type) => {
     setSelectedReport(report);
     setActionType(type);
-    setActionForm(EMPTY_ACTION_FORM);
+    setActionForm({
+      ...EMPTY_ACTION_FORM,
+      notes: report.investigation_notes || '',
+      findings: report.investigation_findings || '',
+      description: report.approval_suggestions || '',
+    });
     setShowActionModal(true);
   }, []);
 
@@ -183,20 +196,56 @@ export function useIncidentReportsPage() {
           }).unwrap();
           setMessage('Incident report declined.');
           setMessageType('success');
-        } else if (actionType === 'repair') {
-          if (!actionForm.technician_id || !actionForm.description.trim() || !actionForm.scheduled_date) {
-            setMessage('Technician, description, and scheduled date are required.');
+        } else if (actionType === 'start_investigation') {
+          await startInvestigation({
+            id: selectedReport.id,
+            action_by: userId,
+            notes: actionForm.notes || null,
+          }).unwrap();
+          setMessage('Investigation started.');
+          setMessageType('success');
+        } else if (actionType === 'investigation_notes') {
+          await updateInvestigationNotes({
+            id: selectedReport.id,
+            notes: actionForm.notes,
+          }).unwrap();
+          setMessage('Investigation notes saved.');
+          setMessageType('success');
+        } else if (actionType === 'submit_review') {
+          await submitInvestigationReview({
+            id: selectedReport.id,
+            action_by: userId,
+          }).unwrap();
+          setMessage('Investigation submitted for review.');
+          setMessageType('success');
+        } else if (actionType === 'complete_investigation') {
+          if (!actionForm.findings.trim()) {
+            setMessage('Investigation findings are required.');
             setMessageType('warning');
             return;
           }
-          await createMaintenance({
-            incidentId: selectedReport.id,
+          await completeInvestigation({
+            id: selectedReport.id,
+            action_by: userId,
+            findings: actionForm.findings,
+          }).unwrap();
+          setMessage('Investigation completed.');
+          setMessageType('success');
+        } else if (actionType === 'approve' || actionType === 'repair') {
+          if (!actionForm.technician_id || !actionForm.description.trim() || !actionForm.scheduled_date) {
+            setMessage('Technician, suggestions, and scheduled date are required.');
+            setMessageType('warning');
+            return;
+          }
+          await approveReport({
+            id: selectedReport.id,
+            action_by: userId,
             created_by: userId,
             technician_id: parseInt(actionForm.technician_id, 10),
-            description: actionForm.description,
+            approval_suggestions: actionForm.description,
             scheduled_date: actionForm.scheduled_date,
           }).unwrap();
-          setMessage('Maintenance record created from incident.');
+          setMessage('Incident approved and sent to technician.');
           setMessageType('success');
         }
 
@@ -207,7 +256,19 @@ export function useIncidentReportsPage() {
         setMessageType('warning');
       }
     },
-    [actionForm, actionType, closeAction, createMaintenance, declineReport, refetch, selectedReport]
+    [
+      actionForm,
+      actionType,
+      closeAction,
+      approveReport,
+      completeInvestigation,
+      declineReport,
+      refetch,
+      selectedReport,
+      startInvestigation,
+      submitInvestigationReview,
+      updateInvestigationNotes,
+    ]
   );
 
   return {

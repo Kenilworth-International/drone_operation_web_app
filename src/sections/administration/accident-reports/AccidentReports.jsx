@@ -46,8 +46,7 @@ const IncidentReportsPage = () => {
         error={page.error}
         totalCount={page.reports.length}
         onView={page.openDetails}
-        onDecline={(report) => page.openAction(report, 'decline')}
-        onRepair={(report) => page.openAction(report, 'repair')}
+        onAction={page.openAction}
       />
 
       {page.showDetailsModal && page.detailView ? (

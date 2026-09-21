@@ -153,6 +153,111 @@ export const accidentReportsApi = baseApi.injectEndpoints({
       invalidatesTags: ['AccidentReports'],
     }),
 
+    startInvestigation: builder.mutation({
+      queryFn: async ({ id, action_by, notes }) => {
+        try {
+          const result = await nodeBackendBaseQuery(
+            {
+              url: `/api/accident-reports/${id}/start-investigation`,
+              method: 'POST',
+              body: { action_by, notes },
+            },
+            {},
+            {}
+          );
+          if (result.error) return { error: result.error };
+          return { data: result.data?.data || result.data || null };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+      invalidatesTags: ['AccidentReports'],
+    }),
+
+    updateInvestigationNotes: builder.mutation({
+      queryFn: async ({ id, notes }) => {
+        try {
+          const result = await nodeBackendBaseQuery(
+            {
+              url: `/api/accident-reports/${id}/investigation-notes`,
+              method: 'POST',
+              body: { notes },
+            },
+            {},
+            {}
+          );
+          if (result.error) return { error: result.error };
+          return { data: result.data?.data || result.data || null };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+      invalidatesTags: ['AccidentReports'],
+    }),
+
+    submitInvestigationReview: builder.mutation({
+      queryFn: async ({ id, action_by }) => {
+        try {
+          const result = await nodeBackendBaseQuery(
+            {
+              url: `/api/accident-reports/${id}/submit-investigation-review`,
+              method: 'POST',
+              body: { action_by },
+            },
+            {},
+            {}
+          );
+          if (result.error) return { error: result.error };
+          return { data: result.data?.data || result.data || null };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+      invalidatesTags: ['AccidentReports'],
+    }),
+
+    completeInvestigation: builder.mutation({
+      queryFn: async ({ id, action_by, findings }) => {
+        try {
+          const result = await nodeBackendBaseQuery(
+            {
+              url: `/api/accident-reports/${id}/complete-investigation`,
+              method: 'POST',
+              body: { action_by, findings },
+            },
+            {},
+            {}
+          );
+          if (result.error) return { error: result.error };
+          return { data: result.data?.data || result.data || null };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+      invalidatesTags: ['AccidentReports'],
+    }),
+
+    approveAccidentReport: builder.mutation({
+      queryFn: async ({ id, ...body }) => {
+        try {
+          const result = await nodeBackendBaseQuery(
+            {
+              url: `/api/accident-reports/${id}/approve`,
+              method: 'POST',
+              body,
+            },
+            {},
+            {}
+          );
+          if (result.error) return { error: result.error };
+          return { data: result.data?.data || result.data || null };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+      invalidatesTags: ['AccidentReports', 'Maintenance'],
+    }),
+
     // Get pilots for filter dropdown
     getPilots: builder.query({
       queryFn: async () => {
@@ -187,6 +292,11 @@ export const {
   useUpdateAccidentReportMutation,
   useDeleteAccidentReportMutation,
   useDeclineAccidentReportMutation,
+  useStartInvestigationMutation,
+  useUpdateInvestigationNotesMutation,
+  useSubmitInvestigationReviewMutation,
+  useCompleteInvestigationMutation,
+  useApproveAccidentReportMutation,
   useGetPilotsQuery,
 } = accidentReportsApi;
 
