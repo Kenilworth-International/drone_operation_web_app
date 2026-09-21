@@ -33,11 +33,12 @@ const Workshop = () => {
     }
   }, []);
 
-  const isTechnician = userData?.job_role === 'tec';
+  const isTechnician = String(userData?.job_role || '').trim().toLowerCase() === 'tec';
   const userId = userData?.id || null;
 
+  // Always scope to post-approval incident jobs (workshop: 1)
   const queryFilters = useMemo(() => {
-    const f = {};
+    const f = { workshop: 1 };
     if (statusFilter) f.status = statusFilter;
     if (isTechnician && userId) f.technician_id = userId;
     return f;
@@ -52,26 +53,28 @@ const Workshop = () => {
       ? [maintenanceData]
       : [];
 
-  // Prefer approved-incident jobs; still show other assigned pending work
+  const suggestionText = (r) =>
+    r?.suggestions || r?.incident_approval_suggestions || r?.description || '';
+
   const workshopJobs = useMemo(() => {
-    let list = records.filter((r) => r && r.id);
-    // After approval: incident-linked jobs first; standalone assigned maintenance still visible
+    let list = records.filter((r) => r && r.id && r.incident_id);
     list = [...list].sort((a, b) => {
-      const ai = a.incident_id ? 0 : 1;
-      const bi = b.incident_id ? 0 : 1;
-      if (ai !== bi) return ai - bi;
+      const ad = a.incident_approved_at ? new Date(a.incident_approved_at).getTime() : 0;
+      const bd = b.incident_approved_at ? new Date(b.incident_approved_at).getTime() : 0;
+      if (bd !== ad) return bd - ad;
       return (b.id || 0) - (a.id || 0);
     });
     const term = searchTerm.trim().toLowerCase();
     if (!term) return list;
     return list.filter((r) => {
+      const sug = suggestionText(r);
       return (
         String(r.id || '').includes(term)
         || String(r.incident_id || '').includes(term)
         || (r.drone_tag && String(r.drone_tag).toLowerCase().includes(term))
         || (r.drone_serial && String(r.drone_serial).toLowerCase().includes(term))
         || (r.description && String(r.description).toLowerCase().includes(term))
-        || (r.suggestions && String(r.suggestions).toLowerCase().includes(term))
+        || (sug && String(sug).toLowerCase().includes(term))
         || (r.technician_name && String(r.technician_name).toLowerCase().includes(term))
       );
     });
@@ -167,7 +170,7 @@ const Workshop = () => {
             Workshop
           </h1>
           <p style={{ margin: '4px 0 0', color: '#5b6b7c', fontSize: 14 }}>
-            Technician jobs after incident approval (and assigned maintenance).
+            Jobs after incident approval only.
             {isTechnician ? ' Showing your assigned jobs.' : ''}
           </p>
         </div>
@@ -248,9 +251,9 @@ const Workshop = () => {
                   <td>{formatDate(record.scheduled_date)}</td>
                   <td>{getStatusBadge(record.status)}</td>
                   <td className="maintenance-description-cell-maintenance">
-                    {(record.suggestions || record.description || '—').length > 60
-                      ? `${String(record.suggestions || record.description).slice(0, 60)}…`
-                      : (record.suggestions || record.description || '—')}
+                    {(suggestionText(record) || '—').length > 60
+                      ? `${String(suggestionText(record)).slice(0, 60)}…`
+                      : (suggestionText(record) || '—')}
                   </td>
                   <td>
                     <div className="maintenance-actions-maintenance">
@@ -312,9 +315,9 @@ const Workshop = () => {
               <div><strong>Status:</strong> {getStatusBadge(selected.status)}</div>
               <div className="maintenance-description-full-maintenance">
                 <strong>Suggestions / instructions:</strong>
-                <p>{selected.suggestions || selected.description || 'N/A'}</p>
+                <p>{suggestionText(selected) || 'N/A'}</p>
               </div>
-              {selected.description && selected.suggestions ? (
+              {selected.description && suggestionText(selected) && selected.description !== suggestionText(selected) ? (
                 <div className="maintenance-description-full-maintenance">
                   <strong>Description:</strong>
                   <p>{selected.description}</p>
@@ -341,11 +344,11 @@ const Workshop = () => {
               </button>
             </div>
             <form onSubmit={submitStatus} className="maintenance-status-form-maintenance">
-              {(selected.suggestions || selected.description) ? (
+              {(suggestionText(selected)) ? (
                 <div className="maintenance-form-group-maintenance">
                   <label>Approved suggestions</label>
                   <p style={{ margin: 0, color: '#334155', whiteSpace: 'pre-wrap' }}>
-                    {selected.suggestions || selected.description}
+                    {suggestionText(selected)}
                   </p>
                 </div>
               ) : null}
