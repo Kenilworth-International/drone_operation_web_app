@@ -57,6 +57,17 @@ export function isCalendarAllowedWing(wingTitle) {
   return CALENDAR_ALLOWED_WING_TITLES.includes(normalized);
 }
 
+/** Asset Transfer (central → destination) is Administration Wing only. Fleet uses Asset Request. */
+export const ASSET_TRANSFER_ALLOWED_WING_TITLES = ['Administration Wing'];
+export const ASSET_TRANSFER_PATH = '/home/stock-assets/transfers/transfer';
+export const ASSET_REQUEST_PATH = '/home/stock-assets/transfers/request';
+
+export function isAssetTransferAllowedWing(wingTitle) {
+  const normalized = normalizeWingTitle(wingTitle);
+  if (!normalized) return false;
+  return ASSET_TRANSFER_ALLOWED_WING_TITLES.includes(normalized);
+}
+
 export function isGeoSpatialWing(wingTitle) {
   return normalizeWingTitle(wingTitle) === GEO_SPATIAL_WING_TITLE;
 }

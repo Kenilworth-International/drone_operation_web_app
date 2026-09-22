@@ -1,0 +1,161 @@
+.hrm-inv-page {
+  padding: 1rem 1.25rem 2rem;
+  color: #1a2b3c;
+}
+
+.hrm-inv-msg {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #e8f6ef;
+  color: #0f7a4f;
+  font-size: 0.9rem;
+}
+
+.hrm-inv-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #d8e0e8;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.hrm-inv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.hrm-inv-table th {
+  text-align: left;
+  background: #0a3d5c;
+  color: #fff;
+  padding: 0.7rem 0.75rem;
+  white-space: nowrap;
+}
+
+.hrm-inv-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #e8eef3;
+  vertical-align: top;
+}
+
+.hrm-inv-clip {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hrm-inv-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  background: #eef1f4;
+  color: #5b6b7c;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.hrm-inv-pill--ok {
+  background: #d8efe6;
+  color: #0f7a4f;
+}
+
+.hrm-inv-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.hrm-inv-btn {
+  border: none;
+  background: #004b71;
+  color: #fff;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hrm-inv-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.hrm-inv-btn--ghost {
+  background: #6c757d;
+}
+
+.hrm-inv-form {
+  background: #fff;
+  border: 1px solid #d8e0e8;
+  border-radius: 10px;
+  padding: 1rem 1.15rem 1.5rem;
+}
+
+.hrm-inv-form h3 {
+  margin: 1.25rem 0 0.65rem;
+  color: #004b71;
+  font-size: 1rem;
+}
+
+.hrm-inv-form h3:first-child {
+  margin-top: 0;
+}
+
+.hrm-inv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.hrm-inv-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+}
+
+.hrm-inv-form label span {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #5b6b7c;
+}
+
+.hrm-inv-form input,
+.hrm-inv-form select,
+.hrm-inv-form textarea {
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #d8e0e8;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.hrm-inv-full {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+
+.hrm-inv-checks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.45rem 0.75rem;
+}
+
+.hrm-inv-checks label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 720px) {
+  .hrm-inv-grid {
+    grid-template-columns: 1fr;
+  }
+}

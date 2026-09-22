@@ -3,6 +3,7 @@ import { FaTimes } from 'react-icons/fa';
 
 const TITLES = {
   decline: 'Decline incident report',
+  recommend_investigation: 'Recommend investigation to HR',
   start_investigation: 'Start investigation',
   investigation_notes: 'Update investigation notes',
   submit_review: 'Submit investigation for review',
@@ -22,6 +23,7 @@ export default function ActionModal({
   const title = TITLES[actionType] || 'Incident action';
   const isDecline = actionType === 'decline';
   const isApprove = actionType === 'approve' || actionType === 'repair';
+  const isRecommend = actionType === 'recommend_investigation';
   const isStartInv = actionType === 'start_investigation';
   const isNotes = actionType === 'investigation_notes';
   const isSubmitReview = actionType === 'submit_review';
@@ -50,6 +52,48 @@ export default function ActionModal({
                 placeholder="Enter reason for declining this incident"
               />
             </div>
+          ) : null}
+
+          {isRecommend ? (
+            <>
+              <p className="accidentreports-action-hint">
+                Fleet recommends that HR open an investigation. HR creates the investigation after the workshop accident report is submitted.
+              </p>
+              <div className="accidentreports-form-group">
+                <label htmlFor="rec-reason">Reason / recommendation *</label>
+                <textarea
+                  id="rec-reason"
+                  value={form.notes}
+                  onChange={(e) => onChange({ ...form, notes: e.target.value })}
+                  required
+                  className="accidentreports-form-textarea"
+                  rows="3"
+                  placeholder="Why should HR investigate?"
+                />
+              </div>
+              <div className="accidentreports-form-group">
+                <label htmlFor="rec-fault">Suspected fault</label>
+                <textarea
+                  id="rec-fault"
+                  value={form.suspected_fault || ''}
+                  onChange={(e) => onChange({ ...form, suspected_fault: e.target.value })}
+                  className="accidentreports-form-textarea"
+                  rows="2"
+                  placeholder="What appears to have gone wrong"
+                />
+              </div>
+              <div className="accidentreports-form-group">
+                <label htmlFor="rec-who">Who may be at fault</label>
+                <input
+                  id="rec-who"
+                  type="text"
+                  value={form.who_at_fault || ''}
+                  onChange={(e) => onChange({ ...form, who_at_fault: e.target.value })}
+                  className="accidentreports-form-select"
+                  placeholder="Pilot / operations / equipment / unknown"
+                />
+              </div>
+            </>
           ) : null}
 
           {isStartInv || isNotes ? (

@@ -34,15 +34,15 @@ import { COMPANY } from '../../config/companyConstants';
 import GRNDocument from './GRNDocument';
 
 const TABS = [
-  { key: 'requests', label: 'Procurement Requests', path: '/home/stock-assets/procurement-process/requests' },
-  { key: 'approval', label: 'Procurement Approval', path: '/home/stock-assets/procurement-process/approve-requests' },
-  { key: 'rfq', label: 'Request Quotations', path: '/home/stock-assets/procurement-process/request-quotations' },
-  { key: 'submit-quotation', label: 'Submit Supplier Quotation', path: '/home/stock-assets/procurement-process/submit-quotation' },
-  { key: 'eval', label: 'Quotations Evaluation', path: '/home/stock-assets/procurement-process/quotations-evaluation' },
-  { key: 'tech', label: 'Tech Evaluation', path: '/home/stock-assets/procurement-process/tech-evaluation' },
-  { key: 'finalize', label: 'Finalize Quotations', path: '/home/stock-assets/procurement-process/finalize-quotations' },
-  { key: 'po', label: 'Purchasing Order Issue', path: '/home/stock-assets/procurement-process/purchase-order-issue' },
-  { key: 'grn', label: 'Good Received Note', path: '/home/stock-assets/procurement-process/grn' },
+  { key: 'requests', label: 'Procurement Requests', shortLabel: '1. Requests', path: '/home/stock-assets/procurement-process/requests' },
+  { key: 'approval', label: 'Procurement Approval', shortLabel: '2. Approval', path: '/home/stock-assets/procurement-process/approve-requests' },
+  { key: 'rfq', label: 'Request Quotations', shortLabel: '3. RFQ', path: '/home/stock-assets/procurement-process/request-quotations' },
+  { key: 'submit-quotation', label: 'Submit Supplier Quotation', shortLabel: '4. Submit Quote', path: '/home/stock-assets/procurement-process/submit-quotation' },
+  { key: 'eval', label: 'Quotations Evaluation', shortLabel: '5. Eval', path: '/home/stock-assets/procurement-process/quotations-evaluation' },
+  { key: 'tech', label: 'Tech Evaluation', shortLabel: '6. Tech', path: '/home/stock-assets/procurement-process/tech-evaluation' },
+  { key: 'finalize', label: 'Finalize Quotations', shortLabel: '7. Finalize', path: '/home/stock-assets/procurement-process/finalize-quotations' },
+  { key: 'po', label: 'Purchasing Order Issue', shortLabel: '8. PO', path: '/home/stock-assets/procurement-process/purchase-order-issue' },
+  { key: 'grn', label: 'Good Received Note', shortLabel: '9. GRN', path: '/home/stock-assets/procurement-process/grn' },
 ];
 
 const detectTabFromPath = (pathname) => {
@@ -305,21 +305,41 @@ const ProcurementProcess = () => {
     });
   }, [activeTab, finalizedQuotationForPo?.id, poForm.lineItems?.length, fetchQuotationById]);
 
+  const buildQuotationLinesFromProcurement = React.useCallback((items) => (
+    (items || []).map((item) => ({
+      procurement_request_item_id: item.id,
+      inventory_item_id: item.inventory_item_id,
+      item_code: item.item_code,
+      item_name: item.item_name,
+      quantity: item.quantity,
+      unit_price: '',
+    }))
+  ), []);
+
+  const quotationLinesRfqRef = React.useRef(null);
+
+  // Load RFQ procurement lines for unit-price entry when RFQ is selected / changes.
   React.useEffect(() => {
-    if (activeTab === 'submit-quotation' && selectedRfqProcurementRequest?.items?.length) {
-      setQuotationForm((prev) => ({
-        ...prev,
-        lineItems: selectedRfqProcurementRequest.items.map((item) => ({
-          procurement_request_item_id: item.id,
-          inventory_item_id: item.inventory_item_id,
-          item_code: item.item_code,
-          item_name: item.item_name,
-          quantity: item.quantity,
-          unit_price: item.unit_price != null ? String(item.unit_price) : '',
-        })),
-      }));
+    if (activeTab !== 'submit-quotation') return;
+    if (!selectedRfqId) {
+      quotationLinesRfqRef.current = null;
+      return;
     }
-  }, [activeTab, selectedRfqProcurementRequest?.items]);
+    if (!selectedRfqProcurementRequest?.items?.length) return;
+    if (quotationLinesRfqRef.current === String(selectedRfqId)) return;
+    quotationLinesRfqRef.current = String(selectedRfqId);
+    setQuotationForm((prev) => ({
+      ...prev,
+      quotation_id: '',
+      lineItems: buildQuotationLinesFromProcurement(selectedRfqProcurementRequest.items),
+    }));
+  }, [
+    activeTab,
+    selectedRfqId,
+    selectedRfqProcurementId,
+    selectedRfqProcurementRequest?.items,
+    buildQuotationLinesFromProcurement,
+  ]);
 
   const selectedNeedIds = useMemo(
     () => Object.keys(selectedNeedToProcure).filter((id) => selectedNeedToProcure[id]).map(Number),
@@ -341,6 +361,45 @@ const ProcurementProcess = () => {
     if (Array.isArray(suppliers?.data)) return suppliers.data;
     return [];
   }, [suppliers]);
+
+  // Suppliers already invited on any RFQ for the selected approved procurement
+  const alreadyInvitedSupplierIds = useMemo(() => {
+    const pid = rfqForm.procurement_request_id;
+    if (!pid) return new Set();
+    const set = new Set();
+    (rfqs || []).forEach((rfq) => {
+      if (String(rfq.procurement_request_id) !== String(pid)) return;
+      const ids = Array.isArray(rfq.supplier_ids)
+        ? rfq.supplier_ids
+        : String(rfq.supplier_ids || '')
+          .split(',')
+          .map((x) => Number(x))
+          .filter((x) => Number.isFinite(x) && x > 0);
+      ids.forEach((id) => set.add(String(id)));
+    });
+    return set;
+  }, [rfqs, rfqForm.procurement_request_id]);
+
+  const availableSuppliersForRfq = useMemo(
+    () => supplierList.filter((sup) => !alreadyInvitedSupplierIds.has(String(sup.id))),
+    [supplierList, alreadyInvitedSupplierIds]
+  );
+
+  // Clear invalid selections when procurement / invited set changes
+  React.useEffect(() => {
+    if (!rfqForm.procurement_request_id) return;
+    setSelectedSuppliers((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      Object.keys(next).forEach((id) => {
+        if (next[id] && alreadyInvitedSupplierIds.has(String(id))) {
+          delete next[id];
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [rfqForm.procurement_request_id, alreadyInvitedSupplierIds]);
 
   // Suppliers who already submitted quotation for the selected RFQ (submit-quotation tab)
   const supplierIdsWithQuotation = useMemo(
@@ -467,6 +526,11 @@ const ProcurementProcess = () => {
   const handleCreateRfq = async () => {
     if (!rfqForm.procurement_request_id || !selectedSupplierIds.length) {
       alert('Select procurement request and suppliers');
+      return;
+    }
+    const blocked = selectedSupplierIds.filter((id) => alreadyInvitedSupplierIds.has(String(id)));
+    if (blocked.length) {
+      alert('Some selected suppliers are already invited on an RFQ for this procurement. Deselect them and try again.');
       return;
     }
     try {
@@ -823,10 +887,12 @@ const ProcurementProcess = () => {
   };
 
   return (
-    <AdminStockPage>
+    <AdminStockPage className="procurement-process-shell">
       <AdminSubTabs
         tabs={TABS}
         active={activeTab}
+        variant="compact"
+        className="procurement-process-stepper"
         onChange={(key) => {
           const tab = TABS.find((t) => t.key === key) || TABS[0];
           setActiveTab(tab.key);
@@ -1126,7 +1192,10 @@ const ProcurementProcess = () => {
           <div className="procurement-process-form-group">
             <select
               value={rfqForm.procurement_request_id}
-              onChange={(e) => setRfqForm((prev) => ({ ...prev, procurement_request_id: e.target.value }))}
+              onChange={(e) => {
+                setRfqForm((prev) => ({ ...prev, procurement_request_id: e.target.value }));
+                setSelectedSuppliers({});
+              }}
             >
               <option value="">Select Approved Procurement</option>
               {approvedQueue.map((row) => (
@@ -1136,6 +1205,11 @@ const ProcurementProcess = () => {
               ))}
             </select>
           </div>
+          {rfqForm.procurement_request_id && alreadyInvitedSupplierIds.size > 0 && (
+            <p className="procurement-process-step-desc" style={{ marginTop: -8 }}>
+              {alreadyInvitedSupplierIds.size} supplier{alreadyInvitedSupplierIds.size !== 1 ? 's' : ''} already invited on existing RFQ(s) for this procurement — they cannot be selected again.
+            </p>
+          )}
           <div className="procurement-process-form-group procurement-process-row-two procurement-process-labeled-row">
             <div className="procurement-process-field-with-label">
               <label>Closing Date</label>
@@ -1194,11 +1268,11 @@ const ProcurementProcess = () => {
                   className="procurement-process-supplier-select-btn"
                   onClick={() => {
                     const next = {};
-                    supplierList.forEach((sup) => { next[String(sup.id)] = true; });
+                    availableSuppliersForRfq.forEach((sup) => { next[String(sup.id)] = true; });
                     setSelectedSuppliers(next);
                   }}
                 >
-                  Select all
+                  Select all available
                 </button>
                 <button
                   type="button"
@@ -1209,27 +1283,37 @@ const ProcurementProcess = () => {
                 </button>
                 <span className="procurement-process-supplier-select-count">
                   {selectedSupplierOptionValues.length} supplier{selectedSupplierOptionValues.length !== 1 ? 's' : ''} selected
+                  {alreadyInvitedSupplierIds.size > 0 ? ` · ${alreadyInvitedSupplierIds.size} already invited` : ''}
                 </span>
               </div>
             </div>
             <div className="procurement-process-supplier-list-wrap">
               {supplierList.length === 0 ? (
                 <div className="procurement-process-supplier-list-empty">No suppliers found</div>
+              ) : availableSuppliersForRfq.length === 0 && alreadyInvitedSupplierIds.size > 0 ? (
+                <div className="procurement-process-supplier-list-empty">
+                  All suppliers are already invited on RFQ(s) for this procurement.
+                </div>
               ) : (
                 <div className="procurement-process-supplier-grid">
                   {supplierList.map((sup) => {
                     const idStr = String(sup.id);
-                    const checked = Boolean(selectedSuppliers[idStr]);
+                    const alreadyInvited = alreadyInvitedSupplierIds.has(idStr);
+                    const checked = Boolean(selectedSuppliers[idStr]) && !alreadyInvited;
                     return (
                       <div
                         key={sup.id}
                         role="button"
-                        tabIndex={0}
-                        className={`procurement-process-supplier-card ${checked ? 'is-selected' : ''}`}
+                        tabIndex={alreadyInvited ? -1 : 0}
+                        aria-disabled={alreadyInvited}
+                        className={`procurement-process-supplier-card ${checked ? 'is-selected' : ''}${alreadyInvited ? ' is-disabled' : ''}`}
+                        style={alreadyInvited ? { opacity: 0.55, cursor: 'not-allowed' } : undefined}
                         onClick={() => {
+                          if (alreadyInvited) return;
                           setSelectedSuppliers((prev) => ({ ...prev, [idStr]: !prev[idStr] }));
                         }}
                         onKeyDown={(e) => {
+                          if (alreadyInvited) return;
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             setSelectedSuppliers((prev) => ({ ...prev, [idStr]: !prev[idStr] }));
@@ -1239,8 +1323,10 @@ const ProcurementProcess = () => {
                         <input
                           type="checkbox"
                           checked={checked}
+                          disabled={alreadyInvited}
                           onChange={(e) => {
                             e.stopPropagation();
+                            if (alreadyInvited) return;
                             setSelectedSuppliers((prev) => ({ ...prev, [idStr]: !prev[idStr] }));
                           }}
                           onClick={(e) => e.stopPropagation()}
@@ -1251,6 +1337,9 @@ const ProcurementProcess = () => {
                           {sup.supplier_code && (
                             <span className="procurement-process-supplier-card-code">{sup.supplier_code}</span>
                           )}
+                          {alreadyInvited && (
+                            <span className="procurement-process-supplier-card-code">Already on RFQ</span>
+                          )}
                         </div>
                         {checked && <span className="procurement-process-supplier-item-check" aria-hidden>✓</span>}
                       </div>
@@ -1260,7 +1349,11 @@ const ProcurementProcess = () => {
               )}
             </div>
           </div>
-          <button type="button" disabled={creatingRfq} onClick={handleCreateRfq}>
+          <button
+            type="button"
+            disabled={creatingRfq || !availableSuppliersForRfq.length}
+            onClick={handleCreateRfq}
+          >
             {creatingRfq ? 'Creating RFQ...' : 'Create RFQ'}
           </button>
         </div>
@@ -1285,18 +1378,18 @@ const ProcurementProcess = () => {
                 value={selectedRfqId}
                 onChange={(e) => {
                   setSelectedRfqId(e.target.value);
-                  if (activeTab === 'submit-quotation') {
-                    setQuotationForm((prev) => ({
-                      ...prev,
-                      quotation_id: '',
-                      supplier_id: '',
-                      lineItems: [],
-                      total_price: '',
-                      tax_rate: '',
-                      discount: '',
-                      existing_scanned_document: '',
-                    }));
-                  }
+                  quotationLinesRfqRef.current = null;
+                  setQuotationForm((prev) => ({
+                    ...prev,
+                    quotation_id: '',
+                    supplier_id: '',
+                    lineItems: [],
+                    total_price: '',
+                    tax_rate: '',
+                    discount: '',
+                    existing_scanned_document: '',
+                    scanned_file: null,
+                  }));
                 }}
               >
                 <option value="">Select RFQ</option>
@@ -1314,6 +1407,11 @@ const ProcurementProcess = () => {
                 View Items
               </button>
             </div>
+            {selectedRfqId && !selectedRfqProcurementRequest?.items?.length && (
+              <span className="procurement-process-file-hint">
+                Loading RFQ items… If this stays empty, the procurement request has no lines.
+              </span>
+            )}
           </div>
           <div className="procurement-process-form-group">
             <label>Select Supplier</label>
@@ -1321,16 +1419,19 @@ const ProcurementProcess = () => {
               value={quotationForm.supplier_id}
               onChange={async (e) => {
                 const supplierId = e.target.value;
+                const baseLines = buildQuotationLinesFromProcurement(
+                  selectedRfqProcurementRequest?.items || []
+                );
                 const clearedForm = {
                   quotation_id: '',
                   supplier_id: supplierId,
                   total_price: '',
-                  delivery_time_days: '',
+                  delivery_time_days: quotationForm.delivery_time_days || '',
                   tax_rate: '',
                   discount: '',
                   scanned_file: null,
                   existing_scanned_document: '',
-                  lineItems: [],
+                  lineItems: baseLines,
                 };
                 setQuotationForm(clearedForm);
                 if (supplierId && quotationBySupplierId.has(supplierId)) {
@@ -1374,7 +1475,7 @@ const ProcurementProcess = () => {
               </span>
             )}
           </div>
-          {quotationForm.lineItems?.length > 0 && (
+          {quotationForm.lineItems?.length > 0 ? (
             <div className="procurement-process-panel">
               <strong>Enter unit price for each item</strong>
               <table width="100%" cellPadding="6">
@@ -1421,7 +1522,13 @@ const ProcurementProcess = () => {
                 </tbody>
               </table>
             </div>
-          )}
+          ) : selectedRfqId ? (
+            <div className="procurement-process-panel">
+              <p style={{ margin: 0, color: '#5b6b7c' }}>
+                No line items loaded for this RFQ yet. Use <strong>View Items</strong> to confirm the procurement has lines, then re-select the RFQ.
+              </p>
+            </div>
+          ) : null}
           <div className="procurement-process-form-group procurement-process-row-two">
             <label>Tax rate (%)</label>
             <input

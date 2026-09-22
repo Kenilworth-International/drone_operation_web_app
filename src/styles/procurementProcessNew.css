@@ -1,4 +1,8 @@
-/* Procurement Process – modern professional */
+/* Procurement Process – compact professional */
+
+.procurement-process-shell .admin-stock-body {
+  padding: 10px 12px 0;
+}
 
 .procurement-process-page {
   margin: 0;
@@ -8,7 +12,7 @@
 
 .procurement-process-title {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #0f172a;
 }
@@ -17,8 +21,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .procurement-process-header-row .procurement-process-title {
@@ -35,39 +39,39 @@
 
 .procurement-process-step {
   display: grid;
-  gap: 18px;
+  gap: 12px;
   background: #fff;
   border: 1px solid #d8e0ea;
-  border-radius: 14px;
-  padding: 20px 22px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 54, 82, 0.06);
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
 .procurement-process-step h4 {
-  margin: 0 0 8px;
-  font-size: 1rem;
+  margin: 0 0 4px;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #0f172a;
 }
 
 .procurement-process-step .procurement-process-step-desc {
-  margin: 0 0 10px;
-  font-size: 0.875rem;
+  margin: 0 0 6px;
+  font-size: 0.8rem;
   color: #5b6b7c;
-  line-height: 1.45;
+  line-height: 1.35;
 }
 
 .procurement-process-section-grid {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .procurement-process-heading-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: 8px;
+  margin-bottom: 6px;
   flex-wrap: wrap;
 }
 
@@ -78,7 +82,7 @@
 .procurement-process-heading-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -88,10 +92,10 @@
 
 .procurement-process-form-group label {
   display: block;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 650;
   color: #475569;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .procurement-process-form-group select {
@@ -101,12 +105,12 @@
 .procurement-process-field-with-label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
 .procurement-process-field-with-label label {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   font-weight: 500;
   color: #444;
 }
@@ -115,8 +119,8 @@
 .procurement-process-page table {
   border-collapse: collapse;
   width: 100%;
-  font-size: 13.5px;
-  border-radius: 10px;
+  font-size: 13px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -127,14 +131,14 @@
   border-left: none;
   border-right: none;
   text-align: left;
-  padding: 12px 14px;
+  padding: 8px 10px;
 }
 
 .procurement-process-page th {
   background: linear-gradient(180deg, #f7fafc 0%, #eef3f8 100%);
   color: #3d5166;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -157,8 +161,8 @@
   max-width: 100%;
   box-sizing: border-box;
   border: 1px solid #c5d0de;
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 8px;
+  padding: 7px 10px;
   background: #fff;
   color: #0f172a;
   outline: none;
@@ -169,23 +173,23 @@
 .procurement-process-page select:focus,
 .procurement-process-page textarea:focus {
   border-color: #2a7a9b;
-  box-shadow: 0 0 0 3px rgba(42, 122, 155, 0.18);
+  box-shadow: 0 0 0 2px rgba(42, 122, 155, 0.16);
 }
 
 .procurement-process-page textarea {
-  min-height: 70px;
+  min-height: 56px;
   resize: vertical;
 }
 
 .procurement-process-page button:not(.procurement-process-tab-btn):not(.link-button):not(.procurement-process-remove-row-btn):not(.procurement-process-add-row-btn):not(.procurement-process-supplier-select-btn):not(.procurement-process-modal-close-btn):not(.procurement-process-modal-cancel-btn):not(.procurement-process-manual-btn):not(.procurement-process-queue-btn):not(.admin-stock-btn):not(.admin-stock-tab) {
   border: none;
-  border-radius: 10px;
-  padding: 9px 16px;
+  border-radius: 8px;
+  padding: 7px 12px;
   background: linear-gradient(135deg, #1a5f7a 0%, #2a7a9b 100%);
   color: #fff;
   font-weight: 650;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(26, 95, 122, 0.22);
+  box-shadow: 0 2px 8px rgba(26, 95, 122, 0.18);
 }
 
 .procurement-process-page button:hover:not(:disabled) {
@@ -200,44 +204,44 @@
 .procurement-process-actions-cell {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 /* Panels */
 .procurement-process-panel {
   border: 1px solid #d8e0ea;
-  padding: 14px 16px;
+  padding: 10px 12px;
   background: #f7fafc;
-  border-radius: 12px;
+  border-radius: 8px;
   min-width: 0;
 }
 
 .procurement-process-panel strong {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: #0f172a;
 }
 
 .procurement-process-panel-rounded {
-  border-radius: 12px;
+  border-radius: 8px;
 }
 
 .procurement-process-form {
   display: grid;
-  gap: 12px;
+  gap: 8px;
   max-width: 640px;
 }
 
 .procurement-process-stack-md,
 .procurement-process-stack-sm {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .procurement-process-row-two {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -250,7 +254,7 @@
 .procurement-process-row-three {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -318,13 +322,13 @@
 }
 
 .procurement-process-queue-btn {
-  padding: 9px 16px;
-  font-size: 0.84rem;
+  padding: 7px 12px;
+  font-size: 0.8rem;
   font-weight: 650;
   background: #fff;
   color: #0f172a;
   border: 1px solid #c5d0de;
-  border-radius: 10px;
+  border-radius: 8px;
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
 }
 
@@ -533,8 +537,8 @@
   width: min(640px, 100%);
   background: #fff;
   border: 1px solid #d8e0ea;
-  border-radius: 16px;
-  padding: 16px 18px;
+  border-radius: 12px;
+  padding: 12px 14px;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06), 0 16px 40px rgba(15, 54, 82, 0.12);
 }
 
@@ -542,14 +546,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid #e8eef5;
 }
 
 .procurement-process-modal-title {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 700;
   color: #0f172a;
 }

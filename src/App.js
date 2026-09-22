@@ -58,6 +58,9 @@ import EmergencyMoving from './sections/opsroom/emergency/EmergencyMoving';
 import FieldSizeAdjustments from './sections/opsroom/fieldSizeAdjustments/FieldSizeAdjustments';
 import EmployeeProfileDetails from './sections/hr&admin/EmployeeProfileDetails';
 import HrmDashboard from './sections/hr&admin/dashboard/HrmDashboard';
+import HrmInvestigationsPage, {
+  HrmInvestigationDetailPage,
+} from './sections/hr&admin/investigations/HrmInvestigationsPage';
 import OrganizationStructure from './sections/hr&admin/OrganizationStructure';
 import EmpOrgMasterPage from './sections/hr&admin/EmpOrgMasterPage';
 import Employees from './sections/hr&admin/Employees';
@@ -75,6 +78,8 @@ import ResourceAllocation from './sections/administration/resource-allocation/Re
 import AccidentReports from './sections/administration/accident-reports/AccidentReports';
 import Maintenance from './sections/administration/maintenance/Maintenance';
 import Workshop from './sections/administration/Workshop';
+import WorkshopInventoryPage from './sections/administration/WorkshopInventory';
+import WorkshopAccidentReportPage from './sections/administration/WorkshopAccidentReportPage';
 import GeneratorFuelApprovals from './sections/hr&admin/fuelApprovals/GeneratorFuelApprovals';
 import DjiMapUpload from './sections/opsroom/dji/DjiMapUpload';
 import ManagerApprovalQueue from './sections/opsroom/manager-approval/ManagerApprovalQueue';
@@ -779,6 +784,22 @@ function App() {
             }
           />
           <Route
+            path="hrm/investigations"
+            element={
+              <ProtectedRoute>
+                <HrmInvestigationsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="hrm/investigations/:id"
+            element={
+              <ProtectedRoute>
+                <HrmInvestigationDetailPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="employeeRegistration"
             element={<EmployeeProfileRedirect />}
           />
@@ -919,6 +940,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Workshop />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="workshop-inventory"
+            element={
+              <ProtectedRoute>
+                <WorkshopInventoryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="workshop-accident-report/:id"
+            element={
+              <ProtectedRoute>
+                <WorkshopAccidentReportPage />
               </ProtectedRoute>
             }
           />

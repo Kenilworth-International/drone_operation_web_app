@@ -108,6 +108,9 @@ export const baseApi = createApi({
     // Auth Controls / feature permissions
     'FeaturePermissions', 'FeatureDefinitions', 'GroupedPermissions', 'MyPermissions',
     'JobRoles', 'FeatureEligibleUsers', 'UserFeaturePermissions',
+    'Maintenance', 'AccidentReports', 'Technicians',
+    'WorkshopInventory', 'InvestigationRecommendations', 'HrInvestigations', 'WorkshopAccidentReports',
+    'StockTransfers', 'CentralStoreRequests',
   ],
   endpoints: () => ({}),
 });

@@ -1,443 +1,342 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { FaPlane, FaCar, FaBolt, FaBatteryFull, FaGamepad, FaExchangeAlt, FaArrowLeft } from 'react-icons/fa';
-import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { fetchAssets, selectAssets } from '../../store/slices/assetsSlice';
-import { baseApi } from '../../api/services/allEndpoints';
-import { useGetWingsQuery } from '../../api/services/assetsApi';
-import '../../styles/assetsTransfer.css';
+import React, { useMemo, useState } from 'react';
+import {
+  useGetStockTransfersQuery,
+  useCreateStockTransferMutation,
+  useGetWorkshopStockAvailabilityQuery,
+} from '../../api/services NodeJs/centralProcurementApi';
+import {
+  useGetMainCategoriesQuery,
+  useGetSubCategoriesQuery,
+} from '../../api/services NodeJs/stockAssetsApi';
+import { AdminPanel, AdminToolbar } from './shell/AdminStockShell';
 
-const ASSET_TYPES = [
-  { key: 'drones', label: 'Drones', icon: FaPlane },
-  { key: 'vehicles', label: 'Vehicles', icon: FaCar },
-  { key: 'generators', label: 'Generators', icon: FaBolt },
-  { key: 'batteries', label: 'Batteries', icon: FaBatteryFull },
-  { key: 'remoteControls', label: 'Remote Controls', icon: FaGamepad },
-];
+const EMPTY_LINE = { inventory_item_id: '', qty: '', device_serial: '', main_category_id: '', sub_category_id: '' };
+
+function getUserId() {
+  try {
+    return JSON.parse(localStorage.getItem('userData') || '{}')?.id || null;
+  } catch {
+    return null;
+  }
+}
 
 const AssetTransfer = ({ embedded = false }) => {
-  const dispatch = useAppDispatch();
-  const [selectedAssetType, setSelectedAssetType] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showWingModal, setShowWingModal] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState(null);
-  const [selectedWingId, setSelectedWingId] = useState(null);
-  const [updating, setUpdating] = useState(false);
-  const itemsPerPage = 12;
+  const [form, setForm] = useState({
+    remarks: '',
+    destination_type: 'workshop',
+    lines: [{ ...EMPTY_LINE }],
+  });
+  const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState('ok');
+  const [search, setSearch] = useState('');
 
-  const {
-    data: wingsResponse,
-    isLoading: wingsLoading,
-    isError: wingsError,
-    error: wingsErrorDetails,
-  } = useGetWingsQuery();
+  const { data: mainCategoriesData } = useGetMainCategoriesQuery();
+  const { data: subCategoriesData } = useGetSubCategoriesQuery({});
+  const { data: stockData, refetch: refetchStock } = useGetWorkshopStockAvailabilityQuery(
+    search.trim() ? { search: search.trim() } : {}
+  );
+  const { data: transfersData, refetch } = useGetStockTransfersQuery({
+    destination_type: form.destination_type || 'workshop',
+  });
+  const [createTransfer, { isLoading: saving }] = useCreateStockTransferMutation();
 
-  const wings = useMemo(() => {
-    if (!wingsResponse) return [];
-    if (Array.isArray(wingsResponse)) return wingsResponse;
-    if (Array.isArray(wingsResponse?.data)) return wingsResponse.data;
-    if (Array.isArray(wingsResponse?.wings)) return wingsResponse.wings;
-    return [];
-  }, [wingsResponse]);
+  const mainCategories = Array.isArray(mainCategoriesData) ? mainCategoriesData : [];
+  const subCategories = Array.isArray(subCategoriesData) ? subCategoriesData : [];
+  const stockRows = Array.isArray(stockData) ? stockData : [];
+  const transfers = Array.isArray(transfersData) ? transfersData : [];
 
-  const wingIdToName = useMemo(() => {
+  const stockById = useMemo(() => {
     const map = new Map();
-    wings.forEach((wing) => {
-      if (wing?.id != null) {
-        map.set(String(wing.id), wing.wing || '');
-      }
-    });
+    stockRows.forEach((r) => map.set(String(r.inventory_item_id), r));
     return map;
-  }, [wings]);
+  }, [stockRows]);
 
-  const wingsErrorMessage = useMemo(() => {
-    if (!wingsError) return '';
-    if (typeof wingsErrorDetails === 'string') return wingsErrorDetails;
-    if (wingsErrorDetails?.data?.message) return wingsErrorDetails.data.message;
-    if (wingsErrorDetails?.error) return wingsErrorDetails.error;
-    if (wingsErrorDetails?.message) return wingsErrorDetails.message;
-    return 'Unable to load wings.';
-  }, [wingsError, wingsErrorDetails]);
+  const availableCount = useMemo(
+    () => stockRows.filter((r) => Number(r.current_stock) > 0).length,
+    [stockRows]
+  );
 
-  const extractWingId = (asset) => {
-    const candidates = [asset?.wing_id, asset?.wingId, asset?.wingID, asset?.sector_id, asset?.sectorId];
-    for (const candidate of candidates) {
-      if (candidate === undefined || candidate === null || candidate === '') continue;
-      const parsed = Number.parseInt(candidate, 10);
-      if (!Number.isNaN(parsed)) {
-        return String(parsed);
+  const itemsForLine = (line) => {
+    let list = stockRows.filter((r) => Number(r.current_stock) > 0);
+    if (line.main_category_id) {
+      list = list.filter((r) => Number(r.main_category_id) === Number(line.main_category_id));
+    }
+    if (line.sub_category_id) {
+      list = list.filter((r) => Number(r.sub_category_id) === Number(line.sub_category_id));
+    }
+    return list;
+  };
+
+  const subsForLine = (line) => {
+    if (!line.main_category_id) return [];
+    return subCategories.filter((s) => Number(s.main_category_id) === Number(line.main_category_id));
+  };
+
+  const updateLine = (idx, key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      lines: prev.lines.map((line, i) => {
+        if (i !== idx) return line;
+        const next = { ...line, [key]: value };
+        if (key === 'main_category_id') {
+          next.sub_category_id = '';
+          next.inventory_item_id = '';
+        }
+        if (key === 'sub_category_id') next.inventory_item_id = '';
+        return next;
+      }),
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const userId = getUserId();
+    if (!userId) {
+      setMessageType('warn');
+      setMessage('Please sign in again.');
+      return;
+    }
+    const lines = form.lines
+      .map((line) => ({
+        inventory_item_id: Number(line.inventory_item_id),
+        qty: Number(line.qty),
+        device_serial: line.device_serial?.trim() || null,
+      }))
+      .filter((x) => x.inventory_item_id > 0 && x.qty > 0);
+    if (!lines.length) {
+      setMessageType('warn');
+      setMessage('Add at least one line with available central stock and quantity.');
+      return;
+    }
+    for (const line of lines) {
+      const avail = stockById.get(String(line.inventory_item_id));
+      if (!avail || Number(avail.current_stock) < line.qty) {
+        setMessageType('warn');
+        setMessage(`Insufficient central stock for item #${line.inventory_item_id}.`);
+        return;
       }
     }
-    return '';
-  };
 
-  const resolveWingValue = (asset) =>
-    asset?.wing ??
-    asset?.wing_name ??
-    asset?.wingName ??
-    asset?.wing_title ??
-    asset?.sector ??
-    asset?.sector_name ??
-    asset?.sectorName ??
-    asset?.sector_title ??
-    '';
-
-  const formatWingDisplay = (asset) => {
-    const wingText = resolveWingValue(asset);
-    const trimmed = wingText ? wingText.trim() : '';
-    const isNumericText = trimmed ? /^\d+$/.test(trimmed) : false;
-    if (trimmed && !isNumericText) {
-      return wingText;
-    }
-    const candidateId = extractWingId(asset) || (isNumericText ? trimmed : '');
-    if (candidateId) {
-      const resolved = wingIdToName.get(String(candidateId));
-      if (resolved) {
-        return resolved;
-      }
-    }
-    return trimmed || 'Not Available';
-  };
-
-  // Get asset counts from Redux
-  const drones = useAppSelector((state) => selectAssets(state, 'drones'));
-  const vehicles = useAppSelector((state) => selectAssets(state, 'vehicles'));
-  const generators = useAppSelector((state) => selectAssets(state, 'generators'));
-  const batteries = useAppSelector((state) => selectAssets(state, 'batteries'));
-  const remoteControls = useAppSelector((state) => selectAssets(state, 'remoteControls'));
-
-  const assetCounts = {
-    drones: drones.length,
-    vehicles: vehicles.length,
-    generators: generators.length,
-    batteries: batteries.length,
-    remoteControls: remoteControls.length,
-  };
-
-  // Fetch counts for all asset types
-  useEffect(() => {
-    ASSET_TYPES.forEach((type) => {
-      dispatch(fetchAssets(type.key));
-    });
-  }, [dispatch]);
-
-  // Fetch assets when an asset type is selected
-  useEffect(() => {
-    if (selectedAssetType) {
-      dispatch(fetchAssets(selectedAssetType));
-    }
-  }, [selectedAssetType, dispatch]);
-
-  // Get current assets based on selected type
-  const getCurrentAssets = () => {
-    switch (selectedAssetType) {
-      case 'drones':
-        return drones;
-      case 'vehicles':
-        return vehicles;
-      case 'generators':
-        return generators;
-      case 'batteries':
-        return batteries;
-      case 'remoteControls':
-        return remoteControls;
-      default:
-        return [];
-    }
-  };
-
-  const handleTransfer = (assetType) => {
-    setSelectedAssetType(assetType);
-    setCurrentPage(1);
-  };
-
-  const handleBackToRegistry = () => {
-    setSelectedAssetType(null);
-    setCurrentPage(1);
-  };
-
-  const handleWingClick = (asset) => {
-    setSelectedAsset(asset);
-    const currentWingId = extractWingId(asset);
-    setSelectedWingId(currentWingId || '');
-    setShowWingModal(true);
-  };
-
-  const handleWingSelect = (wingId) => {
-    setSelectedWingId(wingId);
-  };
-
-  const handleSaveWing = async () => {
-    if (!selectedAsset || !selectedWingId) return;
-
-    setUpdating(true);
     try {
-      let mutation;
-      switch (selectedAssetType) {
-        case 'drones':
-          mutation = baseApi.endpoints.updateAssetsSectorDrone;
-          break;
-        case 'vehicles':
-          mutation = baseApi.endpoints.updateAssetsSectorVehicle;
-          break;
-        case 'generators':
-          mutation = baseApi.endpoints.updateAssetsSectorGenerator;
-          break;
-        case 'remoteControls':
-          mutation = baseApi.endpoints.updateAssetsSectorRemoteControl;
-          break;
-        case 'batteries':
-          mutation = baseApi.endpoints.updateAssetsSectorBattery;
-          break;
-        default:
-          return;
-      }
-
-      const result = await dispatch(
-        mutation.initiate({
-          id: selectedAsset.id,
-          wing_id: selectedWingId,
-        })
-      ).unwrap();
-
-      if (result?.status === true) {
-        // Refresh assets
-        dispatch(fetchAssets(selectedAssetType));
-        setShowWingModal(false);
-        setSelectedAsset(null);
-        setSelectedWingId(null);
-      }
-    } catch (error) {
-      console.error('Error updating wing:', error);
-      const errorMessage = error?.data?.message || error?.message || 'Failed to update wing. Please try again.';
-      if (error?.originalStatus === 404) {
-        alert(`Endpoint not found. The backend endpoint 'update_assets_sector_${selectedAssetType}' may not be implemented yet. Please contact the backend team.`);
-      } else {
-        alert(errorMessage);
-      }
-    } finally {
-      setUpdating(false);
+      await createTransfer({
+        transferred_by: userId,
+        remarks: form.remarks || null,
+        destination_type: form.destination_type || 'workshop',
+        lines,
+      }).unwrap();
+      setForm({ remarks: '', destination_type: form.destination_type || 'workshop', lines: [{ ...EMPTY_LINE }] });
+      setMessageType('ok');
+      setMessage('Transfer completed. Central stock updated.');
+      refetch();
+      refetchStock();
+    } catch (err) {
+      setMessageType('warn');
+      setMessage(err?.data?.message || err?.message || 'Transfer failed.');
     }
   };
 
-  const renderTableHeader = () => {
-    if (selectedAssetType === 'vehicles') {
-      return (
-        <tr>
-          <th>Vehicle No</th>
-          <th>Make</th>
-          <th>Model</th>
-          <th>Wing</th>
-        </tr>
-      );
-    }
-    return (
-      <tr>
-        <th>Tag</th>
-        <th>Model</th>
-        <th>Make</th>
-        <th>Wing</th>
-      </tr>
-    );
-  };
-
-  const renderTableRow = (asset) => {
-    if (selectedAssetType === 'vehicles') {
-      return (
-        <tr key={asset.id}>
-          <td>{asset.vehicle_no || asset.vehicleNo || '-'}</td>
-          <td>{asset.make || '-'}</td>
-          <td>{asset.model || '-'}</td>
-          <td>
-            <button
-              type="button"
-              className="sector-button"
-              onClick={() => handleWingClick(asset)}
-            >
-              {formatWingDisplay(asset)}
-            </button>
-          </td>
-        </tr>
-      );
-    }
-    return (
-      <tr key={asset.id}>
-        <td>{asset.tag || asset.equipment_tag || '-'}</td>
-        <td>{asset.model || '-'}</td>
-        <td>{asset.make || '-'}</td>
-        <td>
-          <button
-            type="button"
-            className="sector-button"
-            onClick={() => handleWingClick(asset)}
-          >
-            {formatWingDisplay(asset)}
-          </button>
-        </td>
-      </tr>
-    );
-  };
-
-  // Pagination logic for cards
-  const totalPages = Math.ceil(ASSET_TYPES.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const displayedTypes = ASSET_TYPES.slice(startIndex, startIndex + itemsPerPage);
-
-  // If showing list view
-  if (selectedAssetType) {
-    const assets = getCurrentAssets();
-    const assetTypeLabel = ASSET_TYPES.find((t) => t.key === selectedAssetType)?.label;
-
-    return (
-      <div className={`assets-transfer-container${embedded ? ' assets-transfer-container--embedded' : ''} admin-stock-body`}>
-        <div className="assets-transfer-header">
-          <button type="button" className="back-button admin-stock-btn" onClick={handleBackToRegistry}>
-            <FaArrowLeft /> Back to Registry
-          </button>
-          <h3>Transfer {assetTypeLabel}</h3>
-        </div>
-
-        <div className="assets-transfer-table-container admin-stock-table-wrap">
-          <table className="assets-transfer-table admin-stock-table">
-            <thead>{renderTableHeader()}</thead>
-            <tbody>
-              {assets.length === 0 ? (
-                <tr>
-                  <td colSpan="4" className="no-data">
-                    No {assetTypeLabel.toLowerCase()} found
-                  </td>
-                </tr>
-              ) : (
-                assets.map((asset) => renderTableRow(asset))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Wing Selection Modal */}
-        {showWingModal && (
-          <div className="sector-modal-overlay" onClick={() => {
-            setShowWingModal(false);
-            setSelectedWingId(null);
-          }}>
-            <div className="sector-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="sector-modal-header">
-                <h3>Select Wing</h3>
-                <button
-                  type="button"
-                  className="close-button"
-                  onClick={() => {
-                    setShowWingModal(false);
-                    setSelectedWingId(null);
-                  }}
-                >
-                  ×
-                </button>
-              </div>
-              <div className="sector-modal-content">
-                {wingsLoading ? (
-                  <div className="loading">Loading wings...</div>
-                ) : wingsError ? (
-                  <div className="loading error">{wingsErrorMessage}</div>
-                ) : (
-                  <div className="sector-list">
-                    {wings.map((wing) => (
-                      <button
-                        key={wing.id}
-                        type="button"
-                        className={`sector-option ${selectedWingId === String(wing.id) ? 'selected' : ''}`}
-                        onClick={() => handleWingSelect(String(wing.id))}
-                      >
-                        {wing.wing}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div className="sector-modal-footer">
-                <button
-                  type="button"
-                  className="cancel-button"
-                  onClick={() => {
-                    setShowWingModal(false);
-                    setSelectedWingId(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="save-button"
-                  onClick={handleSaveWing}
-                  disabled={!selectedWingId || updating}
-                >
-                  {updating ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Card view
   return (
     <div className={`assets-transfer-container${embedded ? ' assets-transfer-container--embedded' : ''} admin-stock-body`}>
-      <div className="assets-transfer-grid">
-        {displayedTypes.map((type) => {
-          const Icon = type.icon;
-          const count = assetCounts[type.key] || 0;
+      {!embedded ? (
+        <h2 className="admin-stock-title" style={{ marginBottom: 12 }}>Asset Transfer</h2>
+      ) : null}
 
-          return (
-            <div key={type.key} className="asset-transfer-card">
-              <div className="asset-icon-wrapper">
-                <Icon className="asset-icon" />
-              </div>
-              <div className="asset-info">
-                <div className="asset-name">{type.label}</div>
-                <div className="asset-count">Count: {count}</div>
-              </div>
-              <div className="transfer-button-container">
-                <button
-                  type="button"
-                  className="transfer-button admin-stock-btn admin-stock-btn--primary"
-                  onClick={() => handleTransfer(type.key)}
+      <div className="admin-stock-stack">
+        {message ? (
+          <div className={`admin-stock-msg admin-stock-msg--${messageType === 'ok' ? 'ok' : 'warn'}`}>
+            {message}
+          </div>
+        ) : null}
+
+        <AdminToolbar>
+          <div className="admin-stock-field" style={{ flex: 1, minWidth: 200, marginBottom: 0 }}>
+            <label htmlFor="xfer-search">Find stock</label>
+            <input
+              id="xfer-search"
+              type="search"
+              placeholder="Search item code or name…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="admin-stock-field" style={{ marginBottom: 0 }}>
+            <label>Available SKUs</label>
+            <div style={{ padding: '10px 12px', fontWeight: 650, color: '#1a5f7a' }}>
+              {availableCount}
+            </div>
+          </div>
+        </AdminToolbar>
+
+        <AdminPanel>
+          <h3 className="admin-stock-section-title">New transfer</h3>
+          <p className="admin-stock-section-hint">
+            Move Central Stores stock to a destination (e.g. workshop). Destination custody is updated when supported.
+          </p>
+
+          <form onSubmit={handleSubmit}>
+            <div className="admin-stock-grid-2">
+              <div className="admin-stock-field">
+                <label htmlFor="xfer-dest">Destination *</label>
+                <select
+                  id="xfer-dest"
+                  value={form.destination_type}
+                  onChange={(e) => setForm((p) => ({ ...p, destination_type: e.target.value }))}
+                  required
                 >
-                  <FaExchangeAlt className="transfer-icon" />
-                  Transfer
-                </button>
+                  <option value="workshop">Workshop</option>
+                  <option value="wing" disabled>Wing (coming soon)</option>
+                </select>
+              </div>
+              <div className="admin-stock-field">
+                <label htmlFor="xfer-remarks">Remarks</label>
+                <textarea
+                  id="xfer-remarks"
+                  rows={2}
+                  value={form.remarks}
+                  onChange={(e) => setForm((p) => ({ ...p, remarks: e.target.value }))}
+                  placeholder="Optional note for this transfer"
+                />
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {totalPages > 1 && (
-        <div className="pagination">
-          <button
-            type="button"
-            className="pagination-button"
-            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </button>
-          <span className="pagination-info">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            type="button"
-            className="pagination-button"
-            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </button>
-        </div>
-      )}
+            <h3 className="admin-stock-section-title" style={{ marginTop: 8 }}>Lines</h3>
+            {form.lines.map((line, idx) => {
+              const selected = stockById.get(String(line.inventory_item_id));
+              return (
+                <div key={`xfer-${idx}`} className="admin-stock-line admin-stock-line--transfer">
+                  <div className="admin-stock-field">
+                    <label>Main category</label>
+                    <select
+                      value={line.main_category_id}
+                      onChange={(e) => updateLine(idx, 'main_category_id', e.target.value)}
+                    >
+                      <option value="">All</option>
+                      {mainCategories.map((c) => (
+                        <option key={c.id} value={c.id}>{c.category_name || c.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-stock-field">
+                    <label>Sub category</label>
+                    <select
+                      value={line.sub_category_id}
+                      onChange={(e) => updateLine(idx, 'sub_category_id', e.target.value)}
+                    >
+                      <option value="">All</option>
+                      {subsForLine(line).map((s) => (
+                        <option key={s.id} value={s.id}>{s.sub_category_name || s.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-stock-field">
+                    <label>Item (in stock) *</label>
+                    <select
+                      value={line.inventory_item_id}
+                      onChange={(e) => updateLine(idx, 'inventory_item_id', e.target.value)}
+                      required
+                    >
+                      <option value="">Select item</option>
+                      {itemsForLine(line).map((item) => (
+                        <option key={item.inventory_item_id} value={item.inventory_item_id}>
+                          {item.item_code} — {item.item_name} ({item.current_stock})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="admin-stock-field">
+                    <label>Qty *</label>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={line.qty}
+                      onChange={(e) => updateLine(idx, 'qty', e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="admin-stock-field">
+                    <label>Serial</label>
+                    <input
+                      type="text"
+                      value={line.device_serial}
+                      onChange={(e) => updateLine(idx, 'device_serial', e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    className="admin-stock-btn admin-stock-btn--ghost"
+                    onClick={() => setForm((p) => ({
+                      ...p,
+                      lines: p.lines.length > 1 ? p.lines.filter((_, i) => i !== idx) : [{ ...EMPTY_LINE }],
+                    }))}
+                  >
+                    Remove
+                  </button>
+                  {selected ? (
+                    <div className="admin-stock-line-meta">
+                      Available central stock: <strong>{selected.current_stock}</strong>
+                      {selected.main_category_name ? ` · ${selected.main_category_name}` : ''}
+                      {selected.sub_category_name ? ` / ${selected.sub_category_name}` : ''}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+
+            <div className="admin-stock-actions">
+              <button
+                type="button"
+                className="admin-stock-btn"
+                onClick={() => setForm((p) => ({ ...p, lines: [...p.lines, { ...EMPTY_LINE }] }))}
+              >
+                + Add line
+              </button>
+              <button type="submit" className="admin-stock-btn admin-stock-btn--primary" disabled={saving}>
+                {saving ? 'Transferring…' : 'Submit transfer'}
+              </button>
+            </div>
+          </form>
+        </AdminPanel>
+
+        <AdminPanel>
+          <h3 className="admin-stock-section-title">Recent transfers</h3>
+          <div className="admin-stock-table-wrap" style={{ boxShadow: 'none' }}>
+            <table className="admin-stock-table">
+              <thead>
+                <tr>
+                  <th>Transfer</th>
+                  <th>By</th>
+                  <th>Lines</th>
+                  <th>Total qty</th>
+                  <th>When</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transfers.length ? (
+                  transfers.map((t) => (
+                    <tr key={t.id}>
+                      <td><strong>#{t.id}</strong></td>
+                      <td>{t.transferred_by_name || t.transferred_by || '—'}</td>
+                      <td>{t.line_count ?? '—'}</td>
+                      <td>{t.total_qty ?? '—'}</td>
+                      <td>{t.transferred_at ? String(t.transferred_at).slice(0, 19).replace('T', ' ') : '—'}</td>
+                      <td>{t.remarks || '—'}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="admin-stock-empty">No transfers yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </AdminPanel>
+      </div>
     </div>
   );
 };
 
 export default AssetTransfer;
-

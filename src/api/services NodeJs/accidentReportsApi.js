@@ -258,6 +258,27 @@ export const accidentReportsApi = baseApi.injectEndpoints({
       invalidatesTags: ['AccidentReports', 'Maintenance'],
     }),
 
+    recommendInvestigation: builder.mutation({
+      queryFn: async ({ id, ...body }) => {
+        try {
+          const result = await nodeBackendBaseQuery(
+            {
+              url: `/api/accident-reports/${id}/recommend-investigation`,
+              method: 'POST',
+              body,
+            },
+            {},
+            {}
+          );
+          if (result.error) return { error: result.error };
+          return { data: result.data?.data || result.data || null };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+      invalidatesTags: ['AccidentReports', 'InvestigationRecommendations'],
+    }),
+
     // Get pilots for filter dropdown
     getPilots: builder.query({
       queryFn: async () => {
@@ -297,6 +318,7 @@ export const {
   useSubmitInvestigationReviewMutation,
   useCompleteInvestigationMutation,
   useApproveAccidentReportMutation,
+  useRecommendInvestigationMutation,
   useGetPilotsQuery,
 } = accidentReportsApi;
 

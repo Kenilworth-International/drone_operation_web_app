@@ -1,11 +1,24 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FaFilter, FaTimes, FaEye, FaEdit, FaCheck, FaExclamationTriangle, FaBan, FaPlus } from 'react-icons/fa';
+import {
+  FaFilter,
+  FaTimes,
+  FaEye,
+  FaEdit,
+  FaCheck,
+  FaExclamationTriangle,
+  FaBan,
+  FaPlus,
+  FaSearch,
+} from 'react-icons/fa';
 import {
   useGetMaintenanceQuery,
   useUpdateMaintenanceStatusMutation,
   useGetTechniciansQuery,
   useCreateMaintenanceMutation,
 } from '../../api/services NodeJs/maintenanceApi';
+import MaintenanceDetailStory, {
+  MaintenanceProgressPills,
+} from './maintenance/MaintenanceDetailStory';
 import '../../styles/maintenance.css';
 
 const Maintenance = () => {
@@ -21,7 +34,12 @@ const Maintenance = () => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [statusForm, setStatusForm] = useState({ status: '', status_reason: '', completed_date: '', repair_notes: '' });
+  const [statusForm, setStatusForm] = useState({
+    status: '',
+    status_reason: '',
+    completed_date: '',
+    repair_notes: '',
+  });
   const [addForm, setAddForm] = useState({
     device_serial: '',
     technician_id: '',
@@ -30,24 +48,21 @@ const Maintenance = () => {
   });
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const getCurrentUserId = () => {
     const userData = JSON.parse(localStorage.getItem('userData') || '{}');
     return userData?.id || null;
   };
 
-  // Clean filters
   const cleanFilters = useMemo(() => {
     const cleaned = {};
-    Object.keys(filters).forEach(key => {
-      if (filters[key] && filters[key] !== '') {
-        cleaned[key] = filters[key];
-      }
+    Object.keys(filters).forEach((key) => {
+      if (filters[key] && filters[key] !== '') cleaned[key] = filters[key];
     });
     return cleaned;
   }, [filters]);
 
-  // Fetch data
   const { data: maintenanceData, isLoading, error, refetch } = useGetMaintenanceQuery(cleanFilters);
   const { data: techniciansData } = useGetTechniciansQuery();
   const [updateStatus] = useUpdateMaintenanceStatusMutation();
@@ -63,30 +78,44 @@ const Maintenance = () => {
     }
   }, [message, messageType]);
 
-  const maintenance = Array.isArray(maintenanceData) ? maintenanceData : (maintenanceData ? [maintenanceData] : []);
-  const technicians = Array.isArray(techniciansData) ? techniciansData : (techniciansData ? [techniciansData] : []);
+  const maintenance = Array.isArray(maintenanceData)
+    ? maintenanceData
+    : maintenanceData
+      ? [maintenanceData]
+      : [];
+  const technicians = Array.isArray(techniciansData)
+    ? techniciansData
+    : techniciansData
+      ? [techniciansData]
+      : [];
 
-  // Filter maintenance based on search
-  const [searchTerm, setSearchTerm] = useState('');
   const filteredMaintenance = useMemo(() => {
-    if (!maintenance || !Array.isArray(maintenance) || maintenance.length === 0) {
-      return [];
-    }
-    if (!searchTerm || searchTerm.trim() === '') {
-      return maintenance;
-    }
+    if (!maintenance || !Array.isArray(maintenance) || maintenance.length === 0) return [];
+    if (!searchTerm || searchTerm.trim() === '') return maintenance;
     const term = searchTerm.toLowerCase().trim();
-    return maintenance.filter(record => {
+    return maintenance.filter((record) => {
       if (!record) return false;
       return (
-        (record.drone_tag && String(record.drone_tag).toLowerCase().includes(term)) ||
-        (record.drone_serial && String(record.drone_serial).toLowerCase().includes(term)) ||
-        (record.technician_name && String(record.technician_name).toLowerCase().includes(term)) ||
-        (record.creator_name && String(record.creator_name).toLowerCase().includes(term)) ||
-        (record.description && String(record.description).toLowerCase().includes(term))
+        String(record.id || '').includes(term)
+        || String(record.incident_id || '').includes(term)
+        || (record.drone_tag && String(record.drone_tag).toLowerCase().includes(term))
+        || (record.drone_serial && String(record.drone_serial).toLowerCase().includes(term))
+        || (record.technician_name && String(record.technician_name).toLowerCase().includes(term))
+        || (record.creator_name && String(record.creator_name).toLowerCase().includes(term))
+        || (record.description && String(record.description).toLowerCase().includes(term))
+        || (record.repair_notes && String(record.repair_notes).toLowerCase().includes(term))
+        || (record.suggestions && String(record.suggestions).toLowerCase().includes(term))
       );
     });
   }, [maintenance, searchTerm]);
+
+  const statusCounts = useMemo(() => {
+    const counts = { p: 0, c: 0, pc: 0, z: 0 };
+    maintenance.forEach((r) => {
+      if (r?.status && counts[r.status] !== undefined) counts[r.status] += 1;
+    });
+    return counts;
+  }, [maintenance]);
 
   const handleViewDetails = (record) => {
     setSelectedMaintenance(record);
@@ -197,7 +226,7 @@ const Maintenance = () => {
   };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
   const clearFilters = () => {
@@ -211,7 +240,7 @@ const Maintenance = () => {
   };
 
   const formatDate = (date) => {
-    if (!date) return 'N/A';
+    if (!date) return '—';
     try {
       return new Date(date).toLocaleDateString();
     } catch {
@@ -221,15 +250,18 @@ const Maintenance = () => {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'p': { label: 'Pending', color: '#f59e0b', icon: FaExclamationTriangle },
-      'c': { label: 'Complete', color: '#10b981', icon: FaCheck },
-      'pc': { label: 'Partially Complete', color: '#3b82f6', icon: FaEdit },
-      'z': { label: 'Cannot Rebuild', color: '#ef4444', icon: FaBan },
+      p: { label: 'Pending', color: '#c47a12', icon: FaExclamationTriangle },
+      c: { label: 'Complete', color: '#0f7a4f', icon: FaCheck },
+      pc: { label: 'Partial', color: '#1d6fb8', icon: FaEdit },
+      z: { label: 'Cannot rebuild', color: '#b42318', icon: FaBan },
     };
-    const config = statusConfig[status] || statusConfig['p'];
+    const config = statusConfig[status] || statusConfig.p;
     const Icon = config.icon;
     return (
-      <span className="maintenance-status-badge-maintenance" style={{ backgroundColor: config.color + '20', color: config.color }}>
+      <span
+        className="maintenance-status-badge-maintenance"
+        style={{ backgroundColor: `${config.color}18`, color: config.color }}
+      >
         <Icon style={{ marginRight: '4px' }} />
         {config.label}
       </span>
@@ -237,42 +269,62 @@ const Maintenance = () => {
   };
 
   return (
-    <div className="maintenance-container-maintenance">
-      <div className="maintenance-header-maintenance">
-        <h1>Maintenance Management</h1>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button
-            type="button"
-            onClick={handleOpenAddModal}
-            className="maintenance-button-primary-maintenance"
-          >
-            <FaPlus /> Add Maintenance
+    <div className="maintenance-container-maintenance maint-page">
+      <div className="maint-page-header">
+        <div>
+          <h1>Maintenance Management</h1>
+          <p className="maint-page-subtitle">
+            Track each job from incident report → condition → repair → technician.
+          </p>
+        </div>
+        <div className="maint-page-actions">
+          <button type="button" onClick={handleOpenAddModal} className="maintenance-button-primary-maintenance">
+            <FaPlus /> Add job
           </button>
           <button
+            type="button"
             onClick={() => setShowFilters(!showFilters)}
             className="maintenance-filter-button-maintenance"
           >
-            <FaFilter /> {showFilters ? 'Hide' : 'Show'} Filters
+            <FaFilter /> {showFilters ? 'Hide filters' : 'Filters'}
           </button>
         </div>
       </div>
 
-      {message && (
-        <div className={`maintenance-feedback-maintenance ${messageType}`}>
-          {message}
+      <div className="maint-stat-row">
+        <div className="maint-stat">
+          <span className="maint-stat-value">{maintenance.length}</span>
+          <span className="maint-stat-label">Total</span>
         </div>
-      )}
+        <div className="maint-stat maint-stat--pending">
+          <span className="maint-stat-value">{statusCounts.p}</span>
+          <span className="maint-stat-label">Pending</span>
+        </div>
+        <div className="maint-stat maint-stat--done">
+          <span className="maint-stat-value">{statusCounts.c}</span>
+          <span className="maint-stat-label">Complete</span>
+        </div>
+        <div className="maint-stat maint-stat--partial">
+          <span className="maint-stat-value">{statusCounts.pc}</span>
+          <span className="maint-stat-label">Partial</span>
+        </div>
+      </div>
 
-      {/* Filters */}
-      {showFilters && (
+      {message ? (
+        <div className={`maintenance-feedback-maintenance ${messageType}`}>{message}</div>
+      ) : null}
+
+      {showFilters ? (
         <div className="maintenance-filters-maintenance">
           <div className="maintenance-filters-header-maintenance">
             <h3>Filters</h3>
-            <button onClick={clearFilters} className="maintenance-clear-filters-maintenance">Clear All</button>
+            <button type="button" onClick={clearFilters} className="maintenance-clear-filters-maintenance">
+              Clear all
+            </button>
           </div>
           <div className="maintenance-filter-grid-maintenance">
             <div className="maintenance-filter-group-maintenance">
-              <label>Start Date</label>
+              <label>Start date</label>
               <input
                 type="date"
                 value={filters.start_date}
@@ -281,7 +333,7 @@ const Maintenance = () => {
               />
             </div>
             <div className="maintenance-filter-group-maintenance">
-              <label>End Date</label>
+              <label>End date</label>
               <input
                 type="date"
                 value={filters.end_date}
@@ -296,11 +348,11 @@ const Maintenance = () => {
                 onChange={(e) => handleFilterChange('status', e.target.value)}
                 className="maintenance-filter-select-maintenance"
               >
-                <option value="">All Status</option>
+                <option value="">All</option>
                 <option value="p">Pending</option>
                 <option value="c">Complete</option>
-                <option value="pc">Partially Complete</option>
-                <option value="z">Cannot Rebuild</option>
+                <option value="pc">Partially complete</option>
+                <option value="z">Cannot rebuild</option>
               </select>
             </div>
             <div className="maintenance-filter-group-maintenance">
@@ -310,8 +362,8 @@ const Maintenance = () => {
                 onChange={(e) => handleFilterChange('technician_id', e.target.value)}
                 className="maintenance-filter-select-maintenance"
               >
-                <option value="">All Technicians</option>
-                {technicians.map(tech => (
+                <option value="">All</option>
+                {technicians.map((tech) => (
                   <option key={tech.id} value={tech.id}>{tech.name}</option>
                 ))}
               </select>
@@ -322,93 +374,105 @@ const Maintenance = () => {
                 type="number"
                 value={filters.incident_id}
                 onChange={(e) => handleFilterChange('incident_id', e.target.value)}
-                placeholder="Filter by incident ID"
+                placeholder="e.g. 42"
                 className="maintenance-filter-input-maintenance"
               />
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Search Bar */}
-      <div className="maintenance-search-bar-maintenance">
-        <input
-          type="text"
-          placeholder="Search by drone tag, serial, technician, creator, description..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="maintenance-search-input-maintenance"
-        />
+      <div className="maint-toolbar">
+        <div className="maint-search-wrap">
+          <FaSearch className="maint-search-icon" aria-hidden />
+          <input
+            type="text"
+            placeholder="Search job, incident, serial, technician, repair notes…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="maintenance-search-input-maintenance"
+          />
+        </div>
+        <div className="maint-toolbar-count">
+          {isLoading ? 'Loading…' : `${filteredMaintenance.length} job(s)`}
+        </div>
       </div>
 
-      {/* Status Info */}
-      <div className="maintenance-status-info-maintenance">
-        <strong>Status:</strong> {isLoading ? 'Loading...' : `Found ${filteredMaintenance?.length || 0} record(s) out of ${maintenance.length} total`}
-      </div>
-
-      {/* Maintenance Table */}
-      <div className="maintenance-table-wrapper-maintenance">
+      <div className="maintenance-table-wrapper-maintenance maint-table-shell">
         <table className="maintenance-table-maintenance">
           <thead>
             <tr>
-              <th>ID</th>
-              <th>Incident ID</th>
-              <th>Drone Tag</th>
-              <th>Drone Serial</th>
+              <th>Job</th>
+              <th>Asset</th>
+              <th>Source</th>
               <th>Technician</th>
-              <th>Created By</th>
-              <th>Scheduled Date</th>
-              <th>Completed Date</th>
+              <th>Progress</th>
               <th>Status</th>
-              <th>Description</th>
+              <th>Scheduled</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan="11" className="maintenance-loading-cell-maintenance">
-                  <strong>Loading maintenance records...</strong>
+                <td colSpan="8" className="maintenance-loading-cell-maintenance">
+                  Loading maintenance jobs…
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan="11" className="maintenance-error-cell-maintenance">
-                  <strong>Unable to load records.</strong> Refresh the page and try again.
+                <td colSpan="8" className="maintenance-error-cell-maintenance">
+                  Unable to load records. Refresh and try again.
                 </td>
               </tr>
             ) : Array.isArray(filteredMaintenance) && filteredMaintenance.length > 0 ? (
               filteredMaintenance.map((record, index) => {
-                if (!record || !record.id) {
-                  return null;
-                }
+                if (!record || !record.id) return null;
                 return (
                   <tr key={`maintenance-${record.id}-${index}`}>
-                    <td>{record.id}</td>
-                    <td>{record.incident_id ? `#${record.incident_id}` : 'N/A'}</td>
-                    <td>{record.drone_tag || 'N/A'}</td>
-                    <td>{record.drone_serial || 'N/A'}</td>
-                    <td>{record.technician_name || 'N/A'}</td>
-                    <td>{record.creator_name || 'N/A'}</td>
-                    <td>{formatDate(record.scheduled_date)}</td>
-                    <td>{formatDate(record.completed_date)}</td>
-                    <td>{getStatusBadge(record.status)}</td>
-                    <td className="maintenance-description-cell-maintenance">
-                      {record.description ? (record.description.length > 50 ? record.description.substring(0, 50) + '...' : record.description) : 'N/A'}
+                    <td>
+                      <button
+                        type="button"
+                        className="maint-job-link"
+                        onClick={() => handleViewDetails(record)}
+                      >
+                        #{record.id}
+                      </button>
                     </td>
+                    <td>
+                      <div className="maint-asset-cell">
+                        <strong>{record.drone_tag || record.drone_serial || '—'}</strong>
+                        {record.drone_tag && record.drone_serial ? (
+                          <span>{record.drone_serial}</span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td>
+                      {record.incident_id ? (
+                        <span className="maint-source-chip">Incident #{record.incident_id}</span>
+                      ) : (
+                        <span className="maint-source-chip maint-source-chip--muted">Standalone</span>
+                      )}
+                    </td>
+                    <td>{record.technician_name || 'Unassigned'}</td>
+                    <td><MaintenanceProgressPills record={record} /></td>
+                    <td>{getStatusBadge(record.status)}</td>
+                    <td>{formatDate(record.scheduled_date)}</td>
                     <td>
                       <div className="maintenance-actions-maintenance">
                         <button
+                          type="button"
                           onClick={() => handleViewDetails(record)}
                           className="maintenance-action-button-maintenance"
-                          title="View Details"
+                          title="View repair story"
                         >
                           <FaEye />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleStatusUpdate(record)}
                           className="maintenance-action-button-maintenance"
-                          title="Update Status"
+                          title="Update status"
                         >
                           <FaEdit />
                         </button>
@@ -419,8 +483,8 @@ const Maintenance = () => {
               })
             ) : (
               <tr>
-                <td colSpan="11" className="maintenance-empty-cell-maintenance">
-                  <strong>No maintenance records found</strong>
+                <td colSpan="8" className="maintenance-empty-cell-maintenance">
+                  No maintenance jobs found
                 </td>
               </tr>
             )}
@@ -428,57 +492,52 @@ const Maintenance = () => {
         </table>
       </div>
 
-      {/* Details Modal */}
-      {showDetailsModal && selectedMaintenance && (
-        <div className="maintenance-modal-overlay-maintenance">
-          <div className="maintenance-modal-content-maintenance">
+      {showDetailsModal && selectedMaintenance ? (
+        <div className="maintenance-modal-overlay-maintenance" role="presentation">
+          <div
+            className="maintenance-modal-content-maintenance maint-modal--story"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="maint-detail-title"
+          >
             <div className="maintenance-modal-header-maintenance">
-              <h2>Maintenance Record Details</h2>
-              <button onClick={handleCloseDetails} className="maintenance-modal-close-maintenance">
+              <div>
+                <h2 id="maint-detail-title">Repair story</h2>
+                <p className="maint-modal-subtitle">Report → condition → what was fixed → who fixed</p>
+              </div>
+              <button type="button" onClick={handleCloseDetails} className="maintenance-modal-close-maintenance" aria-label="Close">
                 <FaTimes />
               </button>
             </div>
-            <div className="maintenance-modal-details-grid-maintenance">
-              <div><strong>ID:</strong> {selectedMaintenance.id}</div>
-              <div><strong>Incident ID:</strong> {selectedMaintenance.incident_id || 'N/A'}</div>
-              <div><strong>Drone Tag:</strong> {selectedMaintenance.drone_tag || 'N/A'}</div>
-              <div><strong>Drone Serial:</strong> {selectedMaintenance.drone_serial || 'N/A'}</div>
-              <div><strong>Technician:</strong> {selectedMaintenance.technician_name || 'N/A'}</div>
-              <div><strong>Created By:</strong> {selectedMaintenance.creator_name || 'N/A'}</div>
-              <div><strong>Scheduled Date:</strong> {formatDate(selectedMaintenance.scheduled_date)}</div>
-              <div><strong>Completed Date:</strong> {formatDate(selectedMaintenance.completed_date)}</div>
-              <div><strong>Status:</strong> {getStatusBadge(selectedMaintenance.status)}</div>
-              {selectedMaintenance.status_reason && (
-                <div><strong>Status Reason:</strong> {selectedMaintenance.status_reason}</div>
-              )}
-              <div className="maintenance-description-full-maintenance">
-                <strong>Description:</strong>
-                <p>{selectedMaintenance.description || 'N/A'}</p>
-              </div>
-              {selectedMaintenance.suggestions ? (
-                <div className="maintenance-description-full-maintenance">
-                  <strong>Suggestions:</strong>
-                  <p>{selectedMaintenance.suggestions}</p>
-                </div>
-              ) : null}
-              {selectedMaintenance.repair_notes ? (
-                <div className="maintenance-description-full-maintenance">
-                  <strong>What was repaired:</strong>
-                  <p>{selectedMaintenance.repair_notes}</p>
-                </div>
-              ) : null}
+            <MaintenanceDetailStory
+              record={selectedMaintenance}
+              statusBadge={getStatusBadge(selectedMaintenance.status)}
+            />
+            <div className="maint-modal-footer">
+              <button type="button" onClick={handleCloseDetails} className="maintenance-button-secondary-maintenance">
+                Close
+              </button>
+              <button
+                type="button"
+                className="maintenance-button-primary-maintenance"
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  handleStatusUpdate(selectedMaintenance);
+                }}
+              >
+                Update status
+              </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Status Update Modal */}
-      {showStatusModal && selectedMaintenance && (
+      {showStatusModal && selectedMaintenance ? (
         <div className="maintenance-modal-overlay-maintenance">
           <div className="maintenance-modal-content-maintenance">
             <div className="maintenance-modal-header-maintenance">
-              <h2>Update Maintenance Status</h2>
-              <button onClick={handleCloseStatusModal} className="maintenance-modal-close-maintenance">
+              <h2>Update job #{selectedMaintenance.id}</h2>
+              <button type="button" onClick={handleCloseStatusModal} className="maintenance-modal-close-maintenance">
                 <FaTimes />
               </button>
             </div>
@@ -487,26 +546,26 @@ const Maintenance = () => {
                 <label>Status *</label>
                 <select
                   value={statusForm.status}
-                  onChange={(e) => setStatusForm(prev => ({ ...prev, status: e.target.value }))}
+                  onChange={(e) => setStatusForm((prev) => ({ ...prev, status: e.target.value }))}
                   required
                   className="maintenance-form-input-maintenance"
                 >
                   <option value="p">Pending</option>
                   <option value="c">Complete</option>
-                  <option value="pc">Partially Complete</option>
-                  <option value="z">Cannot Rebuild</option>
+                  <option value="pc">Partially complete</option>
+                  <option value="z">Cannot rebuild</option>
                 </select>
               </div>
               {(statusForm.status === 'pc' || statusForm.status === 'z') && (
                 <div className="maintenance-form-group-maintenance">
-                  <label>Status Reason *</label>
+                  <label>Status reason *</label>
                   <textarea
                     value={statusForm.status_reason}
-                    onChange={(e) => setStatusForm(prev => ({ ...prev, status_reason: e.target.value }))}
+                    onChange={(e) => setStatusForm((prev) => ({ ...prev, status_reason: e.target.value }))}
                     required
                     className="maintenance-form-textarea-maintenance"
-                    rows="4"
-                    placeholder="Enter reason for this status"
+                    rows="3"
+                    placeholder="Why this status"
                   />
                 </div>
               )}
@@ -515,21 +574,21 @@ const Maintenance = () => {
                   <label>What was repaired *</label>
                   <textarea
                     value={statusForm.repair_notes}
-                    onChange={(e) => setStatusForm(prev => ({ ...prev, repair_notes: e.target.value }))}
+                    onChange={(e) => setStatusForm((prev) => ({ ...prev, repair_notes: e.target.value }))}
                     required
                     className="maintenance-form-textarea-maintenance"
                     rows="4"
-                    placeholder="Describe what was repaired / work performed"
+                    placeholder="Describe what was fixed"
                   />
                 </div>
               )}
               {statusForm.status === 'c' && (
                 <div className="maintenance-form-group-maintenance">
-                  <label>Completed Date</label>
+                  <label>Completed date</label>
                   <input
                     type="date"
                     value={statusForm.completed_date}
-                    onChange={(e) => setStatusForm(prev => ({ ...prev, completed_date: e.target.value }))}
+                    onChange={(e) => setStatusForm((prev) => ({ ...prev, completed_date: e.target.value }))}
                     className="maintenance-form-input-maintenance"
                   />
                 </div>
@@ -539,34 +598,33 @@ const Maintenance = () => {
                   Cancel
                 </button>
                 <button type="submit" className="maintenance-button-primary-maintenance">
-                  Update Status
+                  Save
                 </button>
               </div>
             </form>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Add Maintenance Modal */}
-      {showAddModal && (
+      {showAddModal ? (
         <div className="maintenance-modal-overlay-maintenance">
           <div className="maintenance-modal-content-maintenance">
             <div className="maintenance-modal-header-maintenance">
-              <h2>Add Maintenance Record</h2>
-              <button onClick={handleCloseAddModal} className="maintenance-modal-close-maintenance">
+              <h2>Add maintenance job</h2>
+              <button type="button" onClick={handleCloseAddModal} className="maintenance-modal-close-maintenance">
                 <FaTimes />
               </button>
             </div>
             <form onSubmit={handleAddSubmit} className="maintenance-status-form-maintenance">
               <div className="maintenance-form-group-maintenance">
-                <label>Drone Device Serial *</label>
+                <label>Device serial *</label>
                 <input
                   type="text"
                   value={addForm.device_serial}
                   onChange={(e) => setAddForm((prev) => ({ ...prev, device_serial: e.target.value }))}
                   required
                   className="maintenance-form-input-maintenance"
-                  placeholder="Enter drone serial number"
+                  placeholder="Drone serial"
                 />
               </div>
               <div className="maintenance-form-group-maintenance">
@@ -583,18 +641,18 @@ const Maintenance = () => {
                 </select>
               </div>
               <div className="maintenance-form-group-maintenance">
-                <label>Description *</label>
+                <label>Condition / work required *</label>
                 <textarea
                   value={addForm.description}
                   onChange={(e) => setAddForm((prev) => ({ ...prev, description: e.target.value }))}
                   required
                   className="maintenance-form-textarea-maintenance"
                   rows="4"
-                  placeholder="Describe the maintenance work required"
+                  placeholder="What is wrong / what needs doing"
                 />
               </div>
               <div className="maintenance-form-group-maintenance">
-                <label>Scheduled Date</label>
+                <label>Scheduled date</label>
                 <input
                   type="date"
                   value={addForm.scheduled_date}
@@ -607,16 +665,15 @@ const Maintenance = () => {
                   Cancel
                 </button>
                 <button type="submit" disabled={isCreating} className="maintenance-button-primary-maintenance">
-                  {isCreating ? 'Saving...' : 'Create'}
+                  {isCreating ? 'Saving…' : 'Create'}
                 </button>
               </div>
             </form>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 };
 
 export default Maintenance;
-

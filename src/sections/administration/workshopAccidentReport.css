@@ -1,0 +1,108 @@
+.war-page .war-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.war-tab {
+  border: 1px solid #d8e0e8;
+  background: #f4f7fa;
+  color: #5b6b7c;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.war-tab--active {
+  background: #004b71;
+  border-color: #004b71;
+  color: #fff;
+}
+
+.war-panel {
+  background: #fff;
+  border: 1px solid #d8e0e8;
+  border-radius: 10px;
+  padding: 1.1rem 1.25rem;
+}
+
+.war-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.war-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #1a2b3c;
+}
+
+.war-field span {
+  font-weight: 600;
+  color: #5b6b7c;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.war-field input,
+.war-field select,
+.war-field textarea,
+.war-check-row select,
+.war-damage-row input {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #d8e0e8;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.war-field--full {
+  grid-column: 1 / -1;
+}
+
+.war-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.war-check-row {
+  display: grid;
+  grid-template-columns: 1fr 110px;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.war-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.war-stack h3 {
+  margin: 0;
+  color: #004b71;
+  font-size: 1rem;
+}
+
+.war-damage-row {
+  display: grid;
+  grid-template-columns: 1.4fr 90px 1.2fr auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+@media (max-width: 720px) {
+  .war-grid,
+  .war-check-row,
+  .war-damage-row {
+    grid-template-columns: 1fr;
+  }
+}

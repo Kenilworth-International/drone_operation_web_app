@@ -90,6 +90,16 @@ export default function ReportsTable({
                           <FaBan />
                         </button>
                       ) : null}
+                      {actions.includes('recommend_investigation') ? (
+                        <button
+                          type="button"
+                          className="accidentreports-action-button accidentreports-action-button--investigate"
+                          onClick={() => onAction(report, 'recommend_investigation')}
+                          title="Recommend investigation to HR"
+                        >
+                          <FaSearch />
+                        </button>
+                      ) : null}
                       {actions.includes('start_investigation') ? (
                         <button
                           type="button"

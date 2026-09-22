@@ -4,6 +4,7 @@ import {
   useGetAccidentReportByIdQuery,
   useGetPilotsQuery,
   useDeclineAccidentReportMutation,
+  useRecommendInvestigationMutation,
   useStartInvestigationMutation,
   useUpdateInvestigationNotesMutation,
   useSubmitInvestigationReviewMutation,
@@ -28,6 +29,8 @@ const EMPTY_ACTION_FORM = {
   scheduled_date: '',
   notes: '',
   findings: '',
+  suspected_fault: '',
+  who_at_fault: '',
 };
 
 function getCurrentUserId() {
@@ -68,6 +71,7 @@ export function useIncidentReportsPage() {
     skip: !showDetailsModal || !selectedReport?.id,
   });
   const [declineReport] = useDeclineAccidentReportMutation();
+  const [recommendInvestigation] = useRecommendInvestigationMutation();
   const [startInvestigation] = useStartInvestigationMutation();
   const [updateInvestigationNotes] = useUpdateInvestigationNotesMutation();
   const [submitInvestigationReview] = useSubmitInvestigationReviewMutation();
@@ -196,6 +200,23 @@ export function useIncidentReportsPage() {
           }).unwrap();
           setMessage('Incident report declined.');
           setMessageType('success');
+        } else if (actionType === 'recommend_investigation') {
+          if (!actionForm.notes.trim()) {
+            setMessage('Please enter a recommendation reason.');
+            setMessageType('warning');
+            return;
+          }
+          await recommendInvestigation({
+            id: selectedReport.id,
+            action_by: userId,
+            recommended_by: userId,
+            reason: actionForm.notes,
+            suspected_fault: actionForm.suspected_fault || null,
+            who_at_fault: actionForm.who_at_fault || null,
+            notes: actionForm.notes,
+          }).unwrap();
+          setMessage('Investigation recommendation sent to HR.');
+          setMessageType('success');
         } else if (actionType === 'start_investigation') {
           await startInvestigation({
             id: selectedReport.id,
@@ -263,6 +284,7 @@ export function useIncidentReportsPage() {
       approveReport,
       completeInvestigation,
       declineReport,
+      recommendInvestigation,
       refetch,
       selectedReport,
       startInvestigation,

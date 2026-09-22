@@ -52,6 +52,7 @@ export const centralProcurementApi = baseApi.injectEndpoints({
         if (result.error) return { error: result.error };
         return { data: result.data?.data || [] };
       },
+      providesTags: ['CentralStoreRequests'],
     }),
     getCentralStoreRequestQueue: builder.query({
       queryFn: async (filters = {}) => {
@@ -59,6 +60,7 @@ export const centralProcurementApi = baseApi.injectEndpoints({
         if (result.error) return { error: result.error };
         return { data: result.data?.data || [] };
       },
+      providesTags: ['CentralStoreRequests'],
     }),
     getCentralStoreRequest: builder.query({
       queryFn: async (id) => {
@@ -72,11 +74,36 @@ export const centralProcurementApi = baseApi.injectEndpoints({
         const result = await postQuery('/api/stock-assets/central-stores/requests/create', payload);
         return result.error ? { error: result.error } : { data: result.data?.data || null };
       },
+      invalidatesTags: ['CentralStoreRequests', 'WorkshopInventory'],
     }),
     issueCentralStoreItems: builder.mutation({
       queryFn: async (payload) => {
         const result = await postQuery('/api/stock-assets/central-stores/requests/issue', payload);
         return result.error ? { error: result.error } : { data: result.data?.data || null };
+      },
+      invalidatesTags: ['CentralStoreRequests', 'WorkshopInventory'],
+    }),
+
+    getStockTransfers: builder.query({
+      queryFn: async (filters = {}) => {
+        const result = await postQuery('/api/stock-assets/stock-transfers', filters);
+        if (result.error) return { error: result.error };
+        return { data: result.data?.data || [] };
+      },
+      providesTags: ['StockTransfers'],
+    }),
+    createStockTransfer: builder.mutation({
+      queryFn: async (payload) => {
+        const result = await postQuery('/api/stock-assets/stock-transfers/create', payload);
+        return result.error ? { error: result.error } : { data: result.data?.data || null };
+      },
+      invalidatesTags: ['StockTransfers', 'WorkshopInventory'],
+    }),
+    getWorkshopStockAvailability: builder.query({
+      queryFn: async (filters = {}) => {
+        const result = await postQuery('/api/stock-assets/stock-transfers/stock-availability', filters);
+        if (result.error) return { error: result.error };
+        return { data: result.data?.data || [] };
       },
     }),
     sendRequestToNeedToProcure: builder.mutation({
@@ -278,4 +305,7 @@ export const {
   useGetGrnQuery,
   useLazyGetGrnQuery,
   useCreateGrnMutation,
+  useGetStockTransfersQuery,
+  useCreateStockTransferMutation,
+  useGetWorkshopStockAvailabilityQuery,
 } = centralProcurementApi;

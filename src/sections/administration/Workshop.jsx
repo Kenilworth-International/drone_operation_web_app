@@ -1,9 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FaEye, FaEdit, FaCheck, FaExclamationTriangle, FaBan, FaWrench } from 'react-icons/fa';
+import { FaEye, FaEdit, FaCheck, FaExclamationTriangle, FaBan, FaWrench, FaBoxOpen, FaFileAlt } from 'react-icons/fa';
 import {
   useGetMaintenanceQuery,
   useUpdateMaintenanceStatusMutation,
 } from '../../api/services NodeJs/maintenanceApi';
+import { useReceiveByMaintenanceMutation } from '../../api/services NodeJs/workshopInventoryApi';
+import { useCreateWorkshopAccidentReportMutation } from '../../api/services NodeJs/investigationWorkflowApi';
+import { useNavigate } from 'react-router-dom';
 import '../../styles/maintenance.css';
 
 /**
@@ -11,6 +14,7 @@ import '../../styles/maintenance.css';
  * (and other assigned maintenance). No create/admin add flow.
  */
 const Workshop = () => {
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState('p');
   const [searchTerm, setSearchTerm] = useState('');
   const [selected, setSelected] = useState(null);
@@ -46,6 +50,45 @@ const Workshop = () => {
 
   const { data: maintenanceData, isLoading, error, refetch } = useGetMaintenanceQuery(queryFilters);
   const [updateStatus] = useUpdateMaintenanceStatusMutation();
+  const [receiveByMaintenance] = useReceiveByMaintenanceMutation();
+  const [createWorkshopReport] = useCreateWorkshopAccidentReportMutation();
+
+  const handleReceive = async (record) => {
+    if (!userId) {
+      setMessage('Please sign in again.');
+      setMessageType('warning');
+      return;
+    }
+    try {
+      await receiveByMaintenance({ maintenanceId: record.id, received_by: userId }).unwrap();
+      setMessage(`Job #${record.id} received into workshop inventory.`);
+      setMessageType('success');
+      refetch();
+    } catch (err) {
+      setMessage(err?.data?.message || err?.message || 'Could not receive item.');
+      setMessageType('warning');
+    }
+  };
+
+  const handleOpenAccidentReport = async (record) => {
+    if (!record.incident_id) {
+      setMessage('No linked incident for accident report.');
+      setMessageType('warning');
+      return;
+    }
+    try {
+      const report = await createWorkshopReport({
+        incident_id: record.incident_id,
+        maintenance_id: record.id,
+        workshop_inventory_id: record.workshop_inventory_id || null,
+        created_by: userId,
+      }).unwrap();
+      navigate(`/home/workshop-accident-report/${report.id}`);
+    } catch (err) {
+      setMessage(err?.data?.message || err?.message || 'Could not open accident report.');
+      setMessageType('warning');
+    }
+  };
 
   const records = Array.isArray(maintenanceData)
     ? maintenanceData
@@ -216,6 +259,7 @@ const Workshop = () => {
               <th>Job</th>
               <th>Incident</th>
               <th>Asset</th>
+              <th>Received</th>
               <th>Technician</th>
               <th>Scheduled</th>
               <th>Status</th>
@@ -226,13 +270,13 @@ const Workshop = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan="8" className="maintenance-loading-cell-maintenance">
+                <td colSpan="9" className="maintenance-loading-cell-maintenance">
                   Loading workshop jobs…
                 </td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan="8" className="maintenance-error-cell-maintenance">
+                <td colSpan="9" className="maintenance-error-cell-maintenance">
                   Unable to load jobs. Refresh and try again.
                 </td>
               </tr>
@@ -247,6 +291,11 @@ const Workshop = () => {
                       <div style={{ fontSize: 12, color: '#64748b' }}>{record.drone_serial}</div>
                     ) : null}
                   </td>
+                  <td>
+                    {record.workshop_received_at
+                      ? formatDate(record.workshop_received_at)
+                      : <span className="maint-source-chip maint-source-chip--muted">Not received</span>}
+                  </td>
                   <td>{record.technician_name || 'Unassigned'}</td>
                   <td>{formatDate(record.scheduled_date)}</td>
                   <td>{getStatusBadge(record.status)}</td>
@@ -257,6 +306,24 @@ const Workshop = () => {
                   </td>
                   <td>
                     <div className="maintenance-actions-maintenance">
+                      {!record.workshop_received_at ? (
+                        <button
+                          type="button"
+                          onClick={() => handleReceive(record)}
+                          className="maintenance-action-button-maintenance"
+                          title="Receive into workshop inventory"
+                        >
+                          <FaBoxOpen />
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenAccidentReport(record)}
+                        className="maintenance-action-button-maintenance"
+                        title="Workshop accident report"
+                      >
+                        <FaFileAlt />
+                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -282,7 +349,7 @@ const Workshop = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="8" className="maintenance-empty-cell-maintenance">
+                <td colSpan="9" className="maintenance-empty-cell-maintenance">
                   No workshop jobs in this view.
                 </td>
               </tr>
@@ -311,6 +378,12 @@ const Workshop = () => {
               <div><strong>Incident:</strong> {selected.incident_id ? `#${selected.incident_id}` : 'N/A'}</div>
               <div><strong>Asset:</strong> {selected.drone_tag || selected.drone_serial || 'N/A'}</div>
               <div><strong>Technician:</strong> {selected.technician_name || 'N/A'}</div>
+              <div>
+                <strong>Workshop received:</strong>{' '}
+                {selected.workshop_received_at
+                  ? `${formatDate(selected.workshop_received_at)}${selected.workshop_received_by_name ? ` · ${selected.workshop_received_by_name}` : ''}`
+                  : 'Not yet received'}
+              </div>
               <div><strong>Scheduled:</strong> {formatDate(selected.scheduled_date)}</div>
               <div><strong>Status:</strong> {getStatusBadge(selected.status)}</div>
               <div className="maintenance-description-full-maintenance">

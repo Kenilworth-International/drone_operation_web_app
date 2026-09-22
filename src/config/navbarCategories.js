@@ -109,6 +109,7 @@ const navbarCategories = [
     icon: FaUsers,
     children: [
       { path: '/home/hrm/dashboard', label: 'Dashboard', icon: FaTachometerAlt },
+      { path: '/home/hrm/investigations', label: 'Accident Investigations', icon: FaClipboardList },
       { path: '/home/employees', label: 'Employees', icon: FaUsers },
       {
         path: '/home/organizationStructure',
@@ -176,11 +177,10 @@ const navbarCategories = [
         ],
       },
       {
-        path: '/home/stock-assets/central-stores/request-items-services',
+        path: '/home/stock-assets/central-stores/request-queue',
         label: 'Central Stores',
         icon: FaStore,
         subItems: [
-          { path: '/home/stock-assets/central-stores/request-items-services', label: 'Request Items/Services', icon: FaFileInvoice },
           { path: '/home/stock-assets/central-stores/request-queue', label: 'Request Queue', icon: FaClipboardList },
           { path: '/home/stock-assets/central-stores/issue-items-services', label: 'Issue Items/Services', icon: FaBoxes },
           { path: '/home/stock-assets/central-stores/need-to-procure-queue', label: 'Need to Procure Queue', icon: FaShoppingCart },
@@ -194,13 +194,6 @@ const navbarCategories = [
           { path: '/home/stock-assets/transfers/transfer', label: 'Asset Transfer', icon: FaExchangeAlt },
           { path: '/home/stock-assets/transfers/request', label: 'Asset Request', icon: FaFileInvoice },
         ],
-      },
-      {
-        path: '/home/finance-approvals',
-        label: 'Finance Approvals',
-        icon: FaMoneyBillWave,
-        subItems: [
-        ]
       },
     ],
   },
@@ -227,6 +220,8 @@ const navbarCategories = [
       { path: '/home/accident-reports', label: 'Incident Reports', icon: FaFileAlt },
       { path: '/home/maintenance', label: 'Maintenance', icon: FaTools },
       { path: '/home/workshop', label: 'Workshop', icon: FaWrench },
+      { path: '/home/workshop-inventory', label: 'Workshop Inventory', icon: FaBoxes },
+      { path: '/home/stock-assets/transfers/request', label: 'Asset Request', icon: FaFileInvoice },
     ],
   },
   {

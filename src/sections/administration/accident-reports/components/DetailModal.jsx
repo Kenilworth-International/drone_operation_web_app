@@ -160,9 +160,12 @@ export default function DetailModal({
 
             <section className="accidentreports-detail-section">
               <h3>Investigation & approval</h3>
+              <p style={{ marginTop: 0, color: '#5b6b7c', fontSize: 13 }}>
+                Formal investigations run in HR from Fleet recommendations. Workshop must submit the accident report before HR can open a case.
+              </p>
               <div className="accidentreports-detail-grid">
                 <DetailField
-                  label="Investigation"
+                  label="Investigation (legacy)"
                   value={
                     report.investigation_status === 'i'
                       ? 'In progress'

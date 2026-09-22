@@ -58,32 +58,18 @@ export function getActionStatus(report) {
 
 export function getAvailableActions(report) {
   const stage = getWorkflowStage(report);
-  const inv = report?.investigation_status || 'n';
   const actions = [];
 
   if (stage === 'declined') {
     return actions;
   }
 
-  // 2A: investigation can continue after approve / while in repair
-  const invOpen = inv === 'i' || inv === 'v';
-  if (stage === 'in_repair' || stage === 'approved') {
-    if (invOpen) {
-      actions.push('investigation_notes');
-      if (inv === 'i') actions.push('submit_review');
-      actions.push('complete_investigation');
-    }
-    return actions;
-  }
-
-  if (stage === 'pending') {
-    actions.push('decline', 'start_investigation', 'approve');
-  } else if (stage === 'investigating') {
-    actions.push('investigation_notes');
-    if (inv === 'i') actions.push('submit_review', 'complete_investigation');
-    actions.push('approve');
-  } else if (stage === 'review') {
-    actions.push('investigation_notes', 'complete_investigation', 'approve');
+  // Fleet no longer runs investigation — recommend to HR instead
+  if (stage === 'pending' || stage === 'investigating' || stage === 'review') {
+    actions.push('decline', 'recommend_investigation', 'approve');
+  } else if (stage === 'approved' || stage === 'in_repair') {
+    // Approve already done; recommend still allowed if HR not yet notified
+    actions.push('recommend_investigation');
   }
 
   return actions;

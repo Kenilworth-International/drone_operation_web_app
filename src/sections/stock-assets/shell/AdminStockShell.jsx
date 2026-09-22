@@ -17,19 +17,21 @@ export function AdminPageHeader({ title, hint, actions }) {
   );
 }
 
-export function AdminSubTabs({ tabs, active, onChange }) {
+export function AdminSubTabs({ tabs, active, onChange, className = '', variant = 'default' }) {
+  const variantClass = variant === 'compact' ? ' admin-stock-tabs--compact' : '';
   return (
-    <div className="admin-stock-tabs" role="tablist">
+    <div className={`admin-stock-tabs${variantClass}${className ? ` ${className}` : ''}`.trim()} role="tablist">
       {(tabs || []).map((tab) => (
         <button
           key={tab.key}
           type="button"
           role="tab"
           aria-selected={active === tab.key}
+          title={tab.title || tab.label}
           className={`admin-stock-tab${active === tab.key ? ' admin-stock-tab--active' : ''}`}
           onClick={() => onChange?.(tab.key)}
         >
-          {tab.label}
+          {tab.shortLabel || tab.label}
         </button>
       ))}
     </div>
