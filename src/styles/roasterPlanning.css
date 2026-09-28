@@ -363,17 +363,20 @@
 .status-legend-roaster {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    font-size: 12px;
+    gap: 4px;
+    font-size: 10px;
+    line-height: 1.3;
     color: #4b5668;
     justify-content: flex-end;
 }
 
 .legend-pill-roaster {
-    padding: 4px 10px;
+    padding: 1px 7px;
     border-radius: 999px;
     border: 1px solid rgba(0,0,0,0.1);
     background: #f1f5f9;
+    font-size: 10px;
+    font-weight: 500;
 }
 
 .leave-pill-roaster {
@@ -411,6 +414,13 @@
 .editing-pill-roaster {
     border-color: #d79230;
     background: #ffeac2;
+}
+
+.status-legend-roaster .location-outside-pill-roaster::before {
+    width: 11px;
+    height: 11px;
+    margin-right: 4px;
+    font-size: 8px;
 }
 
 /* Statutory (DB: mercantile) = brown; Poya = purple — aligned with Leave Management holiday calendar. */

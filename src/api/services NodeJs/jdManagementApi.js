@@ -913,6 +913,32 @@ export const jdManagementApi = baseApi.injectEndpoints({
           {},
           {}
         );
+        // API servers without the structured route still serve the flat task list.
+        if (result?.error?.status === 404) {
+          const legacy = await nodeBackendBaseQuery(
+            {
+              url: '/api/user-job-descriptions',
+              method: 'POST',
+              body,
+            },
+            {},
+            {}
+          );
+          const normalized = asQueryError(legacy, 'Failed to load job description');
+          if (normalized.error) return normalized;
+          const tasks = Array.isArray(normalized.data) ? normalized.data : [];
+          return {
+            data: {
+              emp_designation_id: body.emp_designation_id ?? null,
+              emp_job_role_id: body.emp_job_role_id ?? null,
+              jobSummary: '',
+              profileId: null,
+              categories: [],
+              uncategorizedTasks: tasks,
+              structuredUnavailable: true,
+            },
+          };
+        }
         return asQueryError(result, 'Failed to load job description');
       },
       providesTags: ['UserJobDescriptions'],

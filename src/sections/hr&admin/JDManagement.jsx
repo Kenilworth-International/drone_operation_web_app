@@ -51,6 +51,10 @@ function shortDesignationTitle(title, deptName) {
 function getJdErrorMessage(err, fallback = 'Something went wrong') {
   if (!err) return fallback;
   const data = err.data;
+  const rawMessage = String(data?.message || data?.error || '').trim();
+  if (err.status === 404 && (!rawMessage || /^not found$/i.test(rawMessage) || /^route not found/i.test(rawMessage))) {
+    return 'This action is not available on the API server yet. Deploy the latest dsms_backend_dev and try again.';
+  }
   if (typeof data === 'string' && data.trim()) {
     const trimmed = data.trim();
     if (trimmed.startsWith('<')) return fallback;
@@ -573,6 +577,12 @@ const JDManagement = () => {
                 </div>
               ) : (
                 <div className={`jd-structured-body-jd-mgmt${fetchingStructured ? ' is-refreshing' : ''}`}>
+                  {editMode && structuredJd?.structuredUnavailable ? (
+                    <p className="jd-form-error-jd-mgmt">
+                      The API server is running an older build, so job summary and categories cannot be saved yet.
+                      Deploy the latest dsms_backend_dev to enable them.
+                    </p>
+                  ) : null}
                   <section className="jd-structured-section-jd-mgmt">
                     <div className="jd-structured-section-head-jd-mgmt">
                       <h3>Job Summary</h3>

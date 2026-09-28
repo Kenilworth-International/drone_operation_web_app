@@ -1008,14 +1008,13 @@ const RoasterPlanning = ({ embedded = false }) => {
     });
   };
 
-  const openBlankCellMenu = (employee, dateString, canToggleBulkLeave) => {
+  const openBlankCellMenu = (employee, dateString) => {
     setBlankCellMenu({
       employeeId: employee.id,
       employeeName: employee.name,
       empNo: employee.empNo || employee.emp_no || '',
       preferredName: employee.preferredName || employee.preferred_name || '',
       dateString,
-      canToggleBulkLeave: Boolean(canToggleBulkLeave),
     });
   };
 
@@ -1055,12 +1054,6 @@ const RoasterPlanning = ({ embedded = false }) => {
       attendanceDate: blankCellMenu.dateString,
     });
     setAddNoPayOpen(true);
-    closeBlankCellMenu();
-  };
-
-  const handleBlankCellBulkLeave = () => {
-    if (!blankCellMenu?.canToggleBulkLeave) return;
-    handleDayClick(blankCellMenu.employeeId, blankCellMenu.dateString);
     closeBlankCellMenu();
   };
 
@@ -1379,16 +1372,23 @@ const RoasterPlanning = ({ embedded = false }) => {
                   isLeave !== serverHasLeave;
                 const isBlank =
                   !isLeave && !isRequested && !isAttended && !isNoPay;
+                const bulkSelectable = !locked && !isAttended && !isNoPay;
+                const cellFocusable = locked ? (isAttended || isNoPay || isBlank) : bulkSelectable;
                 return (
                   <div
                     key={`${employee.id}-${day.dateString}`}
                     role="button"
-                    tabIndex={locked && !isAttended && !isNoPay && !isBlank ? -1 : 0}
+                    tabIndex={cellFocusable ? 0 : -1}
                     className={`day-cell-roaster ${day.isWeekend ? 'weekend' : ''} ${stateClass} ${holClass} ${
                       locked ? 'locked' : ''
                     } ${isBlank ? 'blank-absent' : ''} ${cellBulkLeaveDiff ? 'day-cell-bulk-leave-diff-roaster' : ''}`.trim()}
                     title={`${day.dateString}${isLeave ? ' | Bulk leave' : ''}${isRequested ? ' | Leave Requested' : ''}${isAttended ? ' | Attended' : ''}${isNoPay ? ' | No pay day' : ''}${isBlank ? ' | No attendance/leave — click to add' : ''}${locationOutsideRange ? ` | Outside ${geofenceRadiusMeters} m range` : ''}${holTitle}`}
                     onClick={() => {
+                      // Edit mode: only bulk-leave day selection, no add/detail popups.
+                      if (!locked) {
+                        if (bulkSelectable) handleDayClick(employee.id, day.dateString);
+                        return;
+                      }
                       if (isAttended || isNoPay) {
                         openAttendancePopup(
                           { stopPropagation: () => {}, preventDefault: () => {} },
@@ -1399,29 +1399,20 @@ const RoasterPlanning = ({ embedded = false }) => {
                         );
                         return;
                       }
-                      if (isBlank) {
-                        openBlankCellMenu(employee, day.dateString, !locked);
-                        return;
-                      }
-                      if (!locked) handleDayClick(employee.id, day.dateString);
+                      if (isBlank) openBlankCellMenu(employee, day.dateString);
                     }}
                     onKeyDown={(ev) => {
                       if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                      ev.preventDefault();
+                      if (!locked) {
+                        if (bulkSelectable) handleDayClick(employee.id, day.dateString);
+                        return;
+                      }
                       if (isAttended || isNoPay) {
-                        ev.preventDefault();
                         openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation);
                         return;
                       }
-                      if (isBlank) {
-                        ev.preventDefault();
-                        openBlankCellMenu(employee, day.dateString, !locked);
-                        return;
-                      }
-                      if (locked) return;
-                      if (ev.key === 'Enter' || ev.key === ' ') {
-                        ev.preventDefault();
-                        handleDayClick(employee.id, day.dateString);
-                      }
+                      if (isBlank) openBlankCellMenu(employee, day.dateString);
                     }}
                   >
                     {isRequested ? (
@@ -1429,7 +1420,8 @@ const RoasterPlanning = ({ embedded = false }) => {
                         className="approval-dot-hit-roaster"
                         aria-label="Show leave approval details"
                         title="Click for approval details"
-                        onClick={(ev) =>
+                        onClick={(ev) => {
+                          if (!locked) return;
                           openApprovalPopup(
                             ev,
                             employee.name,
@@ -1438,8 +1430,8 @@ const RoasterPlanning = ({ embedded = false }) => {
                             dayIndex,
                             rowIndex,
                             filteredRoster.length
-                          )
-                        }
+                          );
+                        }}
                       >
                         <span
                           className={`approval-dot-roaster ${
@@ -1459,7 +1451,10 @@ const RoasterPlanning = ({ embedded = false }) => {
                         title={locationOutsideRange
                           ? `Outside ${geofenceRadiusMeters} m range — click for details`
                           : 'Click for attendance details'}
-                        onClick={(ev) => openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation)}
+                        onClick={(ev) => {
+                          if (!locked) return;
+                          openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation);
+                        }}
                       >
                         <span className={`attendance-info-dot-roaster${locationOutsideRange ? ' attendance-info-dot-roaster--warn' : ''}`}>
                           {locationOutsideRange ? '!' : 'i'}
@@ -1471,12 +1466,15 @@ const RoasterPlanning = ({ embedded = false }) => {
                         className="attendance-info-hit-roaster"
                         aria-label="Show no-pay day details"
                         title="No pay day — click for details"
-                        onClick={(ev) => openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation)}
+                        onClick={(ev) => {
+                          if (!locked) return;
+                          openAttendancePopup(ev, employee.name, employee.id, day.dateString, employee.workLocation);
+                        }}
                       >
                         <span className="attendance-info-dot-roaster attendance-info-dot-roaster--nopay">NP</span>
                       </span>
                     ) : null}
-                    {isBlank ? (
+                    {isBlank && locked ? (
                       <span className="blank-add-hint-roaster" aria-hidden="true">+</span>
                     ) : null}
                   </div>
@@ -1799,11 +1797,6 @@ const RoasterPlanning = ({ embedded = false }) => {
                 >
                   Mark no-pay day
                 </button>
-                {blankCellMenu.canToggleBulkLeave ? (
-                  <button type="button" className="leave-ops-btn" onClick={handleBlankCellBulkLeave}>
-                    Mark bulk leave
-                  </button>
-                ) : null}
               </div>
             </div>
             <div className="leave-ops-modal-footer">
