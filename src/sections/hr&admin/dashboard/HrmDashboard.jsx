@@ -326,6 +326,7 @@ export default function HrmDashboard({ embedded = false }) {
     Employees: FaUsers,
     'Organization': FaSitemap,
     'Organization Structure': FaSitemap,
+    'Leave & Attendance': FaClock,
     'Time & Attendance': FaClock,
     'Attendance & Roaster': FaClock,
     'SMART KPI': FaChartLine,

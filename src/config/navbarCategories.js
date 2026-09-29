@@ -124,7 +124,7 @@ const navbarCategories = [
       { path: '/home/employeeAssignment', label: 'Assignments', icon: FaExchangeAlt },
       {
         path: '/home/attendance/daily-attendance',
-        label: 'Time & Attendance',
+        label: 'Leave & Attendance',
         icon: FaClock,
         subItems: [
           { path: '/home/attendance/daily-attendance', label: 'Attendance/Leave', icon: FaIdCard },

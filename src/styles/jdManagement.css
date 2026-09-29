@@ -1372,4 +1372,222 @@
   min-width: 0;
 }
 
+/* JD document view */
+.jd-doc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 2px 0 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.jd-doc-header-main {
+  min-width: 0;
+}
+
+.jd-doc-eyebrow {
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 2px;
+}
+
+.jd-doc-title {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: #0f2f45;
+}
+
+.jd-doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.jd-doc-meta span {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 1px 9px;
+}
+
+.jd-doc-meta .jd-doc-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #004B71;
+  background: #e8f1f6;
+  border-color: #cfe0ea;
+}
+
+.jd-doc-body {
+  max-width: 940px;
+  font-size: 13px;
+}
+
+.jd-doc-body .jd-structured-section-jd-mgmt {
+  margin-bottom: 20px;
+}
+
+.jd-doc-body .jd-structured-section-head-jd-mgmt {
+  border-bottom: 1px solid #edf2f7;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+
+.jd-doc-body .jd-structured-section-head-jd-mgmt h3 {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  padding-left: 8px;
+  border-left: 3px solid #004B71;
+  line-height: 1.2;
+}
+
+.jd-doc-body .jd-summary-text-jd-mgmt {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #334155;
+}
+
+.jd-doc-muted,
+.jd-doc-body .jd-doc-muted {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.jd-doc-body:not(.is-editing) .jd-category-block-jd-mgmt {
+  border: none;
+  background: transparent;
+  padding: 0;
+  margin-bottom: 14px;
+}
+
+.jd-doc-body .jd-category-head-jd-mgmt {
+  margin-bottom: 4px;
+}
+
+.jd-doc-body .jd-category-head-jd-mgmt h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: #0f172a;
+}
+
+.jd-doc-cat-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: #e8f1f6;
+  color: #004B71;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.jd-doc-tasks {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 28px;
+}
+
+.jd-doc-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 3px 0;
+  line-height: 1.55;
+}
+
+.jd-doc-task::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  margin-top: 0.62em;
+  border-radius: 50%;
+  background: #004B71;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.jd-doc-task.is-editable {
+  padding: 4px 4px;
+  border-bottom: 1px solid #f1f5f9;
+  border-radius: 3px;
+}
+
+.jd-doc-task.is-editable:hover {
+  background: #f8fafc;
+}
+
+.jd-doc-task.is-editable::before {
+  display: none;
+}
+
+.jd-doc-task.is-inactive {
+  opacity: 0.5;
+}
+
+.jd-doc-task-grip {
+  width: 12px;
+  color: #cbd5e1;
+  font-size: 11px;
+  letter-spacing: -2px;
+  cursor: grab;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.jd-doc-task-text {
+  flex: 1;
+  font-size: 13px;
+  color: #334155;
+}
+
+.jd-structured-task-actions-jd-mgmt button:disabled,
+.jd-category-actions-jd-mgmt button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.jd-doc-competencies {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 6px 24px;
+}
+
+.jd-doc-competencies li {
+  position: relative;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.jd-doc-competencies li::before {
+  content: '✓';
+  position: absolute;
+  left: 2px;
+  top: 0;
+  color: #004B71;
+  font-weight: 700;
+  font-size: 12px;
+}
+
 

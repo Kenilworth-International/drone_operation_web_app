@@ -7,8 +7,10 @@ import {
   useUpdateTaskOrdersMutation,
   useGetStructuredJobDescriptionQuery,
   useSaveJobSummaryMutation,
+  useSaveCoreCompetenciesMutation,
   useSaveResponsibilityCategoryMutation,
   useDeleteResponsibilityCategoryMutation,
+  useUpdateCategoryOrdersMutation,
 } from '../../api/services NodeJs/jdManagementApi';
 import {
   useGetEmpDepartmentsQuery,
@@ -80,8 +82,11 @@ const JDManagement = () => {
   const [updateJobDescription, { isLoading: updatingDescription }] = useUpdateUserJobDescriptionMutation();
   const [updateTaskOrders] = useUpdateTaskOrdersMutation();
   const [saveJobSummary, { isLoading: savingSummary }] = useSaveJobSummaryMutation();
+  const [saveCompetencies, { isLoading: savingCompetencies }] = useSaveCoreCompetenciesMutation();
   const [saveCategory, { isLoading: savingCategory }] = useSaveResponsibilityCategoryMutation();
   const [deleteCategory] = useDeleteResponsibilityCategoryMutation();
+  const [updateCategoryOrders] = useUpdateCategoryOrdersMutation();
+  const [reordering, setReordering] = useState(false);
 
   const getCurrentUserId = () => {
     try {
@@ -100,6 +105,8 @@ const JDManagement = () => {
 
   const [summaryDraft, setSummaryDraft] = useState('');
   const [showSummaryEditor, setShowSummaryEditor] = useState(false);
+  const [competencyDraft, setCompetencyDraft] = useState('');
+  const [showCompetencyEditor, setShowCompetencyEditor] = useState(false);
 
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState({ id: null, category_name: '' });
@@ -187,11 +194,21 @@ const JDManagement = () => {
     { skip: !designationId },
   );
 
+  const coreCompetencies = useMemo(
+    () => (Array.isArray(structuredJd?.coreCompetencies) ? structuredJd.coreCompetencies : []),
+    [structuredJd],
+  );
+
   useEffect(() => {
     setSummaryDraft(structuredJd?.jobSummary || '');
     setShowSummaryEditor(false);
     setEditMode(false);
   }, [designationId, structuredJd?.jobSummary]);
+
+  useEffect(() => {
+    setCompetencyDraft(coreCompetencies.join('\n'));
+    setShowCompetencyEditor(false);
+  }, [designationId, coreCompetencies]);
 
   // Keep selection id in sync when filter changes so the resolved first item stays stable.
   useEffect(() => {
@@ -374,12 +391,14 @@ const JDManagement = () => {
     }
   };
 
-  const handleReorderTasksInCategory = async (categoryId, tasks, fromIndex, toIndex) => {
-    if (fromIndex === toIndex || !designationId) return;
-    const next = [...tasks];
+  const handleReorderTasksInCategory = async (activeTasks, fromIndex, toIndex) => {
+    if (fromIndex === toIndex || !designationId || reordering) return;
+    if (toIndex < 0 || toIndex >= activeTasks.length) return;
+    const next = [...activeTasks];
     const [moved] = next.splice(fromIndex, 1);
     next.splice(toIndex, 0, moved);
     const taskOrders = next.map((t, i) => ({ id: t.id, taskOrder: i + 1 }));
+    setReordering(true);
     try {
       await updateTaskOrders({
         emp_designation_id: designationId,
@@ -388,14 +407,56 @@ const JDManagement = () => {
       await refetchStructured();
     } catch (err) {
       toast.error(getJdErrorMessage(err, 'Failed to reorder tasks'));
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const handleMoveCategory = async (index, direction) => {
+    const toIndex = index + direction;
+    if (!designationId || reordering || toIndex < 0 || toIndex >= activeCategories.length) return;
+    const next = [...activeCategories];
+    const [moved] = next.splice(index, 1);
+    next.splice(toIndex, 0, moved);
+    setReordering(true);
+    try {
+      await updateCategoryOrders({
+        emp_designation_id: designationId,
+        categoryOrders: next.map((c, i) => ({ id: c.id, categoryOrder: i + 1 })),
+      }).unwrap();
+      await refetchStructured();
+    } catch (err) {
+      toast.error(getJdErrorMessage(err, 'Failed to reorder categories'));
+    } finally {
+      setReordering(false);
+    }
+  };
+
+  const handleSaveCompetencies = async () => {
+    if (!designationId) return;
+    const list = competencyDraft
+      .split(/\r?\n/)
+      .map((line) => line.replace(/^\s*[•\-*]\s*/, '').trim())
+      .filter(Boolean);
+    try {
+      await saveCompetencies({
+        emp_designation_id: designationId,
+        core_competencies: list,
+        updatedBy: getCurrentUserId(),
+      }).unwrap();
+      setShowCompetencyEditor(false);
+      toast.success('Core competencies saved');
+      await refetchStructured();
+    } catch (err) {
+      toast.error(getJdErrorMessage(err, 'Failed to save core competencies'));
     }
   };
 
   const renderTaskList = (tasks, categoryId) => {
     const active = (tasks || []).filter((t) => Number(t.status) === 1);
-    const inactive = (tasks || []).filter((t) => Number(t.status) !== 1);
-    const ordered = [...active, ...inactive];
-    if (!ordered.length) {
+    const inactive = editMode ? (tasks || []).filter((t) => Number(t.status) !== 1) : [];
+    const dragKey = String(categoryId ?? 'none');
+    if (!active.length && !inactive.length) {
       return (
         <div className="jd-empty-tasks-jd-mgmt">
           No tasks in this category.
@@ -408,38 +469,64 @@ const JDManagement = () => {
       );
     }
     return (
-      <ul className="jd-structured-task-list-jd-mgmt">
-        {ordered.map((task, index) => (
+      <ul className="jd-doc-tasks">
+        {active.map((task, index) => (
           <li
             key={task.id}
-            className={`jd-structured-task-jd-mgmt${Number(task.status) !== 1 ? ' is-inactive' : ''}`}
-            draggable={editMode && Number(task.status) === 1}
+            className={`jd-doc-task${editMode ? ' is-editable' : ''}`}
+            draggable={editMode && !reordering}
             onDragStart={(e) => {
-              e.dataTransfer.setData('text/plain', String(index));
+              e.dataTransfer.setData('text/plain', JSON.stringify({ key: dragKey, index }));
             }}
-            onDragOver={(e) => e.preventDefault()}
+            onDragOver={(e) => {
+              if (editMode) e.preventDefault();
+            }}
             onDrop={(e) => {
               e.preventDefault();
-              const from = Number(e.dataTransfer.getData('text/plain'));
-              if (Number.isFinite(from)) {
-                handleReorderTasksInCategory(categoryId, active, from, index);
+              try {
+                const data = JSON.parse(e.dataTransfer.getData('text/plain') || '{}');
+                if (data.key === dragKey && Number.isFinite(Number(data.index))) {
+                  handleReorderTasksInCategory(active, Number(data.index), index);
+                }
+              } catch {
+                /* not a task drag */
               }
             }}
           >
-            <span className="jd-structured-task-bullet-jd-mgmt">•</span>
-            <span className="jd-structured-task-text-jd-mgmt">{task.taskDescription}</span>
+            {editMode ? <span className="jd-doc-task-grip" title="Drag to reorder">⋮⋮</span> : null}
+            <span className="jd-doc-task-text">{task.taskDescription}</span>
             {editMode ? (
               <span className="jd-structured-task-actions-jd-mgmt">
-                <button type="button" title="Edit" onClick={() => openEditTask(task)}>✎</button>
                 <button
                   type="button"
-                  title={Number(task.status) === 1 ? 'Deactivate' : 'Activate'}
-                  onClick={() => handleToggleTask(task)}
+                  title="Move up"
+                  disabled={reordering || index === 0}
+                  onClick={() => handleReorderTasksInCategory(active, index, index - 1)}
                 >
-                  {Number(task.status) === 1 ? '✓' : '○'}
+                  ↑
                 </button>
+                <button
+                  type="button"
+                  title="Move down"
+                  disabled={reordering || index === active.length - 1}
+                  onClick={() => handleReorderTasksInCategory(active, index, index + 1)}
+                >
+                  ↓
+                </button>
+                <button type="button" title="Edit" onClick={() => openEditTask(task)}>✎</button>
+                <button type="button" title="Deactivate" onClick={() => handleToggleTask(task)}>✓</button>
               </span>
             ) : null}
+          </li>
+        ))}
+        {inactive.map((task) => (
+          <li key={task.id} className="jd-doc-task is-editable is-inactive">
+            <span className="jd-doc-task-grip" aria-hidden />
+            <span className="jd-doc-task-text">{task.taskDescription}</span>
+            <span className="jd-structured-task-actions-jd-mgmt">
+              <button type="button" title="Edit" onClick={() => openEditTask(task)}>✎</button>
+              <button type="button" title="Activate" onClick={() => handleToggleTask(task)}>○</button>
+            </span>
           </li>
         ))}
       </ul>
@@ -454,7 +541,8 @@ const JDManagement = () => {
     );
   }
 
-  const busy = creatingDescription || updatingDescription || savingSummary || savingCategory;
+  const busy = creatingDescription || updatingDescription || savingSummary || savingCategory || savingCompetencies;
+  const competenciesEnabled = Boolean(structuredJd?.coreCompetenciesAvailable);
 
   return (
     <div className="jd-management-container-jd-mgmt">
@@ -537,14 +625,18 @@ const JDManagement = () => {
         <div className="jd-right-panel-jd-mgmt">
           {selectedDesignation ? (
             <>
-              <div className="jd-details-header-jd-mgmt">
-                <div>
-                  <h2 className="jd-selected-designation-jd-mgmt">{selectedDesignation.designation_title}</h2>
-                  <p className="jd-selected-meta-jd-mgmt">
-                    {selectedDesignation.department_name || ''}
-                    {selectedDesignation.job_role ? ` · ${selectedDesignation.job_role}` : ''}
-                    {selectedDesignation.power != null ? ` · Power ${selectedDesignation.power}` : ''}
-                  </p>
+              <div className="jd-doc-header">
+                <div className="jd-doc-header-main">
+                  <span className="jd-doc-eyebrow">Job Description</span>
+                  <h2 className="jd-doc-title">{selectedDesignation.designation_title}</h2>
+                  <div className="jd-doc-meta">
+                    {selectedDesignation.department_name ? <span>{selectedDesignation.department_name}</span> : null}
+                    {selectedDesignation.job_role ? <span>{selectedDesignation.job_role}</span> : null}
+                    {selectedDesignation.power != null ? <span>Power {selectedDesignation.power}</span> : null}
+                    {selectedDesignation.des_code ? (
+                      <span className="jd-doc-code">{selectedDesignation.des_code}</span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="jd-header-actions-jd-mgmt">
                   <button
@@ -554,6 +646,8 @@ const JDManagement = () => {
                       if (editMode) {
                         setShowSummaryEditor(false);
                         setSummaryDraft(structuredJd?.jobSummary || '');
+                        setShowCompetencyEditor(false);
+                        setCompetencyDraft(coreCompetencies.join('\n'));
                         setShowCategoryModal(false);
                         setShowTaskModal(false);
                         setFormError('');
@@ -576,7 +670,7 @@ const JDManagement = () => {
                   <button type="button" onClick={() => refetchStructured()}>Retry</button>
                 </div>
               ) : (
-                <div className={`jd-structured-body-jd-mgmt${fetchingStructured ? ' is-refreshing' : ''}`}>
+                <div className={`jd-structured-body-jd-mgmt jd-doc-body${editMode ? ' is-editing' : ''}${fetchingStructured ? ' is-refreshing' : ''}`}>
                   {editMode && structuredJd?.structuredUnavailable ? (
                     <p className="jd-form-error-jd-mgmt">
                       The API server is running an older build, so job summary and categories cannot be saved yet.
@@ -624,7 +718,7 @@ const JDManagement = () => {
                         </div>
                       </div>
                     ) : (
-                      <p className="jd-summary-text-jd-mgmt">
+                      <p className={`jd-summary-text-jd-mgmt${structuredJd?.jobSummary ? '' : ' jd-doc-muted'}`}>
                         {structuredJd?.jobSummary
                           ? structuredJd.jobSummary
                           : 'No job summary yet.'}
@@ -661,14 +755,35 @@ const JDManagement = () => {
                       >
                         <div className="jd-category-head-jd-mgmt">
                           <h4>
-                            {isActive
-                              ? `${String.fromCharCode(65 + (Math.max(letterIndex, 0) % 26))}. ${cat.categoryName}`
-                              : `${cat.categoryName} (inactive)`}
+                            {isActive ? (
+                              <>
+                                <span className="jd-doc-cat-letter">
+                                  {String.fromCharCode(65 + (Math.max(letterIndex, 0) % 26))}
+                                </span>
+                                {cat.categoryName}
+                              </>
+                            ) : `${cat.categoryName} (inactive)`}
                           </h4>
                           {editMode ? (
                             <div className="jd-category-actions-jd-mgmt">
                               {isActive ? (
                                 <>
+                                  <button
+                                    type="button"
+                                    title="Move category up"
+                                    disabled={reordering || letterIndex <= 0}
+                                    onClick={() => handleMoveCategory(letterIndex, -1)}
+                                  >
+                                    ↑
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Move category down"
+                                    disabled={reordering || letterIndex >= activeCategories.length - 1}
+                                    onClick={() => handleMoveCategory(letterIndex, 1)}
+                                  >
+                                    ↓
+                                  </button>
                                   <button type="button" onClick={() => openAddTask(cat.id)}>+ Task</button>
                                   <button type="button" onClick={() => openEditCategory(cat)}>Rename</button>
                                   <button type="button" onClick={() => handleDeactivateCategory(cat)}>Deactivate</button>
@@ -704,6 +819,63 @@ const JDManagement = () => {
                         {renderTaskList(uncategorizedTasks, null)}
                       </div>
                     ) : null}
+                  </section>
+
+                  <section className="jd-structured-section-jd-mgmt">
+                    <div className="jd-structured-section-head-jd-mgmt">
+                      <h3>Core Competencies</h3>
+                      {editMode && !showCompetencyEditor && competenciesEnabled ? (
+                        <button
+                          type="button"
+                          className="jd-add-task-button-jd-mgmt"
+                          onClick={() => {
+                            setCompetencyDraft(coreCompetencies.join('\n'));
+                            setShowCompetencyEditor(true);
+                          }}
+                        >
+                          {coreCompetencies.length ? 'Edit competencies' : 'Add competencies'}
+                        </button>
+                      ) : null}
+                    </div>
+                    {editMode && !competenciesEnabled && !structuredJd?.structuredUnavailable ? (
+                      <p className="jd-panel-hint-jd-mgmt">
+                        Core competencies need the database update (sql/20260929_jd_core_competencies.sql) before they can be saved.
+                      </p>
+                    ) : null}
+                    {editMode && showCompetencyEditor ? (
+                      <div className="jd-summary-editor-jd-mgmt">
+                        <textarea
+                          rows={6}
+                          value={competencyDraft}
+                          onChange={(e) => setCompetencyDraft(e.target.value)}
+                          placeholder={'One competency per line, e.g.\nStrong operational planning and resource management skills.\nEffective communication and stakeholder management.'}
+                        />
+                        <p className="jd-panel-hint-jd-mgmt">Enter one competency per line. Each line is shown as a bullet.</p>
+                        <div className="jd-inline-actions-jd-mgmt">
+                          <button
+                            type="button"
+                            className="jd-btn-cancel-jd-mgmt"
+                            onClick={() => {
+                              setCompetencyDraft(coreCompetencies.join('\n'));
+                              setShowCompetencyEditor(false);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button type="button" className="jd-btn-save-jd-mgmt" onClick={handleSaveCompetencies} disabled={busy}>
+                            {savingCompetencies ? 'Saving…' : 'Save competencies'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : coreCompetencies.length ? (
+                      <ul className="jd-doc-competencies">
+                        {coreCompetencies.map((item, i) => (
+                          <li key={`${i}-${item}`}>{item}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="jd-summary-text-jd-mgmt jd-doc-muted">No core competencies yet.</p>
+                    )}
                   </section>
                 </div>
               )}

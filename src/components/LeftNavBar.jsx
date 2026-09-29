@@ -81,7 +81,7 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
     return JSON.parse(localStorage.getItem('leftnav_expanded_subitems') || 'null') || {
       'Finance Approvals': true,
       'Organization': true,
-      'Time & Attendance': true,
+      'Leave & Attendance': true,
       'Performance': true,
     };
   });

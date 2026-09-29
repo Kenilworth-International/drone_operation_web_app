@@ -529,3 +529,126 @@
   background: #f8f9fa;
 }
 
+/* DJI metrics (upload / edit) */
+.dji-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px 10px;
+}
+
+.dji-metric-group {
+  gap: 3px;
+}
+
+.dji-metric-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.dji-metric-group input {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+/* Day end automation log (left sidebar) */
+.dji-automation-panel {
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.dji-automation-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border: none;
+  background: #f8fafc;
+  font-size: 12px;
+  font-weight: 600;
+  color: #004B71;
+  cursor: pointer;
+}
+
+.dji-automation-toggle:hover {
+  background: #eef4f8;
+}
+
+.dji-automation-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px 10px 8px;
+}
+
+.dji-automation-empty {
+  font-size: 11px;
+  color: #94a3b8;
+  padding: 6px 2px;
+}
+
+.dji-automation-row {
+  padding: 5px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dji-automation-row:last-child {
+  border-bottom: none;
+}
+
+.dji-automation-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+}
+
+.dji-automation-field {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1f2d3d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dji-automation-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  flex-shrink: 0;
+}
+
+.dji-automation-status--done {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.dji-automation-status--skipped {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.dji-automation-status--incomplete {
+  background: #fef3c7;
+  border-color: #fcd34d;
+  color: #92400e;
+}
+
+.dji-automation-status--needs-reason {
+  background: #ffedd5;
+  border-color: #fdba74;
+  color: #9a3412;
+}
+
+.dji-automation-reason {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.3;
+}
+

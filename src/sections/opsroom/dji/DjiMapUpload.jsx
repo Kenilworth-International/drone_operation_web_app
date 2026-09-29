@@ -11,7 +11,8 @@ import {
   useGetAllDjiImagesQuery, 
   useUploadDjiImageMutation, 
   useUpdateDjiImageMutation,
-  useDeleteDjiImageMutation 
+  useDeleteDjiImageMutation,
+  useGetDjiDayEndAutomationLogQuery,
 } from '../../../api/services NodeJs/djiImagesApi';
 import { useGetEstatesQuery } from '../../../api/services NodeJs/jdManagementApi';
 import { useGetBookingCreationDivisionsByEstateQuery } from '../../../api/services NodeJs/bookingCreationApi';
@@ -46,6 +47,38 @@ const djiSelectMenuPortalProps = {
     menuPortal: (base) => ({ ...base, zIndex: 10001 }),
   },
 };
+
+const DJI_METRIC_INPUTS = [
+  { key: 'dji_field_area', label: 'DJI Field Area (Ha)', step: '0.01' },
+  { key: 'dji_spraying_area', label: 'DJI Spraying Area (Ha)', step: '0.01' },
+  { key: 'dji_spraying_litres', label: 'DJI Sprayed Liters', step: '0.01' },
+  { key: 'dji_no_of_flights', label: 'DJI No of Flights', step: '1', integer: true },
+  { key: 'dji_flying_duration', label: 'DJI Flying Duration (mins)', step: '0.01' },
+];
+
+const EMPTY_DJI_METRICS = DJI_METRIC_INPUTS.reduce((acc, { key }) => ({ ...acc, [key]: '' }), {});
+
+const metricsFromImage = (image) =>
+  DJI_METRIC_INPUTS.reduce((acc, { key }) => {
+    const v = image?.[key];
+    return { ...acc, [key]: v === null || v === undefined ? '' : String(Number(v)) };
+  }, {});
+
+/** Returns the first validation message, or null when all five are > 0. */
+const validateDjiMetrics = (metrics) => {
+  for (const { key, label, integer } of DJI_METRIC_INPUTS) {
+    const n = Number(String(metrics?.[key] ?? '').replace(/,/g, '').trim());
+    if (String(metrics?.[key] ?? '').trim() === '' || !Number.isFinite(n) || n <= 0) {
+      return `${label} is required and must be greater than 0`;
+    }
+    if (integer && !Number.isInteger(n)) {
+      return `${label} must be a whole number`;
+    }
+  }
+  return null;
+};
+
+const AUTOMATION_STATUS_LABEL = { done: 'Done', skipped: 'Skipped', incomplete: 'Incomplete' };
 
 const getBackendUrl = () => {
   const hostname = window.location.hostname;
@@ -90,6 +123,10 @@ const DjiMapUpload = () => {
   const [nonPlantationForm, setNonPlantationForm] = useState({
     nic: '',
   });
+
+  const [uploadMetrics, setUploadMetrics] = useState(EMPTY_DJI_METRICS);
+  const [editMetrics, setEditMetrics] = useState(EMPTY_DJI_METRICS);
+  const [showAutomationLog, setShowAutomationLog] = useState(false);
   
   // Image upload state
   const [selectedFile, setSelectedFile] = useState(null);
@@ -110,6 +147,12 @@ const DjiMapUpload = () => {
   });
   
   const images = imagesData?.data || [];
+
+  const { data: automationLogData, isFetching: loadingAutomationLog } = useGetDjiDayEndAutomationLogQuery(
+    { date: selectedDate.toISOString().split('T')[0] },
+    { skip: !showAutomationLog }
+  );
+  const automationLog = Array.isArray(automationLogData?.data) ? automationLogData.data : [];
   
   // Get estates (Node — legacy PHP display_all_estates caused CORS on production)
   const { data: estatesData } = useGetEstatesQuery();
@@ -202,6 +245,11 @@ const DjiMapUpload = () => {
         toast.error('Please select estate and field');
         return;
       }
+      const metricsError = validateDjiMetrics(uploadMetrics);
+      if (metricsError) {
+        toast.error(metricsError);
+        return;
+      }
     } else {
       if (!nonPlantationForm.nic) {
         toast.error('Please enter NIC');
@@ -221,6 +269,7 @@ const DjiMapUpload = () => {
         formData.append('estateName', plantationForm.estateName);
         formData.append('fieldId', plantationForm.fieldId);
         formData.append('fieldName', plantationForm.fieldName);
+        DJI_METRIC_INPUTS.forEach(({ key }) => formData.append(key, String(uploadMetrics[key]).trim()));
       } else {
         formData.append('uploadDate', selectedDateStr);
         formData.append('isPlantation', 'false');
@@ -275,6 +324,7 @@ const DjiMapUpload = () => {
     setNonPlantationForm({
       nic: '',
     });
+    setUploadMetrics(EMPTY_DJI_METRICS);
     setSelectedFile(null);
     setActiveTab('plantation');
   };
@@ -339,6 +389,7 @@ const DjiMapUpload = () => {
       nic: image.nic || '',
       isPlantation: image.is_plantation === 1,
     });
+    setEditMetrics(metricsFromImage(image));
     setActiveTab(image.is_plantation === 1 ? 'plantation' : 'nonplantation');
   };
   
@@ -350,6 +401,11 @@ const DjiMapUpload = () => {
     if (editForm.isPlantation) {
       if (!editForm.estateId || !editForm.fieldId) {
         toast.error('Please select estate and field');
+        return;
+      }
+      const metricsError = validateDjiMetrics(editMetrics);
+      if (metricsError) {
+        toast.error(metricsError);
         return;
       }
     } else {
@@ -372,6 +428,9 @@ const DjiMapUpload = () => {
         updateData.fieldId = editForm.fieldId;
         updateData.fieldName = editForm.fieldName;
         updateData.nic = null;
+        DJI_METRIC_INPUTS.forEach(({ key }) => {
+          updateData[key] = String(editMetrics[key]).trim();
+        });
       } else {
         updateData.nic = editForm.nic;
         updateData.estateId = null;
@@ -438,6 +497,35 @@ const DjiMapUpload = () => {
     const baseUrl = getBackendUrl();
     return `${baseUrl}/api/dji-images/file/${image.image_filename}`;
   };
+
+  const renderMetricInputs = (values, setValues, disabled = false) => (
+    <div className="dji-metrics-grid">
+      {DJI_METRIC_INPUTS.map(({ key, label, step, integer }) => (
+        <div className="dji-form-group dji-metric-group" key={key}>
+          <label>{label} *</label>
+          <input
+            type="number"
+            min={integer ? '1' : '0.01'}
+            step={step}
+            inputMode={integer ? 'numeric' : 'decimal'}
+            value={values[key]}
+            disabled={disabled}
+            onChange={(e) => {
+              const next = e.target.value;
+              setValues((prev) => ({ ...prev, [key]: next }));
+            }}
+            placeholder="0"
+          />
+        </div>
+      ))}
+    </div>
+  );
+
+  const formatMetric = (value) => {
+    if (value === null || value === undefined || value === '') return '—';
+    const n = Number(value);
+    return Number.isFinite(n) ? String(n) : '—';
+  };
   
   return (
     <div className="dji-map-upload-container">
@@ -496,6 +584,48 @@ const DjiMapUpload = () => {
                   <div className="dji-image-item-date">{formatDateForDisplay(image.upload_date)}</div>
                 </div>
               ))
+            )}
+          </div>
+
+          <div className="dji-automation-panel">
+            <button
+              type="button"
+              className="dji-automation-toggle"
+              onClick={() => setShowAutomationLog((v) => !v)}
+            >
+              <span>Day end automation</span>
+              <span>{showAutomationLog ? '▾' : '▸'}</span>
+            </button>
+            {showAutomationLog && (
+              <div className="dji-automation-list">
+                {loadingAutomationLog ? (
+                  <div className="dji-automation-empty">Loading…</div>
+                ) : automationLog.length === 0 ? (
+                  <div className="dji-automation-empty">No automation results for this date</div>
+                ) : (
+                  automationLog.map((row) => (
+                    <div className="dji-automation-row" key={row.id} title={row.reason || ''}>
+                      <div className="dji-automation-row-top">
+                        <span className="dji-automation-field">
+                          {row.field_name || `Field ${row.field_id}`}
+                        </span>
+                        {row.needs_partial_reason ? (
+                          <span className="dji-automation-status dji-automation-status--needs-reason">
+                            Done · needs reason
+                          </span>
+                        ) : (
+                          <span className={`dji-automation-status dji-automation-status--${row.status}`}>
+                            {AUTOMATION_STATUS_LABEL[row.status] || row.status}
+                          </span>
+                        )}
+                      </div>
+                      {(row.status !== 'done' || row.needs_partial_reason) && row.reason ? (
+                        <div className="dji-automation-reason">{row.reason}</div>
+                      ) : null}
+                    </div>
+                  ))
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -570,6 +700,16 @@ const DjiMapUpload = () => {
                         <div className="dji-info-row">
                           <label>Field:</label>
                           <span>{selectedImage.field_name}</span>
+                        </div>
+                        {DJI_METRIC_INPUTS.map(({ key, label }) => (
+                          <div className="dji-info-row" key={key}>
+                            <label>{label}:</label>
+                            <span>{formatMetric(selectedImage[key])}</span>
+                          </div>
+                        ))}
+                        <div className="dji-info-row">
+                          <label>Linked Task:</label>
+                          <span>{Number(selectedImage.linked_task) > 0 ? `#${selectedImage.linked_task}` : 'Not linked'}</span>
                         </div>
                       </>
                     ) : (
@@ -724,6 +864,8 @@ const DjiMapUpload = () => {
                             }}
                           />
                         </div>
+
+                        {renderMetricInputs(editMetrics, setEditMetrics, updating)}
                       </>
                     ) : (
                       <div className="dji-form-group">
@@ -934,6 +1076,10 @@ const DjiMapUpload = () => {
                       />
                     </div>
                     
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      {renderMetricInputs(uploadMetrics, setUploadMetrics, uploading)}
+                    </div>
+
                     {autoGeneratedId && (
                       <div className="dji-auto-id" style={{ gridColumn: '1 / -1' }}>
                         <label>Auto-Generated ID:</label>

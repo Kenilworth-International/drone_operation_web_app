@@ -960,6 +960,22 @@ export const jdManagementApi = baseApi.injectEndpoints({
       invalidatesTags: ['UserJobDescriptions'],
     }),
 
+    saveCoreCompetencies: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/user-job-descriptions/competencies/save',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        return asQueryError(result, 'Failed to save core competencies');
+      },
+      invalidatesTags: ['UserJobDescriptions'],
+    }),
+
     saveResponsibilityCategory: builder.mutation({
       queryFn: async (body) => {
         const result = await nodeBackendBaseQuery(
@@ -1499,6 +1515,7 @@ export const {
   useGetStructuredJobDescriptionQuery,
   useLazyGetStructuredJobDescriptionQuery,
   useSaveJobSummaryMutation,
+  useSaveCoreCompetenciesMutation,
   useSaveResponsibilityCategoryMutation,
   useDeleteResponsibilityCategoryMutation,
   useUpdateCategoryOrdersMutation,

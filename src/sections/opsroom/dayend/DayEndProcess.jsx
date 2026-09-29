@@ -1560,11 +1560,31 @@ const DayEndProcess = () => {
                         onChange={(e) => {
                           // Only allow selection of unlinked images
                           const selectedValue = e.target.value;
-                          if (selectedValue && !unlinkedDjiImages.find(img => img.id.toString() === selectedValue)) {
+                          const pickedImage = selectedValue
+                            ? unlinkedDjiImages.find(img => img.id.toString() === selectedValue)
+                            : null;
+                          if (selectedValue && !pickedImage) {
                             return; // Prevent selection of linked images
+                          }
+                          // Prefill DJI values captured on DJI Map Upload; inputs stay editable.
+                          const mapValues = {};
+                          if (pickedImage) {
+                            [
+                              'dji_field_area',
+                              'dji_spraying_area',
+                              'dji_spraying_litres',
+                              'dji_flying_duration',
+                              'dji_no_of_flights',
+                            ].forEach((key) => {
+                              const n = Number(pickedImage[key]);
+                              if (pickedImage[key] != null && Number.isFinite(n) && n > 0) {
+                                mapValues[key] = String(n);
+                              }
+                            });
                           }
                           setDjiData((prev) => ({
                             ...prev,
+                            ...mapValues,
                             dji_image_id: selectedValue || null,
                           }));
                         }}
