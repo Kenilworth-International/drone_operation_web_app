@@ -366,6 +366,131 @@
   cursor: not-allowed;
 }
 
+.dji-pilot-panel {
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafbfc;
+  overflow: hidden;
+}
+
+.dji-pilot-panel-hdr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.dji-pilot-panel-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+}
+
+.dji-pilot-list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.dji-pilot-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.dji-pilot-row:last-child {
+  border-bottom: none;
+}
+
+.dji-pilot-row.is-applied {
+  background: #eaf3fb;
+}
+
+.dji-pilot-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dji-pilot-field {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}
+
+.dji-pilot-meta,
+.dji-pilot-values {
+  font-size: 12px;
+  color: #666;
+}
+
+.dji-pilot-values {
+  color: #2f5f8a;
+}
+
+.dji-pilot-row-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.dji-pilot-badge {
+  padding: 2px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dji-pilot-badge--ok { background: #dcfce7; color: #15803d; }
+.dji-pilot-badge--warn { background: #fef3c7; color: #92400e; }
+.dji-pilot-badge--muted { background: #f1f5f9; color: #475569; }
+.dji-pilot-badge--map { background: #ede9fe; color: #6d28d9; }
+
+.dji-pilot-apply-btn {
+  padding: 5px 14px;
+  border: 1px solid #4180b9;
+  border-radius: 6px;
+  background: #4180b9;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dji-pilot-apply-btn:hover:not(:disabled) {
+  background: #356a9c;
+}
+
+.dji-pilot-apply-btn:disabled {
+  background: #fff;
+  color: #4180b9;
+  cursor: default;
+}
+
+.dji-pilot-empty {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #888;
+}
+
+.dji-pilot-note {
+  padding: 8px 14px;
+  border-top: 1px solid #eee;
+  font-size: 12px;
+  color: #666;
+}
+
 .dji-auto-id {
   padding: 12px;
   background: #f8f9fa;

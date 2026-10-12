@@ -101,6 +101,19 @@ export const djiImagesApi = baseApi.injectEndpoints({
       providesTags: ['DjiImages'],
     }),
 
+    // Estate plantation tasks on a date with pilot-submitted values (upload prefill)
+    getDjiEstatePilotTasks: builder.query({
+      queryFn: async ({ date, estateId }, api, extraOptions) => {
+        const params = new URLSearchParams({ date, estateId: String(estateId) });
+        return nodeBackendBaseQuery(
+          { url: `/api/dji-images/estate-tasks?${params.toString()}`, method: 'GET' },
+          api,
+          extraOptions
+        );
+      },
+      providesTags: ['DjiImages'],
+    }),
+
     // Get DJI image by ID
     getDjiImageById: builder.query({
       queryFn: async (id, api, extraOptions, baseQuery) => {
@@ -191,6 +204,7 @@ export const {
   useUploadDjiImageMutation,
   useGetUnlinkedDjiImagesQuery,
   useGetAllDjiImagesQuery,
+  useGetDjiEstatePilotTasksQuery,
   useGetDjiImageByIdQuery,
   useUpdateDjiImageMutation,
   useLinkDjiImageToTaskMutation,

@@ -13,6 +13,7 @@ import {
   useUpdateDjiImageMutation,
   useDeleteDjiImageMutation,
   useGetDjiDayEndAutomationLogQuery,
+  useGetDjiEstatePilotTasksQuery,
 } from '../../../api/services NodeJs/djiImagesApi';
 import { useGetEstatesQuery } from '../../../api/services NodeJs/jdManagementApi';
 import { useGetBookingCreationDivisionsByEstateQuery } from '../../../api/services NodeJs/bookingCreationApi';
@@ -125,6 +126,7 @@ const DjiMapUpload = () => {
   const [uploadMetrics, setUploadMetrics] = useState(EMPTY_DJI_METRICS);
   const [editMetrics, setEditMetrics] = useState(EMPTY_DJI_METRICS);
   const [showAutomationLog, setShowAutomationLog] = useState(false);
+  const [appliedTaskId, setAppliedTaskId] = useState(null);
   
   // Image upload state
   const [selectedFile, setSelectedFile] = useState(null);
@@ -175,6 +177,45 @@ const DjiMapUpload = () => {
       })
     : [];
   
+  const uploadDateStr = selectedDate.toISOString().split('T')[0];
+  const {
+    data: estateTasksData,
+    isFetching: loadingEstateTasks,
+    isError: estateTasksError,
+  } = useGetDjiEstatePilotTasksQuery(
+    { date: uploadDateStr, estateId: plantationForm.estateId },
+    {
+      skip: !showAddModal || activeTab !== 'plantation' || !plantationForm.estateId,
+      refetchOnMountOrArgChange: true,
+    }
+  );
+  const estateTasks = Array.isArray(estateTasksData?.data) ? estateTasksData.data : [];
+  const estateTasksAdded = estateTasks.filter((t) => t.pilot_data_added).length;
+
+  /** Fill field + DJI metrics from the pilot's submission. Nothing is saved until Upload. */
+  const applyPilotData = (task) => {
+    const metrics = task.suggested_metrics || {};
+    const field = allFields.find((f) => String(f.field_id) === String(task.field_id));
+    setPlantationForm((prev) => ({
+      ...prev,
+      fieldId: String(task.field_id),
+      fieldName: field?.field_name || task.field_name || '',
+    }));
+    setUploadMetrics(
+      DJI_METRIC_INPUTS.reduce(
+        (acc, { key }) => ({ ...acc, [key]: metrics[key] != null ? String(metrics[key]) : '' }),
+        {}
+      )
+    );
+    setAppliedTaskId(task.task_id);
+    const missing = DJI_METRIC_INPUTS.filter(({ key }) => metrics[key] == null).map(({ label }) => label);
+    if (missing.length) {
+      toast.info(`Pilot data applied. Enter from the DJI map: ${missing.join(', ')}`);
+    } else {
+      toast.info('Pilot data applied. Check the values against the DJI map before uploading.');
+    }
+  };
+
   // Upload mutation
   const [uploadImage, { isLoading: uploading }] = useUploadDjiImageMutation();
   const [updateImage, { isLoading: updating }] = useUpdateDjiImageMutation();
@@ -323,6 +364,7 @@ const DjiMapUpload = () => {
       nic: '',
     });
     setUploadMetrics(EMPTY_DJI_METRICS);
+    setAppliedTaskId(null);
     setSelectedFile(null);
     setActiveTab('plantation');
   };
@@ -1074,6 +1116,81 @@ const DjiMapUpload = () => {
                       />
                     </div>
                     
+                    {plantationForm.estateId && (
+                      <div className="dji-pilot-panel" style={{ gridColumn: '1 / -1' }}>
+                        <div className="dji-pilot-panel-hdr">
+                          <span>Pilot submissions on {uploadDateStr}</span>
+                          {!loadingEstateTasks && estateTasks.length > 0 && (
+                            <span className="dji-pilot-panel-count">
+                              {estateTasksAdded} of {estateTasks.length} tasks have pilot data
+                            </span>
+                          )}
+                        </div>
+                        {loadingEstateTasks ? (
+                          <div className="dji-pilot-empty">Loading tasks…</div>
+                        ) : estateTasksError ? (
+                          <div className="dji-pilot-empty">Could not load tasks for this estate.</div>
+                        ) : estateTasks.length === 0 ? (
+                          <div className="dji-pilot-empty">No plantation tasks for this estate on this date.</div>
+                        ) : (
+                          <div className="dji-pilot-list">
+                            {estateTasks.map((task) => {
+                              const isApplied =
+                                appliedTaskId === task.task_id && plantationForm.fieldId === String(task.field_id);
+                              const p = task.pilot || {};
+                              return (
+                                <div
+                                  key={task.task_id}
+                                  className={`dji-pilot-row${isApplied ? ' is-applied' : ''}`}
+                                >
+                                  <div className="dji-pilot-row-main">
+                                    <span className="dji-pilot-field">{task.field_name}</span>
+                                    <span className="dji-pilot-meta">
+                                      {task.pilot_name || 'No pilot'} · Plan #{task.plan_id}
+                                      {task.field_area ? ` · ${task.field_area} Ha` : ''}
+                                    </span>
+                                    {task.pilot_data_added && (
+                                      <span className="dji-pilot-values">
+                                        Waypoint {formatMetric(p.waypoint_area)} Ha · Completed{' '}
+                                        {formatMetric(p.sprayed_area ?? p.completed_area)} Ha
+                                        {p.sprayed_litres ? ` · ${formatMetric(p.sprayed_litres)} L` : ''}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="dji-pilot-row-side">
+                                    {task.dji_map_count > 0 && (
+                                      <span className="dji-pilot-badge dji-pilot-badge--map">DJI map uploaded</span>
+                                    )}
+                                    {task.cancelled ? (
+                                      <span className="dji-pilot-badge dji-pilot-badge--muted">Cancelled</span>
+                                    ) : task.pilot_data_added ? (
+                                      <span className="dji-pilot-badge dji-pilot-badge--ok">Pilot data added</span>
+                                    ) : (
+                                      <span className="dji-pilot-badge dji-pilot-badge--warn">Not added</span>
+                                    )}
+                                    {task.pilot_data_added && (
+                                      <button
+                                        type="button"
+                                        className="dji-pilot-apply-btn"
+                                        onClick={() => applyPilotData(task)}
+                                        disabled={uploading || isApplied}
+                                      >
+                                        {isApplied ? 'Applied' : 'Apply'}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                        <div className="dji-pilot-note">
+                          Apply copies the pilot&apos;s field and values into this form only. Check them against
+                          the DJI map; nothing is saved until you click Upload.
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{ gridColumn: '1 / -1' }}>
                       {renderMetricInputs(uploadMetrics, setUploadMetrics, uploading)}
                     </div>
