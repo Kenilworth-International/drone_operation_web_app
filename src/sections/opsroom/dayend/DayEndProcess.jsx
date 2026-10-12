@@ -30,6 +30,7 @@ import { getResourceUrl } from '../../../utils/resourceUrls';
 import { useGetMyPermissionsQuery } from '../../../api/services NodeJs/featurePermissionsApi';
 import { FEATURE_CODES } from '../../../utils/featurePermissions';
 import { isInternalDeveloper } from '../../../utils/authUtils';
+import DayEndAutomationSummary from './DayEndAutomationSummary';
 
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
   <div className="custom-date-input" ref={ref} onClick={onClick}>
@@ -998,6 +999,15 @@ const DayEndProcess = () => {
           />
         </div>
       </div>
+
+      <DayEndAutomationSummary
+        date={selectedDate.toLocaleDateString('en-CA')}
+        onSelectPlan={handleContainerClick}
+        onChanged={async (planId) => {
+          await handleDateChange(selectedDate);
+          if (planId) handleContainerClick(planId);
+        }}
+      />
 
       {/* ══ MAIN BODY ════════════════════════════════════════════════ */}
       <div className="dep-body">

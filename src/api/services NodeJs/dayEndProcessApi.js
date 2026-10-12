@@ -198,6 +198,36 @@ export const dayEndProcessApi = baseApi.injectEndpoints({
       providesTags: ['DayEndProcess', 'PlansCompletionStats'],
     }),
 
+    getDayEndAutomationSummary: builder.query({
+      queryFn: async ({ date }) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/day-end-process/automation-summary', method: 'POST', body: { date } },
+          {},
+          {}
+        );
+        if (result.error) return { error: result.error };
+        return { data: result.data?.data || null };
+      },
+      providesTags: ['DayEndAutomationSummary', 'DayEndProcess'],
+    }),
+
+    addExtraDjiFieldToPlan: builder.mutation({
+      queryFn: async ({ djiImageId, planId, pilotId }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/day-end-process/add-extra-dji-field',
+            method: 'POST',
+            body: { dji_image_id: djiImageId, plan_id: planId, pilot_id: pilotId || undefined },
+          },
+          {},
+          {}
+        );
+        if (result.error) return { error: result.error };
+        return { data: result.data || null };
+      },
+      invalidatesTags: ['DayEndAutomationSummary', 'DayEndProcess', 'PlansCompletionStats', 'PlanDetails'],
+    }),
+
     getDayEndPlanSummary: builder.query({
       queryFn: async (planId) => {
         const result = await nodeBackendBaseQuery(
@@ -321,6 +351,8 @@ export const {
   useGetOpsRoomCanceledByDateRangeQuery,
   useGetDayOverviewQuery,
   useLazyGetDayOverviewQuery,
+  useGetDayEndAutomationSummaryQuery,
+  useAddExtraDjiFieldToPlanMutation,
   useGetDayEndPlanSummaryQuery,
   useLazyGetDayEndPlanSummaryQuery,
   useGetDayEndTasksByPlanAndFieldQuery,

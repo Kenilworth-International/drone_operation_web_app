@@ -92,6 +92,8 @@ export const baseApi = createApi({
     'AppFeatures',
     // Task Cancel Status
     'TaskCancelStatus',
+    // Day End Process
+    'DayEndProcess', 'PlansCompletionStats', 'DayEndAutomationSummary',
     // Others
     'Calendar', 'Reasons', 'ASC', 'Chemicals', 'TimeOfDays', 'HrMasterOptions',
     'IncidentTypes', 'IncidentEquipment',
