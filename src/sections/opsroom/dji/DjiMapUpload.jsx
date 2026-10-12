@@ -52,8 +52,6 @@ const DJI_METRIC_INPUTS = [
   { key: 'dji_field_area', label: 'DJI Field Area (Ha)', step: '0.01' },
   { key: 'dji_spraying_area', label: 'DJI Spraying Area (Ha)', step: '0.01' },
   { key: 'dji_spraying_litres', label: 'DJI Sprayed Liters', step: '0.01' },
-  { key: 'dji_no_of_flights', label: 'DJI No of Flights', step: '1', integer: true },
-  { key: 'dji_flying_duration', label: 'DJI Flying Duration (mins)', step: '0.01' },
 ];
 
 const EMPTY_DJI_METRICS = DJI_METRIC_INPUTS.reduce((acc, { key }) => ({ ...acc, [key]: '' }), {});
@@ -64,7 +62,7 @@ const metricsFromImage = (image) =>
     return { ...acc, [key]: v === null || v === undefined ? '' : String(Number(v)) };
   }, {});
 
-/** Returns the first validation message, or null when all five are > 0. */
+/** Returns the first validation message, or null when all metrics are > 0. */
 const validateDjiMetrics = (metrics) => {
   for (const { key, label, integer } of DJI_METRIC_INPUTS) {
     const n = Number(String(metrics?.[key] ?? '').replace(/,/g, '').trim());
@@ -502,7 +500,7 @@ const DjiMapUpload = () => {
     <div className="dji-metrics-grid">
       {DJI_METRIC_INPUTS.map(({ key, label, step, integer }) => (
         <div className="dji-form-group dji-metric-group" key={key}>
-          <label>{label} *</label>
+          <label title={`${label} *`}>{label} *</label>
           <input
             type="number"
             min={integer ? '1' : '0.01'}

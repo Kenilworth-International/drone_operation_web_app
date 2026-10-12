@@ -89,6 +89,7 @@ import DroneUnlockingQueue from './sections/opsroom/drone-unlocking/DroneUnlocki
 import IctUserManagement from './sections/ict/users/IctUserManagement';
 import AuthControls from './sections/ict/authentication/AuthControls';
 import AppVersionManagement from './sections/ict/appVersions/AppVersionManagement';
+import AppFeatureManagement from './sections/ict/appFeatures/AppFeatureManagement';
 import LogsReportPage from './sections/ict/logsReport/LogsReportPage';
 import SystemMaintenancePage from './sections/ict/systemMaintenance/SystemMaintenancePage';
 import SprintPlanning from './sections/ict/development/SprintPlanning';
@@ -1000,6 +1001,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <AppVersionManagement />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="ict/system-admin/app-features"
+            element={
+              <ProtectedRoute>
+                <AppFeatureManagement />
               </ProtectedRoute>
             }
           />

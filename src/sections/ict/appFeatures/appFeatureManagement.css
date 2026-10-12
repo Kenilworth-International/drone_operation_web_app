@@ -1,0 +1,160 @@
+/* ── App Feature Management (reuses avm-* from appVersionManagement.css) ── */
+
+.afm-app {
+  padding: 12px 14px;
+}
+
+.afm-app-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.afm-app-head .ict-dev-section-title {
+  margin: 0;
+  font-size: 14px;
+}
+
+.afm-app-id {
+  font-size: 11px;
+  color: var(--avm-muted);
+  font-family: monospace;
+}
+
+.afm-feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.afm-feature {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--avm-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.afm-feature-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.afm-feature-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--avm-text);
+}
+
+.afm-feature-desc {
+  font-size: 11px;
+  color: var(--avm-muted);
+}
+
+.afm-rule-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.afm-rule {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--avm-primary-soft);
+  color: var(--avm-primary);
+  border: 1px solid var(--avm-line-soft);
+}
+
+.afm-feature-meta {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.afm-modal {
+  max-width: 560px;
+}
+
+.afm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.afm-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.afm-hint {
+  margin: -4px 0 0;
+  font-size: 11px;
+}
+
+.afm-section-title {
+  margin: 6px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--avm-line-soft);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.afm-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.afm-chip {
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--avm-line);
+  background: #fff;
+  color: var(--avm-muted);
+  cursor: pointer;
+}
+
+.afm-chip:hover {
+  border-color: var(--avm-primary);
+}
+
+.afm-chip--on {
+  background: var(--avm-primary);
+  border-color: var(--avm-primary);
+  color: #fff;
+}
+
+.afm-form-error {
+  margin-bottom: 0;
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+.afm-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .afm-row {
+    grid-template-columns: 1fr;
+  }
+}

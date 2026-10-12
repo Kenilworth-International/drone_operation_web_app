@@ -199,6 +199,9 @@ function DevCenterDashboard() {
             <button className="ictdc-btn" type="button" onClick={() => go('/home/ict/system-admin/app-versions')}>
               App Versions
             </button>
+            <button className="ictdc-btn" type="button" onClick={() => go('/home/ict/system-admin/app-features')}>
+              App Features
+            </button>
           </div>
         </div>
 

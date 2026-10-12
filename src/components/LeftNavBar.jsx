@@ -212,6 +212,7 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
     '/home/ict/development/extra-work',
     '/home/ict/development/metrics',
     '/home/ict/system-admin/app-versions',
+    '/home/ict/system-admin/app-features',
   ];
 
   return (

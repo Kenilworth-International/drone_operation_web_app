@@ -89,6 +89,7 @@ export const baseApi = createApi({
     'FieldHistoryEstates', 'FieldHistoryFields', 'FieldHistoryData',
     // App Versions
     'AppVersions',
+    'AppFeatures',
     // Task Cancel Status
     'TaskCancelStatus',
     // Others

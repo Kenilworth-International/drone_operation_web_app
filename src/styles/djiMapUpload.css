@@ -532,23 +532,36 @@
 /* DJI metrics (upload / edit) */
 .dji-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 8px 10px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px 16px;
+  align-items: end;
 }
 
 .dji-metric-group {
-  gap: 3px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .dji-metric-group label {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
-  color: #475569;
+  color: #1f2d3d;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dji-metric-group input {
-  padding: 6px 8px;
-  font-size: 12px;
+  height: 38px;
+  box-sizing: border-box;
+  padding: 0 10px;
+  font-size: 14px;
+  border-color: #ddd;
+  width: 100%;
+}
+
+.dji-metric-group input:hover:not(:disabled) {
+  border-color: #999;
 }
 
 /* Day end automation log (left sidebar) */
