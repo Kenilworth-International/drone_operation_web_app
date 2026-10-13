@@ -804,13 +804,12 @@ const DayEndProcess = () => {
     }
     if (
       !hasRequiredPositiveNumber(djiData.dji_field_area) ||
-      !hasRequiredPositiveNumber(djiData.dji_spraying_area) ||
       !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
       !hasRequiredPositiveNumber(djiData.dji_flying_duration) ||
       !hasRequiredPositiveNumber(djiData.dji_no_of_flights)
     ) {
       toast.warning(
-        'DJI Field Area, Spraying Area, Sprayed Liters, Flying Duration, and No of Flights are required.',
+        'DJI Field Area, Sprayed Liters, Flying Duration, and No of Flights are required.',
       );
       return;
     }
@@ -1683,9 +1682,11 @@ const DayEndProcess = () => {
                       />
                     </div>
                     <div className="data-item">
-                      <label>DJI Spraying Area (Ha):</label>
+                      <label>DJI Spraying Area (Ha) <span style={{ fontWeight: 400 }}>(optional)</span>:</label>
                       <input
                         type="number"
+                        min="0"
+                        placeholder="0"
                         value={djiData.dji_spraying_area}
                         onChange={(e) =>
                           setDjiData((prev) => ({
@@ -1786,7 +1787,7 @@ const DayEndProcess = () => {
                         !hasRequiredPositiveNumber(djiData.dji_no_of_flights) ||
                         !hasRequiredPositiveNumber(djiData.dji_field_area) ||
                         !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
-                        !hasRequiredPositiveNumber(djiData.dji_spraying_area) ||
+                        parseFloat(djiData.dji_spraying_area) < 0 ||
                         parseFloat(djiData.dji_field_area) > parseFloat(currentField?.field_area || currentTask.task_fieldArea || 0) ||
                         parseFloat(djiData.dji_spraying_area) > parseFloat(currentField?.field_area || currentTask.task_fieldArea || 0)
                       }
