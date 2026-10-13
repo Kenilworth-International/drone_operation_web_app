@@ -49,11 +49,9 @@ const EMPTY_DJI_DATA = {
   dji_field_area: '',
   dji_spraying_area: '',
   dji_spraying_litres: '',
-  dji_flying_duration: '',
-  dji_no_of_flights: '',
 };
 
-/** Pilot app values that can be copied into the ops room DJI inputs (flights / duration stay manual). */
+/** Pilot app values that can be copied into the ops room DJI inputs. */
 const PILOT_TO_DJI_FIELDS = [
   ['task_fieldArea', 'dji_field_area'],
   ['task_sprayedArea', 'dji_spraying_area'],
@@ -657,8 +655,6 @@ const DayEndProcess = () => {
         dji_field_area: freshTask.dji_field_area || '',
         dji_spraying_area: freshTask.dji_spraying_area || '',
         dji_spraying_litres: freshTask.dji_spraying_litres || '',
-        dji_flying_duration: freshTask.dji_flying_duration || '',
-        dji_no_of_flights: freshTask.dji_no_of_flights || '',
       });
       setDjiMapFile(null);
       setPilotDataApplied(false);
@@ -804,13 +800,9 @@ const DayEndProcess = () => {
     }
     if (
       !hasRequiredPositiveNumber(djiData.dji_field_area) ||
-      !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
-      !hasRequiredPositiveNumber(djiData.dji_flying_duration) ||
-      !hasRequiredPositiveNumber(djiData.dji_no_of_flights)
+      !hasRequiredPositiveNumber(djiData.dji_spraying_litres)
     ) {
-      toast.warning(
-        'DJI Field Area, Sprayed Liters, Flying Duration, and No of Flights are required.',
-      );
+      toast.warning('DJI Field Area and Sprayed Liters are required.');
       return;
     }
     if (!djiMapFile && !getSavedDjiImageUrl()) {
@@ -844,8 +836,6 @@ const DayEndProcess = () => {
         dji_field_area: formatNumber(djiData.dji_field_area),
         dji_spraying_area: formatNumber(djiData.dji_spraying_area),
         dji_spraying_litres: formatNumber(djiData.dji_spraying_litres),
-        dji_flying_duration: formatNumber(djiData.dji_flying_duration),
-        dji_no_of_flights: formatNumber(djiData.dji_no_of_flights, 0),
       }).unwrap();
 
       if (response?.success || response?.status === 'true') {
@@ -1730,50 +1720,6 @@ const DayEndProcess = () => {
                       />
                     </div>
                   </div>
-                  <div className="data-row">
-                    <div className="data-item">
-                      <label>DJI Flying Duration (mins):</label>
-                      <input
-                        type="number"
-                        min="0.1"
-                        step="0.1"
-                        value={djiData.dji_flying_duration}
-                        onChange={(e) =>
-                          setDjiData((prev) => ({
-                            ...prev,
-                            dji_flying_duration: e.target.value,
-                          }))
-                        }
-                        required
-                      />
-                      {!hasRequiredPositiveNumber(djiData.dji_flying_duration) && (
-                        <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                          DJI Flying Duration is required.
-                        </span>
-                      )}
-                    </div>
-                    <div className="data-item">
-                      <label>DJI No of Flights:</label>
-                      <input
-                        type="number"
-                        min="1"
-                        step="1"
-                        value={djiData.dji_no_of_flights}
-                        onChange={(e) =>
-                          setDjiData((prev) => ({
-                            ...prev,
-                            dji_no_of_flights: e.target.value,
-                          }))
-                        }
-                        required
-                      />
-                      {!hasRequiredPositiveNumber(djiData.dji_no_of_flights) && (
-                        <span style={{ color: '#dc2626', fontSize: '12px', marginTop: '4px', display: 'block' }}>
-                          DJI No of Flights is required.
-                        </span>
-                      )}
-                    </div>
-                  </div>
                   <div className="data-row submit-row">
                     <button
                       className="submit-button"
@@ -1783,8 +1729,6 @@ const DayEndProcess = () => {
                         !Number(currentTask?.task_fieldArea || currentField?.field_area || 0) ||
                         !String(currentTask?.task_image || '').trim() ||
                         (!djiMapFile && !getSavedDjiImageUrl()) ||
-                        !hasRequiredPositiveNumber(djiData.dji_flying_duration) ||
-                        !hasRequiredPositiveNumber(djiData.dji_no_of_flights) ||
                         !hasRequiredPositiveNumber(djiData.dji_field_area) ||
                         !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
                         parseFloat(djiData.dji_spraying_area) < 0 ||
