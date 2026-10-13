@@ -48,15 +48,21 @@ const hasRequiredPositiveNumber = (value) => {
 const EMPTY_DJI_DATA = {
   dji_field_area: '',
   dji_spraying_area: '',
-  dji_spraying_litres: '',
 };
 
 /** Pilot app values that can be copied into the ops room DJI inputs. */
 const PILOT_TO_DJI_FIELDS = [
   ['task_fieldArea', 'dji_field_area'],
   ['task_sprayedArea', 'dji_spraying_area'],
-  ['task_sprayedLiters', 'dji_spraying_litres'],
 ];
+
+/** DJI sprayed liters = DJI field area × this (the backend applies the same rule). */
+const DJI_LITRES_PER_HA = 150;
+
+const calcDjiSprayedLitres = (fieldArea) => {
+  const n = Number(String(fieldArea ?? '').replace(/,/g, '').trim());
+  return Number.isFinite(n) && n > 0 ? Math.round(n * DJI_LITRES_PER_HA * 100) / 100 : 0;
+};
 
 const DJI_MAP_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.jfif,.png,.gif,.webp';
 const DJI_MAP_MAX_BYTES = 50 * 1024 * 1024;
@@ -654,7 +660,6 @@ const DayEndProcess = () => {
       setDjiData({
         dji_field_area: freshTask.dji_field_area || '',
         dji_spraying_area: freshTask.dji_spraying_area || '',
-        dji_spraying_litres: freshTask.dji_spraying_litres || '',
       });
       setDjiMapFile(null);
       setPilotDataApplied(false);
@@ -798,11 +803,8 @@ const DayEndProcess = () => {
       toast.warning('Pilot Field Area (Ha) and Task Image are required before submitting DJI data.');
       return;
     }
-    if (
-      !hasRequiredPositiveNumber(djiData.dji_field_area) ||
-      !hasRequiredPositiveNumber(djiData.dji_spraying_litres)
-    ) {
-      toast.warning('DJI Field Area and Sprayed Liters are required.');
+    if (!hasRequiredPositiveNumber(djiData.dji_field_area)) {
+      toast.warning('DJI Field Area is required.');
       return;
     }
     if (!djiMapFile && !getSavedDjiImageUrl()) {
@@ -835,7 +837,7 @@ const DayEndProcess = () => {
         djiImage: djiMapFile,
         dji_field_area: formatNumber(djiData.dji_field_area),
         dji_spraying_area: formatNumber(djiData.dji_spraying_area),
-        dji_spraying_litres: formatNumber(djiData.dji_spraying_litres),
+        dji_spraying_litres: formatNumber(calcDjiSprayedLitres(djiData.dji_field_area)),
       }).unwrap();
 
       if (response?.success || response?.status === 'true') {
@@ -1601,7 +1603,7 @@ const DayEndProcess = () => {
                     className="dayend-apply-pilot-btn"
                     onClick={handleApplyPilotData}
                     disabled={!pilotDataAvailable || isSubmitting}
-                    title="Copy pilot field area, sprayed area and sprayed liters into the DJI fields"
+                    title="Copy pilot field area and sprayed area into the DJI fields"
                   >
                     Apply pilot data
                   </button>
@@ -1706,18 +1708,16 @@ const DayEndProcess = () => {
                       />
                     </div>
                     <div className="data-item">
-                      <label>DJI Sprayed Liters:</label>
+                      <label>DJI Sprayed Liters (auto):</label>
                       <input
                         type="number"
-                        step="0.1"
-                        value={djiData.dji_spraying_litres}
-                        onChange={(e) =>
-                          setDjiData((prev) => ({
-                            ...prev,
-                            dji_spraying_litres: e.target.value,
-                          }))
-                        }
+                        value={hasRequiredPositiveNumber(djiData.dji_field_area) ? calcDjiSprayedLitres(djiData.dji_field_area) : ''}
+                        readOnly
+                        disabled
                       />
+                      <span style={{ color: '#64748b', fontSize: '12px', marginTop: '4px', display: 'block' }}>
+                        DJI Field Area × {DJI_LITRES_PER_HA}
+                      </span>
                     </div>
                   </div>
                   <div className="data-row submit-row">
@@ -1730,7 +1730,6 @@ const DayEndProcess = () => {
                         !String(currentTask?.task_image || '').trim() ||
                         (!djiMapFile && !getSavedDjiImageUrl()) ||
                         !hasRequiredPositiveNumber(djiData.dji_field_area) ||
-                        !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
                         parseFloat(djiData.dji_spraying_area) < 0 ||
                         parseFloat(djiData.dji_field_area) > parseFloat(currentField?.field_area || currentTask.task_fieldArea || 0) ||
                         parseFloat(djiData.dji_spraying_area) > parseFloat(currentField?.field_area || currentTask.task_fieldArea || 0)
