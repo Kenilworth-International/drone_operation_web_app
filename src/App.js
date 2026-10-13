@@ -81,7 +81,6 @@ import Workshop from './sections/administration/Workshop';
 import WorkshopInventoryPage from './sections/administration/WorkshopInventory';
 import WorkshopAccidentReportPage from './sections/administration/WorkshopAccidentReportPage';
 import GeneratorFuelApprovals from './sections/hr&admin/fuelApprovals/GeneratorFuelApprovals';
-import DjiMapUpload from './sections/opsroom/dji/DjiMapUpload';
 import ManagerApprovalQueue from './sections/opsroom/manager-approval/ManagerApprovalQueue';
 import FieldUnblockRequestQueue from './sections/opsroom/field-unblock/FieldUnblockRequestQueue';
 import PendingPaymentQueue from './sections/opsroom/pending-payment/PendingPaymentQueue';
@@ -701,14 +700,6 @@ function App() {
             element={
               <ProtectedRoute>
                 <TransportArrangePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="djiMapUpload"
-            element={
-              <ProtectedRoute>
-                <DjiMapUpload />
               </ProtectedRoute>
             }
           />

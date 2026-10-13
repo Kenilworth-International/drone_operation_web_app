@@ -93,7 +93,7 @@ export const baseApi = createApi({
     // Task Cancel Status
     'TaskCancelStatus',
     // Day End Process
-    'DayEndProcess', 'PlansCompletionStats', 'DayEndAutomationSummary',
+    'DayEndProcess', 'PlansCompletionStats',
     // Others
     'Calendar', 'Reasons', 'ASC', 'Chemicals', 'TimeOfDays', 'HrMasterOptions',
     'IncidentTypes', 'IncidentEquipment',

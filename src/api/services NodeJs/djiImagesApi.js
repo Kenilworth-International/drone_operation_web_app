@@ -180,24 +180,7 @@ export const djiImagesApi = baseApi.injectEndpoints({
         );
       },
       providesTags: ['DjiImagesCount'],
-    }),
-
-    // Day-end automation outcomes (done / skipped / incomplete) for a date
-    getDjiDayEndAutomationLog: builder.query({
-      queryFn: async ({ date, status } = {}, api, extraOptions) => {
-        return nodeBackendBaseQuery(
-          {
-            url: '/api/dji-dayend-automation/log',
-            method: 'POST',
-            body: { date, ...(status ? { status } : {}) },
-          },
-          api,
-          extraOptions
-        );
-      },
-      providesTags: ['DjiImages'],
-    }),
-  }),
+    }),  }),
 });
 
 export const {
@@ -210,6 +193,5 @@ export const {
   useLinkDjiImageToTaskMutation,
   useDeleteDjiImageMutation,
   useGetTodayDjiImagesCountQuery,
-  useGetDjiDayEndAutomationLogQuery,
 } = djiImagesApi;
 

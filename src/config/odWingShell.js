@@ -15,7 +15,6 @@ const OD_WORKFLOW_PATH_PREFIXES = [
   '/home/droneUnlockingQueue',
   '/home/opsAsign',
   '/home/dayEndProcess',
-  '/home/djiMapUpload',
   '/home/opsroomPlanCalendar',
   '/home/todayPlans',
   '/home/emergencyMoving',

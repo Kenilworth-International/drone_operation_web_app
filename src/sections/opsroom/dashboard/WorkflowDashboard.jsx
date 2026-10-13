@@ -16,7 +16,6 @@ import {
   FaUnlock,
   FaTasks,
   FaCalendarDay,
-  FaMapMarkedAlt,
   FaChevronRight,
   FaCalendarAlt,
   FaClipboardList,
@@ -33,7 +32,6 @@ import {
   useGetResourceAssignmentCountQuery,
 } from '../../../api/services NodeJs/pilotAssignmentApi';
 import { useGetPlansPendingDayEndCountQuery } from '../../../api/services NodeJs/dayEndProcessApi';
-import { useGetTodayDjiImagesCountQuery } from '../../../api/services NodeJs/djiImagesApi';
 import {
   useGetNotificationsQuery,
   useGetUnreadCountQuery,
@@ -124,7 +122,6 @@ const WorkflowDashboard = () => {
   const hasDroneUnlockingFeature = checkFeatureAccess(FEATURE_CODES.WORKFLOW_ACTION_DRONE_UNLOCKING);
   const hasOpsAssignmentFeature = checkFeatureAccess(FEATURE_CODES.WORKFLOW_ACTION_OPS_ASSIGNMENT);
   const hasDayEndCardFeature = checkFeatureAccess(FEATURE_CODES.WORKFLOW_ACTION_DAY_END);
-  const hasDjiMapUploadFeature = checkFeatureAccess(FEATURE_CODES.WORKFLOW_ACTION_DJI_MAP_UPLOAD);
   const showPlanRequestsCard = hasAdhocPlansFeature || hasRescheduleRequestsFeature;
 
   // Fetch notifications for all users (no feature gate)
@@ -373,13 +370,6 @@ const WorkflowDashboard = () => {
   );
   const dayEndProcessCount = dayEndProcessData?.data?.count || 0;
 
-  // Get DJI images uploaded today count
-  const { data: djiImagesCountData, refetch: refetchDjiImages } = useGetTodayDjiImagesCountQuery(
-    undefined,
-    { skip: !userId || !hasDjiMapUploadFeature }
-  );
-  const djiImagesCount = djiImagesCountData?.data?.count || 0;
-
   // Get resource assignment count for tomorrow
   const tomorrowDate = getTomorrowDate();
   const { data: resourceAssignmentData, refetch: refetchResourceAssignment } = useGetResourceAssignmentCountQuery(
@@ -412,7 +402,6 @@ const WorkflowDashboard = () => {
         ...(hasPendingPaymentFeature ? [refetchPendingPayment()] : []),
         ...(hasDroneUnlockingFeature ? [refetchDroneUnlocking()] : []),
         ...(hasDayEndCardFeature ? [refetchDayEndProcess()] : []),
-        ...(hasDjiMapUploadFeature ? [refetchDjiImages()] : []),
         ...(hasAdhocPlansFeature ? [refetchPlantationPlanRequestCount()] : []),
         ...(hasRescheduleRequestsFeature ? [refetchPlantationPlanRescheduleCount()] : []),
         ...(hasResourceAssignmentCardFeature ? [refetchResourceAssignment()] : []),
@@ -434,7 +423,6 @@ const WorkflowDashboard = () => {
           ...(hasPendingPaymentFeature ? [refetchPendingPayment()] : []),
           ...(hasDroneUnlockingFeature ? [refetchDroneUnlocking()] : []),
           ...(hasDayEndCardFeature ? [refetchDayEndProcess()] : []),
-          ...(hasDjiMapUploadFeature ? [refetchDjiImages()] : []),
           ...(hasAdhocPlansFeature ? [refetchPlantationPlanRequestCount()] : []),
           ...(hasRescheduleRequestsFeature ? [refetchPlantationPlanRescheduleCount()] : []),
           ...(hasResourceAssignmentCardFeature ? [refetchResourceAssignment()] : []),
@@ -456,7 +444,6 @@ const WorkflowDashboard = () => {
     hasPendingPaymentFeature,
     hasDroneUnlockingFeature,
     hasDayEndCardFeature,
-    hasDjiMapUploadFeature,
     hasAdhocPlansFeature,
     hasRescheduleRequestsFeature,
     hasResourceAssignmentCardFeature,
@@ -529,15 +516,6 @@ const WorkflowDashboard = () => {
       path: '/home/dayEndProcess',
       icon: FaCalendarDay,
       featureCode: FEATURE_CODES.WORKFLOW_ACTION_DAY_END,
-    },
-    {
-      title: 'DJI map upload',
-      subtitle: 'Maps uploaded today',
-      count: djiImagesCount,
-      unit: 'maps',
-      path: '/home/djiMapUpload',
-      icon: FaMapMarkedAlt,
-      featureCode: FEATURE_CODES.WORKFLOW_ACTION_DJI_MAP_UPLOAD,
     },
   ];
 

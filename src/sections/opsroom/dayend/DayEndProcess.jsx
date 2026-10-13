@@ -9,8 +9,6 @@ import { Bars } from 'react-loader-spinner';
 import { useAppDispatch } from '../../../store/hooks';
 import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { useGetAllDjiImagesQuery } from '../../../api/services NodeJs/djiImagesApi';
-import { getNodeBackendUrl } from '../../../api/services NodeJs/nodeBackendConfig';
 import {
   dayEndProcessApi,
   useLazyGetCancelReasonsQuery,
@@ -30,7 +28,6 @@ import { getResourceUrl } from '../../../utils/resourceUrls';
 import { useGetMyPermissionsQuery } from '../../../api/services NodeJs/featurePermissionsApi';
 import { FEATURE_CODES } from '../../../utils/featurePermissions';
 import { isInternalDeveloper } from '../../../utils/authUtils';
-import DayEndAutomationSummary from './DayEndAutomationSummary';
 
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
   <div className="custom-date-input" ref={ref} onClick={onClick}>
@@ -47,6 +44,24 @@ const hasRequiredPositiveNumber = (value) => {
   const n = Number(String(value ?? '').replace(/,/g, '').trim());
   return Number.isFinite(n) && n > 0;
 };
+
+const EMPTY_DJI_DATA = {
+  dji_field_area: '',
+  dji_spraying_area: '',
+  dji_spraying_litres: '',
+  dji_flying_duration: '',
+  dji_no_of_flights: '',
+};
+
+/** Pilot app values that can be copied into the ops room DJI inputs (flights / duration stay manual). */
+const PILOT_TO_DJI_FIELDS = [
+  ['task_fieldArea', 'dji_field_area'],
+  ['task_sprayedArea', 'dji_spraying_area'],
+  ['task_sprayedLiters', 'dji_spraying_litres'],
+];
+
+const DJI_MAP_ACCEPT = 'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.jfif,.png,.gif,.webp';
+const DJI_MAP_MAX_BYTES = 50 * 1024 * 1024;
 
 const DayEndProcess = () => {
   const navigate = useNavigate();
@@ -94,38 +109,20 @@ const DayEndProcess = () => {
   const showDirOpsApprovalFeature = checkFeatureAccess(FEATURE_CODES.DAY_END_DIR_OPS_APPROVAL);
 
   const [selectedMissionId, setSelectedMissionId] = useState(null);
-  const [djiData, setDjiData] = useState({
-    dji_image_id: null, // Changed from dji_image file to dji_image_id
-    dji_field_area: '',
-    dji_spraying_area: '',
-    dji_spraying_litres: '',
-    dji_flying_duration: '',
-    dji_no_of_flights: '',
-  });
+  const [djiData, setDjiData] = useState(EMPTY_DJI_DATA);
+  const [djiMapFile, setDjiMapFile] = useState(null);
+  const [djiMapPreview, setDjiMapPreview] = useState(null);
+  const [pilotDataApplied, setPilotDataApplied] = useState(false);
 
-  // Get all DJI images for selected date (to show both linked and unlinked)
-  const selectedDateStr = selectedDate.toISOString().split('T')[0];
-  const { data: allDjiImagesData } = useGetAllDjiImagesQuery({ date: selectedDateStr });
-  const allDjiImages = allDjiImagesData?.data || [];
-
-  // Only images for the field currently open in the DJI popup
-  const fieldScopedDjiImages = useMemo(() => {
-    const targetFieldId = Number(currentField?.field_id || currentTask?.field_id || 0);
-    if (!targetFieldId) return allDjiImages;
-    const targetName = String(currentField?.field_name || '').trim().toLowerCase();
-    return allDjiImages.filter((img) => {
-      if (Number(img.field_id) === targetFieldId) return true;
-      if (!targetName) return false;
-      return String(img.field_name || '').trim().toLowerCase() === targetName;
-    });
-  }, [allDjiImages, currentField?.field_id, currentField?.field_name, currentTask?.field_id]);
-
-  const unlinkedDjiImages = fieldScopedDjiImages.filter(
-    (img) => !img.linked_task || img.linked_task === 0
-  );
-  const linkedDjiImages = fieldScopedDjiImages.filter(
-    (img) => img.linked_task && img.linked_task !== 0
-  );
+  useEffect(() => {
+    if (!djiMapFile) {
+      setDjiMapPreview(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(djiMapFile);
+    setDjiMapPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [djiMapFile]);
 
   const [fetchDayOverview] = useLazyGetDayOverviewQuery();
   const [fetchPlanSummary] = useLazyGetDayEndPlanSummaryQuery();
@@ -657,14 +654,14 @@ const DayEndProcess = () => {
       setCurrentTask({ ...freshTask, field_id: fieldId });
       setCurrentField(fieldInfo);
       setDjiData({
-        dji_image_id: null, // Will be selected from dropdown (only unlinked images available)
         dji_field_area: freshTask.dji_field_area || '',
         dji_spraying_area: freshTask.dji_spraying_area || '',
         dji_spraying_litres: freshTask.dji_spraying_litres || '',
         dji_flying_duration: freshTask.dji_flying_duration || '',
         dji_no_of_flights: freshTask.dji_no_of_flights || '',
       });
-      // Crop image is now handled automatically from DJI image, no need to reset
+      setDjiMapFile(null);
+      setPilotDataApplied(false);
 
       // Fetch existing report data to show button color immediately
       try {
@@ -694,10 +691,47 @@ const DayEndProcess = () => {
     setShowTaskPopup(false);
     setCurrentField(null);
     setCurrentTask(null);
-    // Reset DJI image selection
-    setDjiData((prev) => ({ ...prev, dji_image_id: null }));
+    setDjiData(EMPTY_DJI_DATA);
+    setDjiMapFile(null);
+    setPilotDataApplied(false);
     // Reset existing report data when closing the task popup
     setExistingReportData(null);
+  };
+
+  const pilotDataAvailable = PILOT_TO_DJI_FIELDS.some(([pilotKey]) =>
+    hasRequiredPositiveNumber(currentTask?.[pilotKey])
+  );
+
+  /** Copies pilot app values into the DJI inputs only; nothing is saved until Upload. */
+  const handleApplyPilotData = () => {
+    if (!currentTask) return;
+    const applied = {};
+    PILOT_TO_DJI_FIELDS.forEach(([pilotKey, djiKey]) => {
+      if (hasRequiredPositiveNumber(currentTask[pilotKey])) {
+        applied[djiKey] = String(Number(currentTask[pilotKey]));
+      }
+    });
+    if (Object.keys(applied).length === 0) {
+      toast.warning('No pilot data to apply for this task.');
+      return;
+    }
+    setDjiData((prev) => ({ ...prev, ...applied }));
+    setPilotDataApplied(true);
+  };
+
+  const handleDjiMapFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    e.target.value = '';
+    if (!file) return;
+    if (!/^image\//.test(file.type) && !/\.(jpe?g|jfif|png|gif|webp)$/i.test(file.name)) {
+      toast.error('Map image must be a JPG, PNG, GIF or WEBP file.');
+      return;
+    }
+    if (file.size > DJI_MAP_MAX_BYTES) {
+      toast.error('Map image must be 50 MB or smaller.');
+      return;
+    }
+    setDjiMapFile(file);
   };
 
   const StatusToggle = ({ status, onChange }) => {
@@ -735,14 +769,7 @@ const DayEndProcess = () => {
     );
   };
 
-  const getDjiImageUrl = () => {
-    if (djiData.dji_image_id) {
-      const selectedImage = allDjiImages.find((img) => img.id === parseInt(djiData.dji_image_id, 10));
-      if (selectedImage) {
-        const baseUrl = getNodeBackendUrl();
-        return `${baseUrl}/api/dji-images/file/${selectedImage.image_filename}`;
-      }
-    }
+  const getSavedDjiImageUrl = () => {
     if (currentTask?.dji_image) {
       return currentTask.dji_image;
     }
@@ -787,6 +814,10 @@ const DayEndProcess = () => {
       );
       return;
     }
+    if (!djiMapFile && !getSavedDjiImageUrl()) {
+      toast.warning('Please choose the DJI map image before uploading.');
+      return;
+    }
 
     if (isBelowPartialThreshold && !hasSubmittedCancelReason()) {
       setCancelPopupMode('partial');
@@ -810,7 +841,7 @@ const DayEndProcess = () => {
 
       const response = await submitDjiRecord({
         taskId: currentTask.task_id,
-        djiImageId: djiData.dji_image_id ? parseInt(djiData.dji_image_id, 10) : null,
+        djiImage: djiMapFile,
         dji_field_area: formatNumber(djiData.dji_field_area),
         dji_spraying_area: formatNumber(djiData.dji_spraying_area),
         dji_spraying_litres: formatNumber(djiData.dji_spraying_litres),
@@ -834,7 +865,7 @@ const DayEndProcess = () => {
           }
         }
 
-        toast.success('DJI data submitted successfully!');
+        toast.success('DJI map and data uploaded successfully!');
         try {
           const updatedResult = await fetchTasksByPlanAndField(
             { planId: selectedMission.id, fieldId: currentTask.field_id },
@@ -858,7 +889,7 @@ const DayEndProcess = () => {
         toast.error('Submission failed. Please try again.');
       }
     } catch (error) {
-      toast.error('An error occurred during submission.');
+      toast.error(error?.data?.message || 'An error occurred during upload.');
       console.error(error);
     } finally {
       setIsSubmitting(false);
@@ -999,15 +1030,6 @@ const DayEndProcess = () => {
           />
         </div>
       </div>
-
-      <DayEndAutomationSummary
-        date={selectedDate.toLocaleDateString('en-CA')}
-        onSelectPlan={handleContainerClick}
-        onChanged={async (planId) => {
-          await handleDateChange(selectedDate);
-          if (planId) handleContainerClick(planId);
-        }}
-      />
 
       {/* ══ MAIN BODY ════════════════════════════════════════════════ */}
       <div className="dep-body">
@@ -1555,81 +1577,52 @@ const DayEndProcess = () => {
                       )}
                     </div>
                     <div className="image-card2">
-                      <h4>DJI Image</h4>
+                      <h4>DJI Map</h4>
                       <img
-                        src={getDjiImageUrl() || '/assets/images/no-plan-found.png'}
-                        alt="DJI"
+                        src={djiMapPreview || getSavedDjiImageUrl() || '/assets/images/no-plan-found.png'}
+                        alt="DJI map"
                         className="popup-image"
                         onClick={() => {
-                          const url = getDjiImageUrl();
+                          const url = djiMapPreview || getSavedDjiImageUrl();
                           if (url) openImage(url);
                         }}
                       />
-                      <select
-                        value={djiData.dji_image_id || ''}
-                        onChange={(e) => {
-                          // Only allow selection of unlinked images
-                          const selectedValue = e.target.value;
-                          const pickedImage = selectedValue
-                            ? unlinkedDjiImages.find(img => img.id.toString() === selectedValue)
-                            : null;
-                          if (selectedValue && !pickedImage) {
-                            return; // Prevent selection of linked images
-                          }
-                          // Prefill DJI values captured on DJI Map Upload; inputs stay editable.
-                          const mapValues = {};
-                          if (pickedImage) {
-                            [
-                              'dji_field_area',
-                              'dji_spraying_area',
-                              'dji_spraying_litres',
-                              'dji_flying_duration',
-                              'dji_no_of_flights',
-                            ].forEach((key) => {
-                              const n = Number(pickedImage[key]);
-                              if (pickedImage[key] != null && Number.isFinite(n) && n > 0) {
-                                mapValues[key] = String(n);
-                              }
-                            });
-                          }
-                          setDjiData((prev) => ({
-                            ...prev,
-                            ...mapValues,
-                            dji_image_id: selectedValue || null,
-                          }));
-                        }}
-                        className="dji-image-select"
-                        style={{
-                          width: '100%',
-                          padding: '8px',
-                          marginTop: '8px',
-                          borderRadius: '4px',
-                          border: '1px solid #ddd',
-                        }}
-                      >
-                        <option value="">Select DJI Image</option>
-                        {unlinkedDjiImages.map((image) => (
-                          <option key={image.id} value={image.id}>
-                            {image.auto_generated_id} {image.is_plantation === 1 ? `(${image.estate_name} - ${image.field_name})` : `(NIC: ${image.nic})`}
-                          </option>
-                        ))}
-                        {unlinkedDjiImages.length === 0 && (
-                          <option value="" disabled>
-                            No unused DJI images for this field
-                          </option>
-                        )}
-                        {linkedDjiImages.length > 0 && (
-                          <optgroup label={`Already Used for ${currentField?.field_name || 'this field'}`}>
-                            {linkedDjiImages.map((image) => (
-                              <option key={image.id} value={image.id} disabled style={{ color: '#999', fontStyle: 'italic' }}>
-                                {image.auto_generated_id} {image.is_plantation === 1 ? `(${image.estate_name} - ${image.field_name})` : `(NIC: ${image.nic})`} - Used
-                              </option>
-                            ))}
-                          </optgroup>
-                        )}
-                      </select>
+                      <label className="dayend-map-upload-btn">
+                        {djiMapFile || getSavedDjiImageUrl() ? 'Change map image' : 'Choose map image'}
+                        <input type="file" accept={DJI_MAP_ACCEPT} onChange={handleDjiMapFileChange} hidden />
+                      </label>
+                      {djiMapFile ? (
+                        <span className="dayend-map-upload-note">
+                          {djiMapFile.name} — saved when you click Upload
+                          <button type="button" className="dayend-map-clear" onClick={() => setDjiMapFile(null)}>
+                            Remove
+                          </button>
+                        </span>
+                      ) : !getSavedDjiImageUrl() ? (
+                        <span className="dayend-map-upload-note dayend-map-upload-note--required">
+                          DJI map image is required to upload.
+                        </span>
+                      ) : null}
                     </div>
                   </div>
+                </div>
+                <div className="dayend-apply-pilot">
+                  <button
+                    type="button"
+                    className="dayend-apply-pilot-btn"
+                    onClick={handleApplyPilotData}
+                    disabled={!pilotDataAvailable || isSubmitting}
+                    title="Copy pilot field area, sprayed area and sprayed liters into the DJI fields"
+                  >
+                    Apply pilot data
+                  </button>
+                  <span className="dayend-apply-pilot-hint">
+                    {pilotDataApplied
+                      ? 'Pilot values copied into the DJI fields. Review them, then click Upload to save as ops room data.'
+                      : pilotDataAvailable
+                        ? 'If the pilot entered correct values, copy them into the DJI fields. Nothing is saved until you click Upload.'
+                        : 'No pilot data available for this task.'}
+                  </span>
                 </div>
                 <div className="data-grid">
                   <div className="data-row">
@@ -1788,6 +1781,7 @@ const DayEndProcess = () => {
                         isSubmitting ||
                         !Number(currentTask?.task_fieldArea || currentField?.field_area || 0) ||
                         !String(currentTask?.task_image || '').trim() ||
+                        (!djiMapFile && !getSavedDjiImageUrl()) ||
                         !hasRequiredPositiveNumber(djiData.dji_flying_duration) ||
                         !hasRequiredPositiveNumber(djiData.dji_no_of_flights) ||
                         !hasRequiredPositiveNumber(djiData.dji_field_area) ||
@@ -1797,7 +1791,7 @@ const DayEndProcess = () => {
                         parseFloat(djiData.dji_spraying_area) > parseFloat(currentField?.field_area || currentTask.task_fieldArea || 0)
                       }
                     >
-                      {isSubmitting ? 'Submitting...' : 'Submit DJI Data'}
+                      {isSubmitting ? 'Uploading...' : 'Upload'}
                     </button>
                   </div>
                 </div>

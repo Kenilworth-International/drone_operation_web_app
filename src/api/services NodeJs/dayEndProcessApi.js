@@ -1,5 +1,5 @@
 import { baseApi } from '../baseApi';
-import { nodeBackendBaseQuery } from './nodeBackendConfig';
+import { nodeBackendBaseQuery, getNodeBackendUrl, getToken } from './nodeBackendConfig';
 
 export const dayEndProcessApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -198,36 +198,6 @@ export const dayEndProcessApi = baseApi.injectEndpoints({
       providesTags: ['DayEndProcess', 'PlansCompletionStats'],
     }),
 
-    getDayEndAutomationSummary: builder.query({
-      queryFn: async ({ date }) => {
-        const result = await nodeBackendBaseQuery(
-          { url: '/api/day-end-process/automation-summary', method: 'POST', body: { date } },
-          {},
-          {}
-        );
-        if (result.error) return { error: result.error };
-        return { data: result.data?.data || null };
-      },
-      providesTags: ['DayEndAutomationSummary', 'DayEndProcess'],
-    }),
-
-    addExtraDjiFieldToPlan: builder.mutation({
-      queryFn: async ({ djiImageId, planId, pilotId }) => {
-        const result = await nodeBackendBaseQuery(
-          {
-            url: '/api/day-end-process/add-extra-dji-field',
-            method: 'POST',
-            body: { dji_image_id: djiImageId, plan_id: planId, pilot_id: pilotId || undefined },
-          },
-          {},
-          {}
-        );
-        if (result.error) return { error: result.error };
-        return { data: result.data || null };
-      },
-      invalidatesTags: ['DayEndAutomationSummary', 'DayEndProcess', 'PlansCompletionStats', 'PlanDetails'],
-    }),
-
     getDayEndPlanSummary: builder.query({
       queryFn: async (planId) => {
         const result = await nodeBackendBaseQuery(
@@ -260,15 +230,35 @@ export const dayEndProcessApi = baseApi.injectEndpoints({
       ],
     }),
 
+    /** Multipart: DJI values + optional `djiImage` file (required by the API when the task has no map yet). */
     submitDayEndDjiRecord: builder.mutation({
-      queryFn: async (body) => {
-        const result = await nodeBackendBaseQuery(
-          { url: '/api/day-end-process/submit-dji-record', method: 'POST', body },
-          {},
-          {}
-        );
-        if (result.error) return { error: result.error };
-        return { data: result.data || null };
+      queryFn: async ({ djiImage, ...fields }) => {
+        const formData = new FormData();
+        Object.entries(fields).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) formData.append(key, String(value));
+        });
+        if (djiImage) formData.append('djiImage', djiImage);
+
+        try {
+          const response = await fetch(`${getNodeBackendUrl()}/api/day-end-process/submit-dji-record`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${getToken()}` },
+            body: formData,
+          });
+          const raw = await response.text();
+          let data;
+          try {
+            data = raw ? JSON.parse(raw) : {};
+          } catch {
+            data = { message: raw || 'Upload failed' };
+          }
+          if (!response.ok) return { error: { status: response.status, data } };
+          return { data };
+        } catch (e) {
+          return {
+            error: { status: 'FETCH_ERROR', data: { message: e?.message || 'Network error while uploading' } },
+          };
+        }
       },
       invalidatesTags: ['DayEndProcess', 'PlansCompletionStats', 'PlanDetails'],
     }),
@@ -351,8 +341,6 @@ export const {
   useGetOpsRoomCanceledByDateRangeQuery,
   useGetDayOverviewQuery,
   useLazyGetDayOverviewQuery,
-  useGetDayEndAutomationSummaryQuery,
-  useAddExtraDjiFieldToPlanMutation,
   useGetDayEndPlanSummaryQuery,
   useLazyGetDayEndPlanSummaryQuery,
   useGetDayEndTasksByPlanAndFieldQuery,

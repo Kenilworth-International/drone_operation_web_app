@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 902\n- **Route files:** 77\n- **Schema overlays applied:** 325\n- **Generated:** 2026-10-12T07:27:52.667Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 899\n- **Route files:** 76\n- **Schema overlays applied:** 325\n- **Generated:** 2026-10-13T06:03:07.742Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
   },
   "servers": [
     {
@@ -47,10 +47,6 @@
     {
       "name": "Day End Process",
       "description": "Post-flight processing — task status, DJI records, approvals, cancellations, flags."
-    },
-    {
-      "name": "Dji Day End Automation",
-      "description": "Dji Day End Automation endpoints"
     },
     {
       "name": "Emergency Moving",
@@ -7617,6 +7613,32 @@
         }
       }
     },
+    "/api/dji-images/estate-tasks": {
+      "get": {
+        "summary": "Estate Tasks",
+        "description": "Module: DJI Images",
+        "tags": [
+          "DJI Images"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
     "/api/dji-images/": {
       "get": {
         "summary": "List DJI Images",
@@ -8442,90 +8464,6 @@
         ]
       }
     },
-    "/api/day-end-process/automation-summary": {
-      "post": {
-        "summary": "Automation Summary",
-        "description": "Module: Day End Process",
-        "tags": [
-          "Day End Process"
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response"
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "422": {
-            "description": "Validation error"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/day-end-process/add-extra-dji-field": {
-      "post": {
-        "summary": "Add Extra Dji Field",
-        "description": "Module: Day End Process",
-        "tags": [
-          "Day End Process"
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response"
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "422": {
-            "description": "Validation error"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
     "/api/day-end-process/plan-summary": {
       "post": {
         "summary": "Plan Summary",
@@ -8613,7 +8551,7 @@
     "/api/day-end-process/submit-dji-record": {
       "post": {
         "summary": "Submit DJI Record",
-        "description": "Module: Day End Process",
+        "description": "Ops room Day End upload: saves DJI values and the map image for a task and marks it submitted. The map image is required unless the task already has one.",
         "tags": [
           "Day End Process"
         ],
@@ -8641,20 +8579,41 @@
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "required": [
                   "taskId",
-                  "djiData"
+                  "dji_field_area",
+                  "dji_spraying_area",
+                  "dji_spraying_litres",
+                  "dji_flying_duration",
+                  "dji_no_of_flights"
                 ],
                 "properties": {
                   "taskId": {
                     "type": "integer"
                   },
-                  "djiData": {
-                    "type": "object",
-                    "description": "DJI flight record payload"
+                  "dji_field_area": {
+                    "type": "number"
+                  },
+                  "dji_spraying_area": {
+                    "type": "number"
+                  },
+                  "dji_spraying_litres": {
+                    "type": "number"
+                  },
+                  "dji_flying_duration": {
+                    "type": "number",
+                    "description": "Minutes"
+                  },
+                  "dji_no_of_flights": {
+                    "type": "integer"
+                  },
+                  "djiImage": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "DJI map image (JPG, PNG, GIF, WEBP; max 50 MB)"
                   }
                 }
               }
@@ -8861,90 +8820,6 @@
                     "type": "string"
                   }
                 }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/dji-dayend-automation/run": {
-      "post": {
-        "summary": "Run",
-        "description": "Module: Dji Day End Automation",
-        "tags": [
-          "Dji Day End Automation"
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response"
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "422": {
-            "description": "Validation error"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ]
-      }
-    },
-    "/api/dji-dayend-automation/log": {
-      "post": {
-        "summary": "Log",
-        "description": "Module: Dji Day End Automation",
-        "tags": [
-          "Dji Day End Automation"
-        ],
-        "responses": {
-          "200": {
-            "description": "Successful response"
-          },
-          "401": {
-            "description": "Unauthorized — missing or invalid Bearer token"
-          },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
-          },
-          "422": {
-            "description": "Validation error"
-          },
-          "500": {
-            "$ref": "#/components/responses/ServerError"
-          }
-        },
-        "requestBody": {
-          "required": false,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": true
               }
             }
           }
