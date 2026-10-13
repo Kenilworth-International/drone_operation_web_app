@@ -110,6 +110,7 @@ const DayEndProcess = () => {
   const [djiData, setDjiData] = useState(EMPTY_DJI_DATA);
   const [djiMapFile, setDjiMapFile] = useState(null);
   const [djiMapPreview, setDjiMapPreview] = useState(null);
+  const [usePilotImageAsMap, setUsePilotImageAsMap] = useState(false);
   const [pilotDataApplied, setPilotDataApplied] = useState(false);
 
   useEffect(() => {
@@ -657,6 +658,7 @@ const DayEndProcess = () => {
         dji_spraying_litres: freshTask.dji_spraying_litres || '',
       });
       setDjiMapFile(null);
+      setUsePilotImageAsMap(false);
       setPilotDataApplied(false);
 
       // Fetch existing report data to show button color immediately
@@ -689,16 +691,17 @@ const DayEndProcess = () => {
     setCurrentTask(null);
     setDjiData(EMPTY_DJI_DATA);
     setDjiMapFile(null);
+    setUsePilotImageAsMap(false);
     setPilotDataApplied(false);
     // Reset existing report data when closing the task popup
     setExistingReportData(null);
   };
 
-  const pilotDataAvailable = PILOT_TO_DJI_FIELDS.some(([pilotKey]) =>
-    hasRequiredPositiveNumber(currentTask?.[pilotKey])
-  );
-
-  /** Copies pilot app values into the DJI inputs only; nothing is saved until Upload. */
+  const pilotTaskImageUrl = String(currentTask?.task_image || '').trim();
+  const pilotDataAvailable =
+    Boolean(pilotTaskImageUrl) ||
+    PILOT_TO_DJI_FIELDS.some(([pilotKey]) => hasRequiredPositiveNumber(currentTask?.[pilotKey]));
+  /** Copies pilot values and task image into the DJI side in the popup only; nothing is saved until Upload. */
   const handleApplyPilotData = () => {
     if (!currentTask) return;
     const applied = {};
@@ -707,12 +710,21 @@ const DayEndProcess = () => {
         applied[djiKey] = String(Number(currentTask[pilotKey]));
       }
     });
-    if (Object.keys(applied).length === 0) {
+    if (Object.keys(applied).length === 0 && !pilotTaskImageUrl) {
       toast.warning('No pilot data to apply for this task.');
       return;
     }
     setDjiData((prev) => ({ ...prev, ...applied }));
+    if (pilotTaskImageUrl) {
+      setDjiMapFile(null);
+      setUsePilotImageAsMap(true);
+    }
     setPilotDataApplied(true);
+  };
+
+  const clearPendingDjiMap = () => {
+    setDjiMapFile(null);
+    setUsePilotImageAsMap(false);
   };
 
   const handleDjiMapFileChange = (e) => {
@@ -727,6 +739,7 @@ const DayEndProcess = () => {
       toast.error('Map image must be 50 MB or smaller.');
       return;
     }
+    setUsePilotImageAsMap(false);
     setDjiMapFile(file);
   };
 
@@ -775,6 +788,11 @@ const DayEndProcess = () => {
     return null;
   };
 
+  /** Map shown in the popup: newly chosen file, pilot task image (after Apply), or the saved DJI map. */
+  const djiMapDisplayUrl =
+    djiMapPreview || (usePilotImageAsMap ? pilotTaskImageUrl : '') || getSavedDjiImageUrl();
+  const hasPendingDjiMap = Boolean(djiMapFile) || usePilotImageAsMap;
+
   const handleSubmit = async () => {
     const parseArea = (value) => {
       const n = Number(String(value ?? '').replace(/,/g, ''));
@@ -805,7 +823,7 @@ const DayEndProcess = () => {
       toast.warning('DJI Field Area and Sprayed Liters are required.');
       return;
     }
-    if (!djiMapFile && !getSavedDjiImageUrl()) {
+    if (!hasPendingDjiMap && !getSavedDjiImageUrl()) {
       toast.warning('Please choose the DJI map image before uploading.');
       return;
     }
@@ -833,6 +851,7 @@ const DayEndProcess = () => {
       const response = await submitDjiRecord({
         taskId: currentTask.task_id,
         djiImage: djiMapFile,
+        usePilotImage: !djiMapFile && usePilotImageAsMap ? 1 : undefined,
         dji_field_area: formatNumber(djiData.dji_field_area),
         dji_spraying_area: formatNumber(djiData.dji_spraying_area),
         dji_spraying_litres: formatNumber(djiData.dji_spraying_litres),
@@ -1568,22 +1587,21 @@ const DayEndProcess = () => {
                     <div className="image-card2">
                       <h4>DJI Map</h4>
                       <img
-                        src={djiMapPreview || getSavedDjiImageUrl() || '/assets/images/no-plan-found.png'}
+                        src={djiMapDisplayUrl || '/assets/images/no-plan-found.png'}
                         alt="DJI map"
                         className="popup-image"
                         onClick={() => {
-                          const url = djiMapPreview || getSavedDjiImageUrl();
-                          if (url) openImage(url);
+                          if (djiMapDisplayUrl) openImage(djiMapDisplayUrl);
                         }}
                       />
                       <label className="dayend-map-upload-btn">
-                        {djiMapFile || getSavedDjiImageUrl() ? 'Change map image' : 'Choose map image'}
+                        {djiMapDisplayUrl ? 'Change map image' : 'Choose map image'}
                         <input type="file" accept={DJI_MAP_ACCEPT} onChange={handleDjiMapFileChange} hidden />
                       </label>
-                      {djiMapFile ? (
+                      {hasPendingDjiMap ? (
                         <span className="dayend-map-upload-note">
-                          {djiMapFile.name} — saved when you click Upload
-                          <button type="button" className="dayend-map-clear" onClick={() => setDjiMapFile(null)}>
+                          {djiMapFile ? djiMapFile.name : 'Using pilot task image'} — saved when you click Upload
+                          <button type="button" className="dayend-map-clear" onClick={clearPendingDjiMap}>
                             Remove
                           </button>
                         </span>
@@ -1601,15 +1619,15 @@ const DayEndProcess = () => {
                     className="dayend-apply-pilot-btn"
                     onClick={handleApplyPilotData}
                     disabled={!pilotDataAvailable || isSubmitting}
-                    title="Copy pilot field area, sprayed area and sprayed liters into the DJI fields"
+                    title="Copy pilot field area, sprayed area, sprayed liters and task image into the DJI side"
                   >
                     Apply pilot data
                   </button>
                   <span className="dayend-apply-pilot-hint">
                     {pilotDataApplied
-                      ? 'Pilot values copied into the DJI fields. Review them, then click Upload to save as ops room data.'
+                      ? 'Pilot values and task image copied to the DJI side. Review them, then click Upload to save as ops room data.'
                       : pilotDataAvailable
-                        ? 'If the pilot entered correct values, copy them into the DJI fields. Nothing is saved until you click Upload.'
+                        ? 'If the pilot entered correct data, copy the values and task image to the DJI side. Nothing is saved until you click Upload.'
                         : 'No pilot data available for this task.'}
                   </span>
                 </div>
@@ -1728,7 +1746,7 @@ const DayEndProcess = () => {
                         isSubmitting ||
                         !Number(currentTask?.task_fieldArea || currentField?.field_area || 0) ||
                         !String(currentTask?.task_image || '').trim() ||
-                        (!djiMapFile && !getSavedDjiImageUrl()) ||
+                        (!hasPendingDjiMap && !getSavedDjiImageUrl()) ||
                         !hasRequiredPositiveNumber(djiData.dji_field_area) ||
                         !hasRequiredPositiveNumber(djiData.dji_spraying_litres) ||
                         parseFloat(djiData.dji_spraying_area) < 0 ||
