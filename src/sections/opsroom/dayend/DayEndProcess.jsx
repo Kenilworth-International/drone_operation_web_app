@@ -1621,11 +1621,7 @@ const DayEndProcess = () => {
                     className="dayend-apply-pilot-btn"
                     onClick={handleApplyPilotData}
                     disabled={!pilotDataAvailable || isSubmitting}
-<<<<<<< HEAD
-                    title="Copy pilot field area, sprayed area, sprayed liters and task image into the DJI side"
-=======
-                    title="Copy pilot field area and sprayed area into the DJI fields"
->>>>>>> 5fd75096d34afd9151c5848e71ef055b1780d598
+                    title="Copy pilot field area, sprayed area and task image into the DJI side"
                   >
                     Apply pilot data
                   </button>
