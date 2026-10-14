@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { formatFuelMoney, getFuelLineDisplayParts } from './fuelVoucherDescription';
 import {
   formatVoucherDisplayDate,
+  getFuelVoucherLabels,
   hasVoucherApprovalInfo,
   resolveVoucherApprovalType,
   resolveVoucherApprovedBy,
@@ -42,10 +43,11 @@ function drawMetaRows(doc, rows, startX, valueX, startY, rowGap = 5) {
 }
 
 /**
- * Build and download fuel transport voucher as A4 PDF (invoice-style layout).
+ * Build and download a fuel (transport or generator) voucher as A4 PDF (invoice-style layout).
  * @param {object} voucher
  */
 export function downloadTransportVoucherPdf(voucher) {
+  const labels = getFuelVoucherLabels(voucher);
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -70,7 +72,7 @@ export function downloadTransportVoucherPdf(voucher) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(17);
   doc.setTextColor(15, 76, 117);
-  doc.text('Fuel Transport Voucher', margin, y);
+  doc.text(labels.title, margin, y);
   doc.setTextColor(0, 0, 0);
   y += 9;
 
@@ -133,7 +135,7 @@ export function downloadTransportVoucherPdf(voucher) {
   const [w0, w1, w2, w3, w4] = splitTableWidths(tableWidth, [0.24, 0.18, 0.12, 0.16, 0.30]);
 
   autoTable(doc, {
-    head: [['DRIVER', 'FUEL DATE', 'LITERS', 'AMOUNT', 'ADMIN APPROVER']],
+    head: [[labels.personHeader, 'FUEL DATE', 'LITERS', 'AMOUNT', 'ADMIN APPROVER']],
     body: lineRows,
     startY: y,
     tableWidth,
@@ -157,8 +159,7 @@ export function downloadTransportVoucherPdf(voucher) {
 
   y = (doc.lastAutoTable?.finalY || y) + 8;
 
-  const notice =
-    'This fuel transport voucher authorizes finance settlement for admin-approved driver fuel transactions. Upload settlement proof when the voucher is marked as settled. Fuel dates shown are driver fuel entry dates, not the voucher issue date.';
+  const notice = labels.notice;
 
   const colMid = pageWidth / 2;
   doc.setFontSize(7);
@@ -214,6 +215,6 @@ export function downloadTransportVoucherPdf(voucher) {
   doc.setTextColor(71, 85, 105);
   doc.text('DSMS Finance Settlement Document', pageWidth / 2, footerY, { align: 'center' });
 
-  const safeNo = String(voucher?.voucher_no || 'fuel-transport-voucher').replace(/[^\w.-]+/g, '_');
+  const safeNo = String(voucher?.voucher_no || labels.fileFallback).replace(/[^\w.-]+/g, '_');
   doc.save(`${safeNo}.pdf`);
 }

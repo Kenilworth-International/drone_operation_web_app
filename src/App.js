@@ -30,6 +30,7 @@ import MDDashboard from './features/dashboard/MDDashboard';
 import FieldHistory from './sections/management/ops/FieldHistory';
 import DataViewer from './sections/corporate/chartView/DataViewer';
 import FinancialCards from './sections/finance/financialCards/FinancialCards';
+import VoucherPayments from './sections/finance/voucherPayments/VoucherPayments';
 import FinanceApprovals from './sections/finance/financeApprovals/FinanceApprovals';
 import VehicleRent from './sections/finance/vehicleRent/VehicleRent';
 import VehicleRentApprovals from './sections/hr&admin/vehicleRentApprovals/VehicleRentApprovals';
@@ -588,6 +589,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <FinancialCards />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="finance/voucher-payments"
+            element={
+              <ProtectedRoute>
+                <VoucherPayments />
               </ProtectedRoute>
             }
           />

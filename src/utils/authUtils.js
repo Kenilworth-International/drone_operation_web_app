@@ -237,6 +237,9 @@ export const getAllowedPaths = (visibility = {}, pathPermissions = {}, userData 
   if (mergedPathPermissions['/home/reports/finance'] === true) {
     mergedPathPermissions['/home/finance/work-summary'] = true;
   }
+  if (mergedPathPermissions['/home/financial-cards'] === true) {
+    mergedPathPermissions['/home/finance/voucher-payments'] = true;
+  }
 
   // Check all paths - if path has explicit permission set to true, allow it
   Object.values(allCategoryPaths).flat().forEach(path => {

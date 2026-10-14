@@ -103,7 +103,7 @@ export const baseApi = createApi({
     // Financial cards / fuel approvals
     'FinancialCards', 'FinancialCardTransactions', 'Transactions', 'FuelApprovals', 'FuelTransportVouchers',
     'GeneratorFuelApprovals', 'FuelGeneratorVouchers', 'FinanceMasterData', 'StrategicFinanceApprovals',
-    'MaintenanceVouchers',
+    'MaintenanceVouchers', 'VoucherPayments',
     'VehicleApp', 'PoolVehicleTasks',
     'EmpOrgStructure',
     'SystemMaintenance',

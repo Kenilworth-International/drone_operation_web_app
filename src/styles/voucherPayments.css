@@ -1,0 +1,435 @@
+.voucher-payments-page {
+  padding: 1.25rem 1.5rem 2rem;
+  color: #1e293b;
+}
+
+.voucher-payments-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.voucher-payments-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.4rem;
+  color: #004b71;
+}
+
+.voucher-payments-header p {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: #64748b;
+}
+
+.voucher-payments-warning {
+  margin-bottom: 1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 0.85rem;
+}
+
+.voucher-payments-warning code {
+  background: #fff;
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+}
+
+.voucher-payments-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.voucher-payments-summary-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-left-width: 4px;
+}
+
+.voucher-payments-summary-card.pending {
+  border-left-color: #f59e0b;
+}
+
+.voucher-payments-summary-card.paid {
+  border-left-color: #16a34a;
+}
+
+.voucher-payments-summary-card span {
+  font-size: 0.78rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.voucher-payments-summary-card strong {
+  font-size: 1.4rem;
+}
+
+.voucher-payments-summary-card small {
+  font-size: 0.82rem;
+  color: #475569;
+}
+
+.voucher-payments-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.voucher-payments-filters select,
+.voucher-payments-search {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #1e293b;
+}
+
+.voucher-payments-search {
+  min-width: 280px;
+}
+
+.voucher-payments-filters select:focus,
+.voucher-payments-search:focus {
+  outline: none;
+  border-color: #004b71;
+  box-shadow: 0 0 0 3px rgba(0, 75, 113, 0.1);
+}
+
+.voucher-payments-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.voucher-payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.voucher-payments-table th {
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.voucher-payments-table td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+
+.voucher-payments-table td small {
+  display: block;
+  color: #64748b;
+  font-size: 0.76rem;
+}
+
+.voucher-payments-table td small.note {
+  font-style: italic;
+}
+
+.voucher-payments-table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.voucher-payments-table .voucher-no {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.voucher-payments-empty {
+  text-align: center;
+  padding: 2rem !important;
+  color: #64748b;
+}
+
+.voucher-payments-empty.error {
+  color: #b91c1c;
+}
+
+.voucher-payments-type,
+.voucher-payments-status {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.voucher-payments-type.transport {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.voucher-payments-type.generator {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.voucher-payments-status.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.voucher-payments-status.paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.voucher-payments-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.voucher-payments-btn-primary,
+.voucher-payments-btn-secondary,
+.voucher-payments-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.voucher-payments-btn-primary {
+  padding: 0.45rem 0.8rem;
+  border: none;
+  background: #004b71;
+  color: #fff;
+}
+
+.voucher-payments-btn-primary:hover:not(:disabled) {
+  background: #003a58;
+}
+
+.voucher-payments-btn-secondary {
+  padding: 0.45rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+
+.voucher-payments-icon-btn {
+  padding: 0.45rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #004b71;
+}
+
+.voucher-payments-btn-primary:disabled,
+.voucher-payments-btn-secondary:disabled,
+.voucher-payments-icon-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.voucher-payments-link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #004b71;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: inherit;
+}
+
+.voucher-payments-spin {
+  animation: voucher-payments-spin 0.9s linear infinite;
+}
+
+@keyframes voucher-payments-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.voucher-payments-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.voucher-payments-modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+}
+
+.voucher-payments-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1.1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.voucher-payments-modal-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #004b71;
+}
+
+.voucher-payments-modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.voucher-payments-modal-body {
+  padding: 1rem 1.1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.voucher-payments-modal-amount {
+  display: flex;
+  flex-direction: column;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.voucher-payments-modal-amount span,
+.voucher-payments-modal-amount small {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.voucher-payments-modal-amount strong {
+  font-size: 1.25rem;
+}
+
+.voucher-payments-methods {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.voucher-payments-methods legend {
+  margin-bottom: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.voucher-payments-methods label {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.voucher-payments-methods label.active {
+  border-color: #004b71;
+  background: #f0f9ff;
+}
+
+.voucher-payments-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.voucher-payments-field span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.voucher-payments-field em {
+  font-weight: 400;
+  color: #94a3b8;
+}
+
+.voucher-payments-field input[type='text'],
+.voucher-payments-field textarea {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-family: inherit;
+}
+
+.voucher-payments-confirm-note {
+  padding: 0.6rem 0.75rem;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.82rem;
+}
+
+.voucher-payments-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.8rem 1.1rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+@media (max-width: 768px) {
+  .voucher-payments-page {
+    padding: 1rem;
+  }
+
+  .voucher-payments-search {
+    min-width: 100%;
+  }
+
+  .voucher-payments-methods {
+    grid-template-columns: 1fr;
+  }
+}

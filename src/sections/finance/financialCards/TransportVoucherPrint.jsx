@@ -5,6 +5,7 @@ import { downloadTransportVoucherPdf } from './transportVoucherPdfExport';
 import { formatFuelMoney, getFuelLineDisplayParts } from './fuelVoucherDescription';
 import {
   formatVoucherDisplayDate,
+  getFuelVoucherLabels,
   hasVoucherApprovalInfo,
   resolveVoucherApprovalType,
   resolveVoucherApprovedBy,
@@ -18,6 +19,7 @@ const VOUCHER_ORG = {
 
 const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
   const [pdfLoading, setPdfLoading] = useState(false);
+  const labels = getFuelVoucherLabels(voucher);
   const lines = useMemo(() => voucher?.lines || [], [voucher?.lines]);
   const txCount = voucher?.transaction_count || lines.length || 0;
   const approvedBy = resolveVoucherApprovedBy(voucher);
@@ -60,7 +62,7 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Fuel transport voucher preview"
+        aria-label={`${labels.title} preview`}
       >
         <div className="plantation-invoice-print-toolbar">
           <button type="button" className="plantation-invoice-btn plantation-invoice-btn-secondary" onClick={onClose}>
@@ -103,7 +105,7 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
             </header>
 
             <h1 className="plantation-invoice-doc-title fuel-transport-voucher-doc-title">
-              Fuel Transport Voucher
+              {labels.title}
             </h1>
 
             <div className="plantation-invoice-doc-parties fuel-transport-voucher-doc-parties">
@@ -149,7 +151,7 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
             <table className="plantation-invoice-doc-table fuel-transport-voucher-doc-table">
               <thead>
                 <tr>
-                  <th>DRIVER</th>
+                  <th>{labels.personHeader}</th>
                   <th>FUEL DATE</th>
                   <th>LITERS</th>
                   <th>AMOUNT</th>
@@ -177,11 +179,7 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
             <div className="plantation-invoice-doc-bottom">
               <div className="plantation-invoice-doc-bottom-row">
                 <div className="plantation-invoice-payment-notice">
-                  <p>
-                    This fuel transport voucher authorizes finance settlement for admin-approved driver
-                    fuel transactions. Upload settlement proof when the voucher is marked as settled.
-                    Fuel dates shown are driver fuel entry dates, not the voucher issue date.
-                  </p>
+                  <p>{labels.notice}</p>
                 </div>
                 <div className="plantation-invoice-doc-summary-box">
                   <div>

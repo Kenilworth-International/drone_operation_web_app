@@ -32,6 +32,29 @@ export const hasVoucherApprovalInfo = (voucher) => {
   return Boolean(approvedBy || approvalType);
 };
 
+export const isGeneratorFuelVoucher = (voucher) =>
+  voucher?.voucher_type_code === 'generator' || /^GFV-/i.test(String(voucher?.voucher_no || ''));
+
+/** Title, person column and notice text for transport vs generator fuel vouchers. */
+export const getFuelVoucherLabels = (voucher) => {
+  if (isGeneratorFuelVoucher(voucher)) {
+    return {
+      title: 'Generator Fuel Voucher',
+      personHeader: 'PILOT',
+      fileFallback: 'generator-fuel-voucher',
+      notice:
+        'This generator fuel voucher authorizes finance settlement for admin-approved generator fuel transactions. Upload settlement proof when the voucher is marked as settled. Fuel dates shown are generator fuel entry dates, not the voucher issue date.',
+    };
+  }
+  return {
+    title: 'Fuel Transport Voucher',
+    personHeader: 'DRIVER',
+    fileFallback: 'fuel-transport-voucher',
+    notice:
+      'This fuel transport voucher authorizes finance settlement for admin-approved driver fuel transactions. Upload settlement proof when the voucher is marked as settled. Fuel dates shown are driver fuel entry dates, not the voucher issue date.',
+  };
+};
+
 export const resolveVoucherDriverName = (line) =>
   line?.driver_name || line?.pilot_name || line?.driver || '—';
 

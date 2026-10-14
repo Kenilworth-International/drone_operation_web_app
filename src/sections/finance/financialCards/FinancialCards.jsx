@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FaCreditCard, FaPlus, FaEdit, FaTrash, FaArrowUp, FaArrowDown, FaHistory, FaEye, FaFileInvoice, FaPrint, FaUpload, FaCheck } from 'react-icons/fa';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { FaCreditCard, FaPlus, FaEdit, FaTrash, FaArrowUp, FaArrowDown, FaHistory, FaEye, FaFileInvoice, FaPrint, FaUpload, FaSearch, FaReceipt, FaBan } from 'react-icons/fa';
 import {
   useGetUsersQuery,
   useGetOwnVehiclesQuery,
@@ -23,7 +24,6 @@ import {
   useGetFuelTransportVoucherHistoryQuery,
   useGetFuelTransportVoucherByIdQuery,
   useRecordFuelTransportPhysicalApprovalMutation,
-  useSettleFuelTransportVoucherMutation,
 } from '../../../api/services NodeJs/fuelTransportVoucherApi';
 import {
   useCreateFuelGeneratorVoucherMutation,
@@ -31,7 +31,6 @@ import {
   useGetFuelGeneratorVoucherHistoryQuery,
   useGetFuelGeneratorVoucherByIdQuery,
   useRecordFuelGeneratorPhysicalApprovalMutation,
-  useSettleFuelGeneratorVoucherMutation,
 } from '../../../api/services NodeJs/fuelGeneratorVoucherApi';
 import { useSendMessageMutation } from '../../../api/services/authApi';
 import { toast, ToastContainer } from 'react-toastify';
@@ -53,6 +52,10 @@ import '../../../styles/financialCards.css';
 
 const VOUCHER_ELIGIBLE_STATUSES = ['not_create', 'declined'];
 const FINANCE_DECLINE_ELIGIBLE_STATUSES = ['not_create', 'declined'];
+const HIDDEN_SETTLEMENT_STATUSES = ['approved', 'finance_declined'];
+
+const isFinanceDeclinedVoucher = (voucher) =>
+  voucher?.status === 'declined' && voucher?.approval_mode === 'finance';
 
 const SETTLEMENT_PROOF_MAX_BYTES = 10 * 1024 * 1024;
 const SETTLEMENT_PROOF_MAX_LABEL = '10 MB';
@@ -78,6 +81,21 @@ const fileToDataUri = (file) =>
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+
+const toMonthKey = (value) => {
+  if (!value) return '';
+  const text = String(value);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text) || !text.includes('T')) return text.slice(0, 7);
+  const d = new Date(text);
+  if (Number.isNaN(d.getTime())) return text.slice(0, 7);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const formatMonthLabel = (key) => {
+  const [y, m] = String(key).split('-').map(Number);
+  if (!y || !m) return key;
+  return new Date(y, m - 1, 1).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
+};
 
 const selectProofImageFile = (file, onSelect, inputEl = null) => {
   if (!file) {
@@ -175,7 +193,8 @@ const FinancialCards = () => {
   };
 
   const hasCreateVoucherFeature = checkFeatureAccess(FEATURE_CODES.FINANCIAL_CARDS_CREATE_VOUCHER);
-  const hasSettleFuelBillFeature = checkFeatureAccess(FEATURE_CODES.FINANCIAL_CARDS_SETTLE_FUEL_BILL);
+  const navigate = useNavigate();
+  const routerLocation = useLocation();
 
   const [showCardModal, setShowCardModal] = useState(false);
   const [showTransactionModal, setShowTransactionModal] = useState(false);
@@ -195,6 +214,8 @@ const FinancialCards = () => {
   const [settlementImage, setSettlementImage] = useState(null);
   const [settlementFilter, setSettlementFilter] = useState('all'); // 'all', 'card', 'amount'
   const [settlementSearch, setSettlementSearch] = useState('');
+  const [settlementMonth, setSettlementMonth] = useState('');
+  const [settlementVoucherStatus, setSettlementVoucherStatus] = useState('all');
   const [cardFormData, setCardFormData] = useState({
     no: '',
     cvc: '',
@@ -230,7 +251,6 @@ const FinancialCards = () => {
   const [createFuelVoucher, { isLoading: creatingVoucher }] = useCreateFuelTransportVoucherMutation();
   const [declineFuelVoucherByFinance, { isLoading: decliningFinanceVoucher }] =
     useDeclineFuelTransportVoucherByFinanceMutation();
-  const [settleFuelVoucher, { isLoading: settlingVoucher }] = useSettleFuelTransportVoucherMutation();
   const [recordPhysicalApproval, { isLoading: recordingPhysicalApproval }] =
     useRecordFuelTransportPhysicalApprovalMutation();
   const { data: voucherHistory = [], refetch: refetchVoucherHistory } = useGetFuelTransportVoucherHistoryQuery();
@@ -238,8 +258,6 @@ const FinancialCards = () => {
     useCreateFuelGeneratorVoucherMutation();
   const [declineGeneratorFuelVoucherByFinance, { isLoading: decliningGeneratorFinanceVoucher }] =
     useDeclineFuelGeneratorVoucherByFinanceMutation();
-  const [settleGeneratorFuelVoucher, { isLoading: settlingGeneratorVoucher }] =
-    useSettleFuelGeneratorVoucherMutation();
   const [recordGeneratorPhysicalApproval, { isLoading: recordingGeneratorPhysicalApproval }] =
     useRecordFuelGeneratorPhysicalApprovalMutation();
   const { data: generatorVoucherHistory = [], refetch: refetchGeneratorVoucherHistory } =
@@ -256,11 +274,7 @@ const FinancialCards = () => {
   const [showCreateVoucherModal, setShowCreateVoucherModal] = useState(false);
   const [showDeclineVoucherModal, setShowDeclineVoucherModal] = useState(false);
   const [declineVoucherReason, setDeclineVoucherReason] = useState('');
-  const [showSettleVoucherModal, setShowSettleVoucherModal] = useState(false);
   const [printVoucher, setPrintVoucher] = useState(null);
-  const [selectedVoucherToSettle, setSelectedVoucherToSettle] = useState(null);
-  const [voucherSettleDescription, setVoucherSettleDescription] = useState('');
-  const [voucherSettleImage, setVoucherSettleImage] = useState(null);
   const [physicalApprovalVoucher, setPhysicalApprovalVoucher] = useState(null);
   const [physicalApproverId, setPhysicalApproverId] = useState('');
   const [physicalApprovalImage, setPhysicalApprovalImage] = useState(null);
@@ -801,7 +815,8 @@ const FinancialCards = () => {
           transaction.type !== 'use' ||
           Number(transaction.approved) !== 1 ||
           transaction.fuel_record_id == null ||
-          transaction.fuel_record_id === ''
+          transaction.fuel_record_id === '' ||
+          HIDDEN_SETTLEMENT_STATUSES.includes(transaction.voucher_status)
         ) {
           return;
         }
@@ -828,7 +843,8 @@ const FinancialCards = () => {
           transaction.type !== 'use' ||
           Number(transaction.approved) !== 1 ||
           transaction.generator_fuel_record_id == null ||
-          transaction.generator_fuel_record_id === ''
+          transaction.generator_fuel_record_id === '' ||
+          HIDDEN_SETTLEMENT_STATUSES.includes(transaction.voucher_status)
         ) {
           return;
         }
@@ -856,16 +872,33 @@ const FinancialCards = () => {
     fuelSettlementSource === 'generator' ? creatingGeneratorVoucher : creatingVoucher;
   const isDecliningFinanceVoucher =
     fuelSettlementSource === 'generator' ? decliningGeneratorFinanceVoucher : decliningFinanceVoucher;
-  const isSettlingActiveVoucher =
-    fuelSettlementSource === 'generator' ? settlingGeneratorVoucher : settlingVoucher;
   const isRecordingPhysicalApproval =
     fuelSettlementSource === 'generator' ? recordingGeneratorPhysicalApproval : recordingPhysicalApproval;
 
+  const settlementMonthOptions = useMemo(() => {
+    const keys = new Set();
+    fuelSettlementRows.forEach((row) => {
+      const key = toMonthKey(row.fuel_entry_date || row.date);
+      if (key) keys.add(key);
+    });
+    activeVoucherHistory.forEach((voucher) => {
+      if (voucher.status === 'approved' || isFinanceDeclinedVoucher(voucher)) return;
+      const key = toMonthKey(voucher.created_at);
+      if (key) keys.add(key);
+    });
+    if (settlementMonth) keys.add(settlementMonth);
+    return [...keys].sort().reverse();
+  }, [fuelSettlementRows, activeVoucherHistory, settlementMonth]);
+
   const filteredFuelRows = useMemo(() => {
-    if (!settlementSearch) return fuelSettlementRows;
     const q = settlementSearch.toLowerCase();
-    return fuelSettlementRows.filter(
-      (t) =>
+    return fuelSettlementRows.filter((t) => {
+      if (settlementMonth && toMonthKey(t.fuel_entry_date || t.date) !== settlementMonth) return false;
+      if (settlementVoucherStatus !== 'all' && (t.voucher_status || 'not_create') !== settlementVoucherStatus) {
+        return false;
+      }
+      if (!q) return true;
+      return (
         t.driver_name?.toLowerCase().includes(q) ||
         t.card_holder?.toLowerCase().includes(q) ||
         t.card_number?.toLowerCase().includes(q) ||
@@ -874,8 +907,23 @@ const FinancialCards = () => {
         String(t.fuel_liters ?? t.quantity ?? '').includes(q) ||
         String(t.amount || '').includes(q) ||
         t.voucher_no?.toLowerCase().includes(q)
-    );
-  }, [fuelSettlementRows, settlementSearch]);
+      );
+    });
+  }, [fuelSettlementRows, settlementSearch, settlementMonth, settlementVoucherStatus]);
+
+  const voucherHistoryRows = useMemo(() => {
+    const q = settlementSearch.toLowerCase();
+    return activeVoucherHistory.filter((voucher) => {
+      if (voucher.status === 'approved' || isFinanceDeclinedVoucher(voucher)) return false;
+      if (settlementMonth && toMonthKey(voucher.created_at) !== settlementMonth) return false;
+      if (!q) return true;
+      return (
+        voucher.voucher_no?.toLowerCase().includes(q) ||
+        String(voucher.total_amount || '').includes(q) ||
+        getVoucherDecidedBy(voucher).toLowerCase().includes(q)
+      );
+    });
+  }, [activeVoucherHistory, settlementMonth, settlementSearch]);
 
   const groupedFuelRows = useMemo(() => {
     const map = {};
@@ -944,10 +992,7 @@ const FinancialCards = () => {
   const toSettleCount = useMemo(() => fuelSettlementRows.length, [fuelSettlementRows]);
 
   const voucherHistoryActionCount = useMemo(
-    () =>
-      activeVoucherHistory.filter(
-        (v) => v.status === 'pending' || (v.status === 'approved' && Number(v.settled) !== 1)
-      ).length,
+    () => activeVoucherHistory.filter((v) => v.status === 'pending').length,
     [activeVoucherHistory]
   );
 
@@ -957,9 +1002,7 @@ const FinancialCards = () => {
   );
 
   const countVoucherHistoryActions = (history = []) =>
-    history.filter(
-      (v) => v.status === 'pending' || (v.status === 'approved' && Number(v.settled) !== 1)
-    ).length;
+    history.filter((v) => v.status === 'pending').length;
 
   const vehicleFuelTypeCount = useMemo(
     () => vehicleFuelSettlementRows.length + countVoucherHistoryActions(voucherHistory),
@@ -980,7 +1023,7 @@ const FinancialCards = () => {
   );
 
   const settlementsTabBadgeCount = useMemo(() => {
-    let count = allApprovedUnsettledVouchers.length;
+    let count = 0;
 
     const cardsNeedingVoucher = new Set();
     vehicleFuelSettlementRows.forEach((row) => {
@@ -1004,7 +1047,7 @@ const FinancialCards = () => {
     count += pendingVoucherIds.size;
 
     return count;
-  }, [allApprovedUnsettledVouchers, vehicleFuelSettlementRows, generatorFuelSettlementRows]);
+  }, [vehicleFuelSettlementRows, generatorFuelSettlementRows]);
 
   const mdUsers = useMemo(
     () =>
@@ -1089,39 +1132,8 @@ const FinancialCards = () => {
     }
   };
 
-  const handleSettleVoucher = async (e) => {
-    e.preventDefault();
-    if (!hasSettleFuelBillFeature) {
-      toast.error('Access denied. Ask ICT to enable Settle fuel bill under Auth Controls → Features.');
-      return;
-    }
-    if (!selectedVoucherToSettle?.id) return;
-    try {
-      const imageDataUri = await fileToDataUri(voucherSettleImage);
-      const settleFn =
-        fuelSettlementSource === 'generator' ? settleGeneratorFuelVoucher : settleFuelVoucher;
-      const voucherLabel =
-        fuelSettlementSource === 'generator' ? 'Fuel generator voucher' : 'Fuel transport voucher';
-      await settleFn({
-        id: selectedVoucherToSettle.id,
-        description: voucherSettleDescription || `${voucherLabel} ${selectedVoucherToSettle.voucher_no}`,
-        image: imageDataUri,
-      }).unwrap();
-      setShowSettleVoucherModal(false);
-      setSelectedVoucherToSettle(null);
-      setVoucherSettleDescription('');
-      setVoucherSettleImage(null);
-      refetchSettlements();
-      if (fuelSettlementSource === 'generator') {
-        refetchGeneratorVoucherHistory();
-      } else {
-        refetchVoucherHistory();
-      }
-      refetchCards();
-      toast.success('Voucher settled successfully');
-    } catch (error) {
-      toast.error(error?.data?.message || error?.message || 'Failed to settle voucher');
-    }
+  const goToVoucherPayments = () => {
+    navigate({ pathname: '/home/finance/voucher-payments', search: routerLocation.search });
   };
 
   const openSettlementProof = (url) => {
@@ -1281,7 +1293,9 @@ const FinancialCards = () => {
                             const cardSettlement = pendingSettlements.find(
                               (s) => Number(s.card_id) === Number(card.id)
                             );
-                            const pendingCount = cardSettlement?.transactions?.length || 0;
+                            const pendingCount = (cardSettlement?.transactions || []).filter(
+                              (t) => t.voucher_status !== 'finance_declined'
+                            ).length;
                             const hasPending = pendingCount > 0;
                             return (
                               <button
@@ -1375,47 +1389,86 @@ const FinancialCards = () => {
               Fuel Settlements
             </h2>
             <div className="settlements-filters-financial-cards">
-              <input
-                type="text"
-                placeholder="Search driver, card, fuel details, voucher..."
-                value={settlementSearch}
-                onChange={(e) => setSettlementSearch(e.target.value)}
-                className="settlement-search-input-financial-cards"
-              />
+              <div className="settlement-search-wrap-financial-cards">
+                <FaSearch className="settlement-search-icon-financial-cards" aria-hidden="true" />
+                <input
+                  type="text"
+                  placeholder="Search driver, card, voucher..."
+                  value={settlementSearch}
+                  onChange={(e) => setSettlementSearch(e.target.value)}
+                  className="settlement-search-input-financial-cards"
+                />
+              </div>
+              <select
+                value={settlementMonth}
+                onChange={(e) => {
+                  setSettlementMonth(e.target.value);
+                  setSelectedTxIds([]);
+                }}
+                className="settlement-filter-select-financial-cards"
+                aria-label="Filter by month"
+                title={settlementsSubTab === 'pending' ? 'Fuel entry month' : 'Voucher created month'}
+              >
+                <option value="">All months</option>
+                {settlementMonthOptions.map((key) => (
+                  <option key={key} value={key}>{formatMonthLabel(key)}</option>
+                ))}
+              </select>
+              {settlementsSubTab === 'pending' ? (
+                <select
+                  value={settlementVoucherStatus}
+                  onChange={(e) => {
+                    setSettlementVoucherStatus(e.target.value);
+                    setSelectedTxIds([]);
+                  }}
+                  className="settlement-filter-select-financial-cards"
+                  aria-label="Filter by voucher status"
+                >
+                  <option value="all">All voucher statuses</option>
+                  <option value="not_create">Not created</option>
+                  <option value="pending">Pending approval</option>
+                  <option value="declined">Declined</option>
+                </select>
+              ) : null}
             </div>
             <div className="settlements-header-actions-financial-cards">
               {hasCreateVoucherFeature ? (
                 <button
                   type="button"
-                  className="btn-primary-financial-cards"
+                  className="btn-primary-financial-cards settlements-compact-btn-financial-cards"
                   disabled={!selectedEligibleRows.length || isCreatingVoucher}
                   onClick={() => setShowCreateVoucherModal(true)}
+                  title="Create voucher from selected transactions"
                 >
-                  {isCreatingVoucher ? 'Creating...' : `Create Voucher (${selectedEligibleRows.length})`}
-                </button>
-              ) : null}
-              {hasSettleFuelBillFeature ? (
-                <button
-                  type="button"
-                  className="btn-primary-financial-cards"
-                  disabled={!approvedUnsettledVouchers.length}
-                  onClick={() => {
-                    setSelectedVoucherToSettle(approvedUnsettledVouchers[0] || null);
-                    setShowSettleVoucherModal(true);
-                  }}
-                >
-                  Settle Fuel Bill
+                  <FaPlus aria-hidden="true" />
+                  {isCreatingVoucher ? 'Creating...' : `Voucher (${selectedEligibleRows.length})`}
                 </button>
               ) : null}
               <button
                 type="button"
-                className="btn-decline-voucher-financial-cards"
+                className="btn-primary-financial-cards settlements-compact-btn-financial-cards"
+                onClick={goToVoucherPayments}
+                title="Voucher Payments: approved vouchers waiting for payment"
+              >
+                <FaReceipt aria-hidden="true" />
+                Payments
+                {allApprovedUnsettledVouchers.length > 0 ? (
+                  <span className="settlements-compact-btn-badge-financial-cards">
+                    {allApprovedUnsettledVouchers.length}
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                className="btn-decline-voucher-financial-cards settlements-compact-btn-financial-cards"
                 disabled={!selectedFinanceDeclineTarget || isDecliningFinanceVoucher}
                 onClick={() => {
                   setDeclineVoucherReason('');
                   setShowDeclineVoucherModal(true);
                 }}
+                title="Decline selected transactions"
               >
+                <FaBan aria-hidden="true" />
                 {isDecliningFinanceVoucher ? 'Declining...' : 'Decline'}
               </button>
             </div>
@@ -1633,15 +1686,17 @@ const FinancialCards = () => {
               {pendingPhysicalApprovalCount > 0 ? (
                 <div className="settlements-action-summary-financial-cards">
                   {pendingPhysicalApprovalCount} voucher{pendingPhysicalApprovalCount === 1 ? '' : 's'} awaiting physical approval
-                  {approvedUnsettledVouchers.length > 0
-                    ? ` · ${approvedUnsettledVouchers.length} approved, not yet settled`
-                    : ''}
-                </div>
-              ) : approvedUnsettledVouchers.length > 0 ? (
-                <div className="settlements-action-summary-financial-cards">
-                  {approvedUnsettledVouchers.length} approved voucher{approvedUnsettledVouchers.length === 1 ? '' : 's'} pending settlement
                 </div>
               ) : null}
+              <div className="settlements-approved-note-financial-cards">
+                Approved vouchers move to{' '}
+                <button type="button" className="settlements-link-btn-financial-cards" onClick={goToVoucherPayments}>
+                  Voucher Payments
+                </button>
+                {approvedUnsettledVouchers.length > 0
+                  ? ` · ${approvedUnsettledVouchers.length} awaiting payment`
+                  : ''}
+              </div>
               <table className="voucher-history-table-financial-cards">
                 <thead>
                   <tr>
@@ -1656,14 +1711,15 @@ const FinancialCards = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {activeVoucherHistory.length === 0 ? (
+                  {voucherHistoryRows.length === 0 ? (
                     <tr>
                       <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
-                        No {fuelSettlementSource === 'generator' ? 'generator' : 'transport'} vouchers yet
+                        No {fuelSettlementSource === 'generator' ? 'generator' : 'transport'} vouchers
+                        {settlementMonth ? ' for this month' : ' yet'}
                       </td>
                     </tr>
                   ) : (
-                    activeVoucherHistory.map((voucher) => (
+                    voucherHistoryRows.map((voucher) => (
                       <tr key={voucher.id}>
                         <td>{voucher.voucher_no}</td>
                         <td>{new Date(voucher.created_at).toLocaleDateString()}</td>
@@ -1755,20 +1811,6 @@ const FinancialCards = () => {
                                     Physical Approval
                                   </>
                                 )}
-                              </button>
-                            ) : null}
-                            {voucher.status === 'approved' && Number(voucher.settled) !== 1 ? (
-                              <button
-                                type="button"
-                                className="voucher-action-btn-financial-cards voucher-action-btn-success-financial-cards"
-                                onClick={() => {
-                                  setSelectedVoucherToSettle(voucher);
-                                  setShowSettleVoucherModal(true);
-                                }}
-                                title="Settle voucher"
-                                aria-label="Settle voucher"
-                              >
-                                <FaCheck />
                               </button>
                             ) : null}
                           </div>
@@ -2617,65 +2659,6 @@ const FinancialCards = () => {
         </div>
       ) : null}
 
-      {showSettleVoucherModal && hasSettleFuelBillFeature ? (
-        <div className="modal-overlay-financial-cards" onClick={() => !settlingVoucher && setShowSettleVoucherModal(false)}>
-          <div className="modal-content-financial-cards settle-voucher-modal-financial-cards" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header-financial-cards">
-              <h2>Settle Fuel Bill (Voucher)</h2>
-              <button type="button" className="modal-close-financial-cards" onClick={() => setShowSettleVoucherModal(false)}>×</button>
-            </div>
-            <form onSubmit={handleSettleVoucher} className="settle-voucher-form-financial-cards">
-              <div className="settle-voucher-form-body-financial-cards">
-                <label className="settle-voucher-field-label-financial-cards">Approved voucher</label>
-                <select
-                  value={selectedVoucherToSettle?.id || ''}
-                  onChange={(e) => {
-                    const next = approvedUnsettledVouchers.find((v) => String(v.id) === e.target.value);
-                    setSelectedVoucherToSettle(next || null);
-                  }}
-                  className="settle-voucher-field-financial-cards"
-                >
-                  {approvedUnsettledVouchers.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.voucher_no} — LKR {Number(v.total_amount || 0).toFixed(2)} ({v.transaction_count} tx)
-                    </option>
-                  ))}
-                </select>
-                <label className="settle-voucher-field-label-financial-cards">Description (optional)</label>
-                <input
-                  type="text"
-                  value={voucherSettleDescription}
-                  onChange={(e) => setVoucherSettleDescription(e.target.value)}
-                  placeholder="Settlement reference / slip no"
-                  className="settle-voucher-field-financial-cards"
-                />
-                <label className="settle-voucher-field-label-financial-cards">Proof image (optional)</label>
-                <input
-                  type="file"
-                  accept="image/*,application/pdf"
-                  onChange={(e) => selectProofImageFile(e.target.files?.[0] || null, setVoucherSettleImage, e.target)}
-                  className="settle-voucher-file-financial-cards"
-                />
-                <small className="settle-proof-hint-financial-cards">
-                  Max file size: {SETTLEMENT_PROOF_MAX_LABEL} (image or PDF)
-                </small>
-                {voucherSettleImage ? (
-                  <small className="settle-proof-selected-financial-cards">
-                    Selected: {voucherSettleImage.name} ({formatProofFileSize(voucherSettleImage.size)})
-                  </small>
-                ) : null}
-              </div>
-              <div className="modal-actions-financial-cards settle-voucher-actions-financial-cards">
-                <button type="button" className="btn-cancel-financial-cards" onClick={() => setShowSettleVoucherModal(false)}>Cancel</button>
-                <button type="submit" className="btn-submit-financial-cards" disabled={settlingVoucher || !selectedVoucherToSettle}>
-                  {settlingVoucher ? 'Settling...' : 'Settle Voucher'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
-
       {physicalApprovalVoucher ? (
         <div className="modal-overlay-financial-cards" onClick={() => !isRecordingPhysicalApproval && setPhysicalApprovalVoucher(null)}>
           <div className="modal-content-financial-cards" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
@@ -2818,7 +2801,11 @@ const FinancialCards = () => {
 const CardPendingSpendsDialog = ({ card, pendingSettlements, onClose, onGoToSettlements }) => {
   const cardGroup = pendingSettlements.find((s) => Number(s.card_id) === Number(card?.id));
   const pendingRows = (cardGroup?.transactions || []).filter(
-    (t) => t.type === 'use' && Number(t.approved) === 1 && Number(t.settled) !== 1
+    (t) =>
+      t.type === 'use' &&
+      Number(t.approved) === 1 &&
+      Number(t.settled) !== 1 &&
+      t.voucher_status !== 'finance_declined'
   );
   const total = pendingRows.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 
