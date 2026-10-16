@@ -43,6 +43,8 @@ function parseOpsroomPlansGroupedByDate(apiData) {
       const item = apiData[k];
       const dateKey = item?.date;
       if (!dateKey) return;
+      // Adhoc proceed calendar: active plans only (same as Plan Calendar activatedOnly)
+      if (Number(item?.activated) !== 1) return;
       if (!grouped[dateKey]) grouped[dateKey] = [];
       grouped[dateKey].push(item);
     });

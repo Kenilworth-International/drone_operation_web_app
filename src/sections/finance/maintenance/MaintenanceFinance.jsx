@@ -276,8 +276,6 @@ function MaintenanceFinance({
     settled:           rows.filter((r) => Number(r?.finance_paid || 0) === 1).length,
   }), [rows, voucherHistory]);
 
-  const pendingOrApprovedCount = kpi.voucherPending + kpi.voucherApproved;
-
   // ── handlers ───────────────────────────────────────────────────────────────
   const updateMonth = (v) => { if (typeof onMonthChange === 'function') { onMonthChange(v); } else { setInternalMonth(v); } };
   const showNotice = (title, message, tone = 'success') => setNotice({ title, message, tone });
@@ -404,7 +402,7 @@ function MaintenanceFinance({
           >
             <FaHistory />
             Voucher History
-            {pendingOrApprovedCount > 0 && <span className="mf-badge">{pendingOrApprovedCount}</span>}
+            {kpi.voucherPending > 0 && <span className="mf-badge">{kpi.voucherPending}</span>}
           </button>
         </div>
       </div>

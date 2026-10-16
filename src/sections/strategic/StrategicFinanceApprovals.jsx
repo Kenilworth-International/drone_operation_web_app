@@ -177,8 +177,8 @@ const StrategicFinanceApprovals = () => {
   const sourceRows = fuelTab === 0 ? pending : history;
   const fuelLoading = fuelTab === 0 ? pendingLoading : historyLoading;
 
-  const vehicleFuelTypeCount = transportPending.length + transportHistory.length;
-  const generatorFuelTypeCount = generatorPending.length + generatorHistory.length;
+  const vehicleFuelTypeCount = transportPending.length;
+  const generatorFuelTypeCount = generatorPending.length;
 
   const refreshAllData = useCallback(async ({ showSpinner = true } = {}) => {
     if (showSpinner) setIsRefreshing(true);
@@ -504,9 +504,6 @@ const StrategicFinanceApprovals = () => {
                   onClick={() => setFuelTab(1)}
                 >
                   History
-                  {history.length > 0 ? (
-                    <span className="settlements-tab-pill-badge-financial-cards">{history.length}</span>
-                  ) : null}
                 </button>
               </div>
             </div>
