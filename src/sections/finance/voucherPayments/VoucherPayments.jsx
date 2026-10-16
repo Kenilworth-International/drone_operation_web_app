@@ -43,7 +43,7 @@ const formatMoney = (value) =>
   `LKR ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const formatDateTime = (value) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString(undefined, {
@@ -53,6 +53,25 @@ const formatDateTime = (value) => {
     hour: '2-digit',
     minute: '2-digit',
   });
+};
+
+const formatDateShort = (value) => {
+  if (!value) return '-';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  });
+};
+
+const shortCardNo = (value) => {
+  const text = String(value || '').replace(/\s+/g, '');
+  if (!text) return '-';
+  const digits = text.replace(/\D/g, '');
+  if (digits.length >= 4) return `****${digits.slice(-4)}`;
+  return text.length > 8 ? `…${text.slice(-4)}` : text;
 };
 
 const currentMonthKey = () => {
@@ -223,12 +242,24 @@ const VoucherPayments = () => {
     <div className="voucher-payments-page">
       <ToastContainer position="top-right" autoClose={3000} />
 
-      <div className="voucher-payments-header">
-        <div>
+      <div className="voucher-payments-top">
+        <div className="voucher-payments-title-block">
           <h2>
-            <FaFileInvoice /> Voucher Payments
+            <FaFileInvoice aria-hidden /> Voucher Payments
           </h2>
-          <p>Approved fuel vouchers. Mark a voucher as paid to settle the cards and close the process.</p>
+          <p>Mark approved fuel vouchers as paid to settle cards.</p>
+        </div>
+        <div className="voucher-payments-summary">
+          <div className="voucher-payments-summary-card pending">
+            <span>Pending</span>
+            <strong>{totals.pendingCount}</strong>
+            <small>{formatMoney(totals.pendingAmount)}</small>
+          </div>
+          <div className="voucher-payments-summary-card paid">
+            <span>Paid</span>
+            <strong>{totals.paidCount}</strong>
+            <small>{formatMoney(totals.paidAmount)}</small>
+          </div>
         </div>
         <button
           type="button"
@@ -248,156 +279,174 @@ const VoucherPayments = () => {
         </div>
       ) : null}
 
-      <div className="voucher-payments-summary">
-        <div className="voucher-payments-summary-card pending">
-          <span>Pending payment</span>
-          <strong>{totals.pendingCount}</strong>
-          <small>{formatMoney(totals.pendingAmount)}</small>
-        </div>
-        <div className="voucher-payments-summary-card paid">
-          <span>Paid</span>
-          <strong>{totals.paidCount}</strong>
-          <small>{formatMoney(totals.paidAmount)}</small>
-        </div>
-      </div>
-
       <div className="voucher-payments-filters">
-        <input
-          type="text"
-          placeholder="Search voucher no, approver, reference..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="voucher-payments-search"
-        />
-        <select value={voucherType} onChange={(e) => setVoucherType(e.target.value)} aria-label="Voucher type">
-          <option value="all">All fuel vouchers</option>
-          <option value="transport">Transport fuel</option>
-          <option value="generator">Generator fuel</option>
-        </select>
-        <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)} aria-label="Payment status">
-          <option value="pending">Pending</option>
-          <option value="paid">Paid</option>
-          <option value="all">All statuses</option>
-        </select>
-        <select
-          value={month}
-          onChange={(e) => setMonth(e.target.value)}
-          aria-label="Approved month"
-          title="Month the voucher was approved"
-        >
-          <option value="">All months</option>
-          {monthOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-              {option.value === currentMonthKey() ? ' (this month)' : ''}
-            </option>
-          ))}
-        </select>
+        <div className="voucher-payments-filter">
+          <label htmlFor="vp-search">Search</label>
+          <input
+            id="vp-search"
+            type="search"
+            placeholder="Voucher no, approver…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="voucher-payments-search"
+            autoComplete="off"
+          />
+        </div>
+        <div className="voucher-payments-filter">
+          <label htmlFor="vp-type">Type</label>
+          <select
+            id="vp-type"
+            value={voucherType}
+            onChange={(e) => setVoucherType(e.target.value)}
+          >
+            <option value="all">All types</option>
+            <option value="transport">Transport</option>
+            <option value="generator">Generator</option>
+          </select>
+        </div>
+        <div className="voucher-payments-filter">
+          <label htmlFor="vp-status">Status</label>
+          <select
+            id="vp-status"
+            value={paymentStatus}
+            onChange={(e) => setPaymentStatus(e.target.value)}
+          >
+            <option value="pending">Pending</option>
+            <option value="paid">Paid</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div className="voucher-payments-filter">
+          <label htmlFor="vp-month">Month</label>
+          <select
+            id="vp-month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            title="Month the voucher was approved"
+          >
+            <option value="">All months</option>
+            {monthOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+                {option.value === currentMonthKey() ? ' (this month)' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="voucher-payments-table-wrap">
         <table className="voucher-payments-table">
           <thead>
             <tr>
-              <th>Voucher</th>
-              <th>Type</th>
-              <th>Approved</th>
-              <th>Cards</th>
-              <th>Lines</th>
-              <th className="num">Amount</th>
-              <th>Payment</th>
-              <th>Method / Reference</th>
-              <th>Receipt</th>
-              <th>Paid by</th>
-              <th>Actions</th>
+              <th className="vp-col-voucher">Voucher</th>
+              <th className="vp-col-type">Type</th>
+              <th className="vp-col-approved">Approved</th>
+              <th className="vp-col-cards">Cards</th>
+              <th className="num vp-col-amount">Amount</th>
+              <th className="vp-col-status">Status</th>
+              <th className="vp-col-details">Payment details</th>
+              <th className="vp-col-actions" />
             </tr>
           </thead>
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={11} className="voucher-payments-empty">Loading vouchers...</td>
+                <td colSpan={8} className="voucher-payments-empty">Loading vouchers...</td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={11} className="voucher-payments-empty error">
+                <td colSpan={8} className="voucher-payments-empty error">
                   {error?.data?.message || 'Failed to load vouchers'}
                 </td>
               </tr>
             ) : filteredVouchers.length === 0 ? (
               <tr>
-                <td colSpan={11} className="voucher-payments-empty">No approved vouchers match these filters</td>
+                <td colSpan={8} className="voucher-payments-empty">No approved vouchers match these filters</td>
               </tr>
             ) : (
               filteredVouchers.map((voucher) => {
                 const isPaid = voucher.payment_status === 'paid';
                 const isGenerator = isGeneratorFuelVoucher(voucher);
                 const cards = resolveVoucherCardsSummary(voucher);
+                const visibleCards = cards.slice(0, 2);
+                const extraCards = Math.max(0, cards.length - visibleCards.length);
+                const cardsTitle = cards
+                  .map(
+                    (c) =>
+                      `${c.card_number || '-'} ${c.card_holder || ''} · ${c.transaction_count} tx · ${formatMoney(c.amount)}`
+                  )
+                  .join('\n');
                 return (
                   <tr key={voucher.id}>
-                    <td className="voucher-no">{voucher.voucher_no}</td>
+                    <td className="voucher-no" title={voucher.voucher_no}>
+                      {voucher.voucher_no}
+                    </td>
                     <td>
                       <span className={`voucher-payments-type ${isGenerator ? 'generator' : 'transport'}`}>
-                        {isGenerator ? 'Generator fuel' : 'Transport fuel'}
+                        {isGenerator ? 'Gen' : 'Transport'}
                       </span>
                     </td>
-                    <td>
-                      <div>{formatDateTime(voucher.approved_at || voucher.created_at)}</div>
-                      <small>{voucher.approved_by_name || (voucher.approval_mode === 'physical' ? 'Physical approval' : '—')}</small>
+                    <td className="vp-approved-cell">
+                      <div>{formatDateShort(voucher.approved_at || voucher.created_at)}</div>
+                      <small title={voucher.approved_by_name || ''}>
+                        {voucher.approved_by_name ||
+                          (voucher.approval_mode === 'physical' ? 'Physical' : '-')}
+                      </small>
                     </td>
-                    <td className="voucher-payments-cards-cell">
+                    <td className="voucher-payments-cards-cell" title={cardsTitle || undefined}>
                       {cards.length === 0 ? (
-                        '—'
+                        <span className="vp-muted">-</span>
                       ) : (
-                        cards.map((card) => (
-                          <div key={card.card_id || card.card_number} className="voucher-payments-card-row">
-                            <strong>{card.card_number || '—'}</strong>
-                            {card.card_holder ? <small>{card.card_holder}</small> : null}
-                            <small>
-                              {card.transaction_count} tx · {formatMoney(card.amount)}
-                            </small>
-                          </div>
-                        ))
+                        <div className="voucher-payments-cards-compact">
+                          {visibleCards.map((card) => (
+                            <div key={card.card_id || card.card_number} className="voucher-payments-card-chip">
+                              <strong>{shortCardNo(card.card_number)}</strong>
+                              <span>
+                                {card.transaction_count}tx · {formatMoney(card.amount)}
+                              </span>
+                            </div>
+                          ))}
+                          {extraCards > 0 ? (
+                            <div className="voucher-payments-card-more">+{extraCards} more</div>
+                          ) : null}
+                        </div>
                       )}
                     </td>
-                    <td>{voucher.transaction_count || 0}</td>
-                    <td className="num">{formatMoney(voucher.total_amount)}</td>
+                    <td className="num vp-amount-cell">
+                      <strong>{formatMoney(voucher.total_amount)}</strong>
+                      <small>{voucher.transaction_count || 0} lines</small>
+                    </td>
                     <td>
                       <span className={`voucher-payments-status ${isPaid ? 'paid' : 'pending'}`}>
                         {isPaid ? 'Paid' : 'Pending'}
                       </span>
                     </td>
-                    <td>
+                    <td className="vp-details-cell">
                       {isPaid ? (
                         <>
-                          <div>{voucher.payment_method_label || '—'}</div>
-                          {voucher.payment_reference ? <small>{voucher.payment_reference}</small> : null}
-                          {voucher.payment_note ? <small className="note">{voucher.payment_note}</small> : null}
+                          <div>{voucher.payment_method_label || '-'}</div>
+                          {voucher.payment_reference ? (
+                            <small>{voucher.payment_reference}</small>
+                          ) : null}
+                          {voucher.paid_by_name ? (
+                            <small>
+                              {voucher.paid_by_name}
+                              {voucher.paid_at ? ` · ${formatDateShort(voucher.paid_at)}` : ''}
+                            </small>
+                          ) : null}
+                          {voucher.payment_receipt_image_url ? (
+                            <button
+                              type="button"
+                              className="voucher-payments-link"
+                              onClick={() => openReceipt(voucher.payment_receipt_image_url)}
+                            >
+                              {isPdfProofUrl(voucher.payment_receipt_image_url) ? 'PDF' : 'Receipt'}
+                            </button>
+                          ) : null}
                         </>
                       ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td>
-                      {voucher.payment_receipt_image_url ? (
-                        <button
-                          type="button"
-                          className="voucher-payments-link"
-                          onClick={() => openReceipt(voucher.payment_receipt_image_url)}
-                        >
-                          {isPdfProofUrl(voucher.payment_receipt_image_url) ? 'View PDF' : 'View receipt'}
-                        </button>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td>
-                      {isPaid ? (
-                        <>
-                          <div>{voucher.paid_by_name || '—'}</div>
-                          <small>{formatDateTime(voucher.paid_at)}</small>
-                        </>
-                      ) : (
-                        '—'
+                        <span className="vp-muted">Awaiting payment</span>
                       )}
                     </td>
                     <td>
@@ -408,6 +457,7 @@ const VoucherPayments = () => {
                           onClick={() => handlePrint(voucher)}
                           disabled={loadingPrintId === voucher.id}
                           title="Print voucher"
+                          aria-label="Print voucher"
                         >
                           <FaPrint />
                         </button>
@@ -417,9 +467,13 @@ const VoucherPayments = () => {
                             className="voucher-payments-btn-primary"
                             onClick={() => openPayModal(voucher)}
                             disabled={!paymentColumnsReady}
-                            title={paymentColumnsReady ? 'Mark as paid' : 'Run the voucher payments migration first'}
+                            title={
+                              paymentColumnsReady
+                                ? 'Mark as paid'
+                                : 'Run the voucher payments migration first'
+                            }
                           >
-                            <FaCheckCircle /> Mark paid
+                            <FaCheckCircle /> Pay
                           </button>
                         ) : null}
                       </div>
@@ -457,7 +511,7 @@ const VoucherPayments = () => {
                   <ul>
                     {resolveVoucherCardsSummary(payVoucher).map((card) => (
                       <li key={card.card_id || card.card_number}>
-                        <span className="voucher-payments-card-no">{card.card_number || '—'}</span>
+                        <span className="voucher-payments-card-no">{card.card_number || '-'}</span>
                         {card.card_holder ? <span>{card.card_holder}</span> : null}
                         <span>
                           {card.transaction_count} tx · {formatMoney(card.amount)}

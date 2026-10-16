@@ -1,39 +1,44 @@
 .voucher-payments-page {
-  padding: 1.25rem 1.5rem 2rem;
+  padding: 0.85rem 1rem 1.25rem;
   color: #1e293b;
 }
 
-.voucher-payments-header {
+.voucher-payments-top {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-bottom: 0.65rem;
 }
 
-.voucher-payments-header h2 {
+.voucher-payments-title-block {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.voucher-payments-title-block h2 {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.15rem;
   color: #004b71;
 }
 
-.voucher-payments-header p {
-  margin: 0.25rem 0 0;
-  font-size: 0.88rem;
+.voucher-payments-title-block p {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
   color: #64748b;
 }
 
 .voucher-payments-warning {
-  margin-bottom: 1rem;
-  padding: 0.65rem 0.85rem;
-  border-radius: 8px;
+  margin-bottom: 0.65rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 6px;
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #991b1b;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .voucher-payments-warning code {
@@ -45,19 +50,22 @@
 .voucher-payments-summary {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  gap: 0.45rem;
 }
 
 .voucher-payments-summary-card {
-  display: flex;
-  flex-direction: column;
-  min-width: 180px;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  column-gap: 0.55rem;
+  row-gap: 0.05rem;
+  align-items: baseline;
+  min-width: 0;
+  padding: 0.35rem 0.65rem 0.35rem 0.55rem;
+  border-radius: 6px;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-left-width: 4px;
+  border-left-width: 3px;
 }
 
 .voucher-payments-summary-card.pending {
@@ -69,87 +77,157 @@
 }
 
 .voucher-payments-summary-card span {
-  font-size: 0.78rem;
+  grid-column: 1 / -1;
+  font-size: 0.68rem;
   color: #64748b;
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  font-weight: 600;
 }
 
 .voucher-payments-summary-card strong {
-  font-size: 1.4rem;
+  font-size: 1.05rem;
+  line-height: 1.1;
 }
 
 .voucher-payments-summary-card small {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   color: #475569;
+  white-space: nowrap;
 }
 
 .voucher-payments-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: center;
-  margin-bottom: 1rem;
+  gap: 0.45rem 0.65rem;
+  align-items: flex-end;
+  margin-bottom: 0.65rem;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.voucher-payments-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.voucher-payments-filter label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .voucher-payments-filters select,
 .voucher-payments-search {
-  padding: 0.5rem 0.75rem;
+  padding: 0.35rem 0.55rem;
   border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  font-size: 0.9rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
   background: #fff;
   color: #1e293b;
+  height: 2rem;
+  box-sizing: border-box;
+}
+
+.voucher-payments-filter:first-child {
+  flex: 1 1 200px;
 }
 
 .voucher-payments-search {
-  min-width: 280px;
+  width: 100%;
+  min-width: 160px;
+}
+
+.voucher-payments-filters select {
+  min-width: 7.5rem;
 }
 
 .voucher-payments-filters select:focus,
 .voucher-payments-search:focus {
   outline: none;
   border-color: #004b71;
-  box-shadow: 0 0 0 3px rgba(0, 75, 113, 0.1);
+  box-shadow: 0 0 0 2px rgba(0, 75, 113, 0.1);
 }
 
 .voucher-payments-table-wrap {
   overflow-x: auto;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .voucher-payments-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.86rem;
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+
+.voucher-payments-table .vp-col-voucher {
+  width: 14%;
+}
+
+.voucher-payments-table .vp-col-type {
+  width: 8%;
+}
+
+.voucher-payments-table .vp-col-approved {
+  width: 12%;
+}
+
+.voucher-payments-table .vp-col-cards {
+  width: 18%;
+}
+
+.voucher-payments-table .vp-col-amount {
+  width: 12%;
+}
+
+.voucher-payments-table .vp-col-status {
+  width: 8%;
+}
+
+.voucher-payments-table .vp-col-details {
+  width: 18%;
+}
+
+.voucher-payments-table .vp-col-actions {
+  width: 10%;
 }
 
 .voucher-payments-table th {
   text-align: left;
-  padding: 0.65rem 0.75rem;
+  padding: 0.4rem 0.5rem;
   background: #f8fafc;
   color: #475569;
   font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
   border-bottom: 1px solid #e2e8f0;
   white-space: nowrap;
 }
 
 .voucher-payments-table td {
-  padding: 0.6rem 0.75rem;
+  padding: 0.4rem 0.5rem;
   border-bottom: 1px solid #f1f5f9;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .voucher-payments-table td small {
   display: block;
   color: #64748b;
-  font-size: 0.76rem;
-}
-
-.voucher-payments-table td small.note {
-  font-style: italic;
+  font-size: 0.7rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .voucher-payments-table .num {
@@ -160,26 +238,76 @@
 .voucher-payments-table .voucher-no {
   font-weight: 600;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-variant-numeric: tabular-nums;
+}
+
+.vp-approved-cell div {
+  white-space: nowrap;
+}
+
+.vp-amount-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.05rem;
+}
+
+.vp-amount-cell strong {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.vp-details-cell {
+  min-width: 0;
+}
+
+.vp-details-cell > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vp-muted {
+  color: #94a3b8;
+  font-size: 0.75rem;
 }
 
 .voucher-payments-cards-cell {
-  min-width: 160px;
+  min-width: 0;
 }
 
-.voucher-payments-card-row {
+.voucher-payments-cards-compact {
   display: flex;
   flex-direction: column;
-  gap: 0.05rem;
-  margin-bottom: 0.35rem;
+  gap: 0.15rem;
 }
 
-.voucher-payments-card-row:last-child {
-  margin-bottom: 0;
+.voucher-payments-card-chip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.45rem;
+  line-height: 1.2;
 }
 
-.voucher-payments-card-row strong {
+.voucher-payments-card-chip strong {
   font-variant-numeric: tabular-nums;
-  font-size: 0.8rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.voucher-payments-card-chip span {
+  font-size: 0.7rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.voucher-payments-card-more {
+  font-size: 0.7rem;
+  color: #004b71;
+  font-weight: 600;
 }
 
 .voucher-payments-cards-box {
@@ -226,7 +354,7 @@
 
 .voucher-payments-empty {
   text-align: center;
-  padding: 2rem !important;
+  padding: 1.5rem !important;
   color: #64748b;
 }
 
@@ -237,9 +365,9 @@
 .voucher-payments-type,
 .voucher-payments-status {
   display: inline-block;
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
   font-weight: 600;
   white-space: nowrap;
 }
@@ -266,8 +394,9 @@
 
 .voucher-payments-actions {
   display: flex;
-  gap: 0.4rem;
+  gap: 0.3rem;
   align-items: center;
+  justify-content: flex-end;
 }
 
 .voucher-payments-btn-primary,
@@ -275,16 +404,16 @@
 .voucher-payments-icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  border-radius: 8px;
-  font-size: 0.82rem;
+  gap: 0.3rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
 
 .voucher-payments-btn-primary {
-  padding: 0.45rem 0.8rem;
+  padding: 0.3rem 0.55rem;
   border: none;
   background: #004b71;
   color: #fff;
@@ -295,14 +424,16 @@
 }
 
 .voucher-payments-btn-secondary {
-  padding: 0.45rem 0.8rem;
+  padding: 0.3rem 0.55rem;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #334155;
+  height: 2rem;
+  box-sizing: border-box;
 }
 
 .voucher-payments-icon-btn {
-  padding: 0.45rem;
+  padding: 0.3rem;
   border: 1px solid #cbd5e1;
   background: #fff;
   color: #004b71;
@@ -316,13 +447,15 @@
 }
 
 .voucher-payments-link {
+  display: inline-block;
+  margin-top: 0.1rem;
   background: none;
   border: none;
   padding: 0;
   color: #004b71;
   text-decoration: underline;
   cursor: pointer;
-  font-size: inherit;
+  font-size: 0.72rem;
 }
 
 .voucher-payments-spin {
@@ -482,13 +615,34 @@
   border-top: 1px solid #e2e8f0;
 }
 
+@media (max-width: 900px) {
+  .voucher-payments-table {
+    table-layout: auto;
+  }
+
+  .voucher-payments-table .vp-col-voucher,
+  .voucher-payments-table .vp-col-type,
+  .voucher-payments-table .vp-col-approved,
+  .voucher-payments-table .vp-col-cards,
+  .voucher-payments-table .vp-col-amount,
+  .voucher-payments-table .vp-col-status,
+  .voucher-payments-table .vp-col-details,
+  .voucher-payments-table .vp-col-actions {
+    width: auto;
+  }
+}
+
 @media (max-width: 768px) {
   .voucher-payments-page {
-    padding: 1rem;
+    padding: 0.75rem;
+  }
+
+  .voucher-payments-filter:first-child {
+    flex: 1 1 100%;
   }
 
   .voucher-payments-search {
-    min-width: 100%;
+    min-width: 0;
   }
 
   .voucher-payments-methods {
