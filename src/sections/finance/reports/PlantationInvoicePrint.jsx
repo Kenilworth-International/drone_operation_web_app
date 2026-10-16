@@ -7,7 +7,7 @@ const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatDisplayDate = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   const text = String(d).slice(0, 10);
   const [y, m, day] = text.split('-');
   if (!y || !m || !day) return text;
@@ -111,7 +111,35 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
           </div>
         </header>
 
-        <h1 className="plantation-invoice-doc-title">Tax Invoice</h1>
+        <h1 className="plantation-invoice-doc-title">
+          {String(invoice.invoice_type || '') === 'pre'
+            ? 'Tax Invoice (Pre / Advance)'
+            : String(invoice.invoice_type || '') === 'credit_note'
+              ? 'Credit Note'
+              : 'Tax Invoice'}
+        </h1>
+
+        {String(invoice.invoice_type || '') === 'pre' &&
+        (invoice.plan_count != null || invoice.estimated_ha != null) ? (
+          <p style={{ fontSize: 12, color: '#475569', margin: '0 0 12px' }}>
+            Pre-invoice basis: {invoice.plan_count ?? '-'} scheduled plans ×{' '}
+            {formatMoney(invoice.ha_per_plan)} Ha/plan = {formatMoney(invoice.estimated_ha)} Ha
+            estimated.
+          </p>
+        ) : null}
+
+        {(Number(invoice.prepaid_applied) > 0 || invoice.linked_pre_invoice) &&
+        String(invoice.invoice_type || '') !== 'pre' ? (
+          <p style={{ fontSize: 12, color: '#475569', margin: '0 0 12px' }}>
+            Reconciliation: prepaid LKR {formatMoney(invoice.prepaid_applied)}
+            {invoice.linked_pre_invoice?.invoice_no
+              ? ` from pre-invoice #${invoice.linked_pre_invoice.invoice_no}`
+              : ''}
+            {String(invoice.invoice_type) === 'credit_note' || Number(invoice.credit_amount) > 0
+              ? `. Credit amount LKR ${formatMoney(invoice.credit_amount || 0)}.`
+              : `. Net balance due LKR ${formatMoney(invoice.balance_due ?? invoice.total)}.`}
+          </p>
+        ) : null}
 
         <div className="plantation-invoice-doc-parties">
           <div>
@@ -138,7 +166,9 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
           </div>
           <div className="plantation-invoice-doc-meta">
             <div className="plantation-invoice-meta-row">
-              <span className="plantation-invoice-meta-label">INVOICE</span>
+              <span className="plantation-invoice-meta-label">
+                {String(invoice.invoice_type) === 'credit_note' ? 'CREDIT NOTE' : 'INVOICE'}
+              </span>
               <span className="plantation-invoice-meta-value">{invoice.invoice_no}</span>
             </div>
             <div className="plantation-invoice-meta-row">
@@ -200,10 +230,31 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
                 <span>TOTAL</span>
                 <span>{formatMoney(invoice.total)}</span>
               </div>
+              {Number(invoice.amount_paid) > 0 ? (
+                <div>
+                  <span>AMOUNT PAID</span>
+                  <span>{formatMoney(invoice.amount_paid)}</span>
+                </div>
+              ) : null}
+              {Number(invoice.prepaid_applied) > 0 ? (
+                <div>
+                  <span>PREPAID APPLIED</span>
+                  <span>{formatMoney(invoice.prepaid_applied)}</span>
+                </div>
+              ) : null}
               <div className="total-line">
-                <span>BALANCE DUE</span>
+                <span>
+                  {String(invoice.invoice_type) === 'credit_note' || Number(invoice.credit_amount) > 0
+                    ? 'CREDIT AMOUNT'
+                    : 'BALANCE DUE'}
+                </span>
                 <span className="balance-due-amount">
-                 LKR {formatMoney(invoice.balance_due ?? invoice.total)}
+                  LKR{' '}
+                  {formatMoney(
+                    String(invoice.invoice_type) === 'credit_note' || Number(invoice.credit_amount) > 0
+                      ? invoice.credit_amount
+                      : invoice.balance_due ?? invoice.total
+                  )}
                 </span>
               </div>
             </div>

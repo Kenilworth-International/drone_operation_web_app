@@ -3,7 +3,7 @@ import autoTable from 'jspdf-autotable';
 
 const format2 = (n) => Number(n || 0).toFixed(2);
 
-const MANAGER_CANCEL_EMPTY = '—';
+const MANAGER_CANCEL_EMPTY = '-';
 
 const formatPdfMetric = (row, value, { percent = false } = {}) => {
   if (row?.isManagerCanceled) return MANAGER_CANCEL_EMPTY;
@@ -29,14 +29,14 @@ export function formatPeriodRange(periodStart, periodEnd) {
   const fmt = (d) =>
     d
       ? `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`
-      : '—';
+      : '-';
   if (start && end) return `${fmt(start)} – ${fmt(end)}`;
-  return fmt(start) || fmt(end) || '—';
+  return fmt(start) || fmt(end) || '-';
 }
 
 function formatMonthYearFromPeriod(periodStart) {
   const d = parsePeriodDate(periodStart);
-  if (!d) return '—';
+  if (!d) return '-';
   return `${d.toLocaleString('default', { month: 'long' })} - ${d.getFullYear()}`;
 }
 
@@ -52,7 +52,7 @@ export function formatWorkSummaryTitle(periodStart, pdfId = null) {
 /** Compact label for history action buttons, e.g. "26/01 - pdf 15". */
 export function formatWorkSummaryShortLabel(periodStart, pdfId) {
   const d = parsePeriodDate(periodStart);
-  if (!d || pdfId == null || pdfId === '') return '—';
+  if (!d || pdfId == null || pdfId === '') return '-';
   const yy = String(d.getFullYear()).slice(-2);
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   return `${yy}/${mm} - pdf ${pdfId}`;
@@ -179,7 +179,7 @@ export function buildWorkSummaryPdfDocument({
     ].filter(Boolean);
     return [
     planLines.join('\n'),
-    row.fieldName || '—',
+    row.fieldName || '-',
     formatPdfMetric(row, row.fieldHa),
     formatPdfMetric(row, row.completedHa),
     formatPdfMetric(row, row.coveredPercent, { percent: true }),

@@ -10,6 +10,8 @@ import {
   resolveVoucherApprovalType,
   resolveVoucherApprovedBy,
   resolveVoucherDriverName,
+  resolveVoucherCardNumber,
+  resolveVoucherCardsSummary,
 } from './transportVoucherPrintUtils';
 
 const VOUCHER_ORG = {
@@ -21,6 +23,7 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const labels = getFuelVoucherLabels(voucher);
   const lines = useMemo(() => voucher?.lines || [], [voucher?.lines]);
+  const cardsSummary = useMemo(() => resolveVoucherCardsSummary(voucher), [voucher]);
   const txCount = voucher?.transaction_count || lines.length || 0;
   const approvedBy = resolveVoucherApprovedBy(voucher);
   const approvalType = resolveVoucherApprovalType(voucher);
@@ -148,10 +151,28 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
               </div>
             </div>
 
+            {cardsSummary.length > 0 ? (
+              <div className="fuel-transport-voucher-cards-summary">
+                <strong>Cards to top up ({cardsSummary.length})</strong>
+                <ul>
+                  {cardsSummary.map((card) => (
+                    <li key={card.card_id || card.card_number}>
+                      <span className="fuel-transport-voucher-card-no">{card.card_number || '—'}</span>
+                      {card.card_holder ? <span className="fuel-transport-voucher-card-holder">{card.card_holder}</span> : null}
+                      <span>
+                        {card.transaction_count} tx · LKR {formatFuelMoney(card.amount)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
             <table className="plantation-invoice-doc-table fuel-transport-voucher-doc-table">
               <thead>
                 <tr>
                   <th>{labels.personHeader}</th>
+                  <th>CARD NO</th>
                   <th>FUEL DATE</th>
                   <th>LITERS</th>
                   <th>AMOUNT</th>
@@ -165,6 +186,12 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
                     <tr key={line.line_id || line.transaction_id}>
                       <td>
                         <div className="activity-name">{resolveVoucherDriverName(line)}</div>
+                      </td>
+                      <td>
+                        <div className="activity-name">{resolveVoucherCardNumber(line)}</div>
+                        {line.card_holder ? (
+                          <div className="fuel-transport-voucher-card-holder-sub">{line.card_holder}</div>
+                        ) : null}
                       </td>
                       <td>{parts.fuelDate}</td>
                       <td>{parts.liters}</td>

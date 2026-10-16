@@ -5,7 +5,7 @@ const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatDisplayDate = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   const text = String(d).trim();
   const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) return `${match[2]}/${match[3]}/${match[1]}`;
@@ -78,7 +78,13 @@ export function downloadPlantationInvoicePdf(invoice) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
   doc.setTextColor(15, 76, 117);
-  doc.text('Tax Invoice', margin, y);
+  const docTitle =
+    String(invoice.invoice_type || '') === 'pre'
+      ? 'Tax Invoice (Pre / Advance)'
+      : String(invoice.invoice_type || '') === 'credit_note'
+        ? 'Credit Note'
+        : 'Tax Invoice';
+  doc.text(docTitle, margin, y);
   doc.setTextColor(0, 0, 0);
   y += 10;
 
@@ -94,7 +100,10 @@ export function downloadPlantationInvoicePdf(invoice) {
   doc.text('Ship To', shipColX, partiesY);
 
   const metaRows = [
-    ['INVOICE', String(invoice.invoice_no || '')],
+    [
+      String(invoice.invoice_type) === 'credit_note' ? 'CREDIT NOTE' : 'INVOICE',
+      String(invoice.invoice_no || ''),
+    ],
     ['DATE', formatDisplayDate(invoice.invoice_date)],
     ['DUE DATE', formatDisplayDate(invoice.due_date)],
   ];
@@ -186,7 +195,18 @@ export function downloadPlantationInvoicePdf(invoice) {
   ty += 5;
   drawTotal('TOTAL', formatMoney(invoice.total), ty);
   ty += 7;
-  drawTotal('BALANCE DUE', `LKR ${formatMoney(invoice.balance_due ?? invoice.total)}`, ty, true);
+  if (Number(invoice.prepaid_applied) > 0) {
+    drawTotal('PREPAID', `− ${formatMoney(invoice.prepaid_applied)}`, ty);
+    ty += 5;
+  }
+  const isCredit =
+    String(invoice.invoice_type) === 'credit_note' || Number(invoice.credit_amount) > 0;
+  drawTotal(
+    isCredit ? 'CREDIT AMOUNT' : 'BALANCE DUE',
+    `LKR ${formatMoney(isCredit ? invoice.credit_amount : invoice.balance_due ?? invoice.total)}`,
+    ty,
+    true
+  );
 
   y = Math.max(y + noticeLines.length * 3.5, ty) + 8;
 
@@ -242,4 +262,172 @@ export function downloadPlantationInvoicePdf(invoice) {
 
   const safeNo = String(invoice.invoice_no || 'invoice').replace(/[^\w-]+/g, '_');
   doc.save(`Tax_Invoice_${safeNo}.pdf`);
+}
+
+/**
+ * Estate spraying statement PDF - for information only (not a tax invoice).
+ * @param {object} statement
+ */
+export function downloadEstateStatementPdf(statement) {
+  const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const tableWidth = pageWidth - margin * 2;
+  let y = 14;
+
+  tryAddLogo(doc, margin, y, 28, 28);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text(statement.org_name || 'Organization', pageWidth - margin, y + 4, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  let orgY = y + 9;
+  const orgAddr = statement.org_address_lines?.length
+    ? statement.org_address_lines
+    : addressLines(statement.org_address);
+  orgAddr.forEach((line) => {
+    doc.text(line, pageWidth - margin, orgY, { align: 'right' });
+    orgY += 4;
+  });
+
+  y = Math.max(y + 32, orgY + 4);
+
+  doc.setFillColor(254, 243, 199);
+  doc.setDrawColor(251, 191, 36);
+  doc.roundedRect(margin, y, tableWidth, 12, 1, 1, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(146, 64, 14);
+  doc.text('FOR INFORMATION ONLY - NOT A TAX INVOICE', margin + 3, y + 5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text(
+    'Estate spraying statement. Payment, if any, is against the plantation tax invoice only.',
+    margin + 3,
+    y + 9.5
+  );
+  doc.setTextColor(0, 0, 0);
+  y += 18;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.setTextColor(15, 76, 117);
+  doc.text('Estate spraying statement', margin, y);
+  doc.setTextColor(0, 0, 0);
+  y += 10;
+
+  const partiesY = y;
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Plantation', margin, partiesY);
+  doc.text('Estates', margin + 70, partiesY);
+  doc.setFont('helvetica', 'normal');
+  let rowY = partiesY + 5;
+  if (statement.plantation_name) {
+    doc.setFont('helvetica', 'bold');
+    doc.text(String(statement.plantation_name), margin, rowY);
+    doc.setFont('helvetica', 'normal');
+    rowY += 4;
+  }
+  const estateNames = (statement.estate_names || []).filter(Boolean);
+  estateNames.forEach((name, idx) => {
+    doc.text(String(name), margin + 70, partiesY + 5 + idx * 4);
+  });
+  const metaY = partiesY;
+  doc.setFont('helvetica', 'bold');
+  doc.text('REF', pageWidth - margin - 52, metaY);
+  doc.text('DATE', pageWidth - margin - 52, metaY + 5);
+  doc.text('PERIOD', pageWidth - margin - 52, metaY + 10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(String(statement.statement_ref || 'ESTATE-STMT'), pageWidth - margin, metaY, {
+    align: 'right',
+  });
+  doc.text(formatDisplayDate(statement.statement_date), pageWidth - margin, metaY + 5, {
+    align: 'right',
+  });
+  doc.text(
+    `${formatDisplayDate(statement.period_start)} – ${formatDisplayDate(statement.period_end)}`,
+    pageWidth - margin,
+    metaY + 10,
+    { align: 'right' }
+  );
+
+  y = Math.max(rowY, partiesY + 5 + estateNames.length * 4, metaY + 16) + 4;
+
+  const lineRows = (statement.line_items || []).map((row) => [
+    `${row.activity || ''}\n${row.description || ''}`,
+    formatMoney(row.qty),
+    formatMoney(row.rate),
+    formatMoney(row.amount),
+  ]);
+  const [lineW0, lineW1, lineW2, lineW3] = splitTableWidths(tableWidth, [0.52, 0.16, 0.16, 0.16]);
+
+  autoTable(doc, {
+    head: [['ACTIVITY', 'QTY', 'Rate (per Ha)', 'AMOUNT']],
+    body: lineRows,
+    startY: y,
+    tableWidth,
+    margin: { left: margin, right: margin },
+    theme: 'grid',
+    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
+    headStyles: {
+      fillColor: [232, 244, 252],
+      textColor: [15, 76, 117],
+      fontStyle: 'bold',
+      halign: 'center',
+    },
+    columnStyles: {
+      0: { cellWidth: lineW0, halign: 'left' },
+      1: { halign: 'right', cellWidth: lineW1 },
+      2: { halign: 'right', cellWidth: lineW2 },
+      3: { halign: 'right', cellWidth: lineW3 },
+    },
+  });
+
+  y = (doc.lastAutoTable?.finalY || y) + 8;
+  const colMid = pageWidth / 2;
+  doc.setFontSize(7);
+  const notice =
+    'This estate statement summarises sprayed / billed hectares for the selected estates. It is issued for operational information only and is not a tax invoice. Payment is against the plantation tax invoice only.';
+  const noticeLines = doc.splitTextToSize(notice, colMid - margin - 4);
+  doc.text(noticeLines, margin, y);
+
+  let ty = y;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.text('SUBTOTAL', colMid + 4, ty);
+  doc.text(formatMoney(statement.subtotal), pageWidth - margin, ty, { align: 'right' });
+  ty += 5;
+  if (statement.tax_total != null && Number(statement.tax_total) > 0) {
+    doc.text('TAX (indicative)', colMid + 4, ty);
+    doc.text(formatMoney(statement.tax_total), pageWidth - margin, ty, { align: 'right' });
+    ty += 5;
+  }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.text('TOTAL (indicative)', colMid + 4, ty);
+  doc.text(formatMoney(statement.total ?? statement.subtotal), pageWidth - margin, ty, {
+    align: 'right',
+  });
+  ty += 6;
+  doc.setFontSize(9);
+  doc.setTextColor(146, 64, 14);
+  doc.text('STATUS: Not an invoice', colMid + 4, ty);
+  doc.setTextColor(0, 0, 0);
+
+  const footerY = pageHeight - 12;
+  doc.setDrawColor(203, 213, 225);
+  doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.setTextColor(71, 85, 105);
+  doc.text('Estate statement · not a tax invoice', pageWidth / 2, footerY, { align: 'center' });
+
+  const plantation = String(statement.plantation_name || 'estate')
+    .replace(/[^\w-]+/g, '_')
+    .slice(0, 40);
+  const period = String(statement.period_end || '').slice(0, 10);
+  doc.save(`Estate_Statement_${plantation}_${period}.pdf`);
 }

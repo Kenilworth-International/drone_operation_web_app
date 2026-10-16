@@ -9,7 +9,10 @@ import {
 } from '../../../api/services NodeJs/voucherPaymentsApi';
 import { useGetMyPermissionsQuery } from '../../../api/services NodeJs/featurePermissionsApi';
 import TransportVoucherPrint from '../financialCards/TransportVoucherPrint';
-import { isGeneratorFuelVoucher } from '../financialCards/transportVoucherPrintUtils';
+import {
+  isGeneratorFuelVoucher,
+  resolveVoucherCardsSummary,
+} from '../financialCards/transportVoucherPrintUtils';
 import { isPdfProofUrl } from '../financialCards/fuelTransportVoucherUi';
 import { FEATURE_CODES } from '../../../utils/featurePermissions';
 import { isInternalDeveloper } from '../../../utils/authUtils';
@@ -98,6 +101,7 @@ const VoucherPayments = () => {
   const [search, setSearch] = useState('');
   const [payVoucher, setPayVoucher] = useState(null);
   const [payForm, setPayForm] = useState(EMPTY_PAY_FORM);
+  const [loadingPayDetail, setLoadingPayDetail] = useState(false);
   const [printVoucher, setPrintVoucher] = useState(null);
   const [loadingPrintId, setLoadingPrintId] = useState(null);
 
@@ -143,15 +147,26 @@ const VoucherPayments = () => {
   const selectedMethod =
     PAYMENT_METHOD_OPTIONS.find((option) => option.value === payForm.method) || PAYMENT_METHOD_OPTIONS[0];
 
-  const openPayModal = (voucher) => {
-    setPayVoucher(voucher);
+  const openPayModal = async (voucher) => {
     setPayForm(EMPTY_PAY_FORM);
+    setPayVoucher(voucher);
+    if (Array.isArray(voucher?.cards_summary) && voucher.cards_summary.length) return;
+    setLoadingPayDetail(true);
+    try {
+      const detail = await fetchVoucherDetail(voucher.id).unwrap();
+      setPayVoucher((prev) => (prev?.id === voucher.id ? { ...prev, ...detail } : prev));
+    } catch (_) {
+      /* list row still usable; cards may be missing until backend deploy */
+    } finally {
+      setLoadingPayDetail(false);
+    }
   };
 
   const closePayModal = () => {
     if (markingPaid) return;
     setPayVoucher(null);
     setPayForm(EMPTY_PAY_FORM);
+    setLoadingPayDetail(false);
   };
 
   const handleReceiptChange = (e) => {
@@ -287,6 +302,7 @@ const VoucherPayments = () => {
               <th>Voucher</th>
               <th>Type</th>
               <th>Approved</th>
+              <th>Cards</th>
               <th>Lines</th>
               <th className="num">Amount</th>
               <th>Payment</th>
@@ -299,22 +315,23 @@ const VoucherPayments = () => {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={10} className="voucher-payments-empty">Loading vouchers...</td>
+                <td colSpan={11} className="voucher-payments-empty">Loading vouchers...</td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={10} className="voucher-payments-empty error">
+                <td colSpan={11} className="voucher-payments-empty error">
                   {error?.data?.message || 'Failed to load vouchers'}
                 </td>
               </tr>
             ) : filteredVouchers.length === 0 ? (
               <tr>
-                <td colSpan={10} className="voucher-payments-empty">No approved vouchers match these filters</td>
+                <td colSpan={11} className="voucher-payments-empty">No approved vouchers match these filters</td>
               </tr>
             ) : (
               filteredVouchers.map((voucher) => {
                 const isPaid = voucher.payment_status === 'paid';
                 const isGenerator = isGeneratorFuelVoucher(voucher);
+                const cards = resolveVoucherCardsSummary(voucher);
                 return (
                   <tr key={voucher.id}>
                     <td className="voucher-no">{voucher.voucher_no}</td>
@@ -326,6 +343,21 @@ const VoucherPayments = () => {
                     <td>
                       <div>{formatDateTime(voucher.approved_at || voucher.created_at)}</div>
                       <small>{voucher.approved_by_name || (voucher.approval_mode === 'physical' ? 'Physical approval' : '—')}</small>
+                    </td>
+                    <td className="voucher-payments-cards-cell">
+                      {cards.length === 0 ? (
+                        '—'
+                      ) : (
+                        cards.map((card) => (
+                          <div key={card.card_id || card.card_number} className="voucher-payments-card-row">
+                            <strong>{card.card_number || '—'}</strong>
+                            {card.card_holder ? <small>{card.card_holder}</small> : null}
+                            <small>
+                              {card.transaction_count} tx · {formatMoney(card.amount)}
+                            </small>
+                          </div>
+                        ))
+                      )}
                     </td>
                     <td>{voucher.transaction_count || 0}</td>
                     <td className="num">{formatMoney(voucher.total_amount)}</td>
@@ -415,6 +447,27 @@ const VoucherPayments = () => {
                 <small>{payVoucher.transaction_count || 0} transaction{Number(payVoucher.transaction_count) === 1 ? '' : 's'}</small>
               </div>
 
+              <div className="voucher-payments-cards-box">
+                <strong>Cards that will be topped up</strong>
+                {loadingPayDetail ? (
+                  <p>Loading card details...</p>
+                ) : resolveVoucherCardsSummary(payVoucher).length === 0 ? (
+                  <p>Card details unavailable until the backend is updated.</p>
+                ) : (
+                  <ul>
+                    {resolveVoucherCardsSummary(payVoucher).map((card) => (
+                      <li key={card.card_id || card.card_number}>
+                        <span className="voucher-payments-card-no">{card.card_number || '—'}</span>
+                        {card.card_holder ? <span>{card.card_holder}</span> : null}
+                        <span>
+                          {card.transaction_count} tx · {formatMoney(card.amount)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
               <fieldset className="voucher-payments-methods">
                 <legend>Payment method</legend>
                 {PAYMENT_METHOD_OPTIONS.map((option) => (
@@ -467,7 +520,9 @@ const VoucherPayments = () => {
               <div className="voucher-payments-confirm-note">
                 {Number(payVoucher.settled) === 1
                   ? 'This voucher is already settled. Only the payment details will be recorded.'
-                  : 'Marking as paid settles the fuel cards (top-up) for all lines in this voucher and ends the process. This cannot be undone.'}
+                  : resolveVoucherCardsSummary(payVoucher).length > 1
+                    ? `Marking as paid tops up each of the ${resolveVoucherCardsSummary(payVoucher).length} cards above for its own lines, then ends the process. This cannot be undone.`
+                    : 'Marking as paid settles the fuel card (top-up) for all lines in this voucher and ends the process. This cannot be undone.'}
               </div>
             </div>
 

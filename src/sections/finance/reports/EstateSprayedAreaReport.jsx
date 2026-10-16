@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { toast } from 'react-toastify';
 import '../../../styles/finance.css';
 import '../../../styles/workSummary.css';
+import '../../../styles/invoiceFlows.css';
 import { useLazyGetFieldWiseFinanceReportQuery, useUpdatePlanFieldBillMutation } from '../../../api/services NodeJs/financeReportApi';
 import { useLazyGetPlantationsListQuery, useLazyGetEstatesListQuery } from '../../../api/services NodeJs/plantationDashboardApi';
 import {
@@ -16,12 +17,24 @@ import { Bars } from "react-loader-spinner";
 import { FiRefreshCw, FiDownload, FiPrinter, FiFileText } from "react-icons/fi";
 import CreatePlantationInvoiceModal from './CreatePlantationInvoiceModal';
 import PlantationInvoicePrint from './PlantationInvoicePrint';
+import EstateStatementPrint from './EstateStatementPrint';
 import {
     buildWorkSummaryPdfDocument,
     buildPdfSnapshotLines,
     getWorkSummaryPdfFileName,
     formatWorkSummaryTitle,
 } from './workSummaryPdfExport';
+import {
+    useGetPlantationFinalInvoiceDraftMutation,
+    useGetInvoiceOrganizationsQuery,
+    useGetInvoiceTaxTypesQuery,
+} from '../../../api/services NodeJs/plantationInvoiceApi';
+import { mergeDraftWithWorkSummaryLines } from './plantationInvoiceLineItems';
+import {
+    BASE_FUEL_PRICE,
+    FUEL_LITERS_PER_HA,
+    applyFuelSurchargeToDraft,
+} from './plantationInvoiceFuelSurcharge';
 
 /** Same 2dp rounding as the table; avoids false "issue" rows when floats differ only below display precision. */
 const hasFinanceExtentIssue = (row) => {
@@ -50,7 +63,7 @@ const resolveBillingExtent = (row) => {
     return isBillingIncluded(row) ? fullField : completed;
 };
 
-const MANAGER_CANCEL_EMPTY = '—';
+const MANAGER_CANCEL_EMPTY = '-';
 
 const formatMetricCell = (row, value, { percent = false } = {}) => {
     if (row?.isManagerCanceled) return MANAGER_CANCEL_EMPTY;
@@ -117,6 +130,11 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
     const [invoiceWorkSummaryRows, setInvoiceWorkSummaryRows] = useState([]);
     const [localPreviewInvoice, setLocalPreviewInvoice] = useState(null);
+    const [estateStatement, setEstateStatement] = useState(null);
+    const [estateStatementLoading, setEstateStatementLoading] = useState(false);
+    const [fetchFinalDraft] = useGetPlantationFinalInvoiceDraftMutation();
+    const { data: invoiceOrganizations = [] } = useGetInvoiceOrganizationsQuery();
+    const { data: invoiceTaxTypes = [] } = useGetInvoiceTaxTypesQuery();
     const monthInputRef = useRef(null);
 
     const openMonthPicker = () => {
@@ -189,6 +207,12 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
             }).unwrap();
         } catch (e) {
             console.error('Failed to save billing draft', e);
+            const msg =
+                e?.data?.message ||
+                e?.error ||
+                e?.message ||
+                'Failed to save billing draft';
+            toast.warn(msg);
         }
     }, [getBillingContext, reportData, buildDraftLines, saveBillingDraft]);
 
@@ -255,6 +279,114 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
         await persistBillingDraft(reportData);
         setInvoiceWorkSummaryRows(rowsForInvoice);
         setShowInvoiceModal(true);
+    };
+
+    const computeIndicativeTaxes = (subtotal, taxTypes) => {
+        const sorted = [...(taxTypes || [])].sort(
+            (a, b) => Number(a.sort_order) - Number(b.sort_order)
+        );
+        let taxTotal = 0;
+        let running = subtotal;
+        const taxLines = [];
+        for (const tax of sorted) {
+            const base = tax.apply_on === 'subtotal' ? subtotal : running;
+            const taxAmount = Math.round(base * (Number(tax.rate_percent) / 100) * 100) / 100;
+            taxLines.push({
+                tax_name: tax.tax_name,
+                rate_percent: tax.rate_percent,
+                tax_amount: taxAmount,
+                net_amount: Math.round(base * 100) / 100,
+            });
+            taxTotal = Math.round((taxTotal + taxAmount) * 100) / 100;
+            running = Math.round((running + taxAmount) * 100) / 100;
+        }
+        return {
+            tax_lines: taxLines,
+            tax_total: taxTotal,
+            total: Math.round((subtotal + taxTotal) * 100) / 100,
+        };
+    };
+
+    const openEstateStatement = async () => {
+        if (!selectedPlantation || !selectedEstates.length || !periodStart || !periodEnd) {
+            toast.error('Select plantation, estates, and month first');
+            return;
+        }
+        setEstateStatementLoading(true);
+        try {
+            await persistBillingDraft(reportData);
+            const rowsForStatement = getFilteredRows();
+            let draft = await fetchFinalDraft({
+                plantation_id: selectedPlantation,
+                start_date: formatDateParam(periodStart),
+                end_date: formatDateParam(periodEnd),
+                estates: selectedEstates,
+                mission_filter: selectedMissionType || 'all',
+            }).unwrap();
+
+            draft = mergeDraftWithWorkSummaryLines(draft, {
+                rows: rowsForStatement,
+                estateIds: selectedEstates,
+                estateMeta: (Array.isArray(estates) ? estates : []).filter((e) =>
+                    selectedEstates.includes(e.id)
+                ),
+                plantation: draft?.plantation,
+                missionFilter: selectedMissionType || 'all',
+            });
+
+            const fuelCfg = draft?.fuel_price_config || {};
+            const fuelPrice = Number(fuelCfg.fuel_price);
+            const withFuel =
+                Number.isFinite(fuelPrice)
+                    ? applyFuelSurchargeToDraft(draft, {
+                          enabled: true,
+                          fuelPrice,
+                          baseFuelPrice: fuelCfg.base_fuel_price ?? BASE_FUEL_PRICE,
+                          litersPerHa: fuelCfg.liters_per_ha ?? FUEL_LITERS_PER_HA,
+                      })
+                    : draft;
+
+            const org = invoiceOrganizations[0] || {};
+            const taxes = computeIndicativeTaxes(withFuel.subtotal || 0, invoiceTaxTypes);
+            const estateNames = (Array.isArray(estates) ? estates : [])
+                .filter((e) => selectedEstates.includes(e.id))
+                .map((e) => e.estate);
+            const plantationName =
+                (Array.isArray(plantations) ? plantations : []).find(
+                    (p) => p.id === selectedPlantation
+                )?.plantation ||
+                draft?.plantation?.name ||
+                '';
+
+            setEstateStatement({
+                document_kind: 'estate_statement',
+                statement_ref: `ES-${selectedPlantation}-${String(formatDateParam(periodEnd)).replace(/-/g, '')}`,
+                statement_date: new Date().toISOString().slice(0, 10),
+                period_start: formatDateParam(periodStart),
+                period_end: formatDateParam(periodEnd),
+                plantation_name: plantationName,
+                estate_names: estateNames,
+                bill_to_address: draft?.plantation?.bill_to_address,
+                ship_to_address: draft?.plantation?.ship_to_address,
+                bill_to_lines: draft?.plantation?.bill_to_lines,
+                ship_to_lines: draft?.plantation?.ship_to_lines,
+                org_name: org.org_name,
+                org_address: org.address,
+                org_address_lines: null,
+                telephone: org.telephone,
+                email: org.email,
+                logo_path: org.logo_path,
+                line_items: withFuel.line_items || [],
+                subtotal: withFuel.subtotal || 0,
+                tax_total: taxes.tax_total,
+                tax_lines: taxes.tax_lines,
+                total: taxes.total,
+            });
+        } catch (err) {
+            toast.error(err?.data?.message || err?.message || 'Failed to build estate statement');
+        } finally {
+            setEstateStatementLoading(false);
+        }
     };
 
     useEffect(() => {
@@ -827,7 +959,7 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                                     className="flex items-center bg-green-500 text-white"
                                     title={hasIssues ? 'Cannot download Excel while there are issue rows' : 'Download Excel'}
                                 >
-                                    <FiDownload className="mr-2" />
+                                    <FiDownload />
                                     Excel
                                 </button>
                             )}
@@ -838,8 +970,8 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                                     className="flex items-center bg-red-600 text-white"
                                     title={hasIssues ? 'Cannot download work summary while there are issue rows' : formatWorkSummaryTitle(periodStart)}
                                 >
-                                    <FiPrinter className="mr-2" />
-                                    {formatWorkSummaryTitle(periodStart)}
+                                    <FiPrinter />
+                                    Work Summary
                                 </button>
                             )}
                             {filteredRows.length > 0 && hasIssues && (
@@ -848,20 +980,37 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                                     className="flex items-center bg-amber-600 text-white"
                                     title="Download issues-only PDF and contact Ops room"
                                 >
-                                    <FiPrinter className="mr-2" />
+                                    <FiPrinter />
                                     Issues PDF
                                 </button>
                             )}
                             {canCreateInvoice && (
-                                <button
-                                    type="button"
-                                    onClick={openInvoiceModal}
-                                    className="finance-btn-invoice-work-summary flex items-center"
-                                    title="Create tax invoice from billing Ha"
-                                >
-                                    <FiFileText className="mr-2" />
-                                    Create Invoice
-                                </button>
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={() => void openEstateStatement()}
+                                        className="flex items-center"
+                                        style={{
+                                            background: '#0f766e',
+                                            color: '#fff',
+                                            border: '1px solid #0f766e',
+                                        }}
+                                        disabled={estateStatementLoading}
+                                        title="Spraying details for estates - for information only, not a tax invoice"
+                                    >
+                                        <FiFileText />
+                                        {estateStatementLoading ? 'Building…' : 'Estate statement'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={openInvoiceModal}
+                                        className="finance-btn-invoice-work-summary flex items-center"
+                                        title="Create tax invoice from billing Ha (plantation payee)"
+                                    >
+                                        <FiFileText />
+                                        Create Invoice
+                                    </button>
+                                </>
                         )}
                     </div>
                 </div>
@@ -1003,9 +1152,9 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                                                             </td>
                                                             <td>
                                                                 {row.isManagerCanceled ? (
-                                                                    '—'
+                                                                    '-'
                                                                 ) : row.hasChargeableReason ? (
-                                                                    <label className="finance-bill-toggle" title={row.billingIncluded ? 'Bill full field (Ha) — click to bill completed only' : 'Bill completed (Ha) only — click to bill full field'}>
+                                                                    <label className="finance-bill-toggle" title={row.billingIncluded ? 'Bill full field (Ha) - click to bill completed only' : 'Bill completed (Ha) only - click to bill full field'}>
                                                                         <input
                                                                             type="checkbox"
                                                                             checked={row.billingIncluded}
@@ -1014,7 +1163,7 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                                                                         <span>{row.billingIncluded ? 'Yes' : 'No'}</span>
                                                                     </label>
                                                                 ) : (
-                                                                    '—'
+                                                                    '-'
                                                                 )}
                                                             </td>
                                                             <td>{row.comNarration || '-'}</td>
@@ -1080,6 +1229,7 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                     setShowInvoiceModal(false);
                     showInvoicePreview(inv);
                 }}
+                mode="final"
                 plantationId={selectedPlantation}
                 plantationName={
                     plantations.find((p) => p.id === selectedPlantation)?.plantation || ''
@@ -1093,6 +1243,13 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                 endDate={formatDateParam(periodEnd)}
                 missionFilter={selectedMissionType}
             />
+
+            {estateStatement ? (
+                <EstateStatementPrint
+                    statement={estateStatement}
+                    onClose={() => setEstateStatement(null)}
+                />
+            ) : null}
         </div>
     );
 };

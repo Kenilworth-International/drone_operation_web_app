@@ -1,33 +1,59 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import EstateSprayedAreaReport from './EstateSprayedAreaReport';
+import PreInvoiceCreate from './PreInvoiceCreate';
 import PlantationInvoiceHistory from './PlantationInvoiceHistory';
 import WorkSummaryPdfHistory from './WorkSummaryPdfHistory';
 import PlantationInvoicePrint from './PlantationInvoicePrint';
 import WorkSummaryPdfDetailModal from './WorkSummaryPdfDetailModal';
+import '../../../styles/workSummary.css';
+import '../../../styles/invoiceFlows.css';
 
 const TABS = [
-  { id: 'create', label: 'Create Work Summary / Invoice' },
-  { id: 'history', label: 'Invoice History' },
-  { id: 'work-summary-history', label: 'Work Summary History' },
+  {
+    id: 'pre',
+    step: '1',
+    label: 'Pre-invoice',
+    hint: 'Start of month',
+  },
+  {
+    id: 'final',
+    step: '2',
+    label: 'Final invoice',
+    hint: 'End of month',
+  },
+  {
+    id: 'payments',
+    step: '3',
+    label: 'Invoices & Payments',
+    hint: 'Track receipts',
+  },
+  {
+    id: 'work-summary-history',
+    step: null,
+    label: 'Work Summary History',
+    hint: 'Saved PDFs',
+  },
 ];
+
+const LEGACY_TAB_MAP = {
+  create: 'final',
+  history: 'payments',
+  'pdf-history': 'work-summary-history',
+};
 
 export default function WorkSummaryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [previewInvoice, setPreviewInvoice] = useState(null);
   const [previewPdfDoc, setPreviewPdfDoc] = useState(null);
 
-  const tabParam = searchParams.get('tab');
-  const activeTab =
-    tabParam === 'history' || tabParam === 'work-summary-history' || tabParam === 'pdf-history'
-      ? tabParam === 'pdf-history'
-        ? 'work-summary-history'
-        : tabParam
-      : 'create';
+  const rawTab = searchParams.get('tab');
+  const mapped = LEGACY_TAB_MAP[rawTab] || rawTab;
+  const activeTab = TABS.some((t) => t.id === mapped) ? mapped : 'final';
 
   const setTab = (tabId) => {
     const next = new URLSearchParams(searchParams);
-    if (tabId === 'create') {
+    if (tabId === 'final') {
       next.delete('tab');
     } else {
       next.set('tab', tabId);
@@ -36,26 +62,32 @@ export default function WorkSummaryPage() {
   };
 
   return (
-    <div className="work-summary-page">
-      <div className="work-summary-tabs" role="tablist" aria-label="Work summary sections">
+    <div className="work-summary-page inv-flow-page">
+      <div className="inv-flow-tabs" role="tablist" aria-label="Billing workflow">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             role="tab"
             aria-selected={activeTab === tab.id}
-            className={`work-summary-tab${activeTab === tab.id ? ' work-summary-tab--active' : ''}`}
+            className={`inv-flow-tab${activeTab === tab.id ? ' inv-flow-tab--active' : ''}`}
             onClick={() => setTab(tab.id)}
           >
-            {tab.label}
+            {tab.step ? <span className="inv-flow-tab-step">{tab.step}</span> : null}
+            <span className="inv-flow-tab-meta">
+              <span>{tab.label}</span>
+              <small>{tab.hint}</small>
+            </span>
           </button>
         ))}
       </div>
 
       <div className="work-summary-tab-panel" role="tabpanel">
-        {activeTab === 'create' ? (
+        {activeTab === 'pre' ? (
+          <PreInvoiceCreate onInvoicePreview={setPreviewInvoice} />
+        ) : activeTab === 'final' ? (
           <EstateSprayedAreaReport onInvoicePreview={setPreviewInvoice} />
-        ) : activeTab === 'history' ? (
+        ) : activeTab === 'payments' ? (
           <PlantationInvoiceHistory onInvoicePreview={setPreviewInvoice} />
         ) : activeTab === 'work-summary-history' ? (
           <WorkSummaryPdfHistory onPdfPreview={setPreviewPdfDoc} />

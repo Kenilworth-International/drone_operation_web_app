@@ -1,5 +1,5 @@
 import { baseApi } from '../baseApi';
-import { nodeBackendBaseQuery } from './nodeBackendConfig';
+import { nodeBackendBaseQuery, getNodeBackendUrl, getToken } from './nodeBackendConfig';
 
 export const plantationInvoiceApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -90,6 +90,28 @@ export const plantationInvoiceApi = baseApi.injectEndpoints({
         return { data: result.data?.data || null };
       },
     }),
+    getPlantationPreInvoiceDraft: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-invoices/pre-draft', method: 'POST', body },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+    }),
+    getPlantationFinalInvoiceDraft: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          { url: '/api/plantation-invoices/final-draft', method: 'POST', body },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+    }),
     createPlantationInvoice: builder.mutation({
       queryFn: async (body) => {
         const result = await nodeBackendBaseQuery(
@@ -100,12 +122,25 @@ export const plantationInvoiceApi = baseApi.injectEndpoints({
         if (result.error) return result;
         return { data: result.data?.data || null };
       },
-      invalidatesTags: ['PlantationInvoices'],
+      invalidatesTags: ['PlantationInvoices', 'PlantationInvoicePayments'],
     }),
     listPlantationInvoices: builder.query({
-      queryFn: async ({ plantation_id, limit } = {}) => {
+      queryFn: async ({
+        plantation_id,
+        invoice_type,
+        status,
+        year,
+        month,
+        include_voided,
+        limit,
+      } = {}) => {
         const qs = new URLSearchParams();
         if (plantation_id) qs.set('plantation_id', String(plantation_id));
+        if (invoice_type) qs.set('invoice_type', String(invoice_type));
+        if (status) qs.set('status', String(status));
+        if (year) qs.set('year', String(year));
+        if (month) qs.set('month', String(month));
+        if (include_voided) qs.set('include_voided', '1');
         if (limit) qs.set('limit', String(limit));
         const suffix = qs.toString() ? `?${qs.toString()}` : '';
         const result = await nodeBackendBaseQuery(
@@ -117,6 +152,22 @@ export const plantationInvoiceApi = baseApi.injectEndpoints({
         return { data: result.data?.data || [] };
       },
       providesTags: ['PlantationInvoices'],
+    }),
+    voidPlantationInvoice: builder.mutation({
+      queryFn: async ({ id, reason } = {}) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: `/api/plantation-invoices/${id}/void`,
+            method: 'POST',
+            body: { reason: reason || undefined },
+          },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+      invalidatesTags: ['PlantationInvoices', 'PlantationInvoicePayments'],
     }),
     getPlantationInvoiceById: builder.query({
       queryFn: async (id) => {
@@ -130,6 +181,76 @@ export const plantationInvoiceApi = baseApi.injectEndpoints({
       },
       providesTags: ['PlantationInvoices'],
     }),
+    listPlantationInvoicePayments: builder.query({
+      queryFn: async (invoiceId) => {
+        const result = await nodeBackendBaseQuery(
+          { url: `/api/plantation-invoices/${invoiceId}/payments`, method: 'GET' },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || [] };
+      },
+      providesTags: (_r, _e, invoiceId) => [
+        { type: 'PlantationInvoicePayments', id: invoiceId },
+        'PlantationInvoicePayments',
+      ],
+    }),
+    addPlantationInvoicePayment: builder.mutation({
+      queryFn: async ({ invoiceId, payment_receipt, ...fields }) => {
+        const formData = new FormData();
+        Object.entries(fields).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            formData.append(key, String(value));
+          }
+        });
+        if (payment_receipt) formData.append('payment_receipt', payment_receipt);
+
+        try {
+          const response = await fetch(
+            `${getNodeBackendUrl()}/api/plantation-invoices/${invoiceId}/payments`,
+            {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${getToken()}` },
+              body: formData,
+            }
+          );
+          const raw = await response.text();
+          let data;
+          try {
+            data = raw ? JSON.parse(raw) : {};
+          } catch {
+            data = { message: raw || 'Upload failed' };
+          }
+          if (!response.ok) return { error: { status: response.status, data } };
+          return { data: data?.data || data };
+        } catch (e) {
+          return {
+            error: {
+              status: 'FETCH_ERROR',
+              data: { message: e?.message || 'Network error while saving payment' },
+            },
+          };
+        }
+      },
+      invalidatesTags: (_r, _e, arg) => [
+        'PlantationInvoices',
+        'PlantationInvoicePayments',
+        { type: 'PlantationInvoicePayments', id: arg.invoiceId },
+      ],
+    }),
+    voidPlantationInvoicePayment: builder.mutation({
+      queryFn: async (paymentId) => {
+        const result = await nodeBackendBaseQuery(
+          { url: `/api/plantation-invoices/payments/${paymentId}/void`, method: 'POST', body: {} },
+          {},
+          {}
+        );
+        if (result.error) return result;
+        return { data: result.data?.data || null };
+      },
+      invalidatesTags: ['PlantationInvoices', 'PlantationInvoicePayments'],
+    }),
   }),
 });
 
@@ -141,7 +262,13 @@ export const {
   useLazyGetInvoiceMonthlyFuelPriceQuery,
   useSaveInvoiceMonthlyFuelPriceMutation,
   useGetPlantationInvoiceDraftMutation,
+  useGetPlantationPreInvoiceDraftMutation,
+  useGetPlantationFinalInvoiceDraftMutation,
   useCreatePlantationInvoiceMutation,
   useListPlantationInvoicesQuery,
   useLazyGetPlantationInvoiceByIdQuery,
+  useVoidPlantationInvoiceMutation,
+  useListPlantationInvoicePaymentsQuery,
+  useAddPlantationInvoicePaymentMutation,
+  useVoidPlantationInvoicePaymentMutation,
 } = plantationInvoiceApi;

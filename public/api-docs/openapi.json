@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 899\n- **Route files:** 76\n- **Schema overlays applied:** 325\n- **Generated:** 2026-10-14T08:45:57.014Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 908\n- **Route files:** 77\n- **Schema overlays applied:** 330\n- **Generated:** 2026-10-16T11:45:22.797Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
   },
   "servers": [
     {
@@ -283,6 +283,10 @@
     {
       "name": "Vehicle Rent",
       "description": "Vehicle rental record management."
+    },
+    {
+      "name": "Voucher Payments",
+      "description": "Voucher Payments endpoints"
     },
     {
       "name": "Web Reports",
@@ -11621,6 +11625,121 @@
         "description": "Module: Maintenance Vouchers",
         "tags": [
           "Maintenance Vouchers"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/voucher-payments/list": {
+      "post": {
+        "summary": "List",
+        "description": "Module: Voucher Payments",
+        "tags": [
+          "Voucher Payments"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/voucher-payments/{id}": {
+      "get": {
+        "summary": "Id",
+        "description": "Module: Voucher Payments",
+        "tags": [
+          "Voucher Payments"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/voucher-payments/{id}/mark-paid": {
+      "post": {
+        "summary": "Mark Paid",
+        "description": "Module: Voucher Payments",
+        "tags": [
+          "Voucher Payments"
         ],
         "responses": {
           "200": {
@@ -32222,6 +32341,170 @@
         ]
       }
     },
+    "/api/plantation-invoices/pre-draft": {
+      "post": {
+        "summary": "Build pre-invoice draft (plans × Ha/plan + fuel config)",
+        "description": "Module: Plantation Invoices",
+        "tags": [
+          "Plantation Invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Pre-invoice draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "plantation_id",
+                  "start_date",
+                  "end_date",
+                  "estates"
+                ],
+                "properties": {
+                  "plantation_id": {
+                    "type": "integer"
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "estates": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "ha_per_plan": {
+                    "type": "number",
+                    "default": 15
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/plantation-invoices/final-draft": {
+      "post": {
+        "summary": "Build final invoice draft with prepaid reconciliation",
+        "description": "Module: Plantation Invoices",
+        "tags": [
+          "Plantation Invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Final draft with reconciliation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "plantation_id",
+                  "start_date",
+                  "end_date",
+                  "estates"
+                ],
+                "properties": {
+                  "plantation_id": {
+                    "type": "integer"
+                  },
+                  "start_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "end_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "estates": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "pre_invoice_id": {
+                    "type": "integer"
+                  },
+                  "mission_filter": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/plantation-invoices/": {
       "post": {
         "summary": "Plantation Invoices",
@@ -32315,6 +32598,257 @@
           {
             "name": "estate_id",
             "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/plantation-invoices/payments/{paymentId}/void": {
+      "post": {
+        "summary": "Soft-void a plantation invoice payment",
+        "description": "Module: Plantation Invoices",
+        "tags": [
+          "Plantation Invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Voided payment + updated invoice",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "paymentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/api/plantation-invoices/{id}/void": {
+      "post": {
+        "summary": "Void",
+        "description": "Module: Plantation Invoices",
+        "tags": [
+          "Plantation Invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/plantation-invoices/{id}/payments": {
+      "get": {
+        "summary": "List active payments for a plantation invoice",
+        "description": "Module: Plantation Invoices",
+        "tags": [
+          "Plantation Invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Add payment receipt (multipart optional proof image)",
+        "description": "Module: Plantation Invoices",
+        "tags": [
+          "Plantation Invoices"
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment + updated invoice",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "amount",
+                  "payment_date"
+                ],
+                "properties": {
+                  "amount": {
+                    "type": "number"
+                  },
+                  "payment_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "payment_method": {
+                    "type": "string",
+                    "enum": [
+                      "cheque",
+                      "card",
+                      "bank_transfer",
+                      "cash"
+                    ]
+                  },
+                  "payment_reference": {
+                    "type": "string"
+                  },
+                  "payment_note": {
+                    "type": "string"
+                  },
+                  "payment_receipt": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
             "schema": {
               "type": "integer"
             }
@@ -43601,28 +44135,97 @@
     },
     "/api/plantation-invoices": {
       "post": {
-        "summary": "List Plantation Invoices",
+        "summary": "Create plantation invoice (pre or post/final)",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
+                "required": [
+                  "plantation_id",
+                  "organization_id",
+                  "period_start",
+                  "period_end",
+                  "estates",
+                  "invoice_date"
+                ],
                 "properties": {
-                  "yearMonth": {
-                    "type": "string",
-                    "example": "2026-08"
-                  },
-                  "estate_id": {
-                    "type": "integer"
-                  },
-                  "status": {
+                  "invoice_type": {
                     "type": "string",
                     "enum": [
-                      "draft",
-                      "issued",
-                      "paid",
-                      "all"
-                    ]
+                      "pre",
+                      "post",
+                      "credit_note"
+                    ],
+                    "description": "pre = advance; post = final tax invoice when still owed; credit_note = same final reconciliation when prepaid exceeds actual sprayed (server may override post↔credit_note from totals)"
+                  },
+                  "invoice_no": {
+                    "type": "string"
+                  },
+                  "invoice_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "due_date": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "plantation_id": {
+                    "type": "integer"
+                  },
+                  "organization_id": {
+                    "type": "integer"
+                  },
+                  "period_start": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "period_end": {
+                    "type": "string",
+                    "format": "date"
+                  },
+                  "estates": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "selected_tax_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "line_items": {
+                    "type": "array"
+                  },
+                  "ha_per_plan": {
+                    "type": "number",
+                    "description": "Pre-invoice only; default 15"
+                  },
+                  "plan_count": {
+                    "type": "integer"
+                  },
+                  "estimated_ha": {
+                    "type": "number"
+                  },
+                  "linked_pre_invoice_id": {
+                    "type": "integer",
+                    "description": "Final invoice: link to pre-invoice for prepaid"
+                  },
+                  "prepaid_applied": {
+                    "type": "number"
+                  },
+                  "fuel_surcharge": {
+                    "type": "object",
+                    "properties": {
+                      "billing_month": {
+                        "type": "string"
+                      },
+                      "fuel_price": {
+                        "type": "number"
+                      }
+                    }
                   }
                 }
               }
@@ -43631,7 +44234,7 @@
         },
         "responses": {
           "200": {
-            "description": "Invoice list",
+            "description": "Created invoice",
             "content": {
               "application/json": {
                 "schema": {
@@ -43641,7 +44244,7 @@
                       "type": "boolean"
                     },
                     "data": {
-                      "type": "array"
+                      "type": "object"
                     }
                   }
                 }
@@ -43660,7 +44263,67 @@
         }
       },
       "get": {
-        "summary": "List Plantation Invoices (GET)",
+        "summary": "List plantation invoices",
+        "parameters": [
+          {
+            "name": "plantation_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "invoice_type",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pre",
+                "post",
+                "credit_note",
+                "final"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "unpaid",
+                "partial",
+                "paid",
+                "credit"
+              ]
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Filter by billing period year (YEAR(period_end))"
+          },
+          {
+            "name": "month",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12
+            },
+            "description": "Filter by billing period month (MONTH(period_end)); use with year"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Invoice list",

@@ -19,7 +19,7 @@ const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatDisplayDate = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   const text = String(d).trim();
   const match = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (match) return `${match[2]}/${match[3]}/${match[1]}`;
@@ -27,7 +27,7 @@ const formatDisplayDate = (d) => {
 };
 
 const formatDateTime = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return String(d);
   return dt.toLocaleString('en-GB', {
@@ -108,7 +108,7 @@ export default function WorkSummaryPdfHistory({ onPdfPreview }) {
     try {
       const full = await loadDocument(pdfId).unwrap();
       if (!full?.lines?.length) {
-        toast.error('No rows in snapshot — cannot rebuild PDF');
+        toast.error('No rows in snapshot - cannot rebuild PDF');
         return;
       }
       downloadWorkSummaryPdfFromSnapshot(full);
@@ -191,12 +191,12 @@ export default function WorkSummaryPdfHistory({ onPdfPreview }) {
                 return (
                 <tr key={row.id}>
                   <td>{title}</td>
-                  <td>{row.plantation_name || '—'}</td>
+                  <td>{row.plantation_name || '-'}</td>
                   <td>{formatPeriodRange(row.period_start, row.period_end)}</td>
                   <td>{formatMoney(row.total_billing_ha)}</td>
-                  <td>{row.total_rows ?? '—'}</td>
+                  <td>{row.total_rows ?? '-'}</td>
                   <td>{row.excluded_rows ?? 0}</td>
-                  <td>{row.created_by_name || '—'}</td>
+                  <td>{row.created_by_name || '-'}</td>
                   <td>{formatDateTime(row.created_at)}</td>
                   <td className="work-summary-pdf-history-actions">
                     <button

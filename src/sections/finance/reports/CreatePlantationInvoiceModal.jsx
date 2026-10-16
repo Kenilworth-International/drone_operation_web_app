@@ -1,14 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import {
   useGetInvoiceOrganizationsQuery,
   useGetInvoiceTaxTypesQuery,
   useGetPlantationInvoiceDraftMutation,
+  useGetPlantationPreInvoiceDraftMutation,
+  useGetPlantationFinalInvoiceDraftMutation,
   useCreatePlantationInvoiceMutation,
   useLazyGetPlantationInvoiceByIdQuery,
   useSaveInvoiceMonthlyFuelPriceMutation,
 } from '../../../api/services NodeJs/plantationInvoiceApi';
 import '../../../styles/plantationInvoice.css';
+import '../../../styles/invoiceFlows.css';
 import { mergeDraftWithWorkSummaryLines } from './plantationInvoiceLineItems';
 import {
   BASE_FUEL_PRICE,
@@ -42,6 +45,9 @@ function computePreviewTaxes(subtotal, taxTypes, selectedIds) {
   return { tax_lines: lines, tax_total: taxTotal, total: Math.round((subtotal + taxTotal) * 100) / 100 };
 }
 
+/**
+ * mode: 'post' (default / final from work summary), 'pre' (advance), 'final' (reconciled)
+ */
 export default function CreatePlantationInvoiceModal({
   open,
   onClose,
@@ -54,15 +60,27 @@ export default function CreatePlantationInvoiceModal({
   missionFilter,
   workSummaryRows,
   estateMeta,
+  mode = 'post',
+  haPerPlan = 15,
+  onHaPerPlanChange,
+  linkedPreInvoiceId = null,
 }) {
   const { data: organizations = [] } = useGetInvoiceOrganizationsQuery(undefined, { skip: !open });
   const { data: taxTypes = [] } = useGetInvoiceTaxTypesQuery(undefined, { skip: !open });
-  const [fetchDraft, { isLoading: draftLoading }] = useGetPlantationInvoiceDraftMutation();
+  const [fetchDraft, { isLoading: postDraftLoading }] = useGetPlantationInvoiceDraftMutation();
+  const [fetchPreDraft, { isLoading: preDraftLoading }] = useGetPlantationPreInvoiceDraftMutation();
+  const [fetchFinalDraft, { isLoading: finalDraftLoading }] = useGetPlantationFinalInvoiceDraftMutation();
   const [createInvoice, { isLoading: saving }] = useCreatePlantationInvoiceMutation();
   const [saveFuelPrice] = useSaveInvoiceMonthlyFuelPriceMutation();
   const [loadInvoice] = useLazyGetPlantationInvoiceByIdQuery();
 
+  const draftLoading = postDraftLoading || preDraftLoading || finalDraftLoading;
+  const isPre = mode === 'pre';
+  const isFinal = mode === 'final' || mode === 'post';
+
   const [draft, setDraft] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [overlayReady, setOverlayReady] = useState(false);
   const [organizationId, setOrganizationId] = useState('');
   const [selectedTaxIds, setSelectedTaxIds] = useState([]);
   const [invoiceNo, setInvoiceNo] = useState('');
@@ -72,32 +90,108 @@ export default function CreatePlantationInvoiceModal({
   const [monthlyFuelPrice, setMonthlyFuelPrice] = useState('');
   const [billingMonth, setBillingMonth] = useState(null);
   const [savingFuelPrice, setSavingFuelPrice] = useState(false);
+  const [localHaPerPlan, setLocalHaPerPlan] = useState(String(haPerPlan ?? 15));
+
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  const workSummaryRowsRef = useRef(workSummaryRows);
+  workSummaryRowsRef.current = workSummaryRows;
+  const estateMetaRef = useRef(estateMeta);
+  estateMetaRef.current = estateMeta;
+
+  const estateIdsKey = useMemo(
+    () =>
+      [...new Set((estateIds || []).map((v) => Number(v)).filter((v) => Number.isFinite(v) && v > 0))]
+        .sort((a, b) => a - b)
+        .join(','),
+    [estateIds]
+  );
 
   useEffect(() => {
-    if (!open || !plantationId || !estateIds?.length) return;
+    setLocalHaPerPlan(String(haPerPlan ?? 15));
+  }, [haPerPlan, open]);
+
+  useEffect(() => {
+    if (!open) {
+      setDraft(null);
+      setLoadError(null);
+      setOverlayReady(false);
+      return undefined;
+    }
+    const t = window.setTimeout(() => setOverlayReady(true), 200);
+    return () => window.clearTimeout(t);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !plantationId || !estateIdsKey) return undefined;
+
+    const estates = estateIdsKey.split(',').map((v) => Number(v));
+    let cancelled = false;
 
     const load = async () => {
+      setLoadError(null);
       try {
-        const data = await fetchDraft({
-          plantation_id: plantationId,
-          start_date: startDate,
-          end_date: endDate,
-          estates: estateIds,
-          mission_filter: missionFilter || 'all',
-        }).unwrap();
+        let data;
+        if (isPre) {
+          data = await fetchPreDraft({
+            plantation_id: plantationId,
+            start_date: startDate,
+            end_date: endDate,
+            estates,
+            ha_per_plan: Number(localHaPerPlan) || 15,
+          }).unwrap();
+        } else if (mode === 'final') {
+          data = await fetchFinalDraft({
+            plantation_id: plantationId,
+            start_date: startDate,
+            end_date: endDate,
+            estates,
+            pre_invoice_id: linkedPreInvoiceId || undefined,
+            mission_filter: missionFilter || 'all',
+          }).unwrap();
+          const rows = workSummaryRowsRef.current;
+          if (rows?.length) {
+            data = mergeDraftWithWorkSummaryLines(data, {
+              rows,
+              estateIds: estates,
+              estateMeta: estateMetaRef.current,
+              plantation: data?.plantation,
+              missionFilter: missionFilter || 'all',
+            });
+          }
+        } else {
+          data = await fetchDraft({
+            plantation_id: plantationId,
+            start_date: startDate,
+            end_date: endDate,
+            estates,
+            mission_filter: missionFilter || 'all',
+          }).unwrap();
+          data = mergeDraftWithWorkSummaryLines(data, {
+            rows: workSummaryRowsRef.current,
+            estateIds: estates,
+            estateMeta: estateMetaRef.current,
+            plantation: data?.plantation,
+            missionFilter: missionFilter || 'all',
+          });
+        }
 
-        const merged = mergeDraftWithWorkSummaryLines(data, {
-          rows: workSummaryRows,
-          estateIds,
-          estateMeta,
-          plantation: data?.plantation,
-          missionFilter: missionFilter || 'all',
-        });
-        const month =
-          data?.billing_month || billingMonthFromPeriodEnd(endDate);
+        if (cancelled) return;
+
+        if (data?.active_conflict || data?.can_create === false) {
+          const no = data?.active_conflict?.invoice_no;
+          toast.error(
+            no
+              ? `Invoice #${no} is already active for these estates/period. Void it under Invoices & Payments first.`
+              : 'An active invoice already exists for these estates/period. Void it first.',
+            { autoClose: 8000 }
+          );
+        }
+
+        const month = data?.billing_month || billingMonthFromPeriodEnd(endDate);
         const fuelCfg = data?.fuel_price_config || {};
         setBillingMonth(month);
-        setDraft(merged);
+        setDraft(data);
         if (fuelCfg.fuel_price != null && fuelCfg.fuel_price !== '') {
           setMonthlyFuelPrice(String(fuelCfg.fuel_price));
           setIncludeFuelSurcharge(true);
@@ -112,23 +206,48 @@ export default function CreatePlantationInvoiceModal({
         due.setDate(due.getDate() + 10);
         setDueDate(due.toISOString().slice(0, 10));
       } catch (err) {
-        toast.error(err?.data?.message || err?.message || 'Failed to build invoice draft');
-        onClose();
+        if (cancelled) return;
+        const msg = err?.data?.message || err?.message || 'Failed to build invoice draft';
+        setLoadError(msg);
+        toast.error(msg);
       }
     };
     load();
+    return () => {
+      cancelled = true;
+    };
+    // localHaPerPlan is refreshed via Recalculate for pre; opening uses current value once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     open,
     plantationId,
-    estateIds,
+    estateIdsKey,
     startDate,
     endDate,
     missionFilter,
-    workSummaryRows,
-    estateMeta,
+    mode,
+    linkedPreInvoiceId,
     fetchDraft,
-    onClose,
+    fetchPreDraft,
+    fetchFinalDraft,
   ]);
+
+  const reloadPreDraft = async () => {
+    if (!isPre || !plantationId || !estateIds?.length) return;
+    try {
+      const data = await fetchPreDraft({
+        plantation_id: plantationId,
+        start_date: startDate,
+        end_date: endDate,
+        estates: estateIds,
+        ha_per_plan: Number(localHaPerPlan) || 15,
+      }).unwrap();
+      setDraft(data);
+      onHaPerPlanChange?.(Number(localHaPerPlan) || 15);
+    } catch (err) {
+      toast.error(err?.data?.message || err?.message || 'Failed to refresh pre-invoice draft');
+    }
+  };
 
   useEffect(() => {
     if (organizations.length && !organizationId) {
@@ -159,6 +278,12 @@ export default function CreatePlantationInvoiceModal({
     return computePreviewTaxes(subtotal, taxTypes, selectedTaxIds);
   }, [displayDraft, taxTypes, selectedTaxIds]);
 
+  const prepaid = Number(draft?.prepaid_applied || 0);
+  const previewNet =
+    preview && prepaid > 0 ? Math.round((preview.total - prepaid) * 100) / 100 : preview?.total;
+  const isCreditNote =
+    isFinal && prepaid > 0 && Number.isFinite(previewNet) && previewNet < -0.009;
+
   const persistFuelPrice = async (priceValue) => {
     if (!billingMonth) return;
     const price = Number(priceValue);
@@ -185,6 +310,15 @@ export default function CreatePlantationInvoiceModal({
   };
 
   const handleCreate = async () => {
+    if (draft?.active_conflict || draft?.can_create === false) {
+      const no = draft?.active_conflict?.invoice_no;
+      toast.error(
+        no
+          ? `Invoice #${no} is already active. Void it under Invoices & Payments first.`
+          : 'An active invoice already exists for these estates/period.'
+      );
+      return;
+    }
     if (!organizationId) {
       toast.error('Select an organization');
       return;
@@ -218,6 +352,13 @@ export default function CreatePlantationInvoiceModal({
         estates: estateIds,
         selected_tax_ids: selectedTaxIds,
         line_items: displayDraft.line_items,
+        invoice_type: isPre ? 'pre' : isCreditNote ? 'credit_note' : 'post',
+        ha_per_plan: isPre ? Number(localHaPerPlan) || 15 : undefined,
+        plan_count: isPre ? draft?.plan_count : undefined,
+        estimated_ha: isPre ? draft?.estimated_ha : undefined,
+        linked_pre_invoice_id:
+          draft?.linked_pre_invoice?.id || linkedPreInvoiceId || undefined,
+        prepaid_applied: draft?.prepaid_applied != null ? Number(draft.prepaid_applied) : undefined,
         fuel_surcharge: includeFuelSurcharge
           ? {
               billing_month: billingMonth,
@@ -226,19 +367,50 @@ export default function CreatePlantationInvoiceModal({
           : null,
       }).unwrap();
 
-      toast.success('Invoice created');
+      toast.success(
+        isPre ? 'Pre-invoice created' : isCreditNote ? 'Credit note created' : 'Final invoice created'
+      );
       const full = await loadInvoice(created.id).unwrap();
       onCreated?.(full);
       onClose();
     } catch (err) {
-      toast.error(err?.data?.message || err?.message || 'Failed to save invoice');
+      const body = err?.data?.data || err?.data || {};
+      const conflictNo = body?.conflict?.invoice_no || err?.data?.conflict?.invoice_no;
+      const msg =
+        body?.message ||
+        err?.data?.message ||
+        err?.message ||
+        'Failed to save invoice';
+      toast.error(
+        conflictNo
+          ? `${msg} Open Invoices & Payments and void #${conflictNo} first.`
+          : msg,
+        { autoClose: 8000 }
+      );
     }
   };
 
   if (!open) return null;
 
+  const title = isPre
+    ? 'Create Pre-Invoice (Advance)'
+    : isCreditNote
+      ? 'Create Credit Note'
+      : mode === 'final'
+        ? 'Create Final Invoice'
+        : 'Create Tax Invoice';
+
+  const activeConflict = draft?.active_conflict || null;
+  const createBlocked = Boolean(activeConflict) || draft?.can_create === false;
+
   return (
-    <div className="plantation-invoice-modal-overlay" role="presentation" onClick={onClose}>
+    <div
+      className="plantation-invoice-modal-overlay"
+      role="presentation"
+      onClick={() => {
+        if (overlayReady) onCloseRef.current?.();
+      }}
+    >
       <div
         className="plantation-invoice-modal"
         role="dialog"
@@ -247,21 +419,122 @@ export default function CreatePlantationInvoiceModal({
       >
         <header className="plantation-invoice-modal-header">
           <div>
-            <h3 style={{ margin: 0 }}>Create Tax Invoice</h3>
+            <h3 style={{ margin: 0 }}>{title}</h3>
             <p style={{ margin: '4px 0 0', fontSize: 13, color: '#64748b' }}>
               {plantationName} · {startDate} to {endDate}
             </p>
           </div>
-          <button type="button" className="plantation-invoice-modal-close" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="plantation-invoice-modal-close"
+            onClick={() => onCloseRef.current?.()}
+            aria-label="Close"
+          >
             ×
           </button>
         </header>
 
         <div className="plantation-invoice-modal-body">
-          {draftLoading || !draft ? (
+          {draftLoading && !draft ? (
+            <p>Loading invoice data…</p>
+          ) : loadError && !draft ? (
+            <div className="inv-callout inv-callout--warn" style={{ marginBottom: 0 }}>
+              <div className="inv-callout-body">
+                <strong>Could not load draft</strong>
+                <p>{loadError}</p>
+              </div>
+            </div>
+          ) : !draft ? (
             <p>Loading invoice data…</p>
           ) : (
             <>
+              {createBlocked ? (
+                <div className="inv-callout inv-callout--warn" style={{ marginBottom: 14 }}>
+                  <div className="inv-callout-body">
+                    <strong>Cannot create - active document exists</strong>
+                    <p>
+                      {activeConflict?.invoice_no
+                        ? `Invoice #${activeConflict.invoice_no} (${activeConflict.invoice_type || 'final'}) already covers these estates for this period. Void it under Invoices & Payments, then try again.`
+                        : 'An active final invoice or credit note already exists for these estates/period. Void it first.'}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {isPre ? (
+                <div className="pre-invoice-basis-row">
+                  <div className="pre-invoice-basis-field">
+                    <label htmlFor="inv-plan-count">Scheduled plans</label>
+                    <input
+                      id="inv-plan-count"
+                      className="plantation-invoice-input-readonly"
+                      value={draft.plan_count ?? 0}
+                      readOnly
+                    />
+                  </div>
+                  <div className="pre-invoice-basis-field pre-invoice-basis-field--ha">
+                    <label htmlFor="inv-ha-per-plan">Ha per plan</label>
+                    <input
+                      id="inv-ha-per-plan"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={localHaPerPlan}
+                      onChange={(e) => setLocalHaPerPlan(e.target.value)}
+                    />
+                  </div>
+                  <div className="pre-invoice-basis-field pre-invoice-basis-field--action">
+                    <label className="pre-invoice-basis-spacer" aria-hidden>
+                      &nbsp;
+                    </label>
+                    <button
+                      type="button"
+                      className="plantation-invoice-btn plantation-invoice-btn-secondary"
+                      onClick={() => void reloadPreDraft()}
+                      disabled={draftLoading}
+                    >
+                      Recalculate
+                    </button>
+                  </div>
+                  <div className="pre-invoice-basis-field">
+                    <label htmlFor="inv-est-ha">Estimated Ha</label>
+                    <input
+                      id="inv-est-ha"
+                      className="plantation-invoice-input-readonly"
+                      value={formatMoney(draft.estimated_ha)}
+                      readOnly
+                    />
+                  </div>
+                </div>
+              ) : null}
+
+              {isFinal && (draft.reconciliation || draft.linked_pre_invoice) ? (
+                <div
+                  className={`inv-callout ${isCreditNote ? 'inv-callout--credit' : 'inv-callout--final'}`}
+                  style={{ marginBottom: 14 }}
+                >
+                  <div className="inv-callout-body">
+                    <strong>
+                      {isCreditNote
+                        ? 'Credit note (prepaid exceeds sprayed work)'
+                        : 'Advance reconciliation'}
+                    </strong>
+                    {draft.linked_pre_invoice ? (
+                      <p>
+                        Linked pre-invoice #{draft.linked_pre_invoice.invoice_no} - prepaid LKR{' '}
+                        {formatMoney(draft.prepaid_applied)}.
+                        {draft.reconciliation?.guidance ? ` ${draft.reconciliation.guidance}` : ''}
+                      </p>
+                    ) : (
+                      <p>
+                        No matching pre-invoice found for this plantation / period / estates.
+                        {draft.reconciliation?.guidance ? ` ${draft.reconciliation.guidance}` : ''}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="plantation-invoice-form-grid">
                 <div>
                   <label htmlFor="inv-org">Organization</label>
@@ -408,10 +681,27 @@ export default function CreatePlantationInvoiceModal({
                     <span>Tax</span>
                     <span>{formatMoney(preview.tax_total)}</span>
                   </div>
-                  <div className="balance">
+                  <div>
                     <span>Total</span>
                     <span>LKR {formatMoney(preview.total)}</span>
                   </div>
+                  {prepaid > 0 ? (
+                    <>
+                      <div>
+                        <span>Prepaid (from pre-invoice)</span>
+                        <span>− {formatMoney(prepaid)}</span>
+                      </div>
+                      <div className="balance">
+                        <span>{isCreditNote ? 'Credit amount' : 'Net balance due'}</span>
+                        <span>LKR {formatMoney(Math.abs(previewNet || 0))}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="balance">
+                      <span>Balance due</span>
+                      <span>LKR {formatMoney(preview.total)}</span>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </>
@@ -419,16 +709,32 @@ export default function CreatePlantationInvoiceModal({
         </div>
 
         <footer className="plantation-invoice-modal-footer">
-          <button type="button" className="plantation-invoice-btn plantation-invoice-btn-secondary" onClick={onClose}>
+          <button
+            type="button"
+            className="plantation-invoice-btn plantation-invoice-btn-secondary"
+            onClick={() => onCloseRef.current?.()}
+          >
             Cancel
           </button>
           <button
             type="button"
             className="plantation-invoice-btn plantation-invoice-btn-primary"
-            disabled={saving || draftLoading || !displayDraft?.line_items?.length}
+            disabled={
+              saving ||
+              draftLoading ||
+              createBlocked ||
+              Boolean(loadError) ||
+              !displayDraft?.line_items?.length
+            }
             onClick={handleCreate}
           >
-            {saving ? 'Saving…' : 'Create'}
+            {saving
+              ? 'Saving…'
+              : isPre
+                ? 'Send pre-invoice'
+                : isCreditNote
+                  ? 'Send credit note'
+                  : 'Create final invoice'}
           </button>
         </footer>
       </div>

@@ -53,6 +53,7 @@ import '../../../styles/financialCards.css';
 const VOUCHER_ELIGIBLE_STATUSES = ['not_create', 'declined'];
 const FINANCE_DECLINE_ELIGIBLE_STATUSES = ['not_create', 'declined'];
 const HIDDEN_SETTLEMENT_STATUSES = ['approved', 'finance_declined'];
+const HISTORY_STATUS_FILTERS = new Set(['pending', 'approved', 'declined']);
 
 const isFinanceDeclinedVoucher = (voucher) =>
   voucher?.status === 'declined' && voucher?.approval_mode === 'finance';
@@ -866,8 +867,13 @@ const FinancialCards = () => {
   const fuelSettlementRows =
     fuelSettlementSource === 'generator' ? generatorFuelSettlementRows : vehicleFuelSettlementRows;
 
-  const activeVoucherHistory =
-    fuelSettlementSource === 'generator' ? generatorVoucherHistory : voucherHistory;
+  const activeVoucherHistory = useMemo(() => {
+    const raw = fuelSettlementSource === 'generator' ? generatorVoucherHistory : voucherHistory;
+    if (Array.isArray(raw)) return raw;
+    if (Array.isArray(raw?.data)) return raw.data;
+    if (Array.isArray(raw?.vouchers)) return raw.vouchers;
+    return [];
+  }, [fuelSettlementSource, generatorVoucherHistory, voucherHistory]);
   const isCreatingVoucher =
     fuelSettlementSource === 'generator' ? creatingGeneratorVoucher : creatingVoucher;
   const isDecliningFinanceVoucher =
@@ -877,28 +883,21 @@ const FinancialCards = () => {
 
   const settlementMonthOptions = useMemo(() => {
     const keys = new Set();
-    fuelSettlementRows.forEach((row) => {
-      const key = toMonthKey(row.fuel_entry_date || row.date);
-      if (key) keys.add(key);
-    });
     activeVoucherHistory.forEach((voucher) => {
-      if (voucher.status === 'approved' || isFinanceDeclinedVoucher(voucher)) return;
+      if (isFinanceDeclinedVoucher(voucher)) return;
       const key = toMonthKey(voucher.created_at);
       if (key) keys.add(key);
     });
     if (settlementMonth) keys.add(settlementMonth);
     return [...keys].sort().reverse();
-  }, [fuelSettlementRows, activeVoucherHistory, settlementMonth]);
+  }, [activeVoucherHistory, settlementMonth]);
 
+  // To Settle: all months, no status filter — only text search
   const filteredFuelRows = useMemo(() => {
     const q = settlementSearch.toLowerCase();
-    return fuelSettlementRows.filter((t) => {
-      if (settlementMonth && toMonthKey(t.fuel_entry_date || t.date) !== settlementMonth) return false;
-      if (settlementVoucherStatus !== 'all' && (t.voucher_status || 'not_create') !== settlementVoucherStatus) {
-        return false;
-      }
-      if (!q) return true;
-      return (
+    if (!q) return fuelSettlementRows;
+    return fuelSettlementRows.filter(
+      (t) =>
         t.driver_name?.toLowerCase().includes(q) ||
         t.card_holder?.toLowerCase().includes(q) ||
         t.card_number?.toLowerCase().includes(q) ||
@@ -907,15 +906,19 @@ const FinancialCards = () => {
         String(t.fuel_liters ?? t.quantity ?? '').includes(q) ||
         String(t.amount || '').includes(q) ||
         t.voucher_no?.toLowerCase().includes(q)
-      );
-    });
-  }, [fuelSettlementRows, settlementSearch, settlementMonth, settlementVoucherStatus]);
+    );
+  }, [fuelSettlementRows, settlementSearch]);
 
+  // Voucher History: full history (except finance-declined), with month + status filters
   const voucherHistoryRows = useMemo(() => {
-    const q = settlementSearch.toLowerCase();
+    const q = settlementSearch.trim().toLowerCase();
+    const statusFilter = HISTORY_STATUS_FILTERS.has(settlementVoucherStatus)
+      ? settlementVoucherStatus
+      : 'all';
     return activeVoucherHistory.filter((voucher) => {
-      if (voucher.status === 'approved' || isFinanceDeclinedVoucher(voucher)) return false;
+      if (isFinanceDeclinedVoucher(voucher)) return false;
       if (settlementMonth && toMonthKey(voucher.created_at) !== settlementMonth) return false;
+      if (statusFilter !== 'all' && voucher.status !== statusFilter) return false;
       if (!q) return true;
       return (
         voucher.voucher_no?.toLowerCase().includes(q) ||
@@ -923,7 +926,7 @@ const FinancialCards = () => {
         getVoucherDecidedBy(voucher).toLowerCase().includes(q)
       );
     });
-  }, [activeVoucherHistory, settlementMonth, settlementSearch]);
+  }, [activeVoucherHistory, settlementMonth, settlementVoucherStatus, settlementSearch]);
 
   const groupedFuelRows = useMemo(() => {
     const map = {};
@@ -1393,42 +1396,42 @@ const FinancialCards = () => {
                 <FaSearch className="settlement-search-icon-financial-cards" aria-hidden="true" />
                 <input
                   type="text"
-                  placeholder="Search driver, card, voucher..."
+                  placeholder={
+                    settlementsSubTab === 'voucher-history'
+                      ? 'Search voucher no, amount...'
+                      : 'Search driver, card, voucher...'
+                  }
                   value={settlementSearch}
                   onChange={(e) => setSettlementSearch(e.target.value)}
                   className="settlement-search-input-financial-cards"
                 />
               </div>
-              <select
-                value={settlementMonth}
-                onChange={(e) => {
-                  setSettlementMonth(e.target.value);
-                  setSelectedTxIds([]);
-                }}
-                className="settlement-filter-select-financial-cards"
-                aria-label="Filter by month"
-                title={settlementsSubTab === 'pending' ? 'Fuel entry month' : 'Voucher created month'}
-              >
-                <option value="">All months</option>
-                {settlementMonthOptions.map((key) => (
-                  <option key={key} value={key}>{formatMonthLabel(key)}</option>
-                ))}
-              </select>
-              {settlementsSubTab === 'pending' ? (
-                <select
-                  value={settlementVoucherStatus}
-                  onChange={(e) => {
-                    setSettlementVoucherStatus(e.target.value);
-                    setSelectedTxIds([]);
-                  }}
-                  className="settlement-filter-select-financial-cards"
-                  aria-label="Filter by voucher status"
-                >
-                  <option value="all">All voucher statuses</option>
-                  <option value="not_create">Not created</option>
-                  <option value="pending">Pending approval</option>
-                  <option value="declined">Declined</option>
-                </select>
+              {settlementsSubTab === 'voucher-history' ? (
+                <>
+                  <select
+                    value={settlementMonth}
+                    onChange={(e) => setSettlementMonth(e.target.value)}
+                    className="settlement-filter-select-financial-cards"
+                    aria-label="Filter by month"
+                    title="Voucher created month"
+                  >
+                    <option value="">All months</option>
+                    {settlementMonthOptions.map((key) => (
+                      <option key={key} value={key}>{formatMonthLabel(key)}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={settlementVoucherStatus}
+                    onChange={(e) => setSettlementVoucherStatus(e.target.value)}
+                    className="settlement-filter-select-financial-cards"
+                    aria-label="Filter by voucher status"
+                  >
+                    <option value="all">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="declined">Declined</option>
+                  </select>
+                </>
               ) : null}
             </div>
             <div className="settlements-header-actions-financial-cards">
@@ -1512,7 +1515,13 @@ const FinancialCards = () => {
                 <button
                   type="button"
                   className={`settlements-tab-pill-financial-cards${settlementsSubTab === 'pending' ? ' active' : ''}`}
-                  onClick={() => setSettlementsSubTab('pending')}
+                  onClick={() => {
+                    setSettlementsSubTab('pending');
+                    setSettlementSearch('');
+                    setSettlementMonth('');
+                    setSettlementVoucherStatus('all');
+                    setSelectedTxIds([]);
+                  }}
                 >
                   To Settle
                   {toSettleCount > 0 ? (
@@ -1522,7 +1531,13 @@ const FinancialCards = () => {
                 <button
                   type="button"
                   className={`settlements-tab-pill-financial-cards${settlementsSubTab === 'voucher-history' ? ' active' : ''}`}
-                  onClick={() => setSettlementsSubTab('voucher-history')}
+                  onClick={() => {
+                    setSettlementsSubTab('voucher-history');
+                    setSettlementSearch('');
+                    setSettlementMonth('');
+                    setSettlementVoucherStatus('all');
+                    setSelectedTxIds([]);
+                  }}
                 >
                   Voucher History
                   {voucherHistoryActionCount > 0 ? (

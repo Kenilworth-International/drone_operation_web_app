@@ -13,7 +13,7 @@ const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const formatDisplayDate = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   const text = String(d).trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
     const [y, m, day] = text.split('-');
@@ -27,7 +27,7 @@ const formatDisplayDate = (d) => {
 };
 
 const formatDateTime = (d) => {
-  if (!d) return '—';
+  if (!d) return '-';
   const dt = new Date(d);
   if (Number.isNaN(dt.getTime())) return String(d);
   return dt.toLocaleString('en-GB', {
@@ -52,7 +52,7 @@ export default function WorkSummaryPdfDetailModal({ document: payload, onClose }
 
   const handleDownloadPdf = () => {
     if (!lines.length) {
-      toast.error('No rows in snapshot — cannot rebuild PDF');
+      toast.error('No rows in snapshot - cannot rebuild PDF');
       return;
     }
     setDownloading(true);
@@ -121,7 +121,7 @@ export default function WorkSummaryPdfDetailModal({ document: payload, onClose }
             </div>
             <div>
               <span className="work-summary-pdf-detail-label">Created by</span>
-              <span>{doc.created_by_name || '—'}</span>
+              <span>{doc.created_by_name || '-'}</span>
             </div>
             <div>
               <span className="work-summary-pdf-detail-label">Created at</span>
@@ -168,7 +168,7 @@ export default function WorkSummaryPdfDetailModal({ document: payload, onClose }
                         <br />
                         <small>{formatDisplayDate(r.planDate)}</small>
                       </td>
-                      <td>{r.fieldName || '—'}</td>
+                      <td>{r.fieldName || '-'}</td>
                       <td>{formatMoney(r.fieldHa)}</td>
                       <td>{formatMoney(r.completedHa)}</td>
                       <td>{formatMoney(r.coveredPercent)}%</td>

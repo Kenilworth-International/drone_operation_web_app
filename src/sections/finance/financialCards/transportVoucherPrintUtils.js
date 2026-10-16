@@ -58,6 +58,37 @@ export const getFuelVoucherLabels = (voucher) => {
 export const resolveVoucherDriverName = (line) =>
   line?.driver_name || line?.pilot_name || line?.driver || '—';
 
+export const resolveVoucherCardNumber = (line) =>
+  line?.card_number || line?.card_no || line?.no_masked || '—';
+
+export const resolveVoucherCardHolder = (line) => line?.card_holder || '';
+
+/** Summarise distinct cards on a voucher (from lines or cards_summary). */
+export const resolveVoucherCardsSummary = (voucher) => {
+  if (Array.isArray(voucher?.cards_summary) && voucher.cards_summary.length) {
+    return voucher.cards_summary;
+  }
+  const lines = voucher?.lines || [];
+  const byCard = new Map();
+  lines.forEach((line) => {
+    const cardId = Number(line.card_id) || resolveVoucherCardNumber(line);
+    if (!cardId || cardId === '—') return;
+    if (!byCard.has(cardId)) {
+      byCard.set(cardId, {
+        card_id: Number(line.card_id) || null,
+        card_number: resolveVoucherCardNumber(line),
+        card_holder: resolveVoucherCardHolder(line),
+        transaction_count: 0,
+        amount: 0,
+      });
+    }
+    const row = byCard.get(cardId);
+    row.transaction_count += 1;
+    row.amount += Number(line.amount) || 0;
+  });
+  return [...byCard.values()];
+};
+
 export const groupDriverLabel = (transactions = []) => {
   const names = [...new Set(transactions.map((t) => t.driver_name).filter(Boolean))];
   if (!names.length) return '—';

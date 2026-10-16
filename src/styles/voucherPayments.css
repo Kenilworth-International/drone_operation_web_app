@@ -162,6 +162,68 @@
   white-space: nowrap;
 }
 
+.voucher-payments-cards-cell {
+  min-width: 160px;
+}
+
+.voucher-payments-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  margin-bottom: 0.35rem;
+}
+
+.voucher-payments-card-row:last-child {
+  margin-bottom: 0;
+}
+
+.voucher-payments-card-row strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.8rem;
+}
+
+.voucher-payments-cards-box {
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+}
+
+.voucher-payments-cards-box strong {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.82rem;
+  color: #075985;
+}
+
+.voucher-payments-cards-box p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.voucher-payments-cards-box ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.voucher-payments-cards-box li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.voucher-payments-card-no {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
 .voucher-payments-empty {
   text-align: center;
   padding: 2rem !important;

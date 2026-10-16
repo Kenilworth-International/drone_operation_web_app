@@ -8,6 +8,8 @@ import {
   resolveVoucherApprovalType,
   resolveVoucherApprovedBy,
   resolveVoucherDriverName,
+  resolveVoucherCardNumber,
+  resolveVoucherCardsSummary,
 } from './transportVoucherPrintUtils';
 
 const VOUCHER_ORG = {
@@ -120,11 +122,34 @@ export function downloadTransportVoucherPdf(voucher) {
 
   y = partiesY + 16;
 
+  const cardsSummary = resolveVoucherCardsSummary(voucher);
+  if (cardsSummary.length) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 76, 117);
+    doc.text(`Cards to top up (${cardsSummary.length})`, margin, y);
+    y += 4;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(51, 65, 85);
+    cardsSummary.forEach((card) => {
+      const holder = card.card_holder ? ` · ${card.card_holder}` : '';
+      doc.text(
+        `${card.card_number || '—'}${holder}  ·  ${card.transaction_count} tx  ·  LKR ${formatFuelMoney(card.amount)}`,
+        margin,
+        y
+      );
+      y += 4;
+    });
+    y += 2;
+  }
+
   const lines = voucher?.lines || [];
   const lineRows = lines.map((line) => {
     const parts = getFuelLineDisplayParts(line);
     return [
       resolveVoucherDriverName(line),
+      resolveVoucherCardNumber(line),
       parts.fuelDate,
       parts.liters,
       parts.amount,
@@ -132,16 +157,16 @@ export function downloadTransportVoucherPdf(voucher) {
     ];
   });
 
-  const [w0, w1, w2, w3, w4] = splitTableWidths(tableWidth, [0.24, 0.18, 0.12, 0.16, 0.30]);
+  const [w0, w1, w2, w3, w4, w5] = splitTableWidths(tableWidth, [0.18, 0.22, 0.14, 0.10, 0.14, 0.22]);
 
   autoTable(doc, {
-    head: [[labels.personHeader, 'FUEL DATE', 'LITERS', 'AMOUNT', 'ADMIN APPROVER']],
+    head: [[labels.personHeader, 'CARD NO', 'FUEL DATE', 'LITERS', 'AMOUNT', 'ADMIN APPROVER']],
     body: lineRows,
     startY: y,
     tableWidth,
     margin: { left: margin, right: margin },
     theme: 'grid',
-    styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', valign: 'top' },
+    styles: { fontSize: 7.5, cellPadding: 2, overflow: 'linebreak', valign: 'top' },
     headStyles: {
       fillColor: [232, 244, 252],
       textColor: [15, 76, 117],
@@ -151,9 +176,10 @@ export function downloadTransportVoucherPdf(voucher) {
     columnStyles: {
       0: { cellWidth: w0, halign: 'left' },
       1: { cellWidth: w1, halign: 'left' },
-      2: { halign: 'right', cellWidth: w2 },
+      2: { cellWidth: w2, halign: 'left' },
       3: { halign: 'right', cellWidth: w3 },
-      4: { cellWidth: w4, halign: 'left' },
+      4: { halign: 'right', cellWidth: w4 },
+      5: { cellWidth: w5, halign: 'left' },
     },
   });
 

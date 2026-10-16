@@ -1,3 +1,33 @@
+.estate-statement-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid #fbbf24;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.estate-statement-banner strong {
+  font-size: 13px;
+}
+
+.estate-statement-banner span {
+  font-size: 12px;
+  line-height: 1.4;
+  color: #a16207;
+}
+
+.estate-statement-title {
+  color: #0f766e !important;
+}
+
+.estate-statement-document .plantation-invoice-doc-title {
+  font-size: 22px;
+}
+
 .plantation-invoice-modal-overlay {
   position: fixed;
   inset: 0;
@@ -115,6 +145,63 @@
 
 .plantation-invoice-btn-link:hover {
   background: #dbeafe;
+}
+
+.pre-invoice-basis-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto minmax(140px, 1fr);
+  gap: 14px;
+  align-items: end;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.pre-invoice-basis-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 4px;
+}
+
+.pre-invoice-basis-field input {
+  display: block;
+  width: 100%;
+  min-width: 100px;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.pre-invoice-basis-field--ha input {
+  min-width: 110px;
+  font-weight: 600;
+}
+
+.pre-invoice-basis-field--action .plantation-invoice-btn {
+  white-space: nowrap;
+  height: 38px;
+}
+
+.pre-invoice-basis-spacer {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+@media (max-width: 720px) {
+  .pre-invoice-basis-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pre-invoice-basis-field--action {
+    grid-column: 1 / -1;
+  }
 }
 
 .plantation-invoice-form-grid {
@@ -791,16 +878,65 @@
   white-space: nowrap;
 }
 
-.fuel-transport-voucher-doc-table th:nth-child(3),
 .fuel-transport-voucher-doc-table th:nth-child(4),
-.fuel-transport-voucher-doc-table td:nth-child(3),
-.fuel-transport-voucher-doc-table td:nth-child(4) {
+.fuel-transport-voucher-doc-table th:nth-child(5),
+.fuel-transport-voucher-doc-table td:nth-child(4),
+.fuel-transport-voucher-doc-table td:nth-child(5) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-.fuel-transport-voucher-doc-table td:nth-child(5) {
+.fuel-transport-voucher-doc-table td:nth-child(2),
+.fuel-transport-voucher-doc-table td:nth-child(6) {
   text-align: left;
+}
+
+.fuel-transport-voucher-card-holder-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.fuel-transport-voucher-cards-summary {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.fuel-transport-voucher-cards-summary strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #0f4c75;
+}
+
+.fuel-transport-voucher-cards-summary ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fuel-transport-voucher-cards-summary li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.fuel-transport-voucher-card-no {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.fuel-transport-voucher-card-holder {
+  color: #64748b;
 }
 
 .fuel-transport-voucher-subtext {
