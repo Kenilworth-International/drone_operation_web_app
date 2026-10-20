@@ -250,6 +250,34 @@ const DayEndProcess = () => {
     mission_id: missionId,
   });
 
+  const refreshDayProgressStats = async () => {
+    try {
+      const formattedDate = selectedDate.toLocaleDateString('en-CA');
+      const overviewResult = await fetchDayOverview({ date: formattedDate });
+      if (overviewResult.error) return;
+      const allPlans = overviewResult.data || [];
+      setMissions((prev) =>
+        prev.map((mission) => {
+          const updated = allPlans.find((p) => Number(p.id) === Number(mission.id));
+          if (!updated?.completionStats) return mission;
+          return {
+            ...mission,
+            completionStats: {
+              totalFields: Number(updated.completionStats.totalFields) || 0,
+              completedFields: Number(updated.completionStats.completedFields) || 0,
+              pendingFields: Number(updated.completionStats.pendingFields) || 0,
+              canceledFields: Number(updated.completionStats.canceledFields) || 0,
+              completionPercentage: Number(updated.completionStats.completionPercentage) || 0,
+              cancelPercentage: Number(updated.completionStats.cancelPercentage) || 0,
+            },
+          };
+        })
+      );
+    } catch (e) {
+      console.error('Error refreshing day progress stats:', e);
+    }
+  };
+
   const refreshAfterCancelChange = async () => {
     if (selectedMission) {
       await fetchCancelStatus(selectedMission.id);
@@ -272,6 +300,7 @@ const DayEndProcess = () => {
         }));
       }
     }
+    await refreshDayProgressStats();
   };
 
   const handleRemoveOpsCancelClick = () => {
@@ -453,11 +482,13 @@ const DayEndProcess = () => {
           total_sub_task_ops_room_approved_subs: plan.total_sub_task_ops_room_approved_subs,
           total_sub_task_ops_room_pending_subs: plan.total_sub_task_ops_room_pending_subs,
           total_sub_task_ops_room_rejected_subs: plan.total_sub_task_ops_room_rejected_subs,
-          completionStats: plan.completionStats || {
-            totalFields: 0,
-            completedFields: 0,
-            pendingFields: 0,
-            completionPercentage: 0,
+          completionStats: {
+            totalFields: Number(plan.completionStats?.totalFields) || 0,
+            completedFields: Number(plan.completionStats?.completedFields) || 0,
+            pendingFields: Number(plan.completionStats?.pendingFields) || 0,
+            canceledFields: Number(plan.completionStats?.canceledFields) || 0,
+            completionPercentage: Number(plan.completionStats?.completionPercentage) || 0,
+            cancelPercentage: Number(plan.completionStats?.cancelPercentage) || 0,
           },
         }));
         setMissions(missionOptions);
@@ -1006,6 +1037,28 @@ const DayEndProcess = () => {
   const pendingCount = missions.filter(m => m.activated !== 0 && m.team_assigned !== 0 && m.completed !== 1).length;
   const doneCount    = missions.filter(m => m.completed === 1).length;
 
+  const dayFieldTotals = useMemo(() => {
+    return missions.reduce(
+      (acc, m) => {
+        const stats = m.completionStats || {};
+        acc.totalFields += Number(stats.totalFields) || 0;
+        acc.completedFields += Number(stats.completedFields) || 0;
+        acc.canceledFields += Number(stats.canceledFields) || 0;
+        return acc;
+      },
+      { totalFields: 0, completedFields: 0, canceledFields: 0 }
+    );
+  }, [missions]);
+
+  const dayOpsPct =
+    dayFieldTotals.totalFields > 0
+      ? Math.round((dayFieldTotals.completedFields / dayFieldTotals.totalFields) * 100)
+      : 0;
+  const dayCancelPct =
+    dayFieldTotals.totalFields > 0
+      ? Math.round((dayFieldTotals.canceledFields / dayFieldTotals.totalFields) * 100)
+      : 0;
+
   return (
     <div className="dayendprocess">
 
@@ -1041,6 +1094,40 @@ const DayEndProcess = () => {
         </div>
       </div>
 
+      {/* Day-level OPS / full-cancel progress */}
+      {missions.length > 0 && dayFieldTotals.totalFields > 0 && (
+        <div className="dep-day-progress">
+          <div className="dep-day-progress-item">
+            <div className="dep-day-progress-row">
+              <span className="dep-day-progress-label">OPS Complete</span>
+              <span className="dep-day-progress-pct">
+                {dayOpsPct}% ({dayFieldTotals.completedFields}/{dayFieldTotals.totalFields})
+              </span>
+            </div>
+            <div className="dep-day-progress-bg">
+              <div
+                className={`dep-day-progress-fill dep-day-progress-fill--ops${dayOpsPct >= 100 ? ' is-done' : ''}`}
+                style={{ width: `${Math.min(dayOpsPct, 100)}%` }}
+              />
+            </div>
+          </div>
+          <div className="dep-day-progress-item">
+            <div className="dep-day-progress-row">
+              <span className="dep-day-progress-label">Full canceled</span>
+              <span className="dep-day-progress-pct">
+                {dayCancelPct}% ({dayFieldTotals.canceledFields}/{dayFieldTotals.totalFields})
+              </span>
+            </div>
+            <div className="dep-day-progress-bg">
+              <div
+                className={`dep-day-progress-fill dep-day-progress-fill--cancel${dayCancelPct >= 100 ? ' is-full' : ''}`}
+                style={{ width: `${Math.min(dayCancelPct, 100)}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══ MAIN BODY ════════════════════════════════════════════════ */}
       <div className="dep-body">
 
@@ -1073,6 +1160,8 @@ const DayEndProcess = () => {
                 const isNoTeam = mission.team_assigned === 0;
                 const disableToggle = !showDirOpsApprovalFeature || isDeactivated || isNoTeam;
                 const pct = mission.completionStats?.completionPercentage ?? 0;
+                const cancelPct = mission.completionStats?.cancelPercentage ?? 0;
+                const canceledFields = Number(mission.completionStats?.canceledFields) || 0;
 
                 return (
                   <div
@@ -1122,18 +1211,34 @@ const DayEndProcess = () => {
                     </div>
 
                     {mission.completionStats?.totalFields > 0 && (
-                      <div className="dep-plan-ops" onClick={() => handleContainerClick(mission.id)}>
-                        <div className="dep-plan-ops-row">
-                          <span className="dep-plan-ops-label">OPS Completion</span>
-                          <span className="dep-plan-ops-pct">
-                            {pct}% ({mission.completionStats.completedFields}/{mission.completionStats.totalFields})
-                          </span>
+                      <div className="dep-plan-meters" onClick={() => handleContainerClick(mission.id)}>
+                        <div className="dep-plan-ops">
+                          <div className="dep-plan-ops-row">
+                            <span className="dep-plan-ops-label">OPS Complete</span>
+                            <span className="dep-plan-ops-pct">
+                              {pct}% ({mission.completionStats.completedFields}/{mission.completionStats.totalFields})
+                            </span>
+                          </div>
+                          <div className="dep-plan-ops-bg">
+                            <div
+                              className={`dep-plan-ops-fill ${pct >= 100 ? 'dep-plan-ops-fill--done' : ''}`}
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="dep-plan-ops-bg">
-                          <div
-                            className={`dep-plan-ops-fill ${pct >= 100 ? 'dep-plan-ops-fill--done' : ''}`}
-                            style={{ width: `${Math.min(pct, 100)}%` }}
-                          />
+                        <div className="dep-plan-ops dep-plan-ops--cancel">
+                          <div className="dep-plan-ops-row">
+                            <span className="dep-plan-ops-label">Full canceled</span>
+                            <span className="dep-plan-ops-pct">
+                              {cancelPct}% ({canceledFields}/{mission.completionStats.totalFields})
+                            </span>
+                          </div>
+                          <div className="dep-plan-ops-bg">
+                            <div
+                              className={`dep-plan-ops-fill dep-plan-ops-fill--cancel${cancelPct >= 100 ? ' is-full' : ''}`}
+                              style={{ width: `${Math.min(cancelPct, 100)}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     )}

@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import { useForwardToPayrollMutation } from '../../../api/services NodeJs/jdManagementApi';
 import {
   PersonalTab,
   EmploymentTab,
@@ -73,28 +72,6 @@ const SECTION_DEFS = {
       { name: 'issue_condition', label: 'Issue Condition' },
       { name: 'return_condition', label: 'Return Condition' },
       { name: 'assigned_by', label: 'Assigned By' },
-    ],
-  },
-  payroll: {
-    label: 'Payroll & Statutory',
-    single: true,
-    fields: [
-      { name: 'basicSalary', label: 'Basic Salary', type: NUMBER },
-      { name: 'travelAllowance', label: 'Travel Allowance', type: NUMBER },
-      { name: 'mobileAllowance', label: 'Mobile Allowance', type: NUMBER },
-      { name: 'fuelAllowance', label: 'Fuel Allowance / Card Limit', type: NUMBER },
-      { name: 'salaryMethod', label: 'Salary Method', type: SELECT, masterCategory: 'salary_method' },
-      { name: 'bankName', label: 'Bank Name' },
-      { name: 'branch', label: 'Branch' },
-      { name: 'accountNumber', label: 'Account Number' },
-      { name: 'accountHolderName', label: 'Account Holder Name' },
-      { name: 'epfEligible', label: 'EPF Eligible', type: SELECT, options: [{ value: '1', label: 'Yes' }, { value: '0', label: 'No' }] },
-      { name: 'etfEligible', label: 'ETF Eligible', type: SELECT, options: [{ value: '1', label: 'Yes' }, { value: '0', label: 'No' }] },
-      { name: 'taxStatus', label: 'Tax Status' },
-      { name: 'taxFileNumber', label: 'Tax File Number' },
-      { name: 'overtimeEligible', label: 'Overtime Eligible', type: SELECT, options: [{ value: '1', label: 'Yes' }, { value: '0', label: 'No' }] },
-  { name: 'attendanceMethod', label: 'Attendance Method', type: SELECT, masterCategory: 'attendance_method' },
-      { name: 'payCycle', label: 'Pay Cycle' },
     ],
   },
   'performance-reviews': {
@@ -296,8 +273,6 @@ function GenericListSection({ section, def, employeeId, readOnly = false }) {
 function SingleSection({ section, def, employeeId, readOnly = false }) {
   const { data, isLoading, refetch } = useListEmployeeProfileSectionQuery({ section, employeeId });
   const [saveSection, { isLoading: saving }] = useSaveEmployeeProfileSectionMutation();
-  const [forwardToPayroll, { isLoading: forwarding }] = useForwardToPayrollMutation();
-  const [forwardMsg, setForwardMsg] = useState('');
   const [draft, setDraft] = useState(null);
 
   const record = data?.data || null;
@@ -357,25 +332,7 @@ function SingleSection({ section, def, employeeId, readOnly = false }) {
       </div>
       <div className="epd-actions">
         <button className="epd-btn epd-btn-primary" onClick={handleSave} disabled={saving}>Save</button>
-        {section === 'payroll' && (
-          <button
-            className="epd-btn"
-            disabled={forwarding}
-            onClick={async () => {
-              setForwardMsg('');
-              try {
-                await forwardToPayroll({ id: employeeId }).unwrap();
-                setForwardMsg('Forwarded to payroll.');
-              } catch (err) {
-                setForwardMsg(err?.data?.message || 'Unable to forward (may already be forwarded).');
-              }
-            }}
-          >
-            {forwarding ? 'Forwarding...' : 'Forward to Payroll'}
-          </button>
-        )}
       </div>
-      {forwardMsg && <p className="epd-empty">{forwardMsg}</p>}
     </div>
   );
 }

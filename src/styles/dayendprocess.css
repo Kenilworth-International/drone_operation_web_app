@@ -132,6 +132,79 @@
 .dep-hdr-badge-pill--pending { background: #fef3c7; color: #92400e; }
 .dep-hdr-badge-pill--done    { background: #dcfce7; color: #15803d; }
 
+/* Day-level OPS / full-cancel progress */
+.dep-day-progress {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 14px;
+  padding: 8px 14px 10px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--dc-border);
+}
+
+.dep-day-progress-item {
+  min-width: 0;
+}
+
+.dep-day-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.dep-day-progress-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dc-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.dep-day-progress-pct {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dc-navy2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.dep-day-progress-bg {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.dep-day-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.dep-day-progress-fill--ops {
+  background: var(--dc-blue);
+}
+
+.dep-day-progress-fill--ops.is-done {
+  background: var(--dc-green);
+}
+
+.dep-day-progress-fill--cancel {
+  background: #f59e0b;
+}
+
+.dep-day-progress-fill--cancel.is-full {
+  background: #dc2626;
+}
+
+@media (max-width: 720px) {
+  .dep-day-progress {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── AUTOMATION SUMMARY STRIP ───────────────────────────────── */
 .dep-as {
   flex-shrink: 0;
@@ -578,12 +651,18 @@
 }
 .dep-sw input:checked + .dep-sw-track .dep-sw-thumb { transform: translateX(16px); }
 
-/* OPS bar on selected plan */
+/* OPS + full-cancel meters on each plan card */
+.dep-plan-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 12px 6px 14px;
+  cursor: pointer;
+}
 .dep-plan-ops {
-  padding: 2px 12px 4px 14px;
+  padding: 0;
   background: transparent;
   border-bottom: none;
-  cursor: pointer;
 }
 .dep-plan-ops-row {
   display: flex;
@@ -592,7 +671,7 @@
   margin-bottom: 3px;
 }
 .dep-plan-ops-label { font-size: 9px; font-weight: 600; color: var(--dc-muted); }
-.dep-plan-ops-pct   { font-size: 9px; font-weight: 700; color: var(--dc-navy2); }
+.dep-plan-ops-pct   { font-size: 9px; font-weight: 700; color: var(--dc-navy2); font-variant-numeric: tabular-nums; }
 .dep-plan-ops-bg {
   height: 3px;
   background: var(--dc-border);
@@ -606,6 +685,8 @@
   transition: width 0.4s ease;
 }
 .dep-plan-ops-fill--done { background: var(--dc-green); }
+.dep-plan-ops-fill--cancel { background: #f59e0b; }
+.dep-plan-ops-fill--cancel.is-full { background: #dc2626; }
 
 /* Empty / loading states in plan list */
 .dep-plans-empty {

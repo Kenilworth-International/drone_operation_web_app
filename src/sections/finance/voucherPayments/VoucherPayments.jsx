@@ -23,8 +23,8 @@ const RECEIPT_MAX_LABEL = '10 MB';
 
 const PAYMENT_METHOD_OPTIONS = [
   { value: 'cheque', label: 'Cheque', referenceLabel: 'Cheque no', allowsReceipt: false },
-  { value: 'card', label: 'Card payment', referenceLabel: 'Card receipt / approval no', allowsReceipt: true },
-  { value: 'bank_transfer', label: 'Bank transfer', referenceLabel: 'Transfer reference', allowsReceipt: true },
+  { value: 'card', label: 'Card', referenceLabel: 'Card receipt / approval no', allowsReceipt: true },
+  { value: 'bank_transfer', label: 'Transfer', referenceLabel: 'Transfer reference', allowsReceipt: true },
   { value: 'cash', label: 'Cash', referenceLabel: 'Receipt no', allowsReceipt: false },
 ];
 
@@ -237,6 +237,10 @@ const VoucherPayments = () => {
   const openReceipt = (url) => {
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
+
+  const payCards = payVoucher ? resolveVoucherCardsSummary(payVoucher) : [];
+  const payIsGenerator = payVoucher ? isGeneratorFuelVoucher(payVoucher) : false;
+  const payAlreadySettled = payVoucher ? Number(payVoucher.settled) === 1 : false;
 
   return (
     <div className="voucher-payments-page">
@@ -487,82 +491,140 @@ const VoucherPayments = () => {
       </div>
 
       {payVoucher ? (
-        <div className="voucher-payments-modal-overlay" onClick={(e) => e.target === e.currentTarget && closePayModal()}>
+        <div
+          className="voucher-payments-modal-overlay"
+          onClick={(e) => e.target === e.currentTarget && closePayModal()}
+        >
           <form className="voucher-payments-modal" onSubmit={handleMarkPaid}>
-            <div className="voucher-payments-modal-header">
-              <h3>Mark {payVoucher.voucher_no} as paid</h3>
-              <button type="button" className="voucher-payments-modal-close" onClick={closePayModal}>×</button>
-            </div>
+            <header className="voucher-payments-modal-header">
+              <div className="voucher-payments-modal-header-main">
+                <div className="voucher-payments-modal-eyebrow">
+                  <FaCheckCircle aria-hidden />
+                  <span>Mark as paid</span>
+                </div>
+                <div className="voucher-payments-modal-title-row">
+                  <h3>{payVoucher.voucher_no}</h3>
+                  <span className={`voucher-payments-type ${payIsGenerator ? 'generator' : 'transport'}`}>
+                    {payIsGenerator ? 'Generator' : 'Transport'}
+                  </span>
+                </div>
+                <p>Record payment and top up the fuel card(s). This cannot be undone.</p>
+              </div>
+              <button
+                type="button"
+                className="voucher-payments-modal-close"
+                onClick={closePayModal}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </header>
 
             <div className="voucher-payments-modal-body">
-              <div className="voucher-payments-modal-amount">
-                <span>{isGeneratorFuelVoucher(payVoucher) ? 'Generator fuel voucher' : 'Transport fuel voucher'}</span>
-                <strong>{formatMoney(payVoucher.total_amount)}</strong>
-                <small>{payVoucher.transaction_count || 0} transaction{Number(payVoucher.transaction_count) === 1 ? '' : 's'}</small>
+              <div className="voucher-payments-modal-hero">
+                <div>
+                  <span className="voucher-payments-modal-hero-label">Amount due</span>
+                  <strong className="voucher-payments-modal-hero-value">
+                    {formatMoney(payVoucher.total_amount)}
+                  </strong>
+                </div>
+                <div className="voucher-payments-modal-kpis">
+                  <div>
+                    <span>Lines</span>
+                    <strong>{payVoucher.transaction_count || 0}</strong>
+                  </div>
+                  <div>
+                    <span>Cards</span>
+                    <strong>{payCards.length || '-'}</strong>
+                  </div>
+                </div>
               </div>
 
-              <div className="voucher-payments-cards-box">
-                <strong>Cards that will be topped up</strong>
+              <section className="voucher-payments-cards-box">
+                <div className="voucher-payments-cards-box-head">
+                  <strong>Cards to top up</strong>
+                  {payCards.length > 0 ? <span>{payCards.length}</span> : null}
+                </div>
                 {loadingPayDetail ? (
-                  <p>Loading card details...</p>
-                ) : resolveVoucherCardsSummary(payVoucher).length === 0 ? (
-                  <p>Card details unavailable until the backend is updated.</p>
+                  <p className="vp-muted">Loading card details...</p>
+                ) : payCards.length === 0 ? (
+                  <p className="vp-muted">Card details unavailable until the backend is updated.</p>
                 ) : (
                   <ul>
-                    {resolveVoucherCardsSummary(payVoucher).map((card) => (
+                    {payCards.map((card) => (
                       <li key={card.card_id || card.card_number}>
-                        <span className="voucher-payments-card-no">{card.card_number || '-'}</span>
-                        {card.card_holder ? <span>{card.card_holder}</span> : null}
-                        <span>
+                        <div className="voucher-payments-card-main">
+                          <span className="voucher-payments-card-no">{shortCardNo(card.card_number)}</span>
+                          {card.card_holder ? (
+                            <span className="voucher-payments-card-holder">{card.card_holder}</span>
+                          ) : null}
+                        </div>
+                        <span className="voucher-payments-card-meta">
                           {card.transaction_count} tx · {formatMoney(card.amount)}
                         </span>
                       </li>
                     ))}
                   </ul>
                 )}
-              </div>
+              </section>
 
               <fieldset className="voucher-payments-methods">
                 <legend>Payment method</legend>
-                {PAYMENT_METHOD_OPTIONS.map((option) => (
-                  <label key={option.value} className={payForm.method === option.value ? 'active' : ''}>
-                    <input
-                      type="radio"
-                      name="payment_method"
-                      value={option.value}
-                      checked={payForm.method === option.value}
-                      onChange={() =>
-                        setPayForm((prev) => ({
-                          ...prev,
-                          method: option.value,
-                          receipt: option.allowsReceipt ? prev.receipt : null,
-                        }))
-                      }
-                    />
-                    {option.label}
-                  </label>
-                ))}
+                <div className="voucher-payments-methods-grid">
+                  {PAYMENT_METHOD_OPTIONS.map((option) => (
+                    <label key={option.value} className={payForm.method === option.value ? 'active' : ''}>
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value={option.value}
+                        checked={payForm.method === option.value}
+                        onChange={() =>
+                          setPayForm((prev) => ({
+                            ...prev,
+                            method: option.value,
+                            receipt: option.allowsReceipt ? prev.receipt : null,
+                          }))
+                        }
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
               </fieldset>
 
-              <label className="voucher-payments-field">
-                <span>{selectedMethod.referenceLabel} <em>(optional)</em></span>
-                <input
-                  type="text"
-                  maxLength={100}
-                  value={payForm.reference}
-                  onChange={(e) => setPayForm((prev) => ({ ...prev, reference: e.target.value }))}
-                />
-              </label>
-
-              {selectedMethod.allowsReceipt ? (
+              <div className="voucher-payments-form-row">
                 <label className="voucher-payments-field">
-                  <span>Receipt / slip (image or PDF, max {RECEIPT_MAX_LABEL}) <em>(optional)</em></span>
-                  <input type="file" accept="image/*,application/pdf" onChange={handleReceiptChange} />
+                  <span>
+                    {selectedMethod.referenceLabel} <em>optional</em>
+                  </span>
+                  <input
+                    type="text"
+                    maxLength={100}
+                    value={payForm.reference}
+                    onChange={(e) => setPayForm((prev) => ({ ...prev, reference: e.target.value }))}
+                  />
                 </label>
-              ) : null}
+                {selectedMethod.allowsReceipt ? (
+                  <label className="voucher-payments-field">
+                    <span>
+                      Receipt / slip <em>optional · max {RECEIPT_MAX_LABEL}</em>
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      onChange={handleReceiptChange}
+                    />
+                    {payForm.receipt ? (
+                      <small className="voucher-payments-file-name">{payForm.receipt.name}</small>
+                    ) : null}
+                  </label>
+                ) : null}
+              </div>
 
               <label className="voucher-payments-field">
-                <span>Note <em>(optional)</em></span>
+                <span>
+                  Note <em>optional</em>
+                </span>
                 <textarea
                   rows={2}
                   maxLength={500}
@@ -571,20 +633,30 @@ const VoucherPayments = () => {
                 />
               </label>
 
-              <div className="voucher-payments-confirm-note">
-                {Number(payVoucher.settled) === 1
-                  ? 'This voucher is already settled. Only the payment details will be recorded.'
-                  : resolveVoucherCardsSummary(payVoucher).length > 1
-                    ? `Marking as paid tops up each of the ${resolveVoucherCardsSummary(payVoucher).length} cards above for its own lines, then ends the process. This cannot be undone.`
-                    : 'Marking as paid settles the fuel card (top-up) for all lines in this voucher and ends the process. This cannot be undone.'}
+              <div
+                className={`voucher-payments-confirm-note${
+                  payAlreadySettled ? ' voucher-payments-confirm-note--info' : ''
+                }`}
+              >
+                {payAlreadySettled
+                  ? 'Already settled. Only payment details will be recorded.'
+                  : payCards.length > 1
+                    ? `Tops up each of the ${payCards.length} cards for its own lines, then closes the voucher.`
+                    : 'Settles the fuel card (top-up) for all lines, then closes the voucher.'}
               </div>
             </div>
 
             <div className="voucher-payments-modal-footer">
-              <button type="button" className="voucher-payments-btn-secondary" onClick={closePayModal} disabled={markingPaid}>
+              <button
+                type="button"
+                className="voucher-payments-btn-secondary"
+                onClick={closePayModal}
+                disabled={markingPaid}
+              >
                 Cancel
               </button>
               <button type="submit" className="voucher-payments-btn-primary" disabled={markingPaid}>
+                <FaCheckCircle aria-hidden />
                 {markingPaid ? 'Saving...' : 'Confirm paid'}
               </button>
             </div>

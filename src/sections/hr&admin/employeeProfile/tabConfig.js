@@ -25,7 +25,6 @@ export const TAB_GROUPS = [
     tabs: [
       { key: 'documents', label: 'Documents' },
       { key: 'assets', label: 'Assets' },
-      { key: 'payroll', label: 'Payroll' },
     ],
   },
   {

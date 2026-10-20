@@ -104,6 +104,8 @@ export const baseApi = createApi({
     'FinancialCards', 'FinancialCardTransactions', 'Transactions', 'FuelApprovals', 'FuelTransportVouchers',
     'GeneratorFuelApprovals', 'FuelGeneratorVouchers', 'FinanceMasterData', 'StrategicFinanceApprovals',
     'MaintenanceVouchers', 'VoucherPayments',
+    'PayrollComponents', 'PayrollSchemes', 'PayrollAssignments', 'PayrollStatutory',
+    'PayrollMail', 'PayrollPeriods', 'PayrollPayslips',
     'VehicleApp', 'PoolVehicleTasks',
     'EmpOrgStructure',
     'SystemMaintenance',
