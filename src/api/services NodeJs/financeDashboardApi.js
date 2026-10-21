@@ -33,6 +33,7 @@ export const financeDashboardApi = baseApi.injectEndpoints({
               body: {
                 month: params.month || null,
                 metric: params.metric || null,
+                category: params.category || null,
               },
             },
             {},

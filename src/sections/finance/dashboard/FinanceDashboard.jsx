@@ -25,7 +25,10 @@ import {
   FaWallet,
 } from 'react-icons/fa';
 import { withCurrentWingSearch } from '../../../config/wingRouteGuard';
-import { useGetFinanceDashboardSummaryQuery } from '../../../api/services NodeJs/financeDashboardApi';
+import {
+  useGetFinanceDashboardDetailQuery,
+  useGetFinanceDashboardSummaryQuery,
+} from '../../../api/services NodeJs/financeDashboardApi';
 import '../../../styles/financeDashboard.css';
 
 const CATEGORY_COLORS = {
@@ -114,6 +117,116 @@ function KpiCard({ tone, icon: Icon, label, value, meta, onOpen }) {
   );
 }
 
+function CategoryDetailModal({ month, category, onClose }) {
+  const { data, isLoading, error } = useGetFinanceDashboardDetailQuery(
+    { month, metric: 'category', category },
+    { skip: !category }
+  );
+
+  const sections = data?.sections || [];
+  const summary = data?.summary || [];
+
+  return (
+    <div
+      className="fd-modal-overlay"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      role="presentation"
+    >
+      <div className="fd-modal" role="dialog" aria-modal="true" aria-labelledby="fd-cat-modal-title">
+        <header className="fd-modal-header">
+          <div>
+            <h3 id="fd-cat-modal-title">{data?.title || 'Category detail'}</h3>
+            <p>
+              {data?.month_label || month}
+              {data?.description ? ` · ${data.description}` : ''}
+            </p>
+          </div>
+          <button type="button" className="fd-modal-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </header>
+
+        <div className="fd-modal-body">
+          {error ? (
+            <div className="fd-error">
+              {error?.data?.message || error?.error || 'Failed to load category detail'}
+            </div>
+          ) : null}
+
+          {isLoading && !data ? (
+            <div className="fd-loading">
+              <CircularProgress size={20} />
+              <span>Loading records…</span>
+            </div>
+          ) : null}
+
+          {data ? (
+            <>
+              <div className="fd-modal-summary">
+                {summary.map((s) => (
+                  <div key={s.label} className="fd-modal-summary-item">
+                    <span>{s.label}</span>
+                    <strong>
+                      {s.kind === 'money' ? fmtMoneyExact(s.value) : String(s.value ?? '—')}
+                    </strong>
+                  </div>
+                ))}
+              </div>
+
+              {sections.map((section) => (
+                <section key={section.key} className="fd-modal-section">
+                  <div className="fd-modal-section-head">
+                    <h4>{section.title}</h4>
+                    <strong>{fmtMoneyExact(section.total)}</strong>
+                  </div>
+                  <div className="fd-table-wrap">
+                    <table className="fd-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Reference</th>
+                          <th>Detail</th>
+                          <th>Status</th>
+                          <th className="num">Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(section.rows || []).length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="muted">
+                              No {section.key} records in this month
+                            </td>
+                          </tr>
+                        ) : (
+                          (section.rows || []).map((row) => (
+                            <tr key={row.id}>
+                              <td>{row.date || '—'}</td>
+                              <td>{row.ref || '—'}</td>
+                              <td>{row.note || '—'}</td>
+                              <td>{row.status || '—'}</td>
+                              <td className="num">{fmtMoneyExact(row.amount)}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ))}
+            </>
+          ) : null}
+        </div>
+
+        <footer className="fd-modal-footer">
+          <button type="button" className="fd-refresh" onClick={onClose}>
+            Close
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 export default function FinanceDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -124,8 +237,13 @@ export default function FinanceDashboard() {
   const monthOptions = useMemo(() => recentMonthOptions(), []);
 
   const { data, isLoading, isFetching, refetch, error } = useGetFinanceDashboardSummaryQuery({ month });
+  const [categoryPopup, setCategoryPopup] = useState(null);
 
   const openMetric = (metric) => openKpiDetail(metric, month, location.search, navigate);
+  const openCategoryPopup = (categoryKey) => {
+    if (!categoryKey) return;
+    setCategoryPopup(categoryKey);
+  };
 
   const kpis = data?.kpis || {};
   const categories = data?.expenses_by_category || [];
@@ -148,6 +266,7 @@ export default function FinanceDashboard() {
   const billedPaidBars = useMemo(
     () =>
       categories.map((c) => ({
+        key: c.key,
         name: c.label.replace('Fuel (', '').replace(')', ''),
         billed: Number(c.billed) || 0,
         paid: Number(c.paid) || 0,
@@ -370,10 +489,12 @@ export default function FinanceDashboard() {
                   <h2>Billed vs paid by category</h2>
                   <p>
                     Example: Sept fuel paid on Oct 2 counts as <em>billed in Sept</em>, <em>paid in Oct</em>
+                    {' · '}
+                    Click a bar for record dates
                   </p>
                 </div>
               </div>
-              <div className="fd-chart">
+              <div className="fd-chart fd-chart--clickable">
                 <ResponsiveContainer width="100%" height={180}>
                   <BarChart data={billedPaidBars} margin={{ top: 4, right: 6, left: -8, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#eef2f6" vertical={false} />
@@ -390,8 +511,24 @@ export default function FinanceDashboard() {
                       contentStyle={{ borderRadius: 8, borderColor: '#e2e8f0', fontSize: 11, padding: '6px 8px' }}
                     />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="billed" name="Billed" fill="#004b71" radius={[4, 4, 0, 0]} maxBarSize={22} />
-                    <Bar dataKey="paid" name="Paid" fill="#94a3b8" radius={[4, 4, 0, 0]} maxBarSize={22} />
+                    <Bar
+                      dataKey="billed"
+                      name="Billed"
+                      fill="#004b71"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={22}
+                      cursor="pointer"
+                      onClick={(entry) => openCategoryPopup(entry?.payload?.key)}
+                    />
+                    <Bar
+                      dataKey="paid"
+                      name="Paid"
+                      fill="#94a3b8"
+                      radius={[4, 4, 0, 0]}
+                      maxBarSize={22}
+                      cursor="pointer"
+                      onClick={(entry) => openCategoryPopup(entry?.payload?.key)}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -454,7 +591,12 @@ export default function FinanceDashboard() {
                   {categories.map((c) => {
                     const gap = Math.max(0, Number(c.billed || 0) - Number(c.paid || 0));
                     return (
-                      <tr key={c.key}>
+                      <tr
+                        key={c.key}
+                        className="fd-row-clickable"
+                        onClick={() => openCategoryPopup(c.key)}
+                        title="Open billed / paid records"
+                      >
                         <td>
                           <span
                             className="fd-legend-dot"
@@ -490,6 +632,14 @@ export default function FinanceDashboard() {
           </footer>
         </>
       )}
+
+      {categoryPopup ? (
+        <CategoryDetailModal
+          month={month}
+          category={categoryPopup}
+          onClose={() => setCategoryPopup(null)}
+        />
+      ) : null}
     </div>
   );
 }

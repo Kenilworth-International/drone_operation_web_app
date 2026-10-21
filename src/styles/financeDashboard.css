@@ -617,6 +617,144 @@
   line-height: 1.35;
 }
 
+.fd-chart--clickable .recharts-bar-rectangle {
+  cursor: pointer;
+}
+
+.fd-table tr.fd-row-clickable {
+  cursor: pointer;
+}
+
+.fd-table tr.fd-row-clickable:hover td {
+  background: #f0f7fb;
+}
+
+.fd-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.fd-modal {
+  width: min(920px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  overflow: hidden;
+}
+
+.fd-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--fd-line);
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 100%);
+}
+
+.fd-modal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--fd-ink);
+}
+
+.fd-modal-header p {
+  margin: 0.2rem 0 0;
+  font-size: 0.72rem;
+  color: var(--fd-muted);
+  line-height: 1.35;
+  max-width: 46rem;
+}
+
+.fd-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+}
+
+.fd-modal-close:hover {
+  color: var(--fd-ink);
+}
+
+.fd-modal-body {
+  padding: 0.85rem 1rem 1rem;
+  overflow-y: auto;
+}
+
+.fd-modal-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.45rem;
+  margin-bottom: 0.85rem;
+}
+
+.fd-modal-summary-item {
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--fd-line);
+  border-radius: 8px;
+  background: var(--fd-soft);
+}
+
+.fd-modal-summary-item span {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--fd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fd-modal-summary-item strong {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.82rem;
+  color: var(--fd-ink);
+}
+
+.fd-modal-section {
+  margin-top: 0.75rem;
+}
+
+.fd-modal-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.fd-modal-section-head h4 {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--fd-ink);
+}
+
+.fd-modal-section-head strong {
+  font-size: 0.78rem;
+  color: var(--fd-brand);
+}
+
+.fd-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  padding: 0.7rem 1rem;
+  border-top: 1px solid var(--fd-line);
+  background: #f8fafc;
+}
+
 @media (max-width: 1200px) {
   .fd-kpi-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));

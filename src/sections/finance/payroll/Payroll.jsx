@@ -88,6 +88,45 @@ function tokenizeExpression(expr) {
   return s.match(/[a-zA-Z_][a-zA-Z0-9_]*|\d+(?:\.\d+)?|[+\-*/()]/g) || [];
 }
 
+/** Grammar check: empty | incomplete (valid prefix) | valid | invalid */
+function analyzeExpressionTokens(tokens) {
+  if (!tokens.length) return { status: 'empty' };
+  let depth = 0;
+  let expect = 'value';
+  for (const raw of tokens) {
+    const t = String(raw);
+    const isValue = /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(t) || /^\d+(\.\d+)?$/.test(t);
+    const isOp = /^[+\-*/]$/.test(t);
+    if (expect === 'value') {
+      if (isValue) {
+        expect = 'op';
+        continue;
+      }
+      if (t === '(') {
+        depth += 1;
+        continue;
+      }
+      return { status: 'invalid' };
+    }
+    if (isOp) {
+      expect = 'value';
+      continue;
+    }
+    if (t === ')') {
+      if (depth <= 0) return { status: 'invalid' };
+      depth -= 1;
+      continue;
+    }
+    return { status: 'invalid' };
+  }
+  if (expect === 'value' || depth > 0) return { status: 'incomplete' };
+  return { status: 'valid' };
+}
+
+function wouldExpressionAccept(tokens, nextToken) {
+  return analyzeExpressionTokens([...tokens, String(nextToken)]).status !== 'invalid';
+}
+
 function flashOk(text) {
   toast.success(text);
 }
@@ -215,6 +254,7 @@ const EMPTY_COMPONENT_FORM = {
   expression: '',
   percent: 0,
   baseCode: 'basic',
+  dailyRateCode: 'nopay_daily_rate',
   schemeCode: '',
   includeInEpfBase: false,
   isTaxable: true,
@@ -244,6 +284,14 @@ function ComponentsPanel() {
     [form.expression]
   );
 
+  const expressionAnalysis = useMemo(
+    () => analyzeExpressionTokens(expressionTokens),
+    [expressionTokens]
+  );
+  const expressionInvalid = expressionAnalysis.status === 'invalid';
+  const expressionReady = expressionAnalysis.status === 'valid';
+  const blockFormulaInsert = form.calcType === 'formula' && expressionInvalid;
+
   const componentCodeTaken = useMemo(() => {
     if (editingId) return false;
     const code = String(form.code || '').trim().toLowerCase();
@@ -264,7 +312,10 @@ function ComponentsPanel() {
   };
 
   const insertIntoExpression = (token) => {
-    setExpressionTokens([...tokenizeExpression(form.expression), String(token)]);
+    const current = tokenizeExpression(form.expression);
+    if (analyzeExpressionTokens(current).status === 'invalid') return;
+    if (!wouldExpressionAccept(current, token)) return;
+    setExpressionTokens([...current, String(token)]);
   };
 
   const insertFormulaNumber = () => {
@@ -291,7 +342,9 @@ function ComponentsPanel() {
     if (form.calcType === 'fixed') return { amount: Number(form.amount) || 0 };
     if (form.calcType === 'percent_of') return { percent: Number(form.percent) || 0, baseCode: form.baseCode };
     if (form.calcType === 'formula') return { expression: form.expression || '' };
-    if (form.calcType === 'nopay_amount') return { dailyRateCode: 'nopay_daily_rate' };
+    if (form.calcType === 'nopay_amount') {
+      return { dailyRateCode: form.dailyRateCode || 'nopay_daily_rate' };
+    }
     if (form.calcType === 'performance_ha') return { schemeCode: form.schemeCode || null };
     return {};
   };
@@ -322,6 +375,7 @@ function ComponentsPanel() {
       expression: f.expression || '',
       percent: f.percent ?? f.pct ?? 0,
       baseCode: f.baseCode || (Array.isArray(f.baseCodes) ? f.baseCodes[0] : 'basic') || 'basic',
+      dailyRateCode: f.dailyRateCode || 'nopay_daily_rate',
       schemeCode: f.schemeCode || '',
       includeInEpfBase: Boolean(c.includeInEpfBase),
       isTaxable: c.isTaxable !== false,
@@ -340,6 +394,14 @@ function ComponentsPanel() {
     }
     if (!editingId && componentCodeTaken) {
       toast.error(`Code “${code}” already exists. Use a different name.`);
+      return;
+    }
+    if (form.calcType === 'formula' && !expressionReady) {
+      toast.error(
+        expressionInvalid
+          ? 'Expression is not valid — fix or clear it before saving'
+          : 'Finish the expression before saving'
+      );
       return;
     }
     const payload = {
@@ -518,10 +580,11 @@ function ComponentsPanel() {
                 {form.calcType === 'formula' && (
                   <div className="payroll-field payroll-expression-field">
                     <label>Expression</label>
-                    <div className="payroll-expression-builder">
+                    <div className={`payroll-expression-builder${expressionInvalid ? ' is-invalid' : ''}`}>
                       <div
-                        className={`payroll-expression-tokens${expressionTokens.length ? '' : ' is-empty'}`}
+                        className={`payroll-expression-tokens${expressionTokens.length ? '' : ' is-empty'}${expressionInvalid ? ' is-invalid' : ''}`}
                         aria-label="Formula tokens"
+                        aria-invalid={expressionInvalid || undefined}
                       >
                         {expressionTokens.length === 0 ? (
                           <span className="muted">Use codes / operators below</span>
@@ -559,7 +622,23 @@ function ComponentsPanel() {
                         </button>
                       </div>
                     </div>
+                    {expressionInvalid ? (
+                      <p className="payroll-expression-error">Invalid formula — Undo or Clear, then rebuild</p>
+                    ) : null}
                   </div>
+                )}
+                {form.calcType === 'nopay_amount' && (
+                  <Field label="Daily rate code" className="span-2">
+                    <select
+                      value={form.dailyRateCode || 'nopay_daily_rate'}
+                      onChange={(e) => setForm({ ...form, dailyRateCode: e.target.value })}
+                    >
+                      {availableCodes.map((c) => (
+                        <option key={c.code} value={c.code}>{c.code} - {c.name}</option>
+                      ))}
+                    </select>
+                    <span className="payroll-field-hint">Deduction = LOP days × this rate (LOP comes from attendance pay_status = nopay)</span>
+                  </Field>
                 )}
                 {form.calcType === 'performance_ha' && (
                   <Field label="Scheme">
@@ -571,7 +650,7 @@ function ComponentsPanel() {
                     </select>
                   </Field>
                 )}
-                <Field label="Sort order" className={form.calcType === 'formula' ? 'payroll-sort-beside' : ''}>
+                <Field label="Sort order" className={form.calcType === 'formula' || form.calcType === 'nopay_amount' ? 'payroll-sort-beside' : ''}>
                   <input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} />
                 </Field>
               </div>
@@ -584,16 +663,19 @@ function ComponentsPanel() {
                       ? 'Click to append · click a formula part to remove'
                       : form.calcType === 'percent_of'
                         ? 'Click a code for percent base'
-                        : 'Set Calculation to Formula to build an expression'}
+                        : form.calcType === 'nopay_amount'
+                          ? 'Pick the daily rate code above (usually nopay_daily_rate).'
+                          : 'Set Calculation to Formula to build an expression'}
                   </span>
                 </div>
                 {form.calcType === 'formula' && (
-                  <div className="payroll-code-ops">
+                  <div className={`payroll-code-ops${blockFormulaInsert ? ' is-blocked' : ''}`}>
                     {['+', '-', '*', '/', '(', ')'].map((op) => (
                       <button
                         key={op}
                         type="button"
                         className="payroll-code-chip op"
+                        disabled={blockFormulaInsert || !wouldExpressionAccept(expressionTokens, op)}
                         onClick={() => insertIntoExpression(op)}
                       >
                         {op}
@@ -613,19 +695,24 @@ function ComponentsPanel() {
                         }}
                         placeholder="e.g. 30"
                         aria-label="Number to insert"
+                        disabled={blockFormulaInsert}
                       />
                       <button
                         type="button"
                         className="payroll-code-chip op"
                         onClick={insertFormulaNumber}
-                        disabled={!/^\d+(\.\d+)?$/.test(String(formulaNumber || '').trim())}
+                        disabled={
+                          blockFormulaInsert
+                          || !/^\d+(\.\d+)?$/.test(String(formulaNumber || '').trim())
+                          || !wouldExpressionAccept(expressionTokens, String(formulaNumber || '').trim())
+                        }
                       >
                         Add #
                       </button>
                     </div>
                   </div>
                 )}
-                <div className="payroll-code-chips dense">
+                <div className={`payroll-code-chips dense${blockFormulaInsert ? ' is-blocked' : ''}`}>
                   {availableCodes.length === 0 ? (
                     <span className="muted">No other components yet.</span>
                   ) : (
@@ -635,6 +722,10 @@ function ComponentsPanel() {
                         type="button"
                         className={`payroll-code-chip flat ${c.category}`}
                         title={c.name}
+                        disabled={
+                          form.calcType === 'formula'
+                          && (blockFormulaInsert || !wouldExpressionAccept(expressionTokens, c.code))
+                        }
                         onClick={() => {
                           if (form.calcType === 'formula') {
                             insertIntoExpression(c.code);
@@ -642,6 +733,9 @@ function ComponentsPanel() {
                           }
                           if (form.calcType === 'percent_of') {
                             setForm((prev) => ({ ...prev, baseCode: c.code }));
+                          }
+                          if (form.calcType === 'nopay_amount') {
+                            setForm((prev) => ({ ...prev, dailyRateCode: c.code }));
                           }
                         }}
                       >
@@ -670,7 +764,12 @@ function ComponentsPanel() {
                 type="button"
                 className="payroll-btn"
                 onClick={onSave}
-                disabled={creating || updating || (!editingId && componentCodeTaken)}
+                disabled={
+                  creating
+                  || updating
+                  || (!editingId && componentCodeTaken)
+                  || (form.calcType === 'formula' && !expressionReady)
+                }
               >
                 {editingId ? 'Update component' : 'Add component'}
               </button>
@@ -708,7 +807,7 @@ function AssignmentsPanel() {
     });
   }, [employees, search]);
 
-  const components = matrix?.components || [];
+  const components = useMemo(() => matrix?.components || [], [matrix]);
   const selectedEmp = employees.find((e) => String(e.id) === String(selectedId));
 
   useEffect(() => {
@@ -1450,10 +1549,24 @@ function SettingsPanel() {
 
   const onSaveMail = async () => {
     try {
-      const body = { ...mailForm };
+      const email = String(mailForm.fromEmail || '').trim();
+      if (!email) {
+        toast.error('Mailbox email is required');
+        return;
+      }
+      const body = {
+        ...mailForm,
+        fromEmail: email,
+        smtpUser: email,
+        smtpHost: mailForm.smtpHost || mail?.smtpHost || '',
+        smtpPort: mailForm.smtpPort || mail?.smtpPort || 465,
+        smtpSecure: mailForm.smtpSecure !== false,
+        pdfPasswordMode: mailForm.pdfPasswordMode || mail?.pdfPasswordMode || 'nic_last6',
+      };
       if (!body.smtpPassword) delete body.smtpPassword;
       await saveMail(body).unwrap();
-      flashOk('Mail settings saved');
+      flashOk('Mailbox saved');
+      setMailForm((prev) => ({ ...prev, smtpPassword: '' }));
       refetchMail();
     } catch (e) {
       flashErr(e, 'Save failed');
@@ -1512,36 +1625,68 @@ function SettingsPanel() {
       </div>
 
       <div className="payroll-section-card">
-        <h4>Shared payroll mailbox</h4>
-        <p className="payroll-hint">One mailbox for all payslip emails — not per-user webmail.</p>
-        <div className="payroll-form-grid">
-          <Field label="From name"><input value={mailForm.fromName} onChange={(e) => setMailForm({ ...mailForm, fromName: e.target.value })} /></Field>
-          <Field label="From email"><input value={mailForm.fromEmail} onChange={(e) => setMailForm({ ...mailForm, fromEmail: e.target.value })} /></Field>
-          <Field label="SMTP host"><input value={mailForm.smtpHost} onChange={(e) => setMailForm({ ...mailForm, smtpHost: e.target.value })} /></Field>
-          <Field label="SMTP port"><input type="number" value={mailForm.smtpPort} onChange={(e) => setMailForm({ ...mailForm, smtpPort: e.target.value })} /></Field>
-          <Field label="SMTP user"><input value={mailForm.smtpUser} onChange={(e) => setMailForm({ ...mailForm, smtpUser: e.target.value })} /></Field>
-          <Field label="SMTP password">
-            <input
-              type="password"
-              value={mailForm.smtpPassword}
-              onChange={(e) => setMailForm({ ...mailForm, smtpPassword: e.target.value })}
-              placeholder={mail?.hasPassword ? '(unchanged)' : ''}
-            />
-          </Field>
-          <Field label="PDF password">
-            <select value={mailForm.pdfPasswordMode} onChange={(e) => setMailForm({ ...mailForm, pdfPasswordMode: e.target.value })}>
-              <option value="nic_last6">NIC last 6</option>
-              <option value="employee_code">Employee code</option>
-            </select>
-          </Field>
-          <Field label="Contact email"><input value={mailForm.contactEmail} onChange={(e) => setMailForm({ ...mailForm, contactEmail: e.target.value })} /></Field>
-          <Field label="Contact phone"><input value={mailForm.contactPhone} onChange={(e) => setMailForm({ ...mailForm, contactPhone: e.target.value })} /></Field>
-          <Field label="Footer note" className="span-2">
-            <textarea value={mailForm.footerNote} onChange={(e) => setMailForm({ ...mailForm, footerNote: e.target.value })} />
-          </Field>
+        <h4>Payroll mailbox</h4>
+        <p className="payroll-hint">Shared mailbox for payslip emails.</p>
+
+        <div className="payroll-mail-block">
+          <h5>Mailbox</h5>
+          <div className="payroll-form-grid cols-2">
+            <Field label="Email">
+              <input
+                type="email"
+                autoComplete="username"
+                value={mailForm.fromEmail}
+                onChange={(e) => setMailForm({ ...mailForm, fromEmail: e.target.value })}
+                placeholder="payroll@company.com"
+              />
+            </Field>
+            <Field label="Password">
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={mailForm.smtpPassword}
+                onChange={(e) => setMailForm({ ...mailForm, smtpPassword: e.target.value })}
+                placeholder={mail?.hasPassword ? 'Leave blank to keep current' : 'Mailbox password'}
+              />
+            </Field>
+          </div>
         </div>
+
+        <div className="payroll-mail-block">
+          <h5>Email details</h5>
+          <div className="payroll-form-grid cols-2">
+            <Field label="From name">
+              <input
+                value={mailForm.fromName}
+                onChange={(e) => setMailForm({ ...mailForm, fromName: e.target.value })}
+                placeholder="Payroll"
+              />
+            </Field>
+            <Field label="Contact email">
+              <input
+                type="email"
+                value={mailForm.contactEmail}
+                onChange={(e) => setMailForm({ ...mailForm, contactEmail: e.target.value })}
+              />
+            </Field>
+            <Field label="Contact phone">
+              <input
+                value={mailForm.contactPhone}
+                onChange={(e) => setMailForm({ ...mailForm, contactPhone: e.target.value })}
+              />
+            </Field>
+            <Field label="Footer note" className="span-2">
+              <textarea
+                value={mailForm.footerNote}
+                onChange={(e) => setMailForm({ ...mailForm, footerNote: e.target.value })}
+                rows={3}
+              />
+            </Field>
+          </div>
+        </div>
+
         <div className="payroll-actions">
-          <button type="button" className="payroll-btn" onClick={onSaveMail}><FaCheck /> Save mail settings</button>
+          <button type="button" className="payroll-btn" onClick={onSaveMail}><FaCheck /> Save mailbox</button>
         </div>
       </div>
     </div>

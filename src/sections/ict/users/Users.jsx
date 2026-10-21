@@ -389,6 +389,30 @@ export default function UsersDirectory({
     return map;
   }, [estates]);
 
+  const formatUserPlantation = (user) => {
+    const raw =
+      plantationLabelMap[String(user?.plantation || "").trim()] ||
+      user?.plantation_name ||
+      user?.plantation ||
+      "";
+    const label = String(raw || "").trim();
+    if (!label || label === "0") return "—";
+    if (/kenilworth/i.test(label) || label.toUpperCase() === "KWIL") return "KWIL";
+    return label;
+  };
+
+  const formatUserWorkLocation = (user) => {
+    const raw =
+      estateLabelMap[String(user?.estate || "").trim()] ||
+      user?.estate_name ||
+      user?.work_location ||
+      user?.estate ||
+      "";
+    const label = String(raw || "").trim();
+    if (!label || label === "0") return "—";
+    return label;
+  };
+
   const wingLabelMap = useMemo(() => {
     const map = {};
     wings.forEach((item) => {
@@ -1075,13 +1099,16 @@ export default function UsersDirectory({
 
     const excelData = filteredUsers.map((user) => ({
       ID: user.id || "",
+      "Employee ID": user.employeeId ?? "",
       Name: user.name || "",
-      NIC: user.nic || "",
       Mobile: user.mobile_no || "",
       Email: user.email || "",
-      Type:
-        memberTypeLabelMap[String(user.member_type || "").trim()] ||
-        user.member_type ||
+      Plantation: formatUserPlantation(user),
+      "Work location": formatUserWorkLocation(user),
+      Wing:
+        wingLabelMap[String(user.sect_command || user.wing || "")] ||
+        user.wing_name ||
+        user.sect_command ||
         "",
       Role:
         jobRoleLabelMap[String(user.job_role || "").trim()] ||
@@ -1100,14 +1127,11 @@ export default function UsersDirectory({
   const normalizedTypeFilter = String(userTypeFilter || "")
     .trim()
     .toLowerCase();
-  const showExternalColumns =
-    normalizedTypeFilter === "e" || normalizedTypeFilter === "external";
   const showInternalColumns =
     normalizedTypeFilter === "i" || normalizedTypeFilter === "internal";
+  // Plantation + Work location (estate) always shown; NIC / Type removed.
   const usersTableColSpan =
-    (isMgmtList ? 10 : 11) +
-    (showExternalColumns ? 2 : 0) +
-    (showInternalColumns ? 1 : 0);
+    (isMgmtList ? 10 : 11) + (showInternalColumns ? 1 : 0);
   const profileUser = allUsers.find(
     (u) => String(u.id) === String(mgmtProfileUserId || selectedUserId || ""),
   );
@@ -1877,7 +1901,7 @@ export default function UsersDirectory({
                 <input
                   type="text"
                   className={isMgmtList ? "users-search-input" : undefined}
-                  placeholder="Search by name, NIC, mobile, email or role"
+                  placeholder="Search by name, mobile, email or role"
                   value={userSearchTerm}
                   onChange={(e) => setUserSearchTerm(e.target.value)}
                 />
@@ -1917,12 +1941,10 @@ export default function UsersDirectory({
                     <th>Employee ID</th>
                     <th>Profile</th>
                     <th>Name</th>
-                    <th>NIC</th>
                     <th>Mobile</th>
-                    <th>Type</th>
                     {showInternalColumns && <th>Wing</th>}
-                    {showExternalColumns && <th>Plantation</th>}
-                    {showExternalColumns && <th>Estate</th>}
+                    <th>Plantation</th>
+                    <th>Work location</th>
                     <th>Role</th>
                     <th>Part Time Driver</th>
                     <th>Status</th>
@@ -1980,15 +2002,7 @@ export default function UsersDirectory({
                           )}
                         </td>
                         <td>{user.name || "-"}</td>
-                        <td>{user.nic || "-"}</td>
                         <td>{user.mobile_no || "-"}</td>
-                        <td>
-                          {memberTypeLabelMap[
-                            String(user.member_type || "").trim()
-                          ] ||
-                            user.member_type ||
-                            "-"}
-                        </td>
                         {showInternalColumns && (
                           <td>
                             {wingLabelMap[
@@ -1999,22 +2013,8 @@ export default function UsersDirectory({
                               "-"}
                           </td>
                         )}
-                        {showExternalColumns && (
-                          <td>
-                            {plantationLabelMap[
-                              String(user.plantation || "")
-                            ] ||
-                              user.plantation ||
-                              "-"}
-                          </td>
-                        )}
-                        {showExternalColumns && (
-                          <td>
-                            {estateLabelMap[String(user.estate || "")] ||
-                              user.estate ||
-                              "-"}
-                          </td>
-                        )}
+                        <td>{formatUserPlantation(user)}</td>
+                        <td>{formatUserWorkLocation(user)}</td>
                         <td>
                           {jobRoleLabelMap[
                             String(user.job_role || "").trim()

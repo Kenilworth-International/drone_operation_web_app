@@ -19,6 +19,7 @@ import PilotPerformanceByDateOpsRoom from '../sections/opsroom/reports/PilotPerf
 import PilotPerformanceByDatePilot from '../sections/opsroom/reports/PilotPerformanceByDatePilot';
 import PilotFeedbacks from '../sections/opsroom/reports/PilotFeedbacks';
 import MonthlyPlantationReport from '../sections/opsroom/reports/MonthlyPlantationReport';
+import BillableExtentsReport from '../sections/opsroom/reports/BillableExtentsReport';
 import OpsroomDailyPerformanceSummary from '../sections/opsroom/reports/OpsroomDailyPerformanceSummary';
 import OpsroomPilotDailyPerformanceSummary from '../sections/opsroom/reports/OpsroomPilotDailyPerformanceSummary';
 import OpsroomMonthlyAchievementSummary from '../sections/opsroom/reports/OpsroomMonthlyAchievementSummary';
@@ -259,6 +260,15 @@ const ModernReportSection = ({ category = null }) => {
           icon: FaSeedling,
           component: MonthlyPlantationReport,
           metrics: { label: 'Monthly', value: 'All' }
+        },
+        {
+          id: 'billable_extents',
+          name: 'Billable Extents',
+          description:
+            'Field Ha vs DJI sprayed Ha vs Billing Ha, with chargeable reasons — plantation, estate, and field detail',
+          icon: FaFileInvoiceDollar,
+          component: BillableExtentsReport,
+          metrics: { label: 'Billing Ha', value: 'DJI' }
         },
         {
           id: 'daily_performance_summary',
