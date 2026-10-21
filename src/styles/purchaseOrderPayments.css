@@ -1,0 +1,489 @@
+.pov-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-height: calc(100vh - 72px);
+  height: calc(100vh - 72px);
+  max-height: calc(100vh - 72px);
+  padding: 0.75rem 1rem 0.85rem;
+  box-sizing: border-box;
+  color: #1e293b;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.pov-top {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem 1rem;
+}
+
+.pov-title-block {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.pov-top h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 1.1rem;
+  color: #004b71;
+}
+
+.pov-top p {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.pov-month-hint {
+  color: #004b71;
+  font-weight: 600;
+}
+
+.pov-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pov-summary-card {
+  min-width: 5.5rem;
+  padding: 0.35rem 0.6rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  border-left: 3px solid #004b71;
+}
+
+.pov-summary-card span {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.pov-summary-card strong {
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.pov-summary-card small {
+  display: block;
+  font-size: 0.7rem;
+  color: #475569;
+}
+
+.pov-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.15rem;
+  padding: 0 0.85rem;
+  border: 1px solid #c5d0de;
+  border-radius: 8px;
+  background: #fff;
+  color: #004b71;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.pov-refresh-btn:hover:not(:disabled) {
+  background: #f0f7fb;
+  border-color: #004b71;
+}
+
+.pov-refresh-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pov-spin {
+  animation: pov-spin 0.85s linear infinite;
+}
+
+@keyframes pov-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pov-filters {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.65rem;
+  align-items: flex-end;
+  padding: 0.5rem 0.65rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.pov-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.pov-filter-grow {
+  flex: 1 1 200px;
+}
+
+.pov-filter label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.pov-filter select,
+.pov-filter input[type='search'] {
+  height: 2rem;
+  min-width: 10rem;
+  box-sizing: border-box;
+  border: 1px solid #dbe3ef;
+  border-radius: 7px;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.82rem;
+  background: #fff;
+  color: #0f172a;
+}
+
+.pov-filter input[type='search'] {
+  width: 100%;
+  min-width: 160px;
+}
+
+.pov-filter select:focus,
+.pov-filter input[type='search']:focus {
+  outline: none;
+  border-color: #004b71;
+  box-shadow: 0 0 0 2px rgba(0, 75, 113, 0.1);
+}
+
+.pov-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.pov-tabs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.pov-tabs button {
+  border: 0;
+  background: transparent;
+  color: #475569;
+  border-radius: 6px;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pov-tabs button:hover {
+  background: #f1f5f9;
+  color: #004b71;
+}
+
+.pov-tabs button.active {
+  background: #004b71;
+  color: #fff;
+}
+
+.pov-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem 0.75rem;
+  overflow: hidden;
+}
+
+.pov-panel-hint {
+  flex: 0 0 auto;
+  margin: 0 0 0.5rem;
+}
+
+.pov-table-fill {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  border-radius: 8px;
+}
+
+.pov-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  flex: 1 1 auto;
+  padding: 2rem 1rem;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.pov-sub {
+  display: block;
+  color: #64748b;
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-top: 0.1rem;
+}
+
+.voucher-payments-table tr.is-selected {
+  background: #f0f7fb;
+}
+
+.pov-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.pov-chip-none {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.pov-chip-pending {
+  background: #fff7ed;
+  color: #c2410c;
+  border-color: #fdba74;
+}
+
+.pov-chip-approved {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.pov-chip-paid {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #6ee7b7;
+}
+
+.pov-chip-declined {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.pov-chip-fin-decline {
+  background: #faf5ff;
+  color: #7e22ce;
+  border-color: #d8b4fe;
+}
+
+.voucher-payments-btn.danger,
+.pov-modal-actions .danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+.voucher-payments-btn.ghost.danger {
+  background: transparent;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.pov-modal-overlay,
+.pov-print-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.pov-modal {
+  width: min(420px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  padding: 1.1rem 1.15rem;
+  border: 1px solid #e2e8f0;
+}
+
+.pov-modal h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.pov-modal p {
+  margin: 0 0 0.65rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.pov-modal textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #dbe3ef;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+  font: inherit;
+  resize: vertical;
+}
+
+.pov-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+  margin-top: 0.75rem;
+}
+
+.pov-print-sheet {
+  width: min(900px, 100%);
+  max-height: 92vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 12px;
+  padding: 1rem 1.25rem 1.35rem;
+}
+
+.pov-print-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.pov-print-toolbar button {
+  border: 1px solid #dbe3ef;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.pov-print-body header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+  color: #004b71;
+}
+
+.pov-print-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+  color: #475569;
+  margin-bottom: 0.85rem;
+}
+
+.pov-print-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.pov-print-body th,
+.pov-print-body td {
+  border: 1px solid #e2e8f0;
+  padding: 0.4rem 0.5rem;
+  text-align: left;
+}
+
+.pov-print-body th {
+  background: #f8fafc;
+}
+
+.pov-print-body .num,
+.voucher-payments-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pov-print-note {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+@media (max-width: 900px) {
+  .pov-page {
+    height: auto;
+    max-height: none;
+    min-height: calc(100vh - 72px);
+    overflow: visible;
+  }
+
+  .pov-panel {
+    min-height: 50vh;
+    overflow: visible;
+  }
+
+  .pov-table-fill {
+    overflow: auto;
+    max-height: 70vh;
+  }
+
+  .pov-filter-actions {
+    margin-left: 0;
+    width: 100%;
+  }
+}
+
+@media print {
+  .pov-print-overlay {
+    position: static;
+    background: none;
+    padding: 0;
+  }
+
+  .pov-print-sheet {
+    max-height: none;
+    box-shadow: none;
+    border-radius: 0;
+    width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

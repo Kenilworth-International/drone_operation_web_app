@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import '../../styles/procurementProcessNew.css';
 import { AdminStockPage, AdminSubTabs } from './shell/AdminStockShell';
@@ -28,21 +29,22 @@ import {
   useSaveQuotationEvaluationMutation,
   useSaveTechnicalEvaluationMutation,
   useUpdateProcurementRequestStatusMutation,
+  useGetWorkLocationsQuery,
 } from '../../api/services NodeJs/allEndpoints';
 import { getResourceUrl } from '../../utils/resourceUrls';
 import { COMPANY } from '../../config/companyConstants';
 import GRNDocument from './GRNDocument';
 
 const TABS = [
-  { key: 'requests', label: 'Procurement Requests', shortLabel: '1. Requests', path: '/home/stock-assets/procurement-process/requests' },
-  { key: 'approval', label: 'Procurement Approval', shortLabel: '2. Approval', path: '/home/stock-assets/procurement-process/approve-requests' },
-  { key: 'rfq', label: 'Request Quotations', shortLabel: '3. RFQ', path: '/home/stock-assets/procurement-process/request-quotations' },
-  { key: 'submit-quotation', label: 'Submit Supplier Quotation', shortLabel: '4. Submit Quote', path: '/home/stock-assets/procurement-process/submit-quotation' },
-  { key: 'eval', label: 'Quotations Evaluation', shortLabel: '5. Eval', path: '/home/stock-assets/procurement-process/quotations-evaluation' },
-  { key: 'tech', label: 'Tech Evaluation', shortLabel: '6. Tech', path: '/home/stock-assets/procurement-process/tech-evaluation' },
-  { key: 'finalize', label: 'Finalize Quotations', shortLabel: '7. Finalize', path: '/home/stock-assets/procurement-process/finalize-quotations' },
-  { key: 'po', label: 'Purchasing Order Issue', shortLabel: '8. PO', path: '/home/stock-assets/procurement-process/purchase-order-issue' },
-  { key: 'grn', label: 'Good Received Note', shortLabel: '9. GRN', path: '/home/stock-assets/procurement-process/grn' },
+  { key: 'requests', step: 1, label: 'Procurement Requests', shortLabel: 'Requests', path: '/home/stock-assets/procurement-process/requests' },
+  { key: 'approval', step: 2, label: 'Procurement Approval', shortLabel: 'Approval', path: '/home/stock-assets/procurement-process/approve-requests' },
+  { key: 'rfq', step: 3, label: 'Request Quotations', shortLabel: 'RFQ', path: '/home/stock-assets/procurement-process/request-quotations' },
+  { key: 'submit-quotation', step: 4, label: 'Submit Supplier Quotation', shortLabel: 'Quote', path: '/home/stock-assets/procurement-process/submit-quotation' },
+  { key: 'eval', step: 5, label: 'Quotations Evaluation', shortLabel: 'Eval', path: '/home/stock-assets/procurement-process/quotations-evaluation' },
+  { key: 'tech', step: 6, label: 'Tech Evaluation', shortLabel: 'Tech', path: '/home/stock-assets/procurement-process/tech-evaluation' },
+  { key: 'finalize', step: 7, label: 'Finalize Quotations', shortLabel: 'Finalize', path: '/home/stock-assets/procurement-process/finalize-quotations' },
+  { key: 'po', step: 8, label: 'Purchasing Order Issue', shortLabel: 'PO', path: '/home/stock-assets/procurement-process/purchase-order-issue' },
+  { key: 'grn', step: 9, label: 'Good Received Note', shortLabel: 'GRN', path: '/home/stock-assets/procurement-process/grn' },
 ];
 
 const detectTabFromPath = (pathname) => {
@@ -73,6 +75,16 @@ const ProcurementProcess = () => {
   const [selectedSuppliers, setSelectedSuppliers] = useState({});
   const [rfqForm, setRfqForm] = useState({ procurement_request_id: '', closing_date: '', closing_time: '' });
   const [selectedRfqId, setSelectedRfqId] = useState('');
+  const [flash, setFlash] = useState(null);
+  const flashTimerRef = React.useRef(null);
+  const notify = React.useCallback((message, type = 'ok') => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    setFlash({ message, type });
+    flashTimerRef.current = setTimeout(() => setFlash(null), type === 'error' ? 5500 : 3200);
+  }, []);
+  React.useEffect(() => () => {
+    if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+  }, []);
   const [quotationForm, setQuotationForm] = useState({
     quotation_id: '',
     supplier_id: '',
@@ -93,6 +105,7 @@ const ProcurementProcess = () => {
     supplier_id: '',
     lineItems: [],
   });
+  const [poQuotationDetail, setPoQuotationDetail] = useState(null);
   const [selectedPoId, setSelectedPoId] = useState('');
   const [grnItemMap, setGrnItemMap] = useState({});
   const [approvalItemsPopupRequestId, setApprovalItemsPopupRequestId] = useState(null);
@@ -194,6 +207,25 @@ const ProcurementProcess = () => {
     skip: !rfqForm.procurement_request_id || activeTab !== 'rfq',
   });
 
+  const { data: workLocationsData } = useGetWorkLocationsQuery(undefined, {
+    skip: activeTab !== 'grn',
+  });
+
+  const workLocations = useMemo(() => {
+    const list = Array.isArray(workLocationsData)
+      ? workLocationsData
+      : Array.isArray(workLocationsData?.data)
+        ? workLocationsData.data
+        : [];
+    return [...list].sort((a, b) =>
+      String(a.locationName || a.locationCode || '').localeCompare(
+        String(b.locationName || b.locationCode || ''),
+        undefined,
+        { sensitivity: 'base' }
+      )
+    );
+  }, [workLocationsData]);
+
   const [createProcurementRequest, { isLoading: creatingProcRequest }] = useCreateProcurementRequestMutation();
   const [updateProcurementRequestStatus] = useUpdateProcurementRequestStatusMutation();
   const [createRfq, { isLoading: creatingRfq }] = useCreateRfqMutation();
@@ -271,6 +303,7 @@ const ProcurementProcess = () => {
   React.useEffect(() => {
     if (activeTab === 'po' && selectedProcurementRequest?.items?.length) {
       poQuotationPricesAppliedRef.current = null;
+      setPoQuotationDetail(null);
       setPoForm((prev) => ({
         ...prev,
         lineItems: selectedProcurementRequest.items.map((item) => ({
@@ -278,6 +311,7 @@ const ProcurementProcess = () => {
           item_code: item.item_code,
           item_name: item.item_name,
           quantity: item.quantity,
+          quoted_unit_price: '',
           unit_price: item.unit_price != null ? String(item.unit_price) : '',
         })),
       }));
@@ -292,18 +326,44 @@ const ProcurementProcess = () => {
       if (!q?.items?.length) return;
       const priceMap = new Map(q.items.map((it) => [String(it.inventory_item_id), it.unit_price]));
       poQuotationPricesAppliedRef.current = finalizedQuotationForPo.id;
+      setPoQuotationDetail(q);
       setPoForm((prev) => ({
         ...prev,
         lineItems: prev.lineItems.map((li) => {
           const quotedPrice = priceMap.get(String(li.inventory_item_id));
+          const quotedStr = quotedPrice != null ? String(quotedPrice) : '';
           return {
             ...li,
-            unit_price: quotedPrice != null ? String(quotedPrice) : li.unit_price,
+            quoted_unit_price: quotedStr,
+            unit_price: quotedStr || li.unit_price,
           };
         }),
       }));
     });
   }, [activeTab, finalizedQuotationForPo?.id, poForm.lineItems?.length, fetchQuotationById]);
+
+  const poQuoteTotals = useMemo(() => {
+    const lines = poForm.lineItems || [];
+    const quotedSub = lines.reduce(
+      (s, i) => s + (Number(i.quantity) || 0) * (Number(i.quoted_unit_price) || 0),
+      0
+    );
+    const poSub = lines.reduce(
+      (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
+      0
+    );
+    const taxRate = poQuotationDetail?.tax_rate != null
+      ? Number(poQuotationDetail.tax_rate)
+      : (Number(finalizedQuotationForPo?.tax_rate) || 0);
+    const discount = poQuotationDetail?.discount != null
+      ? Number(poQuotationDetail.discount)
+      : (Number(finalizedQuotationForPo?.discount) || 0);
+    const quotedAfter = quotedSub - discount;
+    const quotedTotal = quotedAfter + quotedAfter * (taxRate / 100);
+    const poAfter = poSub - discount;
+    const poTotal = poAfter + poAfter * (taxRate / 100);
+    return { quotedSub, poSub, taxRate, discount, quotedTotal, poTotal };
+  }, [poForm.lineItems, poQuotationDetail, finalizedQuotationForPo]);
 
   const buildQuotationLinesFromProcurement = React.useCallback((items) => (
     (items || []).map((item) => ({
@@ -411,6 +471,31 @@ const ProcurementProcess = () => {
     [quotations]
   );
 
+  const suppliersForSelectedRfq = useMemo(() => {
+    if (!selectedRfq) return [];
+    const ids = Array.isArray(selectedRfq.supplier_ids)
+      ? selectedRfq.supplier_ids
+      : String(selectedRfq.supplier_ids || '')
+        .split(',')
+        .map((x) => Number(x))
+        .filter((x) => Number.isFinite(x) && x > 0);
+    const idSet = new Set(ids.map(String));
+    return supplierList.filter((s) => idSet.has(String(s.id)));
+  }, [selectedRfq, supplierList]);
+
+  const quotationCalcTotals = useMemo(() => {
+    const lineItems = quotationForm.lineItems || [];
+    const sub = lineItems.reduce(
+      (s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0),
+      0
+    );
+    const tr = Number(quotationForm.tax_rate) || 0;
+    const d = Number(quotationForm.discount) || 0;
+    const afterDiscount = sub - d;
+    const total = afterDiscount + afterDiscount * (tr / 100);
+    return { sub, total };
+  }, [quotationForm.lineItems, quotationForm.tax_rate, quotationForm.discount]);
+
   const pendingProcurementRequests = useMemo(
     () => procurementRequests.filter((row) => String(row.status || '').toLowerCase() === 'pending'),
     [procurementRequests]
@@ -465,7 +550,7 @@ const ProcurementProcess = () => {
         setApprovalRequestDetailsCache((prev) => ({ ...prev, [id]: result.data }));
       }
     } catch {
-      alert('Failed to load request details');
+      notify('Failed to load request details', 'error');
     }
   };
 
@@ -475,7 +560,7 @@ const ProcurementProcess = () => {
       (row) => row.inventory_item_id && Number(row.quantity) > 0
     );
     if (!validItems.length) {
-      alert('Add at least one item with quantity');
+      notify('Add at least one item with quantity', 'warn');
       return;
     }
     try {
@@ -489,15 +574,15 @@ const ProcurementProcess = () => {
       resetManualForm();
       setIsManualRequestModalOpen(false);
       refetchProcurementRequests();
-      alert('Procurement request created');
+      notify('Procurement request created');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to create procurement request');
+      notify(error?.data?.message || 'Failed to create procurement request', 'error');
     }
   };
 
   const handleCreateFromQueue = async () => {
     if (!selectedNeedIds.length) {
-      alert('Select at least one need-to-procure record');
+      notify('Select at least one need-to-procure record', 'warn');
       return;
     }
     try {
@@ -507,9 +592,9 @@ const ProcurementProcess = () => {
       setSelectedNeedToProcure({});
       refetchProcurementRequests();
       refetchNeedQueue();
-      alert('Queue items converted to procurement request');
+      notify('Queue items converted to procurement request');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to convert queue items');
+      notify(error?.data?.message || 'Failed to convert queue items', 'error');
     }
   };
 
@@ -519,18 +604,18 @@ const ProcurementProcess = () => {
       refetchProcurementRequests();
       refetchApprovedQueue();
     } catch (error) {
-      alert(error?.data?.message || 'Failed to update status');
+      notify(error?.data?.message || 'Failed to update status', 'error');
     }
   };
 
   const handleCreateRfq = async () => {
     if (!rfqForm.procurement_request_id || !selectedSupplierIds.length) {
-      alert('Select procurement request and suppliers');
+      notify('Select procurement request and suppliers', 'warn');
       return;
     }
     const blocked = selectedSupplierIds.filter((id) => alreadyInvitedSupplierIds.has(String(id)));
     if (blocked.length) {
-      alert('Some selected suppliers are already invited on an RFQ for this procurement. Deselect them and try again.');
+      notify('Some selected suppliers are already invited on an RFQ for this procurement. Deselect them and try again.', 'warn');
       return;
     }
     try {
@@ -544,15 +629,15 @@ const ProcurementProcess = () => {
       setRfqForm({ procurement_request_id: '', closing_date: '', closing_time: '' });
       refetchRfqs();
       refetchProcurementRequests();
-      alert('RFQ created');
+      notify('RFQ created', 'ok');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to create RFQ');
+      notify(error?.data?.message || 'Failed to create RFQ', 'error');
     }
   };
 
   const handleCreateQuotation = async () => {
     if (!selectedRfqId || !quotationForm.supplier_id) {
-      alert('RFQ and supplier are required');
+      notify('RFQ and supplier are required', 'warn');
       return;
     }
     const subtotal = quotationForm.lineItems?.reduce(
@@ -563,11 +648,11 @@ const ProcurementProcess = () => {
     const discount = Number(quotationForm.discount) || 0;
     const totalPrice = subtotal - discount + (subtotal - discount) * (taxRate / 100);
     if (!quotationForm.lineItems?.length) {
-      alert('Select an RFQ with items first');
+      notify('Select an RFQ with items first', 'warn');
       return;
     }
     if (subtotal === 0) {
-      alert('Enter unit price for at least one item');
+      notify('Enter unit price for at least one item', 'warn');
       return;
     }
     try {
@@ -607,15 +692,15 @@ const ProcurementProcess = () => {
         lineItems: [],
       });
       refetchQuotations();
-      alert(wasUpdate ? 'Quotation updated' : 'Quotation saved');
+      notify(wasUpdate ? 'Quotation updated' : 'Quotation saved');
     } catch (error) {
-      alert(error?.data?.message || error?.message || 'Failed to save quotation');
+      notify(error?.data?.message || error?.message || 'Failed to save quotation', 'error');
     }
   };
 
   const handleSaveEvaluation = async () => {
     if (!selectedRfqId || !evaluationForm.quotation_id) {
-      alert('Select quotation');
+      notify('Select quotation', 'warn');
       return;
     }
     try {
@@ -627,15 +712,15 @@ const ProcurementProcess = () => {
       }).unwrap();
       await refetchQuotations();
       setEvaluationForm({ quotation_id: '', score: '', comments: '' });
-      alert('Commercial evaluation saved');
+      notify('Commercial evaluation saved');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to save evaluation');
+      notify(error?.data?.message || 'Failed to save evaluation', 'error');
     }
   };
 
   const handleSaveTechEvaluation = async () => {
     if (!selectedRfqId || !techForm.quotation_id) {
-      alert('Select quotation');
+      notify('Select quotation', 'warn');
       return;
     }
     try {
@@ -647,15 +732,15 @@ const ProcurementProcess = () => {
       }).unwrap();
       await refetchQuotations();
       setTechForm({ quotation_id: '', status: 'pending', comments: '' });
-      alert('Technical evaluation saved');
+      notify('Technical evaluation saved');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to save technical evaluation');
+      notify(error?.data?.message || 'Failed to save technical evaluation', 'error');
     }
   };
 
   const handleFinalize = async () => {
     if (!selectedRfqId || !finalizeQuotationId) {
-      alert('Select RFQ and quotation');
+      notify('Select RFQ and quotation', 'warn');
       return;
     }
     try {
@@ -665,15 +750,15 @@ const ProcurementProcess = () => {
       }).unwrap();
       refetchRfqs();
       refetchProcurementRequests();
-      alert('Quotation finalized');
+      notify('Quotation finalized');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to finalize quotation');
+      notify(error?.data?.message || 'Failed to finalize quotation', 'error');
     }
   };
 
   const handleCreatePo = async () => {
     if (!poForm.procurement_request_id || !poForm.supplier_id) {
-      alert('Procurement request and supplier are required');
+      notify('Procurement request and supplier are required', 'warn');
       return;
     }
     try {
@@ -690,6 +775,8 @@ const ProcurementProcess = () => {
         }));
       }
       const createdPo = await createPurchaseOrder(payload).unwrap();
+      poQuotationPricesAppliedRef.current = null;
+      setPoQuotationDetail(null);
       setPoForm({
         procurement_request_id: '',
         quotation_id: '',
@@ -700,12 +787,12 @@ const ProcurementProcess = () => {
       await refetchProcurementRequests();
       if (createdPo?.id) {
         handleDownloadPo(createdPo);
-        setTimeout(() => alert('Purchase order created. Print dialog opened to save as PDF.'), 500);
+        setTimeout(() => notify('Purchase order created. Print dialog opened to save as PDF.'), 500);
       } else {
-        alert('Purchase order created.');
+        notify('Purchase order created.');
       }
     } catch (error) {
-      alert(error?.data?.message || 'Failed to create PO');
+      notify(error?.data?.message || 'Failed to create PO', 'error');
     }
   };
 
@@ -716,7 +803,7 @@ const ProcurementProcess = () => {
     const poToPrint = po;
     const win = window.open('', '_blank');
     if (!win) {
-      alert('Please allow popups to download the Purchase Order.');
+      notify('Please allow popups to download the Purchase Order.', 'warn');
       return;
     }
     const logoUrl = typeof window !== 'undefined' ? (window.location.origin + (COMPANY.logoPath || '')) : (COMPANY.logoPath || '');
@@ -766,46 +853,77 @@ const ProcurementProcess = () => {
 
   const handleCreateGrn = async () => {
     if (!selectedPoId || !selectedPurchaseOrder?.items?.length) {
-      alert('Select PO first');
+      notify('Select PO first', 'warn');
       return;
     }
     const { data: freshPo } = await refetchSelectedPo();
     const poItems = freshPo?.items || selectedPurchaseOrder.items;
     if (!poItems?.length) {
-      alert('PO data not available');
+      notify('PO data not available', 'error');
       return;
     }
     const items = poItems
       .map((item) => {
         const receivedQty = Number(grnItemMap[item.id]?.received_qty) || 0;
-        const rejectedQty = Number(grnItemMap[item.id]?.rejected_qty) || 0;
-        const damagedQty = Number(grnItemMap[item.id]?.damaged_qty) || 0;
+        const acceptedQty = Number(grnItemMap[item.id]?.accepted_qty) || 0;
+        const returnReplacementQty = Number(grnItemMap[item.id]?.return_replacement_qty) || 0;
+        const returnRefundQty = Number(grnItemMap[item.id]?.return_refund_qty) || 0;
+        const outOfUseQty = Number(grnItemMap[item.id]?.out_of_use_qty) || 0;
         const poQty = Number(item.quantity) || 0;
         const alreadyReceived = Number(item.received_qty) || 0;
         const pending = Math.max(0, poQty - alreadyReceived);
         return {
           po_item_id: item.id,
           received_qty: receivedQty,
-          rejected_qty: rejectedQty,
-          damaged_qty: damagedQty,
+          accepted_qty: acceptedQty,
+          return_replacement_qty: returnReplacementQty,
+          return_refund_qty: returnRefundQty,
+          out_of_use_qty: outOfUseQty,
           remarks_condition_damage: grnItemMap[item.id]?.remarks_condition_damage || '',
           _pending: pending,
           _itemName: `${item.item_code || ''} ${item.item_name || ''}`.trim() || `Item ${item.id}`,
+          _dispositionSum: acceptedQty + returnReplacementQty + returnRefundQty + outOfUseQty,
         };
       })
       .filter((x) => x.received_qty > 0);
     if (!items.length) {
-      alert('Enter at least one received quantity');
+      notify('Enter at least one received quantity', 'warn');
       return;
     }
     const exceedsItem = items.find((x) => x.received_qty > x._pending);
     if (exceedsItem) {
-      alert(`Received qty (${exceedsItem.received_qty}) exceeds pending qty (${exceedsItem._pending}) for ${exceedsItem._itemName}. Max receivable: ${exceedsItem._pending}.`);
+      notify(`Received qty (${exceedsItem.received_qty}) exceeds pending qty (${exceedsItem._pending}) for ${exceedsItem._itemName}. Max receivable: ${exceedsItem._pending}.`, 'warn');
       return;
     }
-    const payloadItems = items.map(({ po_item_id, received_qty, rejected_qty, damaged_qty, remarks_condition_damage }) => ({
-      po_item_id, received_qty, rejected_qty, damaged_qty, remarks_condition_damage,
-    }));
+    const mismatch = items.find(
+      (x) => Math.abs(Number(x._dispositionSum) - Number(x.received_qty)) > 0.001
+    );
+    if (mismatch) {
+      notify(
+        `For ${mismatch._itemName}: Accept + Return replace + Return refund + Out of use (${mismatch._dispositionSum}) must equal Received (${mismatch.received_qty}).`,
+        'warn'
+      );
+      return;
+    }
+    const payloadItems = items.map(
+      ({
+        po_item_id,
+        received_qty,
+        accepted_qty,
+        return_replacement_qty,
+        return_refund_qty,
+        out_of_use_qty,
+        remarks_condition_damage,
+      }) => ({
+        po_item_id,
+        received_qty,
+        accepted_qty,
+        return_replacement_qty,
+        return_refund_qty,
+        out_of_use_qty,
+        remarks_condition_damage,
+      })
+    );
     const payload = {
       po_id: Number(selectedPoId),
       items: payloadItems,
@@ -829,9 +947,9 @@ const ProcurementProcess = () => {
       setGrnForm({ received_at_location: '', supplier_invoice_no: '', supplier_invoice_date: '', delivery_note_waybill_no: '', vehicle_no_transport: '', received_by_name: '', received_by_designation: '', inspected_by_name: '', inspection_condition: 'good_condition', discrepancies_notes: '', shortage_excess_notes: '', verified_by_name: '', approved_by_name: '' });
       refetchGrns();
       refetchPurchaseOrders();
-      alert('GRN posted');
+      notify('GRN posted');
     } catch (error) {
-      alert(error?.data?.message || 'Failed to create GRN');
+      notify(error?.data?.message || 'Failed to create GRN', 'error');
     }
   };
 
@@ -839,12 +957,12 @@ const ProcurementProcess = () => {
     fetchGrnForDownload(grnId).then((res) => {
       const grnData = res?.data;
       if (!grnData?.items?.length) {
-        alert('GRN data not found');
+        notify('GRN data not found', 'error');
         return;
       }
       const win = window.open('', '_blank');
       if (!win) {
-        alert('Please allow popups to download the GRN.');
+        notify('Please allow popups to download the GRN.', 'warn');
         return;
       }
       const grnLogoUrl = typeof window !== 'undefined' ? (window.location.origin + (COMPANY.logoPath || '')) : (COMPANY.logoPath || '');
@@ -862,12 +980,23 @@ const ProcurementProcess = () => {
           const poDate = fmt(grn.po_date);
           const receiptDt = fmtDt(grn.receipt_datetime || grn.created_at);
           const rows = items.map((it, i) => {
-            const qo = Number(it.qty_ordered)||0, qr = Number(it.received_qty)||0, rej=Number(it.rejected_qty)||0, dam=Number(it.damaged_qty)||0;
-            const qa = Math.max(0, qr - rej - dam), se = qr - qo, up = Number(it.unit_price)||0;
-            return '<tr><td style="border:1px solid #ccc;padding:6;text-align:center">'+(i+1)+'</td><td style="border:1px solid #ccc;padding:6">'+(it.item_name||'-')+'</td><td style="border:1px solid #ccc;padding:6">'+(it.item_code||'-')+'</td><td style="border:1px solid #ccc;padding:6;text-align:center">'+(it.unit||'-')+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+qo+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+qr+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+qa+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+(se!==0?se:'-')+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+up.toFixed(2)+'</td><td style="border:1px solid #ccc;padding:6">'+(it.remarks_condition_damage||'-')+'</td></tr>';
+            const qo = Number(it.qty_ordered)||0, qr = Number(it.received_qty)||0;
+            const qa = it.accepted_qty != null ? Number(it.accepted_qty) : Math.max(0, qr - (Number(it.rejected_qty)||0) - (Number(it.damaged_qty)||0));
+            const rrp = Number(it.return_replacement_qty)||0, rrf = Number(it.return_refund_qty)||0, ou = Number(it.out_of_use_qty)||0;
+            const se = qr - qo, up = Number(it.unit_price)||0;
+            const disp = [];
+            if (rrp) disp.push('Replace '+rrp);
+            if (rrf) disp.push('Refund '+rrf);
+            if (ou) disp.push('Out of use '+ou);
+            const remark = [disp.join(', '), it.remarks_condition_damage].filter(Boolean).join(' | ') || '-';
+            return '<tr><td style="border:1px solid #ccc;padding:6;text-align:center">'+(i+1)+'</td><td style="border:1px solid #ccc;padding:6">'+(it.item_name||'-')+'</td><td style="border:1px solid #ccc;padding:6">'+(it.item_code||'-')+'</td><td style="border:1px solid #ccc;padding:6;text-align:center">'+(it.unit||'-')+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+qo+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+qr+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+qa+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+(se!==0?se:'-')+'</td><td style="border:1px solid #ccc;padding:6;text-align:right">'+up.toFixed(2)+'</td><td style="border:1px solid #ccc;padding:6">'+remark+'</td></tr>';
           }).join('');
           const totRc = items.reduce((s,i)=>s+(Number(i.received_qty)||0),0);
-          const totAc = items.reduce((s,i)=>{const r=Number(i.received_qty)||0,rej=Number(i.rejected_qty)||0,dam=Number(i.damaged_qty)||0; return s+Math.max(0,r-rej-dam);},0);
+          const totAc = items.reduce((s,i)=>{
+            if (i.accepted_qty != null) return s + (Number(i.accepted_qty)||0);
+            const r=Number(i.received_qty)||0,rej=Number(i.rejected_qty)||0,dam=Number(i.damaged_qty)||0;
+            return s+Math.max(0,r-rej-dam);
+          },0);
           document.body.innerHTML = '<div style="font-family:Arial;max-width:800px;margin:0 auto;padding:24px">'+
             '<div><img src="'+logoUrl+'" style="max-height:50px"/><div><strong>'+COMPANY.name+'</strong></div><div>'+COMPANY.address+'</div><div>'+COMPANY.city+'</div>'+(COMPANY.postalCode?'<div>Postal: '+COMPANY.postalCode+'</div>':'')+'</div>'+
             '<h1 style="text-align:center;color:#1a5276;font-size:22px">GOODS RECEIVED NOTE</h1>'+
@@ -886,19 +1015,57 @@ const ProcurementProcess = () => {
     });
   };
 
+  const activeTabMeta = TABS.find((t) => t.key === activeTab) || TABS[0];
+
+  const flashToast = flash?.message
+    ? createPortal(
+      <div
+        className={`procurement-process-toast admin-stock-msg admin-stock-msg--${flash.type === 'error' ? 'error' : flash.type === 'warn' ? 'warn' : 'ok'}`}
+        role="status"
+        aria-live="polite"
+      >
+        <span>{flash.message}</span>
+        <button
+          type="button"
+          className="procurement-process-toast-close"
+          aria-label="Dismiss"
+          onClick={() => {
+            if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+            setFlash(null);
+          }}
+        >
+          ×
+        </button>
+      </div>,
+      document.body
+    )
+    : null;
+
   return (
     <AdminStockPage className="procurement-process-shell">
-      <AdminSubTabs
-        tabs={TABS}
-        active={activeTab}
-        variant="compact"
-        className="procurement-process-stepper"
-        onChange={(key) => {
-          const tab = TABS.find((t) => t.key === key) || TABS[0];
-          setActiveTab(tab.key);
-          navigate({ pathname: tab.path, search: routerLocation.search });
-        }}
-      />
+      {flashToast}
+      <div className="procurement-process-layout">
+      <header className="procurement-process-topbar">
+        <div className="procurement-process-topbar-text">
+          <h2>Procurement</h2>
+          <p>
+            Step {activeTabMeta.step} of {TABS.length}
+            <span aria-hidden> · </span>
+            {activeTabMeta.label}
+          </p>
+        </div>
+        <AdminSubTabs
+          tabs={TABS}
+          active={activeTab}
+          variant="compact"
+          className="procurement-process-stepper"
+          onChange={(key) => {
+            const tab = TABS.find((t) => t.key === key) || TABS[0];
+            setActiveTab(tab.key);
+            navigate({ pathname: tab.path, search: routerLocation.search });
+          }}
+        />
+      </header>
       <div className="procurement-process-page admin-stock-body">
 
       {activeTab === 'requests' && (
@@ -1028,12 +1195,16 @@ const ProcurementProcess = () => {
                   + Add Item
                 </button>
               </div>
-              <textarea
-                rows={2}
-                value={manualForm.notes}
-                onChange={(e) => setManualForm((prev) => ({ ...prev, notes: e.target.value }))}
-                placeholder="Notes (optional)"
-              />
+              <div className="procurement-process-field-with-label">
+                <label htmlFor="manual-notes">Notes (optional)</label>
+                <textarea
+                  id="manual-notes"
+                  rows={2}
+                  value={manualForm.notes}
+                  onChange={(e) => setManualForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add notes…"
+                />
+              </div>
               <div className="procurement-process-modal-actions">
                 <button
                   type="button"
@@ -1054,7 +1225,9 @@ const ProcurementProcess = () => {
       {activeTab === 'approval' && (
         <div className="procurement-process-step procurement-process-section-grid">
           <div>
-            <h4>Pending</h4>
+            <div className="procurement-process-heading-row">
+              <h4>Pending</h4>
+            </div>
             <table width="100%" cellPadding="6">
               <thead>
                 <tr>
@@ -1077,8 +1250,8 @@ const ProcurementProcess = () => {
                         <button type="button" className="link-button" onClick={() => handleViewApprovalRequestItems(row.id)}>
                           View items
                         </button>
-                        <button type="button" onClick={() => handleStatusUpdate(row.id, 'approved')}>Approve</button>
-                        <button type="button" onClick={() => handleStatusUpdate(row.id, 'rejected')}>Reject</button>
+                        <button type="button" className="proc-btn-ok" onClick={() => handleStatusUpdate(row.id, 'approved')}>Approve</button>
+                        <button type="button" className="proc-btn-danger" onClick={() => handleStatusUpdate(row.id, 'rejected')}>Reject</button>
                       </div>
                     </td>
                   </tr>
@@ -1092,7 +1265,9 @@ const ProcurementProcess = () => {
             </table>
           </div>
           <div>
-            <h4>History</h4>
+            <div className="procurement-process-heading-row">
+              <h4>History</h4>
+            </div>
             <table width="100%" cellPadding="6">
               <thead>
                 <tr>
@@ -1188,22 +1363,28 @@ const ProcurementProcess = () => {
 
       {activeTab === 'rfq' && (
         <div className="procurement-process-step procurement-process-stack-md procurement-process-rfq-form">
-          <h4>Request Quotations</h4>
-          <div className="procurement-process-form-group">
-            <select
-              value={rfqForm.procurement_request_id}
-              onChange={(e) => {
-                setRfqForm((prev) => ({ ...prev, procurement_request_id: e.target.value }));
-                setSelectedSuppliers({});
-              }}
-            >
-              <option value="">Select Approved Procurement</option>
-              {approvedQueue.map((row) => (
-                <option key={row.id} value={row.id}>
-                  {row.procurement_no}
-                </option>
-              ))}
-            </select>
+          <div className="procurement-process-heading-row">
+            <h4>Request Quotations</h4>
+          </div>
+          <div className="procurement-process-toolbar">
+            <div className="procurement-process-field-with-label" style={{ maxWidth: '22rem', flex: '1 1 220px' }}>
+              <label htmlFor="rfq-procurement-select">Approved procurement</label>
+              <select
+                id="rfq-procurement-select"
+                value={rfqForm.procurement_request_id}
+                onChange={(e) => {
+                  setRfqForm((prev) => ({ ...prev, procurement_request_id: e.target.value }));
+                  setSelectedSuppliers({});
+                }}
+              >
+                <option value="">Select approved procurement…</option>
+                {approvedQueue.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.procurement_no}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           {rfqForm.procurement_request_id && alreadyInvitedSupplierIds.size > 0 && (
             <p className="procurement-process-step-desc" style={{ marginTop: -8 }}>
@@ -1349,32 +1530,41 @@ const ProcurementProcess = () => {
               )}
             </div>
           </div>
-          <button
-            type="button"
-            disabled={creatingRfq || !availableSuppliersForRfq.length}
-            onClick={handleCreateRfq}
-          >
-            {creatingRfq ? 'Creating RFQ...' : 'Create RFQ'}
-          </button>
+          <div className="procurement-process-form-actions">
+            <button
+              type="button"
+              disabled={creatingRfq || !availableSuppliersForRfq.length}
+              onClick={handleCreateRfq}
+            >
+              {creatingRfq ? 'Creating RFQ…' : 'Create RFQ'}
+            </button>
+          </div>
         </div>
       )}
 
       {activeTab === 'submit-quotation' && (
-        <div className="procurement-process-step procurement-process-stack-md procurement-process-rfq-form">
+        <div className="procurement-process-step procurement-process-quote-step">
           <div className="procurement-process-heading-row">
-            <h4>Submit Supplier Quotation</h4>
+            <div>
+              <h4>Submit Supplier Quotation</h4>
+              <p className="procurement-process-step-desc">
+                Choose an RFQ and supplier, enter unit prices, then save.
+              </p>
+            </div>
             <button
               type="button"
               className="procurement-process-queue-btn"
               onClick={() => setIsPendingQuotationsPopupOpen(true)}
             >
-              View Pending Quotations
+              Pending queue
             </button>
           </div>
-          <div className="procurement-process-form-group">
-            <label>Select RFQ</label>
-            <div className="procurement-process-rfq-select-row">
+
+          <div className="procurement-process-quote-select-row">
+            <div className="procurement-process-field-with-label">
+              <label htmlFor="quote-rfq-select">RFQ</label>
               <select
+                id="quote-rfq-select"
                 value={selectedRfqId}
                 onChange={(e) => {
                   setSelectedRfqId(e.target.value);
@@ -1392,32 +1582,19 @@ const ProcurementProcess = () => {
                   }));
                 }}
               >
-                <option value="">Select RFQ</option>
+                <option value="">Select RFQ…</option>
                 {rfqs.map((rfq) => (
                   <option key={rfq.id} value={rfq.id}>{rfq.rfq_no}</option>
                 ))}
               </select>
-              <button
-                type="button"
-                className="procurement-process-queue-btn"
-                onClick={() => setIsProcurementItemsPopupOpen(true)}
-                disabled={!selectedRfqId}
-                title="View procurement items for this RFQ"
-              >
-                View Items
-              </button>
             </div>
-            {selectedRfqId && !selectedRfqProcurementRequest?.items?.length && (
-              <span className="procurement-process-file-hint">
-                Loading RFQ items… If this stays empty, the procurement request has no lines.
-              </span>
-            )}
-          </div>
-          <div className="procurement-process-form-group">
-            <label>Select Supplier</label>
-            <select
-              value={quotationForm.supplier_id}
-              onChange={async (e) => {
+            <div className="procurement-process-field-with-label">
+              <label htmlFor="quote-supplier-select">Supplier</label>
+              <select
+                id="quote-supplier-select"
+                value={quotationForm.supplier_id}
+                disabled={!selectedRfqId}
+                onChange={async (e) => {
                 const supplierId = e.target.value;
                 const baseLines = buildQuotationLinesFromProcurement(
                   selectedRfqProcurementRequest?.items || []
@@ -1459,25 +1636,49 @@ const ProcurementProcess = () => {
                 }
               }}
             >
-              <option value="">Select Supplier</option>
-              {supplierList.map((s) => {
+              <option value="">
+                {!selectedRfqId ? 'Select RFQ first…' : 'Select supplier…'}
+              </option>
+              {suppliersForSelectedRfq.map((s) => {
                 const hasSubmitted = supplierIdsWithQuotation.includes(String(s.id));
                 return (
                   <option key={s.id} value={s.id}>
-                    {s.supplier_name}{hasSubmitted ? ' (Submitted)' : ''}
+                    {s.supplier_name}{hasSubmitted ? ' (submitted)' : ''}
                   </option>
                 );
               })}
             </select>
-            {quotationForm.quotation_id && (
-              <span className="procurement-process-file-hint">
-                Editing existing quotation. Submit to update.
-              </span>
-            )}
+            </div>
+            <button
+              type="button"
+              className="procurement-process-queue-btn procurement-process-quote-items-btn"
+              onClick={() => setIsProcurementItemsPopupOpen(true)}
+              disabled={!selectedRfqId}
+              title="View procurement items for this RFQ"
+            >
+              View items
+            </button>
           </div>
+
+          {selectedRfqId && !selectedRfqProcurementRequest?.items?.length && (
+            <p className="procurement-process-file-hint">
+              Loading RFQ lines… If this stays empty, the procurement request has no items.
+            </p>
+          )}
+          {selectedRfqId && suppliersForSelectedRfq.length === 0 && (
+            <p className="procurement-process-file-hint">
+              No suppliers are linked to this RFQ.
+            </p>
+          )}
+          {quotationForm.quotation_id && (
+            <p className="procurement-process-file-hint">
+              Editing an existing quotation for this supplier. Save to update.
+            </p>
+          )}
+
           {quotationForm.lineItems?.length > 0 ? (
-            <div className="procurement-process-panel">
-              <strong>Enter unit price for each item</strong>
+            <div className="procurement-process-panel procurement-process-panel-rounded procurement-process-quote-lines">
+              <strong>Line items — unit price</strong>
               <table width="100%" cellPadding="6">
                 <thead>
                   <tr>
@@ -1511,7 +1712,6 @@ const ProcurementProcess = () => {
                                 ),
                               }));
                             }}
-                            style={{ width: 100 }}
                             placeholder="0.00"
                           />
                         </td>
@@ -1523,87 +1723,100 @@ const ProcurementProcess = () => {
               </table>
             </div>
           ) : selectedRfqId ? (
-            <div className="procurement-process-panel">
-              <p style={{ margin: 0, color: '#5b6b7c' }}>
-                No line items loaded for this RFQ yet. Use <strong>View Items</strong> to confirm the procurement has lines, then re-select the RFQ.
-              </p>
-            </div>
-          ) : null}
-          <div className="procurement-process-form-group procurement-process-row-two">
-            <label>Tax rate (%)</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0"
-              value={quotationForm.tax_rate}
-              onChange={(e) => setQuotationForm((prev) => ({ ...prev, tax_rate: e.target.value }))}
-              style={{ width: 80 }}
-            />
-            <label>Discount</label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0"
-              value={quotationForm.discount}
-              onChange={(e) => setQuotationForm((prev) => ({ ...prev, discount: e.target.value }))}
-              style={{ width: 80 }}
-            />
-          </div>
-          {quotationForm.lineItems?.length > 0 && (() => {
-            const sub = quotationForm.lineItems.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.unit_price) || 0), 0);
-            const tr = Number(quotationForm.tax_rate) || 0;
-            const d = Number(quotationForm.discount) || 0;
-            const calcTotal = sub - d + (sub - d) * (tr / 100);
-            return (
-              <div className="procurement-process-form-group">
-                <label>Total Price (calculated automatically)</label>
-                <div style={{ padding: '6px 8px', background: '#f5f5f5', fontWeight: 600, fontSize: '1rem' }}>
-                  {calcTotal.toFixed(2)}
+            <p className="procurement-process-step-desc">
+              No line items for this RFQ. Open <strong>View items</strong> to verify the procurement, then re-select the RFQ.
+            </p>
+          ) : (
+            <p className="procurement-process-step-desc">Select an RFQ to begin.</p>
+          )}
+
+          {quotationForm.lineItems?.length > 0 && (
+            <>
+              <div className="procurement-process-quote-summary">
+                <div className="procurement-process-field-with-label">
+                  <label htmlFor="quote-tax">Tax (%)</label>
+                  <input
+                    id="quote-tax"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    value={quotationForm.tax_rate}
+                    onChange={(e) => setQuotationForm((prev) => ({ ...prev, tax_rate: e.target.value }))}
+                  />
+                </div>
+                <div className="procurement-process-field-with-label">
+                  <label htmlFor="quote-discount">Discount</label>
+                  <input
+                    id="quote-discount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    value={quotationForm.discount}
+                    onChange={(e) => setQuotationForm((prev) => ({ ...prev, discount: e.target.value }))}
+                  />
+                </div>
+                <div className="procurement-process-field-with-label">
+                  <label htmlFor="quote-delivery">Delivery (days)</label>
+                  <input
+                    id="quote-delivery"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    value={quotationForm.delivery_time_days}
+                    onChange={(e) => setQuotationForm((prev) => ({ ...prev, delivery_time_days: e.target.value }))}
+                  />
+                </div>
+                <div className="procurement-process-field-with-label">
+                  <label>Subtotal</label>
+                  <div className="procurement-process-readonly-value procurement-process-readonly-value--muted">
+                    {quotationCalcTotals.sub.toFixed(2)}
+                  </div>
+                </div>
+                <div className="procurement-process-field-with-label">
+                  <label>Total</label>
+                  <div className="procurement-process-readonly-value">
+                    {quotationCalcTotals.total.toFixed(2)}
+                  </div>
                 </div>
               </div>
-            );
-          })()}
-          <div className="procurement-process-form-group procurement-process-row-two">
-            <label>Delivery Days</label>
-            <input
-              type="number"
-              min="0"
-              step="1"
-              placeholder="Delivery Days"
-              value={quotationForm.delivery_time_days}
-              onChange={(e) => setQuotationForm((prev) => ({ ...prev, delivery_time_days: e.target.value }))}
-            />
-          </div>
-          <div className="procurement-process-form-group">
-            <label htmlFor="quotation-scanned-doc">Scanned Quotation (PDF or Image)</label>
-            <input
-              id="quotation-scanned-doc"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
-              onChange={(e) => setQuotationForm((prev) => ({ ...prev, scanned_file: e.target.files?.[0] || null }))}
-            />
-            {quotationForm.scanned_file && (
-              <span className="procurement-process-file-hint">{quotationForm.scanned_file.name}</span>
-            )}
-            {quotationForm.existing_scanned_document && !quotationForm.scanned_file && (
-              <div>
-                <span className="procurement-process-file-hint">Current document: </span>
-                <a
-                  href={getResourceUrl('QUOTATION_DOCUMENT', quotationForm.existing_scanned_document)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ marginLeft: 4 }}
-                >
-                  View document
-                </a>
+              <div className="procurement-process-field-with-label procurement-process-quote-file-row">
+                <label htmlFor="quotation-scanned-doc">Scanned quotation (PDF or image)</label>
+                <input
+                  id="quotation-scanned-doc"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={(e) => setQuotationForm((prev) => ({ ...prev, scanned_file: e.target.files?.[0] || null }))}
+                />
+                {quotationForm.scanned_file && (
+                  <span className="procurement-process-file-hint">{quotationForm.scanned_file.name}</span>
+                )}
+                {quotationForm.existing_scanned_document && !quotationForm.scanned_file && (
+                  <div>
+                    <span className="procurement-process-file-hint">Current: </span>
+                    <a
+                      href={getResourceUrl('QUOTATION_DOCUMENT', quotationForm.existing_scanned_document)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View document
+                    </a>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          <button type="button" disabled={creatingQuotation} onClick={handleCreateQuotation}>
-            {creatingQuotation ? 'Saving Quotation...' : 'Save Quotation'}
-          </button>
+              <div className="procurement-process-form-actions">
+                <button
+                  type="button"
+                  disabled={creatingQuotation || !quotationForm.supplier_id}
+                  onClick={handleCreateQuotation}
+                >
+                  {creatingQuotation ? 'Saving…' : 'Save quotation'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1710,12 +1923,21 @@ const ProcurementProcess = () => {
 
       {(activeTab === 'eval' || activeTab === 'tech' || activeTab === 'finalize') && (
         <div className="procurement-process-step procurement-process-stack-md">
-          <select value={selectedRfqId} onChange={(e) => setSelectedRfqId(e.target.value)}>
-            <option value="">Select RFQ</option>
-            {rfqs.map((rfq) => (
-              <option key={rfq.id} value={rfq.id}>{rfq.rfq_no} ({rfq.status})</option>
-            ))}
-          </select>
+          <div className="procurement-process-toolbar">
+            <div className="procurement-process-field-with-label" style={{ flex: '1 1 220px', maxWidth: '24rem' }}>
+              <label htmlFor="eval-rfq-select">RFQ</label>
+              <select
+                id="eval-rfq-select"
+                value={selectedRfqId}
+                onChange={(e) => setSelectedRfqId(e.target.value)}
+              >
+                <option value="">Select RFQ…</option>
+                {rfqs.map((rfq) => (
+                  <option key={rfq.id} value={rfq.id}>{rfq.rfq_no} ({rfq.status})</option>
+                ))}
+              </select>
+            </div>
+          </div>
           <table width="100%" cellPadding="6">
             <thead>
               <tr>
@@ -1779,117 +2001,185 @@ const ProcurementProcess = () => {
               })}
             </tbody>
           </table>
-        </div>
-      )}
 
-      {activeTab === 'eval' && (
-        <div className="procurement-process-stack-sm procurement-process-step procurement-process-mt">
-          <h4>Commercial Evaluation</h4>
-          <select
-            value={evaluationForm.quotation_id}
-            onChange={(e) => setEvaluationForm((prev) => ({ ...prev, quotation_id: e.target.value }))}
-          >
-            <option value="">Select Quotation</option>
-            {quotations.map((q) => <option key={q.id} value={q.id}>{q.quotation_no} - {q.supplier_name}</option>)}
-          </select>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Score"
-            value={evaluationForm.score}
-            onChange={(e) => setEvaluationForm((prev) => ({ ...prev, score: e.target.value }))}
-          />
-          <textarea
-            rows={2}
-            placeholder="Comments"
-            value={evaluationForm.comments}
-            onChange={(e) => setEvaluationForm((prev) => ({ ...prev, comments: e.target.value }))}
-          />
-          <button type="button" onClick={handleSaveEvaluation}>Save Evaluation</button>
-        </div>
-      )}
+          {activeTab === 'eval' && (
+            <div className="procurement-process-subpanel">
+              <div className="procurement-process-heading-row">
+                <h4>Commercial Evaluation</h4>
+              </div>
+              <div className="procurement-process-toolbar">
+                <div className="procurement-process-field-with-label" style={{ flex: '1 1 220px', maxWidth: '26rem' }}>
+                  <label htmlFor="eval-quote-select">Quotation</label>
+                  <select
+                    id="eval-quote-select"
+                    value={evaluationForm.quotation_id}
+                    onChange={(e) => setEvaluationForm((prev) => ({ ...prev, quotation_id: e.target.value }))}
+                  >
+                    <option value="">Select quotation…</option>
+                    {quotations.map((q) => (
+                      <option key={q.id} value={q.id}>{q.quotation_no} - {q.supplier_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="procurement-process-field-with-label" style={{ flex: '0 0 7rem', maxWidth: '7rem' }}>
+                  <label htmlFor="eval-score">Score</label>
+                  <input
+                    id="eval-score"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="0"
+                    value={evaluationForm.score}
+                    onChange={(e) => setEvaluationForm((prev) => ({ ...prev, score: e.target.value }))}
+                  />
+                </div>
+              </div>
+              <div className="procurement-process-field-with-label">
+                <label htmlFor="eval-comments">Comments</label>
+                <textarea
+                  id="eval-comments"
+                  rows={2}
+                  placeholder="Commercial evaluation comments…"
+                  value={evaluationForm.comments}
+                  onChange={(e) => setEvaluationForm((prev) => ({ ...prev, comments: e.target.value }))}
+                />
+              </div>
+              <div className="procurement-process-form-actions">
+                <button type="button" onClick={handleSaveEvaluation}>Save evaluation</button>
+              </div>
+            </div>
+          )}
 
-      {activeTab === 'tech' && (
-        <div className="procurement-process-stack-sm procurement-process-step procurement-process-mt">
-          <h4>Technical Evaluation</h4>
-          <select
-            value={techForm.quotation_id}
-            onChange={(e) => setTechForm((prev) => ({ ...prev, quotation_id: e.target.value }))}
-          >
-            <option value="">Select Quotation</option>
-            {quotations.map((q) => <option key={q.id} value={q.id}>{q.quotation_no} - {q.supplier_name}</option>)}
-          </select>
-          <select value={techForm.status} onChange={(e) => setTechForm((prev) => ({ ...prev, status: e.target.value }))}>
-            <option value="pending">Pending</option>
-            <option value="pass">Pass</option>
-            <option value="fail">Fail</option>
-          </select>
-          <textarea
-            rows={2}
-            placeholder="Comments"
-            value={techForm.comments}
-            onChange={(e) => setTechForm((prev) => ({ ...prev, comments: e.target.value }))}
-          />
-          <button type="button" onClick={handleSaveTechEvaluation}>Save Tech Evaluation</button>
-        </div>
-      )}
+          {activeTab === 'tech' && (
+            <div className="procurement-process-subpanel">
+              <div className="procurement-process-heading-row">
+                <h4>Technical Evaluation</h4>
+              </div>
+              <div className="procurement-process-toolbar">
+                <div className="procurement-process-field-with-label" style={{ flex: '1 1 220px', maxWidth: '26rem' }}>
+                  <label htmlFor="tech-quote-select">Quotation</label>
+                  <select
+                    id="tech-quote-select"
+                    value={techForm.quotation_id}
+                    onChange={(e) => setTechForm((prev) => ({ ...prev, quotation_id: e.target.value }))}
+                  >
+                    <option value="">Select quotation…</option>
+                    {quotations.map((q) => (
+                      <option key={q.id} value={q.id}>{q.quotation_no} - {q.supplier_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="procurement-process-field-with-label" style={{ flex: '0 0 9rem', maxWidth: '9rem' }}>
+                  <label htmlFor="tech-status-select">Status</label>
+                  <select
+                    id="tech-status-select"
+                    value={techForm.status}
+                    onChange={(e) => setTechForm((prev) => ({ ...prev, status: e.target.value }))}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="pass">Pass</option>
+                    <option value="fail">Fail</option>
+                  </select>
+                </div>
+              </div>
+              <div className="procurement-process-field-with-label">
+                <label htmlFor="tech-comments">Comments</label>
+                <textarea
+                  id="tech-comments"
+                  rows={2}
+                  placeholder="Technical evaluation comments…"
+                  value={techForm.comments}
+                  onChange={(e) => setTechForm((prev) => ({ ...prev, comments: e.target.value }))}
+                />
+              </div>
+              <div className="procurement-process-form-actions">
+                <button type="button" onClick={handleSaveTechEvaluation}>Save tech evaluation</button>
+              </div>
+            </div>
+          )}
 
-      {activeTab === 'finalize' && (
-        <div className="procurement-process-stack-sm procurement-process-step procurement-process-mt">
-          <h4>Finalize Quotations</h4>
-          {selectedRfq?.status === 'finalized' ? (
-            <div className="procurement-process-step-desc">
-              This RFQ has been finalized.
-              {(() => {
-                const winning = quotations.find((q) => q.status === 'selected');
-                return winning?.supplier_name ? (
-                  <span> Winning supplier: <strong>{winning.supplier_name}</strong></span>
-                ) : null;
-              })()}
-              {selectedRfq.finalized_by_name && (
-                <span> Finalized by: <strong>{selectedRfq.finalized_by_name}</strong></span>
-              )}
-              {selectedRfq.finalized_at && (
-                <span> on {new Date(selectedRfq.finalized_at).toLocaleString()}</span>
+          {activeTab === 'finalize' && (
+            <div className="procurement-process-subpanel">
+              <div className="procurement-process-heading-row">
+                <h4>Finalize Quotations</h4>
+              </div>
+              {selectedRfq?.status === 'finalized' ? (
+                <div className="procurement-process-step-desc">
+                  This RFQ has been finalized.
+                  {(() => {
+                    const winning = quotations.find((q) => q.status === 'selected');
+                    return winning?.supplier_name ? (
+                      <span> Winning supplier: <strong>{winning.supplier_name}</strong></span>
+                    ) : null;
+                  })()}
+                  {selectedRfq.finalized_by_name && (
+                    <span> Finalized by: <strong>{selectedRfq.finalized_by_name}</strong></span>
+                  )}
+                  {selectedRfq.finalized_at && (
+                    <span> on {new Date(selectedRfq.finalized_at).toLocaleString()}</span>
+                  )}
+                </div>
+              ) : (
+                <div className="procurement-process-toolbar">
+                  <div className="procurement-process-field-with-label" style={{ flex: '1 1 260px', maxWidth: '32rem' }}>
+                    <label htmlFor="finalize-quote-select">Winning quotation</label>
+                    <select
+                      id="finalize-quote-select"
+                      value={finalizeQuotationId}
+                      onChange={(e) => setFinalizeQuotationId(e.target.value)}
+                    >
+                      <option value="">Select winning quotation…</option>
+                      {quotations.map((q) => (
+                        <option key={q.id} value={q.id}>{q.quotation_no} - {q.supplier_name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button type="button" onClick={handleFinalize}>Finalize selected</button>
+                </div>
               )}
             </div>
-          ) : (
-            <>
-              <select value={finalizeQuotationId} onChange={(e) => setFinalizeQuotationId(e.target.value)}>
-                <option value="">Select Winning Quotation</option>
-                {quotations.map((q) => <option key={q.id} value={q.id}>{q.quotation_no} - {q.supplier_name}</option>)}
-              </select>
-              <button type="button" onClick={handleFinalize}>Finalize Selected Quotation</button>
-            </>
           )}
         </div>
       )}
 
       {activeTab === 'po' && (
         <div className="procurement-process-step procurement-process-stack-md">
-          <h4>Purchasing Order Issue</h4>
-          <p className="procurement-process-step-desc">Select a finalized procurement to create a purchase order from the finalized quotation.</p>
-          <select
-            value={poForm.procurement_request_id}
-            onChange={(e) => setPoForm((prev) => ({
-              ...prev,
-              procurement_request_id: e.target.value,
-              quotation_id: '',
-              supplier_id: '',
-              tax_rate: '',
-              discount: '',
-              notes: '',
-              lineItems: [],
-            }))}
-          >
-            <option value="">Select Finalized Procurement</option>
-            {finalizedProcurementsForPo.map((row) => (
-              <option key={row.id} value={row.id}>
-                {row.procurement_no}
-              </option>
-            ))}
-          </select>
+          <div className="procurement-process-heading-row">
+            <div>
+              <h4>Purchasing Order Issue</h4>
+              <p className="procurement-process-step-desc">Select a finalized procurement to create a purchase order from the finalized quotation.</p>
+            </div>
+          </div>
+          <div className="procurement-process-toolbar">
+            <div className="procurement-process-field-with-label" style={{ flex: '1 1 240px', maxWidth: '28rem' }}>
+              <label htmlFor="po-procurement-select">Finalized procurement</label>
+              <select
+                id="po-procurement-select"
+                value={poForm.procurement_request_id}
+                onChange={(e) => {
+                  poQuotationPricesAppliedRef.current = null;
+                  setPoQuotationDetail(null);
+                  setPoForm((prev) => ({
+                    ...prev,
+                    procurement_request_id: e.target.value,
+                    quotation_id: '',
+                    supplier_id: '',
+                    tax_rate: '',
+                    discount: '',
+                    notes: '',
+                    lineItems: [],
+                  }));
+                }}
+              >
+                <option value="">Select finalized procurement…</option>
+                {finalizedProcurementsForPo.map((row) => (
+                  <option key={row.id} value={row.id}>
+                    {row.procurement_no}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
           {selectedProcurementRequest?.items?.length > 0 && (
             <div className="procurement-process-panel">
               <strong>Procurement Items</strong>
@@ -1899,9 +2189,9 @@ const ProcurementProcess = () => {
             </div>
           )}
           {finalizedQuotationForPo ? (
-            <div className="procurement-process-panel">
-              <strong>Finalized Quotation (Selected Supplier)</strong>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div className="procurement-process-panel procurement-process-panel-rounded">
+              <strong>Finalized quotation (supplier demand)</strong>
+              <div className="procurement-process-meta-grid">
                 <div>
                   <strong>Supplier:</strong> {finalizedQuotationForPo.supplier_name}
                 </div>
@@ -1909,8 +2199,22 @@ const ProcurementProcess = () => {
                   <strong>Quotation No:</strong> {finalizedQuotationForPo.quotation_no}
                 </div>
                 <div>
-                  <strong>Total Price:</strong> {finalizedQuotationForPo.total_price}
+                  <strong>Quoted total:</strong>{' '}
+                  {Number(
+                    poQuotationDetail?.total_price ?? finalizedQuotationForPo.total_price ?? 0
+                  ).toFixed(2)}
                 </div>
+                <div>
+                  <strong>Tax:</strong> {poQuoteTotals.taxRate.toFixed(2)}%
+                </div>
+                <div>
+                  <strong>Discount:</strong> {poQuoteTotals.discount.toFixed(2)}
+                </div>
+                {poQuotationDetail?.delivery_time_days != null && (
+                  <div>
+                    <strong>Delivery:</strong> {poQuotationDetail.delivery_time_days} days
+                  </div>
+                )}
                 {finalizedQuotationForPo.scanned_document && (
                   <div>
                     <strong>Document:</strong>{' '}
@@ -1944,26 +2248,46 @@ const ProcurementProcess = () => {
             <div className="procurement-process-step-desc">No finalized quotation found for this procurement.</div>
           ) : null}
           {poForm.lineItems?.length > 0 && (
-            <div className="procurement-process-panel">
-              <strong>Line items – enter unit price per item</strong>
+            <div className="procurement-process-panel procurement-process-panel-rounded">
+              <strong>Line items — quotation vs PO price</strong>
+              <p className="procurement-process-step-desc">
+                Quoted unit price is what the selected supplier demanded. PO unit price is pre-filled from that quote and can be adjusted if needed.
+              </p>
               <table width="100%" cellPadding="6">
                 <thead>
                   <tr>
                     <th>Item</th>
-                    <th>Quantity</th>
-                    <th>Unit Price</th>
-                    <th>Amount</th>
+                    <th>Qty</th>
+                    <th>Quoted unit price</th>
+                    <th>Quoted amount</th>
+                    <th>PO unit price</th>
+                    <th>PO amount</th>
                   </tr>
                 </thead>
                 <tbody>
                   {poForm.lineItems.map((item, idx) => {
                     const qty = Number(item.quantity) || 0;
+                    const quotedUp = item.quoted_unit_price !== '' && item.quoted_unit_price != null
+                      ? Number(item.quoted_unit_price)
+                      : null;
                     const up = item.unit_price ? Number(item.unit_price) : 0;
+                    const quotedAmount = quotedUp != null ? qty * quotedUp : null;
                     const amount = qty * up;
                     return (
                       <tr key={item.inventory_item_id || idx}>
-                        <td>{item.item_name || item.item_code}</td>
+                        <td>
+                          {item.item_name || item.item_code}
+                          {item.item_code && item.item_name ? (
+                            <div className="procurement-process-step-desc">{item.item_code}</div>
+                          ) : null}
+                        </td>
                         <td>{qty}</td>
+                        <td className="procurement-process-quote-price-cell">
+                          {quotedUp != null ? quotedUp.toFixed(2) : '—'}
+                        </td>
+                        <td className="procurement-process-quote-price-cell">
+                          {quotedAmount != null ? quotedAmount.toFixed(2) : '—'}
+                        </td>
                         <td>
                           <input
                             type="number"
@@ -1979,7 +2303,6 @@ const ProcurementProcess = () => {
                                 ),
                               }));
                             }}
-                            style={{ width: 100 }}
                             placeholder="0.00"
                           />
                         </td>
@@ -1989,6 +2312,32 @@ const ProcurementProcess = () => {
                   })}
                 </tbody>
               </table>
+              <div className="procurement-process-quote-summary procurement-process-po-totals">
+                <div className="procurement-process-field-with-label">
+                  <label>Quoted subtotal</label>
+                  <div className="procurement-process-readonly-value procurement-process-readonly-value--muted">
+                    {poQuoteTotals.quotedSub.toFixed(2)}
+                  </div>
+                </div>
+                <div className="procurement-process-field-with-label">
+                  <label>Quoted total (tax/disc.)</label>
+                  <div className="procurement-process-readonly-value procurement-process-readonly-value--muted">
+                    {poQuoteTotals.quotedTotal.toFixed(2)}
+                  </div>
+                </div>
+                <div className="procurement-process-field-with-label">
+                  <label>PO subtotal</label>
+                  <div className="procurement-process-readonly-value">
+                    {poQuoteTotals.poSub.toFixed(2)}
+                  </div>
+                </div>
+                <div className="procurement-process-field-with-label">
+                  <label>PO total (same tax/disc.)</label>
+                  <div className="procurement-process-readonly-value">
+                    {poQuoteTotals.poTotal.toFixed(2)}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
           {selectedProcurementFullyReceived && (
@@ -1996,13 +2345,15 @@ const ProcurementProcess = () => {
               This procurement has been fully received. No need to issue another purchase order.
             </p>
           )}
-          <button
-            type="button"
-            disabled={creatingPo || !finalizedQuotationForPo || !poForm.procurement_request_id || selectedProcurementFullyReceived}
-            onClick={handleCreatePo}
-          >
-            {creatingPo ? 'Creating PO...' : 'Issue Purchase Order'}
-          </button>
+          <div className="procurement-process-form-actions">
+            <button
+              type="button"
+              disabled={creatingPo || !finalizedQuotationForPo || !poForm.procurement_request_id || selectedProcurementFullyReceived}
+              onClick={handleCreatePo}
+            >
+              {creatingPo ? 'Creating PO…' : 'Issue purchase order'}
+            </button>
+          </div>
 
           <table width="100%" cellPadding="6">
             <thead>
@@ -2011,6 +2362,7 @@ const ProcurementProcess = () => {
                 <th>Procurement No</th>
                 <th>Supplier</th>
                 <th>Status</th>
+                <th>Payment</th>
                 <th>Items</th>
                 <th>Received Qty</th>
                 <th>Action</th>
@@ -2023,6 +2375,25 @@ const ProcurementProcess = () => {
                   <td>{po.procurement_no}</td>
                   <td>{po.supplier_name}</td>
                   <td>{po.status}</td>
+                  <td>
+                    {(() => {
+                      const map = {
+                        not_create: 'Not vouchered',
+                        pending: 'Pending MD',
+                        approved: 'Approved',
+                        paid: 'Paid',
+                        declined: 'Declined',
+                        finance_declined: 'Finance declined',
+                      };
+                      const label = map[po.voucher_status] || 'Not vouchered';
+                      return (
+                        <span title={po.voucher_no || ''}>
+                          {label}
+                          {po.voucher_no ? ` (${po.voucher_no})` : ''}
+                        </span>
+                      );
+                    })()}
+                  </td>
                   <td>{po.item_count}</td>
                   <td>{po.total_received_qty || 0}</td>
                   <td>
@@ -2047,17 +2418,28 @@ const ProcurementProcess = () => {
 
       {activeTab === 'grn' && (
         <div className="procurement-process-step procurement-process-stack-md">
-          <h4>Goods Received Note</h4>
-          <select value={selectedPoId} onChange={(e) => setSelectedPoId(e.target.value)}>
-            <option value="">Select Purchase Order</option>
-            {purchaseOrders.map((po) => (
-              <option key={po.id} value={po.id}>{po.po_no} ({po.status})</option>
-            ))}
-          </select>
+          <div className="procurement-process-heading-row">
+            <h4>Goods Received Note</h4>
+          </div>
+          <div className="procurement-process-toolbar">
+            <div className="procurement-process-field-with-label">
+              <label htmlFor="grn-po-select">Purchase order</label>
+              <select
+                id="grn-po-select"
+                value={selectedPoId}
+                onChange={(e) => setSelectedPoId(e.target.value)}
+              >
+                <option value="">Select purchase order…</option>
+                {purchaseOrders.map((po) => (
+                  <option key={po.id} value={po.id}>{po.po_no} ({po.status})</option>
+                ))}
+              </select>
+            </div>
+          </div>
           {selectedPurchaseOrder?.items?.length > 0 && (
             <>
             <div className="procurement-process-panel procurement-process-panel-rounded">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="procurement-process-heading-row" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                 <strong>Purchase Order Details</strong>
                 <button
                   type="button"
@@ -2067,19 +2449,21 @@ const ProcurementProcess = () => {
                   View / Download PO
                 </button>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <div className="procurement-process-meta-grid">
                 <div>
-                  <strong>PO #:</strong> {selectedPurchaseOrder.po_no} &nbsp;|&nbsp;
+                  <strong>PO #:</strong> {selectedPurchaseOrder.po_no}
+                </div>
+                <div>
                   <strong>Procurement:</strong> {selectedPurchaseOrder.procurement_no || '-'}
                 </div>
                 <div>
                   <strong>Date:</strong> {selectedPurchaseOrder.created_at ? formatDateDisplay(selectedPurchaseOrder.created_at) : '-'}
                 </div>
-              </div>
-              <div>
-                <strong>Supplier:</strong> {selectedPurchaseOrder.supplier_name || '-'}
-                {selectedPurchaseOrder.contact_person && ` | ${selectedPurchaseOrder.contact_person}`}
-                {selectedPurchaseOrder.email && ` | ${selectedPurchaseOrder.email}`}
+                <div>
+                  <strong>Supplier:</strong> {selectedPurchaseOrder.supplier_name || '-'}
+                  {selectedPurchaseOrder.contact_person ? ` · ${selectedPurchaseOrder.contact_person}` : ''}
+                  {selectedPurchaseOrder.email ? ` · ${selectedPurchaseOrder.email}` : ''}
+                </div>
               </div>
               <table width="100%" cellPadding="6">
                 <thead>
@@ -2126,12 +2510,24 @@ const ProcurementProcess = () => {
                 <strong>Delivery & Inspection Details (optional)</strong>
                 <div className="procurement-process-row-two">
                   <div className="procurement-process-field-with-label">
-                    <label>Received at (Warehouse)</label>
-                    <input
+                    <label htmlFor="grn-received-at">Received at (Warehouse)</label>
+                    <select
+                      id="grn-received-at"
                       value={grnForm.received_at_location}
                       onChange={(e) => setGrnForm((p) => ({ ...p, received_at_location: e.target.value }))}
-                      placeholder="Warehouse / Location"
-                    />
+                    >
+                      <option value="">Select work location…</option>
+                      {workLocations.map((loc) => {
+                        const name = String(loc.locationName || loc.locationCode || '').trim();
+                        if (!name) return null;
+                        const code = String(loc.locationCode || '').trim();
+                        return (
+                          <option key={loc.id || code || name} value={name}>
+                            {code && code !== name ? `${name} (${code})` : name}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                   <div className="procurement-process-field-with-label">
                     <label>Supplier Invoice No.</label>
@@ -2237,14 +2633,20 @@ const ProcurementProcess = () => {
 
               {/* Item rows */}
               <strong>Items</strong>
-              <table width="100%" cellPadding="6">
+              <p className="procurement-process-step-desc">
+                Split each received qty: Accept + Return replace + Return refund + Out of use.
+                Received and the disposition sum cannot exceed Pending for that row.
+              </p>
+              <table width="100%" cellPadding="6" className="procurement-grn-disposition-table">
                 <thead>
                   <tr>
                     <th>Item</th>
                     <th>Received</th>
-                    <th>Rejected</th>
-                    <th>Damaged</th>
-                    <th>Remarks / Condition</th>
+                    <th>Accept</th>
+                    <th>Return replace</th>
+                    <th>Return refund</th>
+                    <th>Out of use</th>
+                    <th>Remarks</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2252,11 +2654,113 @@ const ProcurementProcess = () => {
                     const poQty = Number(item.quantity) || 0;
                     const alreadyReceived = Number(item.received_qty) || 0;
                     const pending = Math.max(0, poQty - alreadyReceived);
+                    const row = grnItemMap[item.id] || {};
+                    const receivedQty = Number(row.received_qty) || 0;
+                    const acceptedQty = Number(row.accepted_qty) || 0;
+                    const replaceQty = Number(row.return_replacement_qty) || 0;
+                    const refundQty = Number(row.return_refund_qty) || 0;
+                    const outQty = Number(row.out_of_use_qty) || 0;
+                    const dispositionSum = acceptedQty + replaceQty + refundQty + outQty;
+                    const balanced =
+                      receivedQty === 0 || Math.abs(dispositionSum - receivedQty) < 0.001;
+                    const roundQty = (n) => Math.round(Number(n) * 100) / 100;
+                    const setField = (field, value) => {
+                      setGrnItemMap((prev) => {
+                        const cur = { ...(prev[item.id] || {}) };
+                        const raw = value === '' ? '' : value;
+                        const num = raw === '' ? 0 : Number(raw);
+                        const dispositionFields = [
+                          'accepted_qty',
+                          'return_replacement_qty',
+                          'return_refund_qty',
+                          'out_of_use_qty',
+                        ];
+
+                        if (field === 'received_qty') {
+                          if (raw === '') {
+                            cur.received_qty = '';
+                            return { ...prev, [item.id]: cur };
+                          }
+                          const nextReceived = roundQty(Math.max(0, Math.min(num || 0, pending)));
+                          cur.received_qty = String(nextReceived);
+                          const a = Number(cur.accepted_qty) || 0;
+                          const rp = Number(cur.return_replacement_qty) || 0;
+                          const rf = Number(cur.return_refund_qty) || 0;
+                          const ou = Number(cur.out_of_use_qty) || 0;
+                          const sum = a + rp + rf + ou;
+                          if (sum === 0 && nextReceived > 0) {
+                            cur.accepted_qty = String(nextReceived);
+                          } else if (sum > nextReceived) {
+                            // Keep disposition within received (prefer reducing accept)
+                            let overflow = roundQty(sum - nextReceived);
+                            const reduce = (key) => {
+                              if (overflow <= 0) return;
+                              const curVal = Number(cur[key]) || 0;
+                              const cut = Math.min(curVal, overflow);
+                              cur[key] = String(roundQty(curVal - cut));
+                              overflow = roundQty(overflow - cut);
+                            };
+                            reduce('accepted_qty');
+                            reduce('return_replacement_qty');
+                            reduce('return_refund_qty');
+                            reduce('out_of_use_qty');
+                          }
+                          return { ...prev, [item.id]: cur };
+                        }
+
+                        if (dispositionFields.includes(field)) {
+                          if (raw === '') {
+                            cur[field] = '';
+                            const a = Number(cur.accepted_qty) || 0;
+                            const rp = Number(cur.return_replacement_qty) || 0;
+                            const rf = Number(cur.return_refund_qty) || 0;
+                            const ou = Number(cur.out_of_use_qty) || 0;
+                            const sum = a + rp + rf + ou;
+                            if (sum > 0 && !(Number(cur.received_qty) > 0)) {
+                              cur.received_qty = String(Math.min(sum, pending));
+                            }
+                            return { ...prev, [item.id]: cur };
+                          }
+                          const others = dispositionFields
+                            .filter((k) => k !== field)
+                            .reduce((s, k) => s + (Number(cur[k]) || 0), 0);
+                          const receivedCap = Number(cur.received_qty) > 0
+                            ? Number(cur.received_qty)
+                            : pending;
+                          const maxForField = roundQty(Math.max(0, Math.min(pending, receivedCap) - others));
+                          const nextVal = roundQty(Math.max(0, Math.min(num || 0, maxForField)));
+                          cur[field] = String(nextVal);
+                          const sum = others + nextVal;
+                          if (!(Number(cur.received_qty) > 0) && sum > 0) {
+                            cur.received_qty = String(Math.min(sum, pending));
+                            if (sum === nextVal) {
+                              // only this field filled — keep received = this field
+                            }
+                          } else if (Number(cur.received_qty) > 0 && sum > Number(cur.received_qty)) {
+                            cur.received_qty = String(Math.min(sum, pending));
+                          }
+                          return { ...prev, [item.id]: cur };
+                        }
+
+                        cur[field] = value;
+                        return { ...prev, [item.id]: cur };
+                      });
+                    };
                     return (
                     <tr key={item.id}>
                       <td>
                         {item.item_code} - {item.item_name}
-                        <div className="procurement-process-step-desc">PO Qty: {item.quantity} | Received: {item.received_qty} | <strong>Pending: {pending}</strong></div>
+                        <div className="procurement-process-step-desc">
+                          PO Qty: {item.quantity} | Closed: {item.received_qty} |{' '}
+                          <strong>Pending: {pending}</strong>
+                          {receivedQty > 0 ? (
+                            <>
+                              {' '}
+                              | Split: {dispositionSum}/{receivedQty}
+                              {!balanced ? ' (must match)' : ''}
+                            </>
+                          ) : null}
+                        </div>
                       </td>
                       <td>
                         <input
@@ -2267,11 +2771,8 @@ const ProcurementProcess = () => {
                           step="0.01"
                           placeholder="0"
                           title={`Max: ${pending}`}
-                          value={grnItemMap[item.id]?.received_qty ?? ''}
-                          onChange={(e) => setGrnItemMap((prev) => ({
-                            ...prev,
-                            [item.id]: { ...(prev[item.id] || {}), received_qty: e.target.value },
-                          }))}
+                          value={row.received_qty ?? ''}
+                          onChange={(e) => setField('received_qty', e.target.value)}
                         />
                       </td>
                       <td>
@@ -2279,14 +2780,12 @@ const ProcurementProcess = () => {
                           type="number"
                           inputMode="decimal"
                           min="0"
+                          max={Math.max(0, (receivedQty || pending) - (replaceQty + refundQty + outQty))}
                           step="0.01"
                           placeholder="0"
-                          title="Qty rejected"
-                          value={grnItemMap[item.id]?.rejected_qty ?? ''}
-                          onChange={(e) => setGrnItemMap((prev) => ({
-                            ...prev,
-                            [item.id]: { ...(prev[item.id] || {}), rejected_qty: e.target.value },
-                          }))}
+                          title={`Usable - goes to stock (max ${Math.max(0, (receivedQty || pending) - (replaceQty + refundQty + outQty))})`}
+                          value={row.accepted_qty ?? ''}
+                          onChange={(e) => setField('accepted_qty', e.target.value)}
                         />
                       </td>
                       <td>
@@ -2294,26 +2793,46 @@ const ProcurementProcess = () => {
                           type="number"
                           inputMode="decimal"
                           min="0"
+                          max={Math.max(0, (receivedQty || pending) - (acceptedQty + refundQty + outQty))}
                           step="0.01"
                           placeholder="0"
-                          title="Qty damaged"
-                          value={grnItemMap[item.id]?.damaged_qty ?? ''}
-                          onChange={(e) => setGrnItemMap((prev) => ({
-                            ...prev,
-                            [item.id]: { ...(prev[item.id] || {}), damaged_qty: e.target.value },
-                          }))}
+                          title={`Return replace (max ${Math.max(0, (receivedQty || pending) - (acceptedQty + refundQty + outQty))})`}
+                          value={row.return_replacement_qty ?? ''}
+                          onChange={(e) => setField('return_replacement_qty', e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          max={Math.max(0, (receivedQty || pending) - (acceptedQty + replaceQty + outQty))}
+                          step="0.01"
+                          placeholder="0"
+                          title={`Return refund (max ${Math.max(0, (receivedQty || pending) - (acceptedQty + replaceQty + outQty))})`}
+                          value={row.return_refund_qty ?? ''}
+                          onChange={(e) => setField('return_refund_qty', e.target.value)}
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          min="0"
+                          max={Math.max(0, (receivedQty || pending) - (acceptedQty + replaceQty + refundQty))}
+                          step="0.01"
+                          placeholder="0"
+                          title={`Out of use (max ${Math.max(0, (receivedQty || pending) - (acceptedQty + replaceQty + refundQty))})`}
+                          value={row.out_of_use_qty ?? ''}
+                          onChange={(e) => setField('out_of_use_qty', e.target.value)}
                         />
                       </td>
                       <td>
                         <input
                           type="text"
-                          value={grnItemMap[item.id]?.remarks_condition_damage ?? ''}
-                          onChange={(e) => setGrnItemMap((prev) => ({
-                            ...prev,
-                            [item.id]: { ...(prev[item.id] || {}), remarks_condition_damage: e.target.value },
-                          }))}
-                          placeholder="Condition / Damage notes"
-                          style={{ minWidth: 120 }}
+                          value={row.remarks_condition_damage ?? ''}
+                          onChange={(e) => setField('remarks_condition_damage', e.target.value)}
+                          placeholder="Condition / reason"
                         />
                       </td>
                     </tr>
@@ -2321,9 +2840,11 @@ const ProcurementProcess = () => {
                   })}
                 </tbody>
               </table>
-              <button type="button" disabled={creatingGrn} onClick={handleCreateGrn}>
-                {creatingGrn ? 'Posting GRN...' : 'Post GRN'}
-              </button>
+              <div className="procurement-process-form-actions">
+                <button type="button" disabled={creatingGrn} onClick={handleCreateGrn}>
+                  {creatingGrn ? 'Posting GRN…' : 'Post GRN'}
+                </button>
+              </div>
             </div>
             </>
           )}
@@ -2362,6 +2883,7 @@ const ProcurementProcess = () => {
           </table>
         </div>
       )}
+      </div>
       </div>
     </AdminStockPage>
   );

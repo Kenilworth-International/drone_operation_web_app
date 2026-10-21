@@ -30,6 +30,7 @@ import {
   useGetGeneratorFuelApprovalsHistoryQuery,
   useDecideGeneratorFuelApprovalMutation,
 } from '../../../api/services NodeJs/generatorFuelApprovalsApi';
+import ZoomableImageDialog from '../../../components/ZoomableImageDialog';
 
 const formatDate = (value) => {
   if (!value) return '-';
@@ -212,7 +213,10 @@ const GeneratorFuelApprovals = ({ embedded = false }) => {
                             <Button
                               size="small"
                               startIcon={<ImageIcon />}
-                              onClick={() => setImagePreview(row.bill_image_url)}
+                              onClick={(e) => {
+                                e.currentTarget.blur();
+                                setImagePreview(row.bill_image_url);
+                              }}
                               sx={{ textTransform: 'none' }}
                             >
                               View
@@ -228,7 +232,10 @@ const GeneratorFuelApprovals = ({ embedded = false }) => {
                             <Button
                               size="small"
                               startIcon={<ImageIcon />}
-                              onClick={() => setImagePreview(row.bank_slip_image_url)}
+                              onClick={(e) => {
+                                e.currentTarget.blur();
+                                setImagePreview(row.bank_slip_image_url);
+                              }}
                               sx={{ textTransform: 'none' }}
                             >
                               View
@@ -327,24 +334,13 @@ const GeneratorFuelApprovals = ({ embedded = false }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Image preview modal */}
-      <Dialog open={!!imagePreview} onClose={() => setImagePreview(null)} maxWidth="md" fullWidth>
-        <DialogTitle>Fuel Bill</DialogTitle>
-        <DialogContent>
-          {imagePreview ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <img
-                src={imagePreview}
-                alt="Fuel bill"
-                style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }}
-              />
-            </Box>
-          ) : null}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setImagePreview(null)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+      <ZoomableImageDialog
+        open={!!imagePreview}
+        src={imagePreview}
+        title="Fuel Bill"
+        alt="Fuel bill"
+        onClose={() => setImagePreview(null)}
+      />
 
       {/* Approve confirmation modal */}
       <Dialog

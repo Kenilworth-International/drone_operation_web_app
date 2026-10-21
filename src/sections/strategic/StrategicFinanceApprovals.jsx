@@ -33,7 +33,15 @@ import {
   useApproveMaintenanceVoucherMutation,
   useDeclineMaintenanceVoucherMutation,
 } from '../../api/services NodeJs/maintenanceVoucherApi';
+import {
+  useGetPendingPurchaseOrderVouchersQuery,
+  useGetPurchaseOrderVoucherHistoryQuery,
+  useApprovePurchaseOrderVoucherMutation,
+  useDeclinePurchaseOrderVoucherMutation,
+  useGetPurchaseOrderVoucherByIdQuery,
+} from '../../api/services NodeJs/purchaseOrderVoucherApi';
 import MaintenanceVoucherPrint from '../finance/maintenance/MaintenanceVoucherPrint';
+import PurchaseOrderVoucherPrint from '../finance/purchaseOrders/PurchaseOrderVoucherPrint';
 import { getUserData } from '../../utils/authUtils';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -122,6 +130,15 @@ const StrategicFinanceApprovals = () => {
   const [approvingMaintId, setApprovingMaintId]     = useState(null);
   const [decliningMaintId, setDecliningMaintId]     = useState(null);
 
+  // Purchase order voucher state
+  const [poTab, setPoTab] = useState(0);
+  const [poSearch, setPoSearch] = useState('');
+  const [poApproveConfirm, setPoApproveConfirm] = useState(null);
+  const [poDecline, setPoDecline] = useState(null);
+  const [poPrintId, setPoPrintId] = useState(null);
+  const [approvingPoId, setApprovingPoId] = useState(null);
+  const [decliningPoId, setDecliningPoId] = useState(null);
+
   const { data: transportPending = [], isLoading: transportPendingLoading, refetch: refetchTransportPending } =
     useGetPendingFuelTransportVouchersQuery();
   const { data: transportHistory = [], isLoading: transportHistoryLoading, refetch: refetchTransportHistory } =
@@ -172,6 +189,14 @@ const StrategicFinanceApprovals = () => {
 
   const isVehicleFuel = fuelSource === 'vehicle';
   const fuelSourceLabel = isVehicleFuel ? 'Vehicle Fuel' : 'Generator Fuel';
+  const { data: poPending = [], isLoading: poPendingLoading, refetch: refetchPoPending } =
+    useGetPendingPurchaseOrderVouchersQuery();
+  const { data: poHistory = [], isLoading: poHistoryLoading, refetch: refetchPoHistory } =
+    useGetPurchaseOrderVoucherHistoryQuery();
+  const [approvePoVoucher, { isLoading: approvingPo }] = useApprovePurchaseOrderVoucherMutation();
+  const [declinePoVoucher, { isLoading: decliningPo }] = useDeclinePurchaseOrderVoucherMutation();
+  const { data: poPrintDetail } = useGetPurchaseOrderVoucherByIdQuery(poPrintId, { skip: !poPrintId });
+
   const personColumnLabel = isVehicleFuel ? 'Driver' : 'Pilot';
 
   const sourceRows = fuelTab === 0 ? pending : history;
@@ -190,12 +215,23 @@ const StrategicFinanceApprovals = () => {
         refetchGeneratorHistory(),
         refetchMaintPending(),
         refetchMaintHistory(),
+        refetchPoPending(),
+        refetchPoHistory(),
       ]);
       setLastRefreshedAt(new Date());
     } finally {
       if (showSpinner) setIsRefreshing(false);
     }
-  }, [refetchTransportPending, refetchTransportHistory, refetchGeneratorPending, refetchGeneratorHistory, refetchMaintPending, refetchMaintHistory]);
+  }, [
+    refetchTransportPending,
+    refetchTransportHistory,
+    refetchGeneratorPending,
+    refetchGeneratorHistory,
+    refetchMaintPending,
+    refetchMaintHistory,
+    refetchPoPending,
+    refetchPoHistory,
+  ]);
 
   useEffect(() => {
     if (lastRefreshedAt) return;
@@ -452,6 +488,12 @@ const StrategicFinanceApprovals = () => {
               <h2 className="spm-finance-panel-title">{fuelSourceLabel} Vouchers</h2>
               <p className="spm-finance-panel-subtitle">
                 MD system approval for finance-created {isVehicleFuel ? 'vehicle fuel transport' : 'generator fuel'} vouchers
+        <button type="button" className={`financial-cards-tab${mainTab === 2 ? ' active' : ''}`} onClick={() => setMainTab(2)}>
+          Purchase Order Vouchers
+          {poPending.length > 0 ? (
+            <span className="financial-cards-tab-badge">{poPending.length}</span>
+          ) : null}
+        </button>
               </p>
             </div>
             {!isMd ? (
@@ -928,6 +970,280 @@ const StrategicFinanceApprovals = () => {
             <Box>
               <Typography variant="subtitle2" sx={{ mb: 1.5, color: '#334155' }}>
                 {detail.voucher_no} — LKR {formatFuelMoney(detail.total_amount)} ({detail.transaction_count} transaction
+      {/* ── Purchase Order Vouchers Tab ─────────────────────────────── */}
+      {mainTab === 2 ? (
+        <div className="pending-settlements-section-financial-cards spm-finance-panel-financial-cards">
+          <div className="spm-finance-panel-intro">
+            <div>
+              <h2 className="spm-finance-panel-title">Purchase Order Vouchers</h2>
+              <p className="spm-finance-panel-subtitle">
+                MD system approval for finance-created purchase order payment vouchers
+              </p>
+            </div>
+            {!isMd ? (
+              <div className="spm-finance-readonly-note">View only - MD role required to approve or decline</div>
+            ) : null}
+          </div>
+
+          <div className="settlements-tab-nav-financial-cards spm-fuel-header-row-financial-cards">
+            <div className="settlements-tab-group-financial-cards">
+              <span className="settlements-tab-group-label-financial-cards">View</span>
+              <div className="settlements-tab-pills-financial-cards">
+                <button
+                  type="button"
+                  className={`settlements-tab-pill-financial-cards${poTab === 0 ? ' active' : ''}`}
+                  onClick={() => setPoTab(0)}
+                >
+                  Pending
+                  {poPending.length > 0 ? (
+                    <span className="settlements-tab-pill-badge-financial-cards">{poPending.length}</span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className={`settlements-tab-pill-financial-cards${poTab === 1 ? ' active' : ''}`}
+                  onClick={() => setPoTab(1)}
+                >
+                  History
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="spm-finance-summary-strip">
+            <div className="spm-finance-summary-item">
+              <span className="spm-finance-summary-label">Pending approval</span>
+              <strong>{poPending.length}</strong>
+            </div>
+            <div className="spm-finance-summary-item">
+              <span className="spm-finance-summary-label">History records</span>
+              <strong>{poHistory.length}</strong>
+            </div>
+          </div>
+
+          <div className="settlements-filters-financial-cards spm-finance-search-row">
+            <input
+              type="text"
+              placeholder="Search voucher no, preparer, amount…"
+              value={poSearch}
+              onChange={(e) => setPoSearch(e.target.value)}
+              className="settlement-search-input-financial-cards"
+            />
+          </div>
+
+          {(poTab === 0 ? poPendingLoading : poHistoryLoading) ? (
+            <div className="spm-finance-loading">
+              <CircularProgress size={28} />
+              <span>Loading vouchers…</span>
+            </div>
+          ) : (() => {
+            const sourceRowsPo = poTab === 0 ? poPending : poHistory;
+            const filteredPo = poSearch.trim()
+              ? sourceRowsPo.filter((r) =>
+                  String(r.voucher_no || '').toLowerCase().includes(poSearch.toLowerCase()) ||
+                  String(r.created_by_name || r.checked_by_name || '').toLowerCase().includes(poSearch.toLowerCase()) ||
+                  String(r.total_amount || '').includes(poSearch)
+                )
+              : sourceRowsPo;
+            return (
+              <div className="settlements-table-container-financial-cards">
+                <table className="voucher-history-table-financial-cards">
+                  <thead>
+                    <tr>
+                      <th>Voucher No</th>
+                      <th>Created</th>
+                      <th>Status</th>
+                      <th>{poTab === 1 ? 'Approved / Declined By' : 'Prepared By'}</th>
+                      <th>POs</th>
+                      <th>Amount</th>
+                      {poTab === 1 ? <th>Payment</th> : null}
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPo.length === 0 ? (
+                      <tr>
+                        <td colSpan={poTab === 1 ? 8 : 7} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                          No vouchers found
+                        </td>
+                      </tr>
+                    ) : filteredPo.map((row) => (
+                      <tr key={row.id}>
+                        <td>{row.voucher_no}</td>
+                        <td>{formatDate(row.created_at)}</td>
+                        <td>
+                          <span className={`voucher-status-pill-financial-cards ${row.status}`}>
+                            {voucherStatusLabel(
+                              row.payment_status === 'paid' || Number(row.settled) === 1
+                                ? 'settled'
+                                : row.status
+                            )}
+                          </span>
+                        </td>
+                        <td>
+                          {poTab === 1
+                            ? getVoucherDecidedBy(row)
+                            : row.checked_by_name || row.created_by_name || '-'}
+                        </td>
+                        <td>{row.transaction_count || 0}</td>
+                        <td>LKR {Number(row.total_amount || 0).toFixed(2)}</td>
+                        {poTab === 1 ? (
+                          <td>{row.payment_status === 'paid' || Number(row.settled) === 1 ? 'Paid' : 'Pending pay'}</td>
+                        ) : null}
+                        <td className="voucher-history-actions-cell-financial-cards">
+                          <div className="voucher-history-actions-financial-cards">
+                            <button
+                              type="button"
+                              className="voucher-action-btn-financial-cards voucher-action-btn-outline-financial-cards"
+                              onClick={() => setPoPrintId(row.id)}
+                              title="View / Print"
+                            >
+                              <FaPrint />
+                            </button>
+                            {poTab === 0 && isMd ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className={`voucher-action-btn-financial-cards voucher-action-btn-success-financial-cards spm-approve-btn-financial-cards${approvingPo && approvingPoId === row.id ? ' is-loading' : ''}`}
+                                  onClick={() => setPoApproveConfirm(row)}
+                                  disabled={approvingPo || decliningPo}
+                                  title="Approve"
+                                >
+                                  <CheckCircleIcon fontSize="small" />
+                                  <span className="spm-action-btn-label">Approve</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`voucher-action-btn-financial-cards voucher-action-btn-danger-financial-cards spm-decline-btn-financial-cards${decliningPo && decliningPoId === row.id ? ' is-loading' : ''}`}
+                                  onClick={() => setPoDecline({ row, reason: '' })}
+                                  disabled={approvingPo || decliningPo}
+                                  title="Decline"
+                                >
+                                  <CancelIcon fontSize="small" />
+                                  <span className="spm-action-btn-label">Decline</span>
+                                </button>
+                              </>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
+          <Dialog
+            open={Boolean(poApproveConfirm)}
+            onClose={() => !approvingPo && setPoApproveConfirm(null)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{ sx: spmDialogPaperSx }}
+          >
+            <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1, fontWeight: 700, color: '#102739', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CheckCircleIcon sx={{ color: '#15803d', fontSize: 22 }} />
+              Approve Purchase Order Voucher
+            </DialogTitle>
+            <DialogContent sx={{ px: 3, pt: 1, pb: 2.5 }}>
+              <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.55 }}>
+                Confirm system approval for voucher{' '}
+                <strong>{poApproveConfirm?.voucher_no}</strong> totaling{' '}
+                <strong>LKR {Number(poApproveConfirm?.total_amount || 0).toFixed(2)}</strong>.
+              </Typography>
+            </DialogContent>
+            <DialogActions sx={spmDialogActionsSx}>
+              <Button variant="outlined" onClick={() => setPoApproveConfirm(null)} disabled={approvingPo} sx={{ textTransform: 'none', borderColor: '#cbd5e1', color: '#475569' }}>Cancel</Button>
+              <Button
+                variant="contained"
+                color="success"
+                disabled={approvingPo}
+                sx={{ textTransform: 'none', minWidth: 110, boxShadow: 'none' }}
+                onClick={async () => {
+                  setApprovingPoId(poApproveConfirm.id);
+                  try {
+                    await approvePoVoucher(poApproveConfirm.id).unwrap();
+                    setPoApproveConfirm(null);
+                    toast.success('Purchase order voucher approved');
+                    refetchPoPending();
+                    refetchPoHistory();
+                    setLastRefreshedAt(new Date());
+                  } catch (e) {
+                    toast.error(e?.data?.message || 'Failed to approve');
+                  } finally {
+                    setApprovingPoId(null);
+                  }
+                }}
+              >
+                {approvingPo ? 'Approving...' : 'Approve'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={Boolean(poDecline)}
+            onClose={() => !decliningPo && setPoDecline(null)}
+            maxWidth="sm"
+            fullWidth
+            PaperProps={{ sx: spmDialogPaperSx }}
+          >
+            <DialogTitle sx={{ px: 3, pt: 2.5, pb: 1, fontWeight: 700, color: '#102739', display: 'flex', alignItems: 'center', gap: 1 }}>
+              <CancelIcon sx={{ color: '#b91c1c', fontSize: 22 }} />
+              Decline Purchase Order Voucher
+            </DialogTitle>
+            <DialogContent sx={{ px: 3, pt: 1, pb: 2.5 }}>
+              <Typography variant="body2" sx={{ color: '#475569', lineHeight: 1.55, mb: 1.5 }}>
+                Provide a reason for declining. Finance can re-voucher these purchase orders.
+              </Typography>
+              <TextField
+                autoFocus
+                fullWidth
+                multiline
+                minRows={4}
+                placeholder="Enter reason…"
+                value={poDecline?.reason || ''}
+                onChange={(e) => setPoDecline((p) => (p ? { ...p, reason: e.target.value } : p))}
+                disabled={decliningPo}
+              />
+            </DialogContent>
+            <DialogActions sx={spmDialogActionsSx}>
+              <Button variant="outlined" onClick={() => setPoDecline(null)} disabled={decliningPo} sx={{ textTransform: 'none', borderColor: '#cbd5e1', color: '#475569' }}>Cancel</Button>
+              <Button
+                variant="contained"
+                color="error"
+                disabled={decliningPo || !poDecline?.reason?.trim()}
+                sx={{ textTransform: 'none', minWidth: 110, boxShadow: 'none' }}
+                onClick={async () => {
+                  if (!poDecline?.reason?.trim()) return;
+                  setDecliningPoId(poDecline.row.id);
+                  try {
+                    await declinePoVoucher({ id: poDecline.row.id, reason: poDecline.reason.trim() }).unwrap();
+                    setPoDecline(null);
+                    toast.success('Purchase order voucher declined');
+                    refetchPoPending();
+                    refetchPoHistory();
+                    setLastRefreshedAt(new Date());
+                  } catch (e) {
+                    toast.error(e?.data?.message || 'Failed to decline');
+                  } finally {
+                    setDecliningPoId(null);
+                  }
+                }}
+              >
+                {decliningPo ? 'Declining...' : 'Decline'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {poPrintId && poPrintDetail ? (
+            <PurchaseOrderVoucherPrint
+              voucher={poPrintDetail}
+              onClose={() => setPoPrintId(null)}
+            />
+          ) : null}
+        </div>
+      ) : null}
+
                 {(detail.transaction_count || 0) === 1 ? '' : 's'})
               </Typography>
               <div className="settlements-table-container-financial-cards">

@@ -70,7 +70,7 @@ export const baseApi = createApi({
     // Stock and Assets Management
     'Suppliers', 'MainCategories', 'SubCategories', 'InventoryItems',
     // Finance
-    'Brokers', 'PilotRevenue', 'DefaultValues', 'PlantationInvoices', 'PlantationInvoicePayments',
+    'Brokers', 'PilotRevenue', 'DefaultValues', 'PlantationInvoices', 'PlantationInvoicePayments', 'FinanceDashboard',
     // Dropdowns
     'Sectors', 'Crops', 'MissionTypes', 'TimeSlots', 'ChemicalTypes', 'Stages',
     // Notifications
@@ -103,7 +103,7 @@ export const baseApi = createApi({
     // Financial cards / fuel approvals
     'FinancialCards', 'FinancialCardTransactions', 'Transactions', 'FuelApprovals', 'FuelTransportVouchers',
     'GeneratorFuelApprovals', 'FuelGeneratorVouchers', 'FinanceMasterData', 'StrategicFinanceApprovals',
-    'MaintenanceVouchers', 'VoucherPayments',
+    'MaintenanceVouchers', 'PurchaseOrderVouchers', 'PurchaseOrderRefunds', 'VoucherPayments',
     'PayrollComponents', 'PayrollSchemes', 'PayrollAssignments', 'PayrollStatutory',
     'PayrollMail', 'PayrollPeriods', 'PayrollPayslips',
     'VehicleApp', 'PoolVehicleTasks',

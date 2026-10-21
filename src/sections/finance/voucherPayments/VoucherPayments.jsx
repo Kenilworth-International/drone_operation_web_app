@@ -9,6 +9,7 @@ import {
 } from '../../../api/services NodeJs/voucherPaymentsApi';
 import { useGetMyPermissionsQuery } from '../../../api/services NodeJs/featurePermissionsApi';
 import TransportVoucherPrint from '../financialCards/TransportVoucherPrint';
+import PurchaseOrderVoucherPrint from '../purchaseOrders/PurchaseOrderVoucherPrint';
 import {
   isGeneratorFuelVoucher,
   resolveVoucherCardsSummary,
@@ -17,6 +18,9 @@ import { isPdfProofUrl } from '../financialCards/fuelTransportVoucherUi';
 import { FEATURE_CODES } from '../../../utils/featurePermissions';
 import { isInternalDeveloper } from '../../../utils/authUtils';
 import '../../../styles/voucherPayments.css';
+
+const isPurchaseVoucher = (voucher) =>
+  String(voucher?.voucher_type_code || voucher?.voucher_type || '').toLowerCase() === 'purchase';
 
 const RECEIPT_MAX_BYTES = 10 * 1024 * 1024;
 const RECEIPT_MAX_LABEL = '10 MB';
@@ -142,13 +146,18 @@ const VoucherPayments = () => {
   const filteredVouchers = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return vouchers;
-    return vouchers.filter(
-      (v) =>
+    return vouchers.filter((v) => {
+      const suppliers = Array.isArray(v.suppliers_summary) ? v.suppliers_summary.join(' ') : '';
+      const poNos = Array.isArray(v.po_nos) ? v.po_nos.join(' ') : '';
+      return (
         v.voucher_no?.toLowerCase().includes(q) ||
         v.approved_by_name?.toLowerCase().includes(q) ||
         v.payment_reference?.toLowerCase().includes(q) ||
+        suppliers.toLowerCase().includes(q) ||
+        poNos.toLowerCase().includes(q) ||
         String(v.total_amount || '').includes(q)
-    );
+      );
+    });
   }, [vouchers, search]);
 
   const totals = useMemo(() => {
@@ -169,13 +178,15 @@ const VoucherPayments = () => {
   const openPayModal = async (voucher) => {
     setPayForm(EMPTY_PAY_FORM);
     setPayVoucher(voucher);
-    if (Array.isArray(voucher?.cards_summary) && voucher.cards_summary.length) return;
+    const purchase = isPurchaseVoucher(voucher);
+    if (!purchase && Array.isArray(voucher?.cards_summary) && voucher.cards_summary.length) return;
+    if (purchase && Array.isArray(voucher?.lines) && voucher.lines.length) return;
     setLoadingPayDetail(true);
     try {
       const detail = await fetchVoucherDetail(voucher.id).unwrap();
       setPayVoucher((prev) => (prev?.id === voucher.id ? { ...prev, ...detail } : prev));
     } catch (_) {
-      /* list row still usable; cards may be missing until backend deploy */
+      /* list row still usable; line/card details may be missing until backend deploy */
     } finally {
       setLoadingPayDetail(false);
     }
@@ -238,9 +249,12 @@ const VoucherPayments = () => {
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const payCards = payVoucher ? resolveVoucherCardsSummary(payVoucher) : [];
+  const payIsPurchase = payVoucher ? isPurchaseVoucher(payVoucher) : false;
+  const payCards = payVoucher && !payIsPurchase ? resolveVoucherCardsSummary(payVoucher) : [];
   const payIsGenerator = payVoucher ? isGeneratorFuelVoucher(payVoucher) : false;
   const payAlreadySettled = payVoucher ? Number(payVoucher.settled) === 1 : false;
+  const payTypeLabel = payIsPurchase ? 'Purchase' : payIsGenerator ? 'Generator' : 'Transport';
+  const payTypeClass = payIsPurchase ? 'purchase' : payIsGenerator ? 'generator' : 'transport';
 
   return (
     <div className="voucher-payments-page">
@@ -251,7 +265,7 @@ const VoucherPayments = () => {
           <h2>
             <FaFileInvoice aria-hidden /> Voucher Payments
           </h2>
-          <p>Mark approved fuel vouchers as paid to settle cards.</p>
+          <p>Mark approved fuel and purchase order vouchers as paid.</p>
         </div>
         <div className="voucher-payments-summary">
           <div className="voucher-payments-summary-card pending">
@@ -306,6 +320,7 @@ const VoucherPayments = () => {
             <option value="all">All types</option>
             <option value="transport">Transport</option>
             <option value="generator">Generator</option>
+            <option value="purchase">Purchase Order</option>
           </select>
         </div>
         <div className="voucher-payments-filter">
@@ -371,24 +386,31 @@ const VoucherPayments = () => {
             ) : (
               filteredVouchers.map((voucher) => {
                 const isPaid = voucher.payment_status === 'paid';
-                const isGenerator = isGeneratorFuelVoucher(voucher);
-                const cards = resolveVoucherCardsSummary(voucher);
+                const isPurchase = isPurchaseVoucher(voucher);
+                const isGenerator = !isPurchase && isGeneratorFuelVoucher(voucher);
+                const typeClass = isPurchase ? 'purchase' : isGenerator ? 'generator' : 'transport';
+                const typeLabel = isPurchase ? 'PO' : isGenerator ? 'Gen' : 'Transport';
+                const cards = isPurchase ? [] : resolveVoucherCardsSummary(voucher);
+                const suppliers = Array.isArray(voucher.suppliers_summary) ? voucher.suppliers_summary : [];
+                const poNos = Array.isArray(voucher.po_nos) ? voucher.po_nos : [];
                 const visibleCards = cards.slice(0, 2);
                 const extraCards = Math.max(0, cards.length - visibleCards.length);
-                const cardsTitle = cards
-                  .map(
-                    (c) =>
-                      `${c.card_number || '-'} ${c.card_holder || ''} · ${c.transaction_count} tx · ${formatMoney(c.amount)}`
-                  )
-                  .join('\n');
+                const cardsTitle = isPurchase
+                  ? [...poNos, ...suppliers].join('\n')
+                  : cards
+                      .map(
+                        (c) =>
+                          `${c.card_number || '-'} ${c.card_holder || ''} · ${c.transaction_count} tx · ${formatMoney(c.amount)}`
+                      )
+                      .join('\n');
                 return (
                   <tr key={voucher.id}>
                     <td className="voucher-no" title={voucher.voucher_no}>
                       {voucher.voucher_no}
                     </td>
                     <td>
-                      <span className={`voucher-payments-type ${isGenerator ? 'generator' : 'transport'}`}>
-                        {isGenerator ? 'Gen' : 'Transport'}
+                      <span className={`voucher-payments-type ${typeClass}`}>
+                        {typeLabel}
                       </span>
                     </td>
                     <td className="vp-approved-cell">
@@ -399,7 +421,24 @@ const VoucherPayments = () => {
                       </small>
                     </td>
                     <td className="voucher-payments-cards-cell" title={cardsTitle || undefined}>
-                      {cards.length === 0 ? (
+                      {isPurchase ? (
+                        suppliers.length === 0 && poNos.length === 0 ? (
+                          <span className="vp-muted">-</span>
+                        ) : (
+                          <div className="voucher-payments-cards-compact">
+                            {(poNos.slice(0, 2).length ? poNos.slice(0, 2) : suppliers.slice(0, 2)).map((label) => (
+                              <div key={label} className="voucher-payments-card-chip">
+                                <strong>{label}</strong>
+                              </div>
+                            ))}
+                            {Math.max(poNos.length, suppliers.length) > 2 ? (
+                              <div className="voucher-payments-card-more">
+                                +{Math.max(poNos.length, suppliers.length) - 2} more
+                              </div>
+                            ) : null}
+                          </div>
+                        )
+                      ) : cards.length === 0 ? (
                         <span className="vp-muted">-</span>
                       ) : (
                         <div className="voucher-payments-cards-compact">
@@ -419,7 +458,11 @@ const VoucherPayments = () => {
                     </td>
                     <td className="num vp-amount-cell">
                       <strong>{formatMoney(voucher.total_amount)}</strong>
-                      <small>{voucher.transaction_count || 0} lines</small>
+                      <small>
+                        {isPurchase
+                          ? `${voucher.po_count || voucher.transaction_count || 0} POs`
+                          : `${voucher.transaction_count || 0} lines`}
+                      </small>
                     </td>
                     <td>
                       <span className={`voucher-payments-status ${isPaid ? 'paid' : 'pending'}`}>
@@ -504,11 +547,15 @@ const VoucherPayments = () => {
                 </div>
                 <div className="voucher-payments-modal-title-row">
                   <h3>{payVoucher.voucher_no}</h3>
-                  <span className={`voucher-payments-type ${payIsGenerator ? 'generator' : 'transport'}`}>
-                    {payIsGenerator ? 'Generator' : 'Transport'}
+                  <span className={`voucher-payments-type ${payTypeClass}`}>
+                    {payTypeLabel}
                   </span>
                 </div>
-                <p>Record payment and top up the fuel card(s). This cannot be undone.</p>
+                <p>
+                  {payIsPurchase
+                    ? 'Record supplier payment for this purchase order voucher. This cannot be undone.'
+                    : 'Record payment and top up the fuel card(s). This cannot be undone.'}
+                </p>
               </div>
               <button
                 type="button"
@@ -530,23 +577,53 @@ const VoucherPayments = () => {
                 </div>
                 <div className="voucher-payments-modal-kpis">
                   <div>
-                    <span>Lines</span>
-                    <strong>{payVoucher.transaction_count || 0}</strong>
+                    <span>{payIsPurchase ? 'POs' : 'Lines'}</span>
+                    <strong>{payVoucher.po_count || payVoucher.transaction_count || 0}</strong>
                   </div>
                   <div>
-                    <span>Cards</span>
-                    <strong>{payCards.length || '-'}</strong>
+                    <span>{payIsPurchase ? 'Suppliers' : 'Cards'}</span>
+                    <strong>
+                      {payIsPurchase
+                        ? (payVoucher.suppliers_summary || []).length || '-'
+                        : payCards.length || '-'}
+                    </strong>
                   </div>
                 </div>
               </div>
 
               <section className="voucher-payments-cards-box">
                 <div className="voucher-payments-cards-box-head">
-                  <strong>Cards to top up</strong>
-                  {payCards.length > 0 ? <span>{payCards.length}</span> : null}
+                  <strong>{payIsPurchase ? 'Purchase orders' : 'Cards to top up'}</strong>
+                  {payIsPurchase
+                    ? (payVoucher.po_count || payVoucher.transaction_count ? (
+                        <span>{payVoucher.po_count || payVoucher.transaction_count}</span>
+                      ) : null)
+                    : payCards.length > 0 ? (
+                        <span>{payCards.length}</span>
+                      ) : null}
                 </div>
                 {loadingPayDetail ? (
-                  <p className="vp-muted">Loading card details...</p>
+                  <p className="vp-muted">Loading details...</p>
+                ) : payIsPurchase ? (
+                  (payVoucher.lines || []).length ? (
+                    <ul>
+                      {(payVoucher.lines || []).map((line) => (
+                        <li key={line.line_id || line.purchase_order_id}>
+                          <div className="voucher-payments-card-main">
+                            <span className="voucher-payments-card-no">{line.po_no || `PO #${line.purchase_order_id}`}</span>
+                            {line.supplier_name ? (
+                              <span className="voucher-payments-card-holder">{line.supplier_name}</span>
+                            ) : null}
+                          </div>
+                          <span className="voucher-payments-card-meta">{formatMoney(line.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="vp-muted">
+                      {(payVoucher.suppliers_summary || []).join(', ') || 'Purchase order lines will load with detail.'}
+                    </p>
+                  )
                 ) : payCards.length === 0 ? (
                   <p className="vp-muted">Card details unavailable until the backend is updated.</p>
                 ) : (
@@ -638,11 +715,13 @@ const VoucherPayments = () => {
                   payAlreadySettled ? ' voucher-payments-confirm-note--info' : ''
                 }`}
               >
-                {payAlreadySettled
-                  ? 'Already settled. Only payment details will be recorded.'
-                  : payCards.length > 1
-                    ? `Tops up each of the ${payCards.length} cards for its own lines, then closes the voucher.`
-                    : 'Settles the fuel card (top-up) for all lines, then closes the voucher.'}
+                {payIsPurchase
+                  ? 'Records payment for the linked purchase orders and closes the voucher.'
+                  : payAlreadySettled
+                    ? 'Already settled. Only payment details will be recorded.'
+                    : payCards.length > 1
+                      ? `Tops up each of the ${payCards.length} cards for its own lines, then closes the voucher.`
+                      : 'Settles the fuel card (top-up) for all lines, then closes the voucher.'}
               </div>
             </div>
 
@@ -665,7 +744,11 @@ const VoucherPayments = () => {
       ) : null}
 
       {printVoucher ? (
-        <TransportVoucherPrint voucher={printVoucher} onClose={() => setPrintVoucher(null)} />
+        isPurchaseVoucher(printVoucher) ? (
+          <PurchaseOrderVoucherPrint voucher={printVoucher} onClose={() => setPrintVoucher(null)} />
+        ) : (
+          <TransportVoucherPrint voucher={printVoucher} onClose={() => setPrintVoucher(null)} />
+        )
       ) : null}
     </div>
   );

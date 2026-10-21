@@ -70,7 +70,7 @@ const Employees = () => {
     ? decodeURIComponent(wingQuery.replace(/\+/g, ' '))
     : null;
 
-  return (
+        return (
     <div className="epd-container ep-shell">
       <div className="epd-header-row ep-page-header">
         <div>
@@ -117,7 +117,7 @@ const Employees = () => {
             />
           )}
         </main>
-      </div>
+        </div>
 
       {showAddModal && canEdit && (
         <AddEmployeeModal

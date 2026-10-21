@@ -50,11 +50,15 @@ export default function FiltersPanel({
           aria-label="Pilot"
         >
           <option value="">All pilots</option>
-          {pilots.map((pilot) => (
-            <option key={pilot.id} value={pilot.id}>
-              {pilot.name}
-            </option>
-          ))}
+          {(Array.isArray(pilots) ? pilots : []).map((pilot, index) => {
+            const id = pilot?.id ?? pilot?.pilot_id ?? pilot?.user_id ?? `pilot-${index}`;
+            const name = pilot?.name || pilot?.pilot_name || `Pilot ${id}`;
+            return (
+              <option key={`pilot-opt-${id}-${index}`} value={id}>
+                {name}
+              </option>
+            );
+          })}
         </select>
         <input
           id="ir-filter-serial"

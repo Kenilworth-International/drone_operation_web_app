@@ -127,11 +127,39 @@
 }
 
 .admin-stock-tabs--compact .admin-stock-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   padding: 6px 10px;
   font-size: 0.72rem;
   letter-spacing: 0.01em;
   border-radius: 6px;
   flex: 0 0 auto;
+}
+
+.admin-stock-tab-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 0.65rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.admin-stock-tab--active .admin-stock-tab-step {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+
+.admin-stock-tab-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .admin-stock-body {
@@ -500,6 +528,10 @@
 }
 
 /* Soft-map common legacy module roots into shell spacing */
+.admin-stock-page.procurement-process-shell {
+  background: #f1f5f9;
+}
+
 .admin-stock-page .procurement-process-page,
 .admin-stock-page .central-stores-page,
 .admin-stock-page .inventory-items-registration-container,
@@ -516,14 +548,18 @@
 
 /* Compact actions inside procurement process */
 .procurement-process-shell .admin-stock-btn {
-  padding: 6px 11px;
-  font-size: 12px;
-  border-radius: 7px;
-  gap: 5px;
+  height: 1.7rem;
+  padding: 0 0.55rem;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  gap: 0.25rem;
+  box-shadow: none;
 }
 
 .procurement-process-shell .admin-stock-btn--primary {
-  box-shadow: 0 2px 8px rgba(26, 95, 122, 0.2);
+  box-shadow: none;
+  background: #004b71;
+  border-color: #004b71;
 }
 
 .admin-stock-page .inventory-items-registration-container--embedded .main-tabs-container-inventory-items,

@@ -240,6 +240,23 @@ export const getAllowedPaths = (visibility = {}, pathPermissions = {}, userData 
   if (mergedPathPermissions['/home/financial-cards'] === true) {
     mergedPathPermissions['/home/finance/voucher-payments'] = true;
   }
+  if (
+    mergedPathPermissions['/home/financial-cards'] === true ||
+    mergedPathPermissions['/home/finance/voucher-payments'] === true
+  ) {
+    mergedPathPermissions['/home/finance/purchase-order-payments'] = true;
+  }
+  if (
+    mergedPathPermissions['/home/financial-cards'] === true ||
+    mergedPathPermissions['/home/finance/voucher-payments'] === true ||
+    mergedPathPermissions['/home/finance/purchase-order-payments'] === true ||
+    mergedPathPermissions['/home/finance/payroll'] === true ||
+    mergedPathPermissions['/home/transport/finance'] === true ||
+    mergedPathPermissions['/home/reports/finance'] === true ||
+    mergedPathPermissions['/home/brokers'] === true
+  ) {
+    mergedPathPermissions['/home/finance/dashboard'] = true;
+  }
 
   // Check all paths - if path has explicit permission set to true, allow it
   Object.values(allCategoryPaths).flat().forEach(path => {
@@ -247,6 +264,19 @@ export const getAllowedPaths = (visibility = {}, pathPermissions = {}, userData 
       allowedPaths.push(path);
     }
   });
+
+  if (mergedPathPermissions['/home/finance/dashboard'] === true) {
+    [
+      '/home/finance/dashboard/detail',
+      '/home/finance/dashboard/detail/revenue_billed',
+      '/home/finance/dashboard/detail/revenue_collected',
+      '/home/finance/dashboard/detail/expenses_billed',
+      '/home/finance/dashboard/detail/expenses_paid',
+      '/home/finance/dashboard/detail/net_billed',
+    ].forEach((path) => {
+      if (!allowedPaths.includes(path)) allowedPaths.push(path);
+    });
+  }
 
   return allowedPaths;
 };
@@ -263,7 +293,16 @@ export const getAllowedPaths = (visibility = {}, pathPermissions = {}, userData 
 export const hasPathAccess = (path, userData, permissions, categories, pathPermissions = {}) => {
   const visibility = getCategoryVisibility(userData, permissions, categories, pathPermissions);
   const allowedPaths = getAllowedPaths(visibility, pathPermissions, userData);
-  return allowedPaths.includes(path);
+  if (allowedPaths.includes(path)) return true;
+  // KPI detail tabs use /home/finance/dashboard/detail/:metric
+  if (
+    typeof path === 'string' &&
+    path.startsWith('/home/finance/dashboard/detail/') &&
+    allowedPaths.includes('/home/finance/dashboard')
+  ) {
+    return true;
+  }
+  return false;
 };
 
 /**

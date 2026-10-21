@@ -21,19 +21,30 @@ export function AdminSubTabs({ tabs, active, onChange, className = '', variant =
   const variantClass = variant === 'compact' ? ' admin-stock-tabs--compact' : '';
   return (
     <div className={`admin-stock-tabs${variantClass}${className ? ` ${className}` : ''}`.trim()} role="tablist">
-      {(tabs || []).map((tab) => (
-        <button
-          key={tab.key}
-          type="button"
-          role="tab"
-          aria-selected={active === tab.key}
-          title={tab.title || tab.label}
-          className={`admin-stock-tab${active === tab.key ? ' admin-stock-tab--active' : ''}`}
-          onClick={() => onChange?.(tab.key)}
-        >
-          {tab.shortLabel || tab.label}
-        </button>
-      ))}
+      {(tabs || []).map((tab, index) => {
+        const stepNo = tab.step != null ? tab.step : index + 1;
+        const label = tab.shortLabel || tab.label;
+        return (
+          <button
+            key={tab.key}
+            type="button"
+            role="tab"
+            aria-selected={active === tab.key}
+            title={tab.title || tab.label}
+            className={`admin-stock-tab${active === tab.key ? ' admin-stock-tab--active' : ''}`}
+            onClick={() => onChange?.(tab.key)}
+          >
+            {variant === 'compact' ? (
+              <>
+                <span className="admin-stock-tab-step">{stepNo}</span>
+                <span className="admin-stock-tab-text">{label}</span>
+              </>
+            ) : (
+              label
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

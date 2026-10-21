@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   FaMoneyCheckAlt,
   FaCalculator,
@@ -24,7 +24,6 @@ import {
   useSavePayrollSchemeMutation,
   useGetPayrollAssignmentMatrixQuery,
   useSetEmployeePayrollAssignmentsMutation,
-  useMigratePayrollAssignmentsMutation,
   useGetPayrollStatutoryRatesQuery,
   useCreatePayrollStatutoryRateMutation,
   useGetPayrollMailSettingsQuery,
@@ -70,6 +69,23 @@ const MONTH_LABELS = [
 
 function money(n) {
   return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** "Pilot Performance" → "pilot_performance" */
+function slugifyCode(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .replace(/_+/g, '_');
+}
+
+/** Split formula into codes / numbers / operators (word by word). */
+function tokenizeExpression(expr) {
+  const s = String(expr || '').trim();
+  if (!s) return [];
+  return s.match(/[a-zA-Z_][a-zA-Z0-9_]*|\d+(?:\.\d+)?|[+\-*/()]/g) || [];
 }
 
 function flashOk(text) {
@@ -213,7 +229,7 @@ function ComponentsPanel() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_COMPONENT_FORM);
-  const expressionRef = useRef(null);
+  const [formulaNumber, setFormulaNumber] = useState('');
 
   const availableCodes = useMemo(
     () =>
@@ -223,27 +239,53 @@ function ComponentsPanel() {
     [components, editingId]
   );
 
-  const insertIntoExpression = (token) => {
-    const el = expressionRef.current;
-    const current = form.expression || '';
-    if (el && typeof el.selectionStart === 'number') {
-      const start = el.selectionStart;
-      const end = el.selectionEnd;
-      const next = `${current.slice(0, start)}${token}${current.slice(end)}`;
-      setForm((prev) => ({ ...prev, expression: next }));
-      requestAnimationFrame(() => {
-        const pos = start + token.length;
-        el.focus();
-        el.setSelectionRange(pos, pos);
-      });
+  const expressionTokens = useMemo(
+    () => tokenizeExpression(form.expression),
+    [form.expression]
+  );
+
+  const componentCodeTaken = useMemo(() => {
+    if (editingId) return false;
+    const code = String(form.code || '').trim().toLowerCase();
+    if (!code) return false;
+    return (components || []).some((c) => String(c.code || '').toLowerCase() === code);
+  }, [components, form.code, editingId]);
+
+  const onComponentNameChange = (name) => {
+    if (editingId) {
+      setForm((prev) => ({ ...prev, name }));
       return;
     }
-    const needsSpace = current && !/[\s(+\-*/)]$/.test(current);
-    setForm((prev) => ({
-      ...prev,
-      expression: `${current}${needsSpace ? ' ' : ''}${token}`,
-    }));
+    setForm((prev) => ({ ...prev, name, code: slugifyCode(name) }));
   };
+
+  const setExpressionTokens = (tokens) => {
+    setForm((prev) => ({ ...prev, expression: tokens.join(' ') }));
+  };
+
+  const insertIntoExpression = (token) => {
+    setExpressionTokens([...tokenizeExpression(form.expression), String(token)]);
+  };
+
+  const insertFormulaNumber = () => {
+    const raw = String(formulaNumber || '').trim();
+    if (!/^\d+(\.\d+)?$/.test(raw)) return;
+    insertIntoExpression(raw);
+    setFormulaNumber('');
+  };
+
+  const removeExpressionTokenAt = (index) => {
+    const next = tokenizeExpression(form.expression).filter((_, i) => i !== index);
+    setExpressionTokens(next);
+  };
+
+  const undoExpressionToken = () => {
+    const next = tokenizeExpression(form.expression);
+    next.pop();
+    setExpressionTokens(next);
+  };
+
+  const clearExpression = () => setExpressionTokens([]);
 
   const buildFormula = () => {
     if (form.calcType === 'fixed') return { amount: Number(form.amount) || 0 };
@@ -258,11 +300,13 @@ function ComponentsPanel() {
     setModalOpen(false);
     setEditingId(null);
     setForm(EMPTY_COMPONENT_FORM);
+    setFormulaNumber('');
   };
 
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_COMPONENT_FORM);
+    setFormulaNumber('');
     setModalOpen(true);
   };
 
@@ -283,16 +327,23 @@ function ComponentsPanel() {
       isTaxable: c.isTaxable !== false,
       sortOrder: c.sortOrder ?? 100,
     });
+    setFormulaNumber('');
     setModalOpen(true);
   };
 
   const onSave = async () => {
-    if (!String(form.code || '').trim() || !String(form.name || '').trim()) {
-      toast.error('Code and name are required');
+    const code = String(form.code || '').trim();
+    const name = String(form.name || '').trim();
+    if (!code || !name) {
+      toast.error('Name is required (code is created from the name)');
+      return;
+    }
+    if (!editingId && componentCodeTaken) {
+      toast.error(`Code “${code}” already exists. Use a different name.`);
       return;
     }
     const payload = {
-      name: form.name,
+      name,
       category: form.category,
       calcType: form.calcType,
       formulaJson: buildFormula(),
@@ -305,7 +356,7 @@ function ComponentsPanel() {
         await updateComponent({ id: editingId, ...payload }).unwrap();
         flashOk('Component updated');
       } else {
-        await createComponent({ code: form.code, ...payload }).unwrap();
+        await createComponent({ code, ...payload }).unwrap();
         flashOk('Component created');
       }
       closeModal();
@@ -403,7 +454,7 @@ function ComponentsPanel() {
                 <p>
                   {editingId
                     ? `Update “${form.name || form.code}”. Code stays fixed.`
-                    : 'Define how this earning or deduction is calculated.'}
+                    : 'Type the name — code is created automatically (e.g. Housing Allowance → housing_allowance).'}
                 </p>
               </div>
               <button type="button" className="payroll-modal-close" onClick={closeModal} aria-label="Close">
@@ -411,17 +462,24 @@ function ComponentsPanel() {
               </button>
             </header>
             <div className="payroll-modal-body">
-              <div className="payroll-form-grid">
-                <Field label="Code">
+              <div className="payroll-form-grid cols-3">
+                <Field label="Name">
                   <input
-                    value={form.code}
-                    onChange={(e) => setForm({ ...form, code: e.target.value })}
-                    placeholder="e.g. housing"
-                    disabled={Boolean(editingId)}
+                    value={form.name}
+                    onChange={(e) => onComponentNameChange(e.target.value)}
+                    placeholder="e.g. Housing Allowance"
                   />
                 </Field>
-                <Field label="Name">
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Display name" />
+                <Field label="Code (auto)">
+                  <input
+                    value={form.code}
+                    readOnly
+                    placeholder="from name…"
+                    title={editingId ? 'Code stays fixed when editing' : 'Generated from the name'}
+                  />
+                  {!editingId && componentCodeTaken ? (
+                    <span className="payroll-field-error">This code already exists. Change the name.</span>
+                  ) : null}
                 </Field>
                 <Field label="Category">
                   <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
@@ -458,14 +516,50 @@ function ComponentsPanel() {
                   </>
                 )}
                 {form.calcType === 'formula' && (
-                  <Field label="Expression" className="span-2">
-                    <input
-                      ref={expressionRef}
-                      value={form.expression}
-                      onChange={(e) => setForm({ ...form, expression: e.target.value })}
-                      placeholder="(basic + incentive) / 30"
-                    />
-                  </Field>
+                  <div className="payroll-field payroll-expression-field">
+                    <label>Expression</label>
+                    <div className="payroll-expression-builder">
+                      <div
+                        className={`payroll-expression-tokens${expressionTokens.length ? '' : ' is-empty'}`}
+                        aria-label="Formula tokens"
+                      >
+                        {expressionTokens.length === 0 ? (
+                          <span className="muted">Use codes / operators below</span>
+                        ) : (
+                          expressionTokens.map((token, index) => (
+                            <button
+                              key={`expr-${index}-${token}`}
+                              type="button"
+                              className={`payroll-expr-token${/^[+\-*/()]$/.test(token) ? ' op' : ''}`}
+                              title="Click to remove"
+                              aria-label={`Remove ${token}`}
+                              onClick={() => removeExpressionTokenAt(index)}
+                            >
+                              {token}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                      <div className="payroll-expression-actions">
+                        <button
+                          type="button"
+                          className="payroll-expr-link"
+                          onClick={undoExpressionToken}
+                          disabled={!expressionTokens.length}
+                        >
+                          Undo
+                        </button>
+                        <button
+                          type="button"
+                          className="payroll-expr-link"
+                          onClick={clearExpression}
+                          disabled={!expressionTokens.length}
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
                 {form.calcType === 'performance_ha' && (
                   <Field label="Scheme">
@@ -477,25 +571,25 @@ function ComponentsPanel() {
                     </select>
                   </Field>
                 )}
-                <Field label="Sort order">
+                <Field label="Sort order" className={form.calcType === 'formula' ? 'payroll-sort-beside' : ''}>
                   <input type="number" value={form.sortOrder} onChange={(e) => setForm({ ...form, sortOrder: e.target.value })} />
                 </Field>
               </div>
 
-              <div className="payroll-code-picker">
+              <div className="payroll-code-picker compact">
                 <div className="payroll-code-picker-head">
-                  <strong>Available codes</strong>
+                  <strong>Insert</strong>
                   <span>
                     {form.calcType === 'formula'
-                      ? 'Click a code or operator to insert into the formula.'
+                      ? 'Click to append · click a formula part to remove'
                       : form.calcType === 'percent_of'
-                        ? 'Click a code to use it as the percent base.'
-                        : 'Existing component codes you can reference.'}
+                        ? 'Click a code for percent base'
+                        : 'Set Calculation to Formula to build an expression'}
                   </span>
                 </div>
                 {form.calcType === 'formula' && (
                   <div className="payroll-code-ops">
-                    {['+', '-', '*', '/', '(', ')', '30'].map((op) => (
+                    {['+', '-', '*', '/', '(', ')'].map((op) => (
                       <button
                         key={op}
                         type="button"
@@ -505,9 +599,33 @@ function ComponentsPanel() {
                         {op}
                       </button>
                     ))}
+                    <div className="payroll-formula-number">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formulaNumber}
+                        onChange={(e) => setFormulaNumber(e.target.value.replace(/[^\d.]/g, ''))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            insertFormulaNumber();
+                          }
+                        }}
+                        placeholder="e.g. 30"
+                        aria-label="Number to insert"
+                      />
+                      <button
+                        type="button"
+                        className="payroll-code-chip op"
+                        onClick={insertFormulaNumber}
+                        disabled={!/^\d+(\.\d+)?$/.test(String(formulaNumber || '').trim())}
+                      >
+                        Add #
+                      </button>
+                    </div>
                   </div>
                 )}
-                <div className="payroll-code-chips">
+                <div className="payroll-code-chips dense">
                   {availableCodes.length === 0 ? (
                     <span className="muted">No other components yet.</span>
                   ) : (
@@ -515,22 +633,26 @@ function ComponentsPanel() {
                       <button
                         key={c.code}
                         type="button"
-                        className={`payroll-code-chip ${c.category}`}
+                        className={`payroll-code-chip flat ${c.category}`}
                         title={c.name}
                         onClick={() => {
-                          if (form.calcType === 'formula') insertIntoExpression(c.code);
-                          else if (form.calcType === 'percent_of') setForm((prev) => ({ ...prev, baseCode: c.code }));
+                          if (form.calcType === 'formula') {
+                            insertIntoExpression(c.code);
+                            return;
+                          }
+                          if (form.calcType === 'percent_of') {
+                            setForm((prev) => ({ ...prev, baseCode: c.code }));
+                          }
                         }}
                       >
                         <code>{c.code}</code>
-                        <small>{c.name}</small>
                       </button>
                     ))
                   )}
                 </div>
               </div>
 
-              <label className="payroll-toggle-row" htmlFor="epf-base">
+              <label className="payroll-toggle-row compact" htmlFor="epf-base">
                 <input
                   id="epf-base"
                   type="checkbox"
@@ -539,13 +661,17 @@ function ComponentsPanel() {
                 />
                 <span className="payroll-toggle-text">
                   <strong>Include in EPF base</strong>
-                  <span>Add this component into the statutory EPF contribution base when eligible.</span>
                 </span>
               </label>
             </div>
             <div className="payroll-modal-footer">
               <button type="button" className="payroll-btn ghost" onClick={closeModal}>Cancel</button>
-              <button type="button" className="payroll-btn" onClick={onSave} disabled={creating || updating}>
+              <button
+                type="button"
+                className="payroll-btn"
+                onClick={onSave}
+                disabled={creating || updating || (!editingId && componentCodeTaken)}
+              >
                 {editingId ? 'Update component' : 'Add component'}
               </button>
             </div>
@@ -560,7 +686,6 @@ function AssignmentsPanel() {
   const { data: allEmployeesResponse } = useGetAllEmployeeRegistrationsQuery();
   const { data: matrix, refetch } = useGetPayrollAssignmentMatrixQuery();
   const [setAssignments, { isLoading }] = useSetEmployeePayrollAssignmentsMutation();
-  const [migrate, { isLoading: migrating }] = useMigratePayrollAssignmentsMutation();
   const [selectedId, setSelectedId] = useState(null);
   const [search, setSearch] = useState('');
   const [draft, setDraft] = useState({});
@@ -626,27 +751,14 @@ function AssignmentsPanel() {
     }
   };
 
-  const onMigrate = async () => {
-    try {
-      const res = await migrate({}).unwrap();
-      flashOk(`Migrated ${res.migrated || 0} employees from profile fields`);
-      refetch();
-    } catch (e) {
-      flashErr(e, 'Migrate failed');
-    }
-  };
-
   return (
     <div className="payroll-panel payroll-panel--fill">
       <div className="payroll-panel-head">
         <div>
           <h3>Employee assignments</h3>
-          <p>Enable components per employee and set fixed amounts or scheme codes.</p>
+          <p>Enable components per employee and set fixed amounts or scheme codes in Finance (not synced from HR).</p>
         </div>
         <div className="payroll-actions" style={{ marginBottom: 0 }}>
-          <button type="button" className="payroll-btn secondary" disabled={migrating} onClick={onMigrate}>
-            Migrate from profile
-          </button>
           <button type="button" className="payroll-btn" disabled={!selectedId || isLoading} onClick={onSave}>
             <FaCheck /> Save assignment
           </button>
@@ -697,35 +809,41 @@ function AssignmentsPanel() {
                 </div>
               </div>
               <div className="payroll-checks">
-                {components.map((c) => (
-                  <label key={c.id} className="payroll-check">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(draft[c.id])}
-                      onChange={(e) => setDraft((prev) => ({ ...prev, [c.id]: e.target.checked }))}
-                    />
-                    <span>
-                      <strong>{c.name}</strong>
-                      <div className="muted">{c.code} · {CALC_TYPE_LABELS[c.calcType] || c.calcType}</div>
-                    </span>
-                    {c.calcType === 'fixed' && (
-                      <input
-                        type="number"
-                        value={amounts[c.id] ?? ''}
-                        onChange={(e) => setAmounts((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                        placeholder="Amount"
-                      />
-                    )}
-                    {c.calcType === 'performance_ha' && (
-                      <input
-                        type="text"
-                        value={amounts[c.id] ?? ''}
-                        onChange={(e) => setAmounts((prev) => ({ ...prev, [c.id]: e.target.value }))}
-                        placeholder="Scheme"
-                      />
-                    )}
-                  </label>
-                ))}
+                {components.map((c) => {
+                  const on = Boolean(draft[c.id]);
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`payroll-check${on ? ' is-on' : ''}`}
+                      onClick={() => setDraft((prev) => ({ ...prev, [c.id]: !prev[c.id] }))}
+                      aria-pressed={on}
+                    >
+                      <span className="payroll-check-body">
+                        <strong>{c.name}</strong>
+                        <div className="muted">{c.code} · {CALC_TYPE_LABELS[c.calcType] || c.calcType}</div>
+                      </span>
+                      {c.calcType === 'fixed' && (
+                        <input
+                          type="number"
+                          value={amounts[c.id] ?? ''}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setAmounts((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                          placeholder="Amount"
+                        />
+                      )}
+                      {c.calcType === 'performance_ha' && (
+                        <input
+                          type="text"
+                          value={amounts[c.id] ?? ''}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => setAmounts((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                          placeholder="Scheme"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </>
           )}
@@ -746,6 +864,104 @@ function formatTierSummary(tiers, payout) {
       return `${ha} Ha+ → ${money(t.ratePerHa ?? t.rate)} / Ha`;
     })
     .join(' · ');
+}
+
+/** Mirror backend applyHaTiers for live scheme preview. */
+function previewHaPayout({ ha, tiers, tierMode, payout }) {
+  const totalHa = Math.max(0, Number(ha) || 0);
+  const sorted = [...(tiers || [])]
+    .map((t) => ({
+      minHa: Number(t.minHa) || 0,
+      ratePerHa: Number(t.ratePerHa != null ? t.ratePerHa : t.rate) || 0,
+      amount: Number(t.amount) || 0,
+    }))
+    .filter((t) => Number.isFinite(t.minHa))
+    .sort((a, b) => a.minHa - b.minHa);
+
+  if (!sorted.length || totalHa <= 0) {
+    return { amount: 0, bands: [], mode: tierMode, matched: null };
+  }
+
+  if (tierMode === 'absolute') {
+    let matched = sorted[0];
+    for (const t of sorted) {
+      if (totalHa >= t.minHa) matched = t;
+    }
+    const amount =
+      payout === 'flat_amount'
+        ? matched.amount
+        : Math.round(totalHa * matched.ratePerHa * 100) / 100;
+    return {
+      amount,
+      mode: 'absolute',
+      matched,
+      bands: [
+        {
+          label:
+            payout === 'flat_amount'
+              ? `Reached ${matched.minHa}+ Ha → flat ${money(matched.amount)}`
+              : `${totalHa} Ha × ${money(matched.ratePerHa)} (tier from ${matched.minHa} Ha)`,
+          amount,
+        },
+      ],
+    };
+  }
+
+  const bands = [];
+  let paid = 0;
+  let prevCeiling = 0;
+  for (let i = 0; i < sorted.length; i += 1) {
+    const cur = sorted[i];
+    const ceiling = cur.minHa;
+    if (totalHa <= prevCeiling) break;
+    const bandEnd = Math.min(totalHa, ceiling);
+    const bandHa = Math.max(0, bandEnd - prevCeiling);
+    if (bandHa > 0) {
+      const bandAmount =
+        payout === 'flat_amount'
+          ? cur.amount
+          : Math.round(bandHa * cur.ratePerHa * 100) / 100;
+      bands.push({
+        fromHa: prevCeiling,
+        toHa: bandEnd,
+        bandHa,
+        ratePerHa: cur.ratePerHa,
+        amount: bandAmount,
+        label:
+          payout === 'flat_amount'
+            ? `${prevCeiling}→${bandEnd} Ha → flat ${money(cur.amount)}`
+            : `${prevCeiling}→${bandEnd} Ha (${bandHa} Ha × ${money(cur.ratePerHa)})`,
+      });
+      paid += bandAmount;
+    }
+    prevCeiling = ceiling;
+  }
+  if (totalHa > prevCeiling && sorted.length) {
+    const last = sorted[sorted.length - 1];
+    const bandHa = totalHa - prevCeiling;
+    const bandAmount =
+      payout === 'flat_amount'
+        ? last.amount
+        : Math.round(bandHa * last.ratePerHa * 100) / 100;
+    bands.push({
+      fromHa: prevCeiling,
+      toHa: totalHa,
+      bandHa,
+      ratePerHa: last.ratePerHa,
+      amount: bandAmount,
+      label:
+        payout === 'flat_amount'
+          ? `${prevCeiling}→${totalHa} Ha → flat ${money(last.amount)}`
+          : `${prevCeiling}→${totalHa} Ha (${bandHa} Ha × ${money(last.ratePerHa)})`,
+    });
+    paid += bandAmount;
+  }
+  return {
+    amount: Math.round(paid * 100) / 100,
+    mode: 'marginal',
+    matched: null,
+    bands,
+  };
 }
 
 const EMPTY_SCHEME_FORM = {
@@ -769,6 +985,33 @@ function SchemesPanel() {
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(EMPTY_SCHEME_FORM);
   const [tiers, setTiers] = useState(DEFAULT_TIERS);
+  const [previewHa, setPreviewHa] = useState('7');
+
+  const payoutPreview = useMemo(
+    () =>
+      previewHaPayout({
+        ha: previewHa,
+        tiers,
+        tierMode: form.tierMode,
+        payout: form.payout,
+      }),
+    [previewHa, tiers, form.tierMode, form.payout]
+  );
+
+  const schemeCodeTaken = useMemo(() => {
+    if (editingId) return false;
+    const code = String(form.code || '').trim().toLowerCase();
+    if (!code) return false;
+    return (schemes || []).some((s) => String(s.code || '').toLowerCase() === code);
+  }, [schemes, form.code, editingId]);
+
+  const onSchemeNameChange = (name) => {
+    if (editingId) {
+      setForm((prev) => ({ ...prev, name }));
+      return;
+    }
+    setForm((prev) => ({ ...prev, name, code: slugifyCode(name) }));
+  };
 
   const updateTier = (index, key, value) => {
     setTiers((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
@@ -791,12 +1034,14 @@ function SchemesPanel() {
     setEditingId(null);
     setForm(EMPTY_SCHEME_FORM);
     setTiers(DEFAULT_TIERS);
+    setPreviewHa('7');
   };
 
   const openAdd = () => {
     setEditingId(null);
     setForm(EMPTY_SCHEME_FORM);
     setTiers(DEFAULT_TIERS);
+    setPreviewHa('7');
     setModalOpen(true);
   };
 
@@ -818,6 +1063,7 @@ function SchemesPanel() {
         }))
       : [{ minHa: '', ratePerHa: '', amount: '' }];
     setTiers(rows);
+    setPreviewHa('7');
     setModalOpen(true);
   };
 
@@ -857,15 +1103,21 @@ function SchemesPanel() {
   const onSave = async () => {
     const payloadTiers = buildTiersPayload();
     if (!payloadTiers) return;
-    if (!String(form.code || '').trim() || !String(form.name || '').trim()) {
-      toast.error('Code and name are required');
+    const code = String(form.code || '').trim();
+    const name = String(form.name || '').trim();
+    if (!code || !name) {
+      toast.error('Name is required (code is created from the name)');
+      return;
+    }
+    if (!editingId && schemeCodeTaken) {
+      toast.error(`Code “${code}” already exists. Use a different name.`);
       return;
     }
     try {
       await saveScheme({
         id: editingId || undefined,
-        code: form.code,
-        name: form.name,
+        code,
+        name,
         periodType: form.periodType,
         tierMode: form.tierMode,
         aggregation: form.aggregation,
@@ -937,14 +1189,14 @@ function SchemesPanel() {
           onClick={(e) => e.target === e.currentTarget && closeModal()}
           role="presentation"
         >
-          <div className="payroll-modal wide" role="dialog" aria-modal="true" aria-labelledby="payroll-scheme-modal-title">
+          <div className="payroll-modal wide scheme-xl" role="dialog" aria-modal="true" aria-labelledby="payroll-scheme-modal-title">
             <header className="payroll-modal-header">
               <div>
                 <h3 id="payroll-scheme-modal-title">{editingId ? 'Edit performance scheme' : 'Add performance scheme'}</h3>
                 <p>
                   {editingId
                     ? `Update “${form.name || form.code}”. Code stays fixed.`
-                    : 'Set period rules and Ha tiers. Marginal: 3 Ha @ 100 then 7 Ha @ 200 means 0→3 at 100 and 3→7 at 200.'}
+                    : 'Set Ha tiers, then try a sample Ha below to see exactly how the payout is calculated.'}
                 </p>
               </div>
               <button type="button" className="payroll-modal-close" onClick={closeModal} aria-label="Close">
@@ -952,17 +1204,24 @@ function SchemesPanel() {
               </button>
             </header>
             <div className="payroll-modal-body">
-              <div className="payroll-form-grid">
-                <Field label="Code">
+              <div className="payroll-form-grid cols-3">
+                <Field label="Name">
                   <input
-                    value={form.code}
-                    onChange={(e) => setForm({ ...form, code: e.target.value })}
-                    placeholder="e.g. pilot_daily"
-                    disabled={Boolean(editingId)}
+                    value={form.name}
+                    onChange={(e) => onSchemeNameChange(e.target.value)}
+                    placeholder="e.g. Pilot Performance"
                   />
                 </Field>
-                <Field label="Name">
-                  <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Display name" />
+                <Field label="Code (auto)">
+                  <input
+                    value={form.code}
+                    readOnly
+                    placeholder="from name…"
+                    title={editingId ? 'Code stays fixed when editing' : 'Generated from the name'}
+                  />
+                  {!editingId && schemeCodeTaken ? (
+                    <span className="payroll-field-error">This code already exists. Change the name.</span>
+                  ) : null}
                 </Field>
                 <Field label="Period">
                   <select value={form.periodType} onChange={(e) => setForm({ ...form, periodType: e.target.value })}>
@@ -1073,10 +1332,59 @@ function SchemesPanel() {
                   </table>
                 </div>
               </div>
+
+              <div className="payroll-scheme-preview">
+                <div className="payroll-scheme-preview-head">
+                  <div>
+                    <strong>How calculation works</strong>
+                    <span>
+                      {form.tierMode === 'marginal'
+                        ? 'Marginal pays each Ha band at its own rate (e.g. 0→3 @ first rate, then 3→7 @ next).'
+                        : 'Absolute uses only the highest tier the Ha total reaches, for the full Ha.'}
+                    </span>
+                  </div>
+                  <label className="payroll-scheme-preview-ha">
+                    <span>Try Ha</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={previewHa}
+                      onChange={(e) => setPreviewHa(e.target.value)}
+                      placeholder="e.g. 7"
+                    />
+                  </label>
+                </div>
+                <div className="payroll-scheme-preview-body">
+                  {payoutPreview.bands.length === 0 ? (
+                    <p className="muted">Enter tiers and a Ha value to see the breakdown.</p>
+                  ) : (
+                    <ul className="payroll-scheme-preview-bands">
+                      {payoutPreview.bands.map((band, i) => (
+                        <li key={`band-${i}`}>
+                          <span>{band.label}</span>
+                          <strong>LKR {money(band.amount)}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="payroll-scheme-preview-total">
+                    <span>
+                      Sample payout for <strong>{Number(previewHa) || 0} Ha</strong>
+                    </span>
+                    <strong>LKR {money(payoutPreview.amount)}</strong>
+                  </div>
+                </div>
+              </div>
             </div>
             <div className="payroll-modal-footer">
               <button type="button" className="payroll-btn ghost" onClick={closeModal}>Cancel</button>
-              <button type="button" className="payroll-btn" onClick={onSave} disabled={saving}>
+              <button
+                type="button"
+                className="payroll-btn"
+                onClick={onSave}
+                disabled={saving || (!editingId && schemeCodeTaken)}
+              >
                 {editingId ? 'Update scheme' : 'Save scheme'}
               </button>
             </div>

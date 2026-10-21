@@ -267,6 +267,22 @@ export const centralProcurementApi = baseApi.injectEndpoints({
         const result = await postQuery('/api/stock-assets/procurement/grns/create', payload);
         return result.error ? { error: result.error } : { data: result.data?.data || null };
       },
+      invalidatesTags: ['PurchaseOrderRefunds'],
+    }),
+    getPurchaseOrderRefunds: builder.query({
+      queryFn: async (filters = {}) => {
+        const result = await postQuery('/api/stock-assets/procurement/refunds', filters || {});
+        if (result.error) return { error: result.error };
+        return { data: result.data?.data || [] };
+      },
+      providesTags: ['PurchaseOrderRefunds'],
+    }),
+    markPurchaseOrderRefundRecorded: builder.mutation({
+      queryFn: async (payload) => {
+        const result = await postQuery('/api/stock-assets/procurement/refunds/mark-recorded', payload || {});
+        return result.error ? { error: result.error } : { data: result.data?.data || null };
+      },
+      invalidatesTags: ['PurchaseOrderRefunds'],
     }),
   }),
 });
@@ -305,6 +321,8 @@ export const {
   useGetGrnQuery,
   useLazyGetGrnQuery,
   useCreateGrnMutation,
+  useGetPurchaseOrderRefundsQuery,
+  useMarkPurchaseOrderRefundRecordedMutation,
   useGetStockTransfersQuery,
   useCreateStockTransferMutation,
   useGetWorkshopStockAvailabilityQuery,

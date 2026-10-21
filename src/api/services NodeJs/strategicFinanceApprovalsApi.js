@@ -14,7 +14,7 @@ export const strategicFinanceApprovalsApi = baseApi.injectEndpoints({
     getStrategicFuelVoucherPendingCount: builder.query({
       queryFn: async () => {
         try {
-          const [transportRes, generatorRes, maintenanceRes] = await Promise.all([
+          const [transportRes, generatorRes, maintenanceRes, purchaseRes] = await Promise.all([
             nodeBackendBaseQuery(
               { url: '/api/fuel-transport-vouchers/pending', method: 'GET' },
               {},
@@ -30,11 +30,17 @@ export const strategicFinanceApprovalsApi = baseApi.injectEndpoints({
               {},
               {}
             ),
+            nodeBackendBaseQuery(
+              { url: '/api/purchase-order-vouchers/pending', method: 'GET' },
+              {},
+              {}
+            ),
           ]);
           const count =
             pendingListLength(transportRes) +
             pendingListLength(generatorRes) +
-            pendingListLength(maintenanceRes);
+            pendingListLength(maintenanceRes) +
+            pendingListLength(purchaseRes);
           return { data: { count } };
         } catch (error) {
           return { error: { status: 'FETCH_ERROR', error: error.message } };
@@ -45,6 +51,7 @@ export const strategicFinanceApprovalsApi = baseApi.injectEndpoints({
         'FuelTransportVouchers',
         'FuelGeneratorVouchers',
         'MaintenanceVouchers',
+        'PurchaseOrderVouchers',
       ],
     }),
   }),

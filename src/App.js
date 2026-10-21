@@ -31,6 +31,9 @@ import FieldHistory from './sections/management/ops/FieldHistory';
 import DataViewer from './sections/corporate/chartView/DataViewer';
 import FinancialCards from './sections/finance/financialCards/FinancialCards';
 import VoucherPayments from './sections/finance/voucherPayments/VoucherPayments';
+import PurchaseOrderPayments from './sections/finance/purchaseOrders/PurchaseOrderPayments';
+import FinanceDashboard from './sections/finance/dashboard/FinanceDashboard';
+import FinanceDashboardDetail from './sections/finance/dashboard/FinanceDashboardDetail';
 import Payroll from './sections/finance/payroll/Payroll';
 import FinanceApprovals from './sections/finance/financeApprovals/FinanceApprovals';
 import VehicleRent from './sections/finance/vehicleRent/VehicleRent';
@@ -594,10 +597,38 @@ function App() {
             }
           />
           <Route
+            path="finance"
+            element={<Navigate to="/home/finance/dashboard" replace />}
+          />
+          <Route
+            path="finance/dashboard"
+            element={
+              <ProtectedRoute>
+                <FinanceDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="finance/dashboard/detail/:metric"
+            element={
+              <ProtectedRoute>
+                <FinanceDashboardDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="finance/voucher-payments"
             element={
               <ProtectedRoute>
                 <VoucherPayments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="finance/purchase-order-payments"
+            element={
+              <ProtectedRoute>
+                <PurchaseOrderPayments />
               </ProtectedRoute>
             }
           />
