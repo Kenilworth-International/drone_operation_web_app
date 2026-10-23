@@ -112,69 +112,71 @@ const DriverAdvanceFinance = ({ embedded = false, externalMonth = '', onMonthCha
   return (
     <Box
       sx={embedded
-        ? { p: '6px', m: 0, backgroundColor: 'transparent', minHeight: 'auto' }
+        ? { p: 0, m: 0, backgroundColor: 'transparent', minHeight: 'auto' }
         : { p: 3, backgroundColor: '#f3f7fb', minHeight: '100vh' }}
     >
-      <Card
-        elevation={0}
-        sx={{
-          p: 0,
-          mb: 1.5,
-          border: '1px solid #d9e5ef',
-          borderRadius: 2,
-          background: 'linear-gradient(180deg, #fdfefe 0%, #f6fbff 100%)',
-        }}
-      >
-        <CardContent sx={{ p: '14px !important' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-            <Typography variant={embedded ? 'h6' : 'h5'} sx={{ fontWeight: 700, color: '#102739', m: 0 }}>
-              Driver Advance Finance
-            </Typography>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(120px, 1fr))' },
-                gap: 1,
-                width: { xs: '100%', sm: 'auto' },
-                minWidth: { sm: 420 },
-              }}
-            >
-              <Box sx={{ border: '1px solid #f6dfb0', background: '#fff7e8', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
-                <Typography sx={{ fontSize: 11, color: '#7b5600', lineHeight: 1.2 }}>Pending</Typography>
-                <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#9a6700', lineHeight: 1.1 }}>{pendingCount}</Typography>
-              </Box>
-              <Box sx={{ border: '1px solid #ddd0ff', background: '#f1ecff', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
-                <Typography sx={{ fontSize: 11, color: '#4a2f8a', lineHeight: 1.2 }}>Approved, Not Paid</Typography>
-                <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#5a3d9a', lineHeight: 1.1 }}>{approvedNotPaidCount}</Typography>
-              </Box>
-              <Box sx={{ border: '1px solid #c7ecd8', background: '#eaf8ef', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
-                <Typography sx={{ fontSize: 11, color: '#1d6b3b', lineHeight: 1.2 }}>Paid</Typography>
-                <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#1f7a44', lineHeight: 1.1 }}>{paidCount}</Typography>
+      {!embedded ? (
+        <Card
+          elevation={0}
+          sx={{
+            p: 0,
+            mb: 1.5,
+            border: '1px solid #d9e5ef',
+            borderRadius: 2,
+            background: 'linear-gradient(180deg, #fdfefe 0%, #f6fbff 100%)',
+          }}
+        >
+          <CardContent sx={{ p: '14px !important' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#102739', m: 0 }}>
+                Driver Advance Finance
+              </Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(120px, 1fr))' },
+                  gap: 1,
+                  width: { xs: '100%', sm: 'auto' },
+                  minWidth: { sm: 420 },
+                }}
+              >
+                <Box sx={{ border: '1px solid #f6dfb0', background: '#fff7e8', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
+                  <Typography sx={{ fontSize: 11, color: '#7b5600', lineHeight: 1.2 }}>Pending</Typography>
+                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#9a6700', lineHeight: 1.1 }}>{pendingCount}</Typography>
+                </Box>
+                <Box sx={{ border: '1px solid #ddd0ff', background: '#f1ecff', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
+                  <Typography sx={{ fontSize: 11, color: '#4a2f8a', lineHeight: 1.2 }}>Approved, Not Paid</Typography>
+                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#5a3d9a', lineHeight: 1.1 }}>{approvedNotPaidCount}</Typography>
+                </Box>
+                <Box sx={{ border: '1px solid #c7ecd8', background: '#eaf8ef', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
+                  <Typography sx={{ fontSize: 11, color: '#1d6b3b', lineHeight: 1.2 }}>Paid</Typography>
+                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#1f7a44', lineHeight: 1.1 }}>{paidCount}</Typography>
+                </Box>
               </Box>
             </Box>
-          </Box>
-          <Box sx={{ mt: 1.2 }}>
-            <FormControl size="small" sx={{ minWidth: 220 }}>
-              <InputLabel>Month</InputLabel>
-              <Select
-                value={selectedMonth}
-                label="Month"
-                disabled={isMonthLocked && !onMonthChange}
-                onChange={(e) => {
-                  const nextMonth = e.target.value;
-                  setSelectedMonth(nextMonth);
-                  if (onMonthChange) onMonthChange(nextMonth);
-                }}
-                MenuProps={selectMenuPropsAboveOverlay}
-              >
-                {months.map((m) => (
-                  <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
-        </CardContent>
-      </Card>
+            <Box sx={{ mt: 1.2 }}>
+              <FormControl size="small" sx={{ minWidth: 220 }}>
+                <InputLabel>Month</InputLabel>
+                <Select
+                  value={selectedMonth}
+                  label="Month"
+                  disabled={isMonthLocked && !onMonthChange}
+                  onChange={(e) => {
+                    const nextMonth = e.target.value;
+                    setSelectedMonth(nextMonth);
+                    if (onMonthChange) onMonthChange(nextMonth);
+                  }}
+                  MenuProps={selectMenuPropsAboveOverlay}
+                >
+                  {months.map((m) => (
+                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, minHeight: embedded ? 200 : 260 }}>

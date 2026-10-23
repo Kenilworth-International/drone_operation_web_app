@@ -21,6 +21,31 @@
   background: transparent;
 }
 
+.mf-header--embedded {
+  margin-bottom: 12px;
+  justify-content: flex-end;
+}
+
+.mf-embedded .mf-kpi-strip {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.mf-embedded .mf-kpi-card {
+  flex: 1 1 110px;
+  padding: 10px 12px;
+  min-width: 100px;
+}
+
+.mf-embedded .mf-kpi-value {
+  font-size: 22px;
+}
+
+.mf-embedded .mf-filter-bar {
+  margin-bottom: 12px;
+  padding: 12px 14px;
+}
+
 /* ── Page header ──────────────────────────────────────── */
 .mf-header {
   display: flex;

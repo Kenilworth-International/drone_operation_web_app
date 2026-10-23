@@ -327,70 +327,74 @@ const VehicleRent = ({
     <Box
       className="vehicle-rent-container"
       sx={embedded
-        ? { p: '6px', m: 0, backgroundColor: 'transparent', minHeight: 'auto' }
+        ? { p: 0, m: 0, backgroundColor: 'transparent', minHeight: 'auto' }
         : { p: { xs: 2, sm: 3 }, backgroundColor: '#f3f7fb', minHeight: '100vh' }}
     >
-      {/* Filters */}
+      {/* Filters — month lives in parent toolbar when embedded */}
       <Card 
         className="vehicle-rent-filter-card"
         sx={{ 
           mb: 1.5,
-          p: 1.6,
+          p: embedded ? 1.25 : 1.6,
           boxShadow: 'none',
           borderRadius: 2,
-          background: 'linear-gradient(180deg, #fdfefe 0%, #f6fbff 100%)',
+          background: '#fff',
           border: '1px solid #d9e5ef'
         }}
       >
-        <Box sx={{ mb: 1.25, display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <FilterList sx={{ color: 'primary.main', fontSize: 18 }} />
-          <Typography variant="body1" sx={{ fontWeight: 600, color: '#1a202c' }}>
-            Filters
-          </Typography>
-        </Box>
+        {!embedded ? (
+          <Box sx={{ mb: 1.25, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <FilterList sx={{ color: 'primary.main', fontSize: 18 }} />
+            <Typography variant="body1" sx={{ fontWeight: 600, color: '#1a202c' }}>
+              Filters
+            </Typography>
+          </Box>
+        ) : null}
         <Grid container spacing={1.25} alignItems="center">
-          <Grid size={{ xs: 12, sm: 6, md: 5 }}>
-            <FormControl 
-              fullWidth 
-              size="small"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: 'white',
-                  borderRadius: 2,
-                  '&:hover': {
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'primary.main',
+          {!embedded ? (
+            <Grid size={{ xs: 12, sm: 6, md: 5 }}>
+              <FormControl 
+                fullWidth 
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'white',
+                    borderRadius: 2,
+                    '&:hover': {
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'primary.main',
+                      },
                     },
                   },
-                },
-              }}
-            >
-              <InputLabel>Select Month</InputLabel>
-              <Select
-                value={selectedMonth}
-                label="Select Month"
-                onChange={(e) => {
-                  const nextMonth = e.target.value;
-                  setSelectedMonth(nextMonth);
-                  if (onMonthChange) onMonthChange(nextMonth);
                 }}
-                disabled={isMonthLocked && !onMonthChange}
-                MenuProps={selectMenuPropsAboveOverlay}
-                startAdornment={
-                  <InputAdornment position="start" sx={{ ml: 1 }}>
-                    <CalendarToday sx={{ fontSize: 18, color: 'text.secondary' }} />
-                  </InputAdornment>
-                }
               >
-                {months.map((month) => (
-                  <MenuItem key={month.value} value={month.value}>
-                    {month.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, md: 5 }}>
+                <InputLabel>Select Month</InputLabel>
+                <Select
+                  value={selectedMonth}
+                  label="Select Month"
+                  onChange={(e) => {
+                    const nextMonth = e.target.value;
+                    setSelectedMonth(nextMonth);
+                    if (onMonthChange) onMonthChange(nextMonth);
+                  }}
+                  disabled={isMonthLocked && !onMonthChange}
+                  MenuProps={selectMenuPropsAboveOverlay}
+                  startAdornment={
+                    <InputAdornment position="start" sx={{ ml: 1 }}>
+                      <CalendarToday sx={{ fontSize: 18, color: 'text.secondary' }} />
+                    </InputAdornment>
+                  }
+                >
+                  {months.map((month) => (
+                    <MenuItem key={month.value} value={month.value}>
+                      {month.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          ) : null}
+          <Grid size={{ xs: 12, sm: embedded ? 9 : 6, md: embedded ? 9 : 5 }}>
             <FormControl 
               fullWidth 
               size="small"

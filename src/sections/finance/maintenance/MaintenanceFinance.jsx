@@ -382,12 +382,16 @@ function MaintenanceFinance({
   return (
     <div className={`mf-root${embedded ? ' mf-embedded' : ''}`}>
 
-      {/* ── Page header ──────────────────────────────────── */}
-      <div className="mf-header">
-        <div className="mf-header-left">
-          <h2>Maintenance Finance Queue</h2>
-          <p>Finance approval → voucher creation → MD approval → settlement</p>
-        </div>
+      {/* ── Page header (title hidden when embedded — parent toolbar owns it) ── */}
+      <div className={`mf-header${embedded ? ' mf-header--embedded' : ''}`}>
+        {!embedded ? (
+          <div className="mf-header-left">
+            <h2>Maintenance Finance Queue</h2>
+            <p>Finance approval → voucher creation → MD approval → settlement</p>
+          </div>
+        ) : (
+          <div className="mf-header-left" />
+        )}
         <div className="mf-header-actions">
           {selectedIds.length > 0 && (
             <button type="button" className="mf-btn mf-btn-primary" onClick={() => setConfirmCreateOpen(true)} disabled={!eligibleSelected.length}>
