@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import '../../../styles/plantationInvoice.css';
+import { COMPANY } from '../../../config/companyConstants';
 import { downloadPlantationInvoicePdf } from './plantationInvoicePdfExport';
 import {
   isBillableServiceLine,
@@ -59,6 +60,8 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
   const orgLines = invoice.org_address_lines?.length
     ? invoice.org_address_lines
     : formatAddressLines(invoice.org_address);
+  const govtUid = String(invoice.br || COMPANY.govtUid || '').trim();
+  const tinNo = String(invoice.tin_no || COMPANY.tinNo || COMPANY.taxId || '').trim();
 
   return (
     <div
@@ -112,7 +115,8 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
               <span className="address-line">{invoice.telephone}</span>
             ) : null}
             {invoice.email ? <span className="address-line">{invoice.email}</span> : null}
-            {invoice.br ? <span className="address-line">Govt. UID: {invoice.br}</span> : null}
+            {govtUid ? <span className="address-line">Govt. UID: {govtUid}</span> : null}
+            {tinNo ? <span className="address-line">TIN NO: {tinNo}</span> : null}
           </div>
         </header>
 

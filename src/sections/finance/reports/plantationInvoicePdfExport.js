@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { COMPANY } from '../../../config/companyConstants';
 import {
   isBillableServiceLine,
   sumInvoiceLineHa,
@@ -100,8 +101,14 @@ export function downloadPlantationInvoicePdf(invoice) {
     doc.text(invoice.email, pageWidth - margin, orgY, { align: 'right' });
     orgY += 4;
   }
-  if (invoice.br) {
-    doc.text(`Govt. UID: ${invoice.br}`, pageWidth - margin, orgY, { align: 'right' });
+  const govtUid = String(invoice.br || COMPANY.govtUid || '').trim();
+  const tinNo = String(invoice.tin_no || COMPANY.tinNo || COMPANY.taxId || '').trim();
+  if (govtUid) {
+    doc.text(`Govt. UID: ${govtUid}`, pageWidth - margin, orgY, { align: 'right' });
+    orgY += 4;
+  }
+  if (tinNo) {
+    doc.text(`TIN NO: ${tinNo}`, pageWidth - margin, orgY, { align: 'right' });
     orgY += 4;
   }
 

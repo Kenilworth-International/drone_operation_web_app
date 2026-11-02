@@ -14,7 +14,12 @@ export const COMPANY = {
   postalCode: '10100',
   phone: '',
   email: 'kenilworth.online@gmail.com',
-  taxId: '',
+  /** Government Unique Identifier (BR / Govt. UID). */
+  govtUid: 'PV9489',
+  /** Taxpayer Identification Number. */
+  tinNo: '174948984 - 0000',
+  /** Alias of tinNo for older PO/GRN docs that read taxId. */
+  taxId: '174948984 - 0000',
   logoPath: '/assets/images/kenilowrthlogoDark.png',
   /** Minutes per Ha for ops monitoring countdown (1 Ha per 30 min → 2 Ha = 1 hour). Adjust here to change rate. */
   minutesPerHa: 30,
