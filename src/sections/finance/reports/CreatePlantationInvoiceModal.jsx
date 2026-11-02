@@ -18,6 +18,9 @@ import {
   FUEL_LITERS_PER_HA,
   billingMonthFromPeriodEnd,
   applyFuelSurchargeToDraft,
+  isBillableServiceLine,
+  sumInvoiceLinePlans,
+  sumInvoiceLineHa,
 } from './plantationInvoiceFuelSurcharge';
 
 const formatMoney = (n) =>
@@ -327,6 +330,10 @@ export default function CreatePlantationInvoiceModal({
       toast.error('No billable lines (check spray/spread rates and billing Ha)');
       return;
     }
+    if (!draft?.plantation?.plantation_code) {
+      toast.error('Set plantation code under Corporate Customer before creating invoices');
+      return;
+    }
     if (!selectedTaxIds.length) {
       toast.error('Select at least one tax');
       return;
@@ -464,7 +471,7 @@ export default function CreatePlantationInvoiceModal({
               {isPre ? (
                 <div className="pre-invoice-basis-row">
                   <div className="pre-invoice-basis-field">
-                    <label htmlFor="inv-plan-count">Scheduled plans</label>
+                    <label htmlFor="inv-plan-count">Monthly plans</label>
                     <input
                       id="inv-plan-count"
                       className="plantation-invoice-input-readonly"
@@ -558,8 +565,13 @@ export default function CreatePlantationInvoiceModal({
                     value={invoiceNo}
                     readOnly
                     aria-readonly="true"
-                    title="Invoice number is assigned automatically"
+                    title="Format: YYMMM_CODE_PRE/POS#### (e.g. 26OCT_BTE_PRE0001). Assigned on create."
                   />
+                  {!draft?.plantation?.plantation_code ? (
+                    <small style={{ color: '#b45309', display: 'block', marginTop: 4 }}>
+                      Set plantation code under Corporate Customer before creating.
+                    </small>
+                  ) : null}
                 </div>
                 <div>
                   <label htmlFor="inv-date">Invoice Date</label>
@@ -647,27 +659,47 @@ export default function CreatePlantationInvoiceModal({
                   <thead>
                     <tr>
                       <th>Activity</th>
-                      <th>QTY (Ha)</th>
-                      <th>Rate (per Ha)</th>
-                      <th>Amount</th>
+                      <th className="num">Plans</th>
+                      <th className="num">Ha</th>
+                      <th className="num">Rate (per Ha)</th>
+                      <th className="num">Amount</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {displayDraft.line_items.map((row, idx) => (
-                      <tr
-                        key={`${row.estate_id ?? 'e'}-${row.mission_type}-${row.line_type || 'line'}-${idx}`}
-                        className={row.line_type === 'fuel_surcharge' ? 'plantation-invoice-fuel-row' : ''}
-                      >
-                        <td>
-                          <div>{row.activity}</div>
-                          <small style={{ color: '#64748b' }}>{row.description}</small>
-                        </td>
-                        <td>{formatMoney(row.qty)}</td>
-                        <td>{formatMoney(row.rate)}</td>
-                        <td>{formatMoney(row.amount)}</td>
-                      </tr>
-                    ))}
+                    {displayDraft.line_items.map((row, idx) => {
+                      const isFuel = row.line_type === 'fuel_surcharge';
+                      return (
+                        <tr
+                          key={`${row.estate_id ?? 'e'}-${row.mission_type}-${row.line_type || 'line'}-${idx}`}
+                          className={isFuel ? 'plantation-invoice-fuel-row' : ''}
+                        >
+                          <td>
+                            <div>{row.activity}</div>
+                            <small style={{ color: '#64748b' }}>{row.description}</small>
+                          </td>
+                          <td className="num">
+                            {isFuel || !isBillableServiceLine(row)
+                              ? '—'
+                              : row.plan_count != null
+                                ? Number(row.plan_count)
+                                : '—'}
+                          </td>
+                          <td className="num">{formatMoney(row.qty)}</td>
+                          <td className="num">{formatMoney(row.rate)}</td>
+                          <td className="num">{formatMoney(row.amount)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
+                  <tfoot>
+                    <tr className="plantation-invoice-preview-totals-row">
+                      <td>Total</td>
+                      <td className="num">{sumInvoiceLinePlans(displayDraft.line_items)}</td>
+                      <td className="num">{formatMoney(sumInvoiceLineHa(displayDraft.line_items))}</td>
+                      <td />
+                      <td className="num">{formatMoney(displayDraft.subtotal)}</td>
+                    </tr>
+                  </tfoot>
                 </table>
               )}
 
@@ -724,7 +756,8 @@ export default function CreatePlantationInvoiceModal({
               draftLoading ||
               createBlocked ||
               Boolean(loadError) ||
-              !displayDraft?.line_items?.length
+              !displayDraft?.line_items?.length ||
+              !draft?.plantation?.plantation_code
             }
             onClick={handleCreate}
           >

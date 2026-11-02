@@ -194,6 +194,119 @@ export const mappingHierarchyApi = baseApi.injectEndpoints({
       ],
     }),
 
+    getPlantationBillingRateCatalog: builder.query({
+      queryFn: async ({ rateKind = null, includeInactive = true } = {}) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/plantations/billing-rates/catalog/list',
+            method: 'POST',
+            body: {
+              rate_kind: rateKind || undefined,
+              include_inactive: includeInactive,
+            },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      providesTags: ['PlantationBillingRateCatalog'],
+    }),
+
+    savePlantationBillingRateCatalog: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/plantations/billing-rates/catalog/save',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['PlantationBillingRateCatalog', 'Plantations'],
+    }),
+
+    deactivatePlantationBillingRateCatalog: builder.mutation({
+      queryFn: async ({ id }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/plantations/billing-rates/catalog/deactivate',
+            method: 'POST',
+            body: { id },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['PlantationBillingRateCatalog', 'Plantations'],
+    }),
+
+    getPlantationBillingRateAssignments: builder.query({
+      queryFn: async ({ plantationId, includeInactive = true } = {}) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/plantations/billing-rates/assignments/list',
+            method: 'POST',
+            body: {
+              plantation_id: plantationId,
+              include_inactive: includeInactive,
+            },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      providesTags: (result, error, arg) => [
+        { type: 'PlantationBillingRateAssignments', id: arg?.plantationId },
+        'PlantationBillingRateAssignments',
+      ],
+    }),
+
+    savePlantationBillingRateAssignment: builder.mutation({
+      queryFn: async (body) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/plantations/billing-rates/assignments/save',
+            method: 'POST',
+            body,
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: (result, error, body) => [
+        { type: 'PlantationBillingRateAssignments', id: body?.plantation_id },
+        'PlantationBillingRateAssignments',
+        'Plantations',
+      ],
+    }),
+
+    deactivatePlantationBillingRateAssignment: builder.mutation({
+      queryFn: async ({ id, plantation_id }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/plantations/billing-rates/assignments/deactivate',
+            method: 'POST',
+            body: { id },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: (result, error, arg) => [
+        { type: 'PlantationBillingRateAssignments', id: arg?.plantation_id },
+        'PlantationBillingRateAssignments',
+        'Plantations',
+      ],
+    }),
+
     deleteMappingPlantation: builder.mutation({
       queryFn: async (id) => {
         const result = await nodeBackendBaseQuery(
@@ -811,6 +924,12 @@ export const {
   useGetMappingPlantationsByGroupQuery,
   useCreateMappingPlantationMutation,
   useUpdateMappingPlantationMutation,
+  useGetPlantationBillingRateCatalogQuery,
+  useSavePlantationBillingRateCatalogMutation,
+  useDeactivatePlantationBillingRateCatalogMutation,
+  useGetPlantationBillingRateAssignmentsQuery,
+  useSavePlantationBillingRateAssignmentMutation,
+  useDeactivatePlantationBillingRateAssignmentMutation,
   useDeleteMappingPlantationMutation,
   useToggleMappingPlantationActivationMutation,
   // Regions

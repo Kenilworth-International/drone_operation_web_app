@@ -16,6 +16,7 @@ import {
   useClearOpsCancelMutation,
   useResetPilotCancelMutation,
   useLazyGetDayOverviewQuery,
+  useLazyGetMonthDateColorsQuery,
   useLazyGetDayEndPlanSummaryQuery,
   useLazyGetDayEndTasksByPlanAndFieldQuery,
   useSubmitDayEndDjiRecordMutation,
@@ -29,11 +30,43 @@ import { useGetMyPermissionsQuery } from '../../../api/services NodeJs/featurePe
 import { FEATURE_CODES } from '../../../utils/featurePermissions';
 import { isInternalDeveloper } from '../../../utils/authUtils';
 
-const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
-  <div className="custom-date-input" ref={ref} onClick={onClick}>
-    <input type="text" value={value} readOnly className="date-picker-input" />
-    <FaCalendarAlt className="calendar-icon" />
-  </div>
+const CustomDateInput = React.forwardRef(({ value, onClick, onClear, placeholder, prefix }, ref) => (
+  <button
+    type="button"
+    className="dep-hdr-control"
+    ref={ref}
+    onClick={onClick}
+    aria-label={prefix || 'Select date'}
+  >
+    {prefix ? <span className="dep-hdr-control-prefix">{prefix}</span> : null}
+    <span className={`dep-hdr-control-value${!value ? ' is-placeholder' : ''}`}>
+      {value || placeholder || ''}
+    </span>
+    {value && onClear ? (
+      <span
+        role="button"
+        tabIndex={0}
+        className="dep-hdr-date-clear"
+        aria-label="Clear date"
+        title="Clear date (show whole month)"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          onClear();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            onClear();
+          }
+        }}
+      >
+        ×
+      </span>
+    ) : null}
+    <FaCalendarAlt className="dep-hdr-control-icon" aria-hidden />
+  </button>
 ));
 
 /** DJI field area below this ratio of pilot field area requires a partial (flag h) cancel reason. */
@@ -80,7 +113,15 @@ const DayEndProcess = () => {
   const [loadingFields, setLoadingFields] = useState({});
   const [expandedFields, setExpandedFields] = useState([]);
   const today = new Date();
-  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedMonth, setSelectedMonth] = useState(
+    () => new Date(today.getFullYear(), today.getMonth(), 1)
+  );
+  /** Optional day filter within the month (null = whole month). */
+  const [filterDate, setFilterDate] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('pending');
+  const [dateColorMap, setDateColorMap] = useState({});
+  /** @deprecated kept as alias for older refresh call sites */
+  const selectedDate = filterDate || selectedMonth;
   const [showTaskPopup, setShowTaskPopup] = useState(false);
   const [currentTask, setCurrentTask] = useState(null);
   const [currentField, setCurrentField] = useState(null);
@@ -130,7 +171,101 @@ const DayEndProcess = () => {
   }, [djiMapFile]);
 
   const [fetchDayOverview] = useLazyGetDayOverviewQuery();
+  const [fetchMonthDateColors] = useLazyGetMonthDateColorsQuery();
   const [fetchPlanSummary] = useLazyGetDayEndPlanSummaryQuery();
+
+  const formatMonthKey = (date) => {
+    if (!date) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  };
+
+  const formatDayKey = (date) => (date ? date.toLocaleDateString('en-CA') : null);
+
+  const formatPlanHa = (area) => {
+    const n = Number(area);
+    if (!Number.isFinite(n) || n <= 0) return '0.00';
+    return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const mapOverviewPlans = (allPlans) =>
+    (allPlans || []).map((plan) => ({
+      id: plan.id,
+      group: `${plan.estate}(${plan.estate_id}) - ${formatPlanHa(plan.area)} Ha`,
+      picked_date: plan.picked_date || null,
+      area: Number(plan.area) || 0,
+      completed: Number(plan.completed) === 1 ? 1 : 0,
+      activated: Number(plan.activated) === 0 ? 0 : 1,
+      team_assigned: Number(plan.team_assigned) === 0 ? 0 : 1,
+      operator_name: plan.operator_name,
+      total_sub_task: plan.total_sub_task,
+      total_sub_task_ops_room_approved_subs: plan.total_sub_task_ops_room_approved_subs,
+      total_sub_task_ops_room_pending_subs: plan.total_sub_task_ops_room_pending_subs,
+      total_sub_task_ops_room_rejected_subs: plan.total_sub_task_ops_room_rejected_subs,
+      completionStats: {
+        totalFields: Number(plan.completionStats?.totalFields) || 0,
+        completedFields: Number(plan.completionStats?.completedFields) || 0,
+        pendingFields: Number(plan.completionStats?.pendingFields) || 0,
+        canceledFields: Number(plan.completionStats?.canceledFields) || 0,
+        resolvedFields: Number(plan.completionStats?.resolvedFields) || 0,
+        completionPercentage: Number(plan.completionStats?.completionPercentage) || 0,
+        cancelPercentage: Number(plan.completionStats?.cancelPercentage) || 0,
+        resolvedPercentage: Number(plan.completionStats?.resolvedPercentage) || 0,
+      },
+    }));
+
+  const loadMonthDateColors = async (monthDate) => {
+    try {
+      const month = formatMonthKey(monthDate || selectedMonth);
+      const result = await fetchMonthDateColors({ month });
+      if (result.error) {
+        setDateColorMap({});
+        return;
+      }
+      const map = {};
+      (result.data || []).forEach((row) => {
+        if (row?.date) map[row.date] = row.color;
+      });
+      setDateColorMap(map);
+    } catch {
+      setDateColorMap({});
+    }
+  };
+
+  const loadPlans = async ({
+    monthDate = selectedMonth,
+    dayDate = filterDate,
+    status = statusFilter,
+  } = {}) => {
+    setMissions([]);
+    setSelectedMission(null);
+    setSelectedMissionId(null);
+    setExpandedDivisions([]);
+    setExpandedFields([]);
+    setFieldTasks({});
+    setTaskCancelStatusMap({});
+    setLoadingFields({});
+    setLoadingMissions(true);
+    try {
+      const month = formatMonthKey(monthDate);
+      const date = dayDate ? formatDayKey(dayDate) : undefined;
+      const overviewResult = await fetchDayOverview({ month, date, status });
+      if (overviewResult.error) {
+        console.error('Error fetching day overview:', overviewResult.error);
+        setMissions([]);
+        return;
+      }
+      setMissions(mapOverviewPlans(overviewResult.data || []));
+      await loadMonthDateColors(monthDate);
+    } catch (error) {
+      toast.error('Failed to load plans. Please try again.');
+      console.error(error);
+      setMissions([]);
+    } finally {
+      setLoadingMissions(false);
+    }
+  };
   const [fetchTasksByPlanAndField] = useLazyGetDayEndTasksByPlanAndFieldQuery();
   const [submitDjiRecord] = useSubmitDayEndDjiRecordMutation();
   const [updateOpsApproval] = useUpdateDayEndOpsApprovalMutation();
@@ -252,8 +387,9 @@ const DayEndProcess = () => {
 
   const refreshDayProgressStats = async () => {
     try {
-      const formattedDate = selectedDate.toLocaleDateString('en-CA');
-      const overviewResult = await fetchDayOverview({ date: formattedDate });
+      const month = formatMonthKey(selectedMonth);
+      const date = filterDate ? formatDayKey(filterDate) : undefined;
+      const overviewResult = await fetchDayOverview({ month, date, status: statusFilter });
       if (overviewResult.error) return;
       const allPlans = overviewResult.data || [];
       setMissions((prev) =>
@@ -262,10 +398,17 @@ const DayEndProcess = () => {
           if (!updated?.completionStats) return mission;
           return {
             ...mission,
+            completed: updated.completed ?? mission.completed,
+            area: Number(updated.area) || mission.area,
+            group: updated.estate
+              ? `${updated.estate}(${updated.estate_id}) - ${formatPlanHa(updated.area)} Ha`
+              : mission.group,
             completionStats: {
               totalFields: Number(updated.completionStats.totalFields) || 0,
               completedFields: Number(updated.completionStats.completedFields) || 0,
               pendingFields: Number(updated.completionStats.pendingFields) || 0,
+              resolvedFields: Number(updated.completionStats.resolvedFields) || 0,
+              resolvedPercentage: Number(updated.completionStats.resolvedPercentage) || 0,
               canceledFields: Number(updated.completionStats.canceledFields) || 0,
               completionPercentage: Number(updated.completionStats.completionPercentage) || 0,
               cancelPercentage: Number(updated.completionStats.cancelPercentage) || 0,
@@ -449,59 +592,53 @@ const DayEndProcess = () => {
     }
   };
 
-  const handleDateChange = async (date) => {
-    setMissions([]);
-    setSelectedMission(null);
-    setSelectedMissionId(null);
-    setExpandedDivisions([]);
-    setExpandedFields([]);
-    setFieldTasks({});
-    setTaskCancelStatusMap({});
-    setLoadingFields({});
-    setLoadingMissions(true);
-    try {
-      setSelectedDate(date);
-      const formattedDate = date.toLocaleDateString('en-CA');
-      const overviewResult = await fetchDayOverview({ date: formattedDate });
-      if (overviewResult.error) {
-        console.error('Error fetching day overview:', overviewResult.error);
-        setMissions([]);
-        return;
-      }
+  const handleMonthChange = async (date) => {
+    if (!date) return;
+    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+    setSelectedMonth(monthStart);
+    setFilterDate(null);
+    await loadPlans({ monthDate: monthStart, dayDate: null, status: statusFilter });
+  };
 
-      const allPlans = overviewResult.data || [];
-      if (allPlans.length > 0) {
-        const missionOptions = allPlans.map((plan) => ({
-          id: plan.id,
-          group: `${plan.estate}(${(plan.estate_id)}) - ${plan.area} Ha`,
-          completed: plan.completed,
-          activated: plan.activated,
-          team_assigned: plan.team_assigned,
-          operator_name: plan.operator_name,
-          total_sub_task: plan.total_sub_task,
-          total_sub_task_ops_room_approved_subs: plan.total_sub_task_ops_room_approved_subs,
-          total_sub_task_ops_room_pending_subs: plan.total_sub_task_ops_room_pending_subs,
-          total_sub_task_ops_room_rejected_subs: plan.total_sub_task_ops_room_rejected_subs,
-          completionStats: {
-            totalFields: Number(plan.completionStats?.totalFields) || 0,
-            completedFields: Number(plan.completionStats?.completedFields) || 0,
-            pendingFields: Number(plan.completionStats?.pendingFields) || 0,
-            canceledFields: Number(plan.completionStats?.canceledFields) || 0,
-            completionPercentage: Number(plan.completionStats?.completionPercentage) || 0,
-            cancelPercentage: Number(plan.completionStats?.cancelPercentage) || 0,
-          },
-        }));
-        setMissions(missionOptions);
-      } else {
-        setMissions([]);
-      }
-    } catch (error) {
-      toast.error('Failed to load missions. Please try again.');
-      console.error(error);
-      setMissions([]);
-    } finally {
-      setLoadingMissions(false);
+  const handleFilterDateChange = async (date) => {
+    setFilterDate(date || null);
+    await loadPlans({
+      monthDate: selectedMonth,
+      dayDate: date || null,
+      status: statusFilter,
+    });
+  };
+
+  const handleStatusFilterChange = async (nextStatus) => {
+    setStatusFilter(nextStatus);
+    await loadPlans({
+      monthDate: selectedMonth,
+      dayDate: filterDate,
+      status: nextStatus,
+    });
+  };
+
+  /** Refresh list after Dir-Ops / DJI updates (keeps current month/date/status filters). */
+  const handleDateChange = async () => {
+    await loadPlans({
+      monthDate: selectedMonth,
+      dayDate: filterDate,
+      status: statusFilter,
+    });
+  };
+
+  const dayClassName = (date) => {
+    if (
+      date.getMonth() !== selectedMonth.getMonth() ||
+      date.getFullYear() !== selectedMonth.getFullYear()
+    ) {
+      return undefined;
     }
+    const key = formatDayKey(date);
+    const color = dateColorMap[key];
+    if (color === 'orange') return 'dep-day--pending';
+    if (color === 'green') return 'dep-day--done';
+    return undefined;
   };
 
   const handleMissionClick = async (missionId) => {
@@ -662,7 +799,11 @@ const DayEndProcess = () => {
   };
 
   useEffect(() => {
-    handleDateChange(selectedDate);
+    void loadPlans({
+      monthDate: selectedMonth,
+      dayDate: null,
+      status: 'pending',
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -892,18 +1033,7 @@ const DayEndProcess = () => {
 
       if (response?.success || response?.status === 'true') {
         if (selectedMission?.id) {
-          const formattedDate = selectedDate.toLocaleDateString('en-CA');
-          const overviewResult = await fetchDayOverview({ date: formattedDate });
-          const updatedPlan = (overviewResult.data || []).find((p) => p.id === selectedMission.id);
-          if (updatedPlan?.completionStats) {
-            setMissions((prevMissions) =>
-              prevMissions.map((mission) =>
-                mission.id === selectedMission.id
-                  ? { ...mission, completionStats: updatedPlan.completionStats }
-                  : mission
-              )
-            );
-          }
+          await handleDateChange();
         }
 
         toast.success('DJI map and data uploaded successfully!');
@@ -1034,19 +1164,34 @@ const DayEndProcess = () => {
     return a.id - b.id;
   }), [missions]);
 
-  const pendingCount = missions.filter(m => m.activated !== 0 && m.team_assigned !== 0 && m.completed !== 1).length;
-  const doneCount    = missions.filter(m => m.completed === 1).length;
+  const isActionablePending = (m) =>
+    Number(m.activated) !== 0 && Number(m.team_assigned) !== 0 && Number(m.completed) !== 1;
+  const pendingCount = missions.filter(isActionablePending).length;
+  const doneCount = missions.filter((m) => Number(m.completed) === 1).length;
+  const noTeamCount = missions.filter(
+    (m) => Number(m.team_assigned) === 0 && Number(m.activated) !== 0 && Number(m.completed) !== 1
+  ).length;
+  const deactivatedCount = missions.filter((m) => Number(m.activated) === 0).length;
 
   const dayFieldTotals = useMemo(() => {
     return missions.reduce(
       (acc, m) => {
+        // Team-not-assigned plans are viewable via filter but excluded from progress.
+        if (Number(m.team_assigned) === 0) return acc;
+        if (Number(m.activated) === 0) return acc;
         const stats = m.completionStats || {};
         acc.totalFields += Number(stats.totalFields) || 0;
         acc.completedFields += Number(stats.completedFields) || 0;
         acc.canceledFields += Number(stats.canceledFields) || 0;
+        acc.resolvedFields +=
+          Number(stats.resolvedFields) ||
+          Math.min(
+            Number(stats.totalFields) || 0,
+            (Number(stats.completedFields) || 0) + (Number(stats.canceledFields) || 0)
+          );
         return acc;
       },
-      { totalFields: 0, completedFields: 0, canceledFields: 0 }
+      { totalFields: 0, completedFields: 0, canceledFields: 0, resolvedFields: 0 }
     );
   }, [missions]);
 
@@ -1054,74 +1199,144 @@ const DayEndProcess = () => {
     dayFieldTotals.totalFields > 0
       ? Math.round((dayFieldTotals.completedFields / dayFieldTotals.totalFields) * 100)
       : 0;
-  const dayCancelPct =
+  const dayResolvedPct =
     dayFieldTotals.totalFields > 0
-      ? Math.round((dayFieldTotals.canceledFields / dayFieldTotals.totalFields) * 100)
+      ? Math.round((dayFieldTotals.resolvedFields / dayFieldTotals.totalFields) * 100)
       : 0;
 
   return (
     <div className="dayendprocess">
 
-      {/* ══ HEADER BAR (dark navy) ══════════════════════════════════ */}
+      {/* ══ HEADER TOOLBAR ══════════════════════════════════════════ */}
       <div className="dep-hdr">
-        <button
-          className="dep-hdr-back"
-          onClick={() => navigate({ pathname: '/home/workflowDashboard', search: routerLocation.search })}
-          title="Back to Workflow Dashboard"
-        >
-          ←
-        </button>
-        <h1 className="dep-hdr-title">Day End Process</h1>
-
-        {/* Plan count summary */}
-        {missions.length > 0 && (
-          <div className="dep-hdr-badge">
-            <span className="dep-hdr-badge-pill dep-hdr-badge-pill--total">{missions.length} Plans</span>
-            {pendingCount > 0 && <span className="dep-hdr-badge-pill dep-hdr-badge-pill--pending">{pendingCount} Pending</span>}
-            {doneCount > 0 && <span className="dep-hdr-badge-pill dep-hdr-badge-pill--done">{doneCount} Done</span>}
+        <div className="dep-hdr-left">
+          <button
+            type="button"
+            className="dep-hdr-back"
+            onClick={() => navigate({ pathname: '/home/workflowDashboard', search: routerLocation.search })}
+            title="Back to Workflow Dashboard"
+            aria-label="Back to Workflow Dashboard"
+          >
+            ←
+          </button>
+          <div className="dep-hdr-title-block">
+            <h1 className="dep-hdr-title">Day End Process</h1>
+            {missions.length > 0 && (
+              <div className="dep-hdr-badge" aria-live="polite">
+                {statusFilter === 'pending' ? (
+                  <span className="dep-hdr-badge-pill dep-hdr-badge-pill--pending">
+                    {pendingCount} Pending
+                  </span>
+                ) : statusFilter === 'noteam' ? (
+                  <span className="dep-hdr-badge-pill dep-hdr-badge-pill--pending">
+                    {noTeamCount} No team
+                  </span>
+                ) : statusFilter === 'completed' ? (
+                  <span className="dep-hdr-badge-pill dep-hdr-badge-pill--done">
+                    {doneCount} Done
+                  </span>
+                ) : statusFilter === 'deactivated' ? (
+                  <span className="dep-hdr-badge-pill dep-hdr-badge-pill--total">
+                    {deactivatedCount} Deactivated
+                  </span>
+                ) : (
+                  <>
+                    <span className="dep-hdr-badge-pill dep-hdr-badge-pill--total">
+                      {missions.length} Plans
+                    </span>
+                    {pendingCount > 0 && (
+                      <span className="dep-hdr-badge-pill dep-hdr-badge-pill--pending">
+                        {pendingCount} Pending
+                      </span>
+                    )}
+                    {noTeamCount > 0 && (
+                      <span className="dep-hdr-badge-pill dep-hdr-badge-pill--pending">
+                        {noTeamCount} No team
+                      </span>
+                    )}
+                    {doneCount > 0 && (
+                      <span className="dep-hdr-badge-pill dep-hdr-badge-pill--done">
+                        {doneCount} Done
+                      </span>
+                    )}
+                    {deactivatedCount > 0 && (
+                      <span className="dep-hdr-badge-pill dep-hdr-badge-pill--total">
+                        {deactivatedCount} Off
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Date picker */}
-        <div className="dep-hdr-date">
-          <label>Date</label>
+        <div className="dep-hdr-filters" role="group" aria-label="Day end filters">
           <DatePicker
-            selected={selectedDate}
-            onChange={handleDateChange}
-            dateFormat="yyyy/MM/dd"
-            customInput={<CustomDateInput />}
+            selected={selectedMonth}
+            onChange={handleMonthChange}
+            dateFormat="MMM yyyy"
+            showMonthYearPicker
+            customInput={<CustomDateInput prefix="Month" />}
           />
+          <DatePicker
+            selected={filterDate}
+            onChange={handleFilterDateChange}
+            dateFormat="yyyy/MM/dd"
+            placeholderText="All month"
+            minDate={new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1)}
+            maxDate={new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0)}
+            dayClassName={dayClassName}
+            customInput={
+              <CustomDateInput
+                prefix="Date"
+                onClear={() => void handleFilterDateChange(null)}
+              />
+            }
+          />
+          <div className="dep-hdr-control dep-hdr-control--select">
+            <span className="dep-hdr-control-prefix">Status</span>
+            <select
+              className="dep-hdr-control-value dep-hdr-status"
+              value={statusFilter}
+              onChange={(e) => void handleStatusFilterChange(e.target.value)}
+              aria-label="Status filter"
+            >
+              <option value="pending">Pending</option>
+              <option value="noteam">No team</option>
+              <option value="completed">Completed</option>
+              <option value="deactivated">Deactivated</option>
+              <option value="all">All</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Day-level OPS / full-cancel progress */}
+      {/* Combined OPS complete + canceled progress */}
       {missions.length > 0 && dayFieldTotals.totalFields > 0 && (
         <div className="dep-day-progress">
           <div className="dep-day-progress-item">
             <div className="dep-day-progress-row">
-              <span className="dep-day-progress-label">OPS Complete</span>
+              <span className="dep-day-progress-label">Progress (complete + canceled)</span>
               <span className="dep-day-progress-pct">
-                {dayOpsPct}% ({dayFieldTotals.completedFields}/{dayFieldTotals.totalFields})
+                {dayResolvedPct}% ({dayFieldTotals.resolvedFields}/{dayFieldTotals.totalFields})
+                <span className="dep-day-progress-split">
+                  {' '}
+                  · OPS {dayFieldTotals.completedFields} · Cancel {dayFieldTotals.canceledFields}
+                </span>
               </span>
             </div>
-            <div className="dep-day-progress-bg">
+            <div className="dep-day-progress-bg dep-day-progress-bg--stacked">
               <div
-                className={`dep-day-progress-fill dep-day-progress-fill--ops${dayOpsPct >= 100 ? ' is-done' : ''}`}
+                className={`dep-day-progress-fill dep-day-progress-fill--ops${dayResolvedPct >= 100 ? ' is-done' : ''}`}
                 style={{ width: `${Math.min(dayOpsPct, 100)}%` }}
               />
-            </div>
-          </div>
-          <div className="dep-day-progress-item">
-            <div className="dep-day-progress-row">
-              <span className="dep-day-progress-label">Full canceled</span>
-              <span className="dep-day-progress-pct">
-                {dayCancelPct}% ({dayFieldTotals.canceledFields}/{dayFieldTotals.totalFields})
-              </span>
-            </div>
-            <div className="dep-day-progress-bg">
               <div
-                className={`dep-day-progress-fill dep-day-progress-fill--cancel${dayCancelPct >= 100 ? ' is-full' : ''}`}
-                style={{ width: `${Math.min(dayCancelPct, 100)}%` }}
+                className={`dep-day-progress-fill dep-day-progress-fill--cancel${dayResolvedPct >= 100 ? ' is-full' : ''}`}
+                style={{
+                  left: `${Math.min(dayOpsPct, 100)}%`,
+                  width: `${Math.min(Math.max(dayResolvedPct - dayOpsPct, 0), 100 - Math.min(dayOpsPct, 100))}%`,
+                }}
               />
             </div>
           </div>
@@ -1150,7 +1365,10 @@ const DayEndProcess = () => {
                 <div className="dep-plans-empty-icon">📋</div>
                 <div className="dep-plans-empty-title">No plans found</div>
                 <div className="dep-plans-empty-hint">
-                  No missions for {selectedDate.toLocaleDateString('en-CA')}. Try another date.
+                  {filterDate
+                    ? `No ${statusFilter} plans for ${formatDayKey(filterDate)}.`
+                    : `No ${statusFilter} plans for ${formatMonthKey(selectedMonth)}.`}{' '}
+                  Try another month, date, or status filter.
                 </div>
               </div>
             ) : (
@@ -1159,9 +1377,28 @@ const DayEndProcess = () => {
                 const isDeactivated = mission.activated === 0;
                 const isNoTeam = mission.team_assigned === 0;
                 const disableToggle = !showDirOpsApprovalFeature || isDeactivated || isNoTeam;
-                const pct = mission.completionStats?.completionPercentage ?? 0;
-                const cancelPct = mission.completionStats?.cancelPercentage ?? 0;
+                const resolvedPct =
+                  mission.completionStats?.resolvedPercentage ??
+                  Math.min(
+                    100,
+                    (mission.completionStats?.completionPercentage || 0) +
+                      (mission.completionStats?.cancelPercentage || 0)
+                  );
                 const canceledFields = Number(mission.completionStats?.canceledFields) || 0;
+                const resolvedFields =
+                  Number(mission.completionStats?.resolvedFields) ||
+                  Math.min(
+                    Number(mission.completionStats?.totalFields) || 0,
+                    (Number(mission.completionStats?.completedFields) || 0) + canceledFields
+                  );
+                const opsShare =
+                  mission.completionStats?.totalFields > 0
+                    ? Math.round(
+                        ((Number(mission.completionStats?.completedFields) || 0) /
+                          mission.completionStats.totalFields) *
+                          100
+                      )
+                    : 0;
 
                 return (
                   <div
@@ -1177,6 +1414,9 @@ const DayEndProcess = () => {
                         <div className="dep-plan-row-name">{mission.group}</div>
                         <div className="dep-plan-row-meta">
                           <span className="dep-plan-row-id">#{mission.id}</span>
+                          {mission.picked_date ? (
+                            <span className="dep-plan-row-date">{mission.picked_date}</span>
+                          ) : null}
                           <span className="dep-plan-row-op">
                             {mission.operator_name?.trim() || 'No operator'}
                           </span>
@@ -1214,29 +1454,29 @@ const DayEndProcess = () => {
                       <div className="dep-plan-meters" onClick={() => handleContainerClick(mission.id)}>
                         <div className="dep-plan-ops">
                           <div className="dep-plan-ops-row">
-                            <span className="dep-plan-ops-label">OPS Complete</span>
+                            <span className="dep-plan-ops-label">Progress</span>
                             <span className="dep-plan-ops-pct">
-                              {pct}% ({mission.completionStats.completedFields}/{mission.completionStats.totalFields})
+                              {resolvedPct}% ({resolvedFields}/{mission.completionStats.totalFields})
+                              <span className="dep-day-progress-split">
+                                {' '}
+                                · OPS {mission.completionStats.completedFields} · Cancel {canceledFields}
+                              </span>
                             </span>
                           </div>
-                          <div className="dep-plan-ops-bg">
+                          <div className="dep-plan-ops-bg dep-plan-ops-bg--stacked">
                             <div
-                              className={`dep-plan-ops-fill ${pct >= 100 ? 'dep-plan-ops-fill--done' : ''}`}
-                              style={{ width: `${Math.min(pct, 100)}%` }}
+                              className={`dep-plan-ops-fill ${resolvedPct >= 100 ? 'dep-plan-ops-fill--done' : ''}`}
+                              style={{ width: `${Math.min(opsShare, 100)}%` }}
                             />
-                          </div>
-                        </div>
-                        <div className="dep-plan-ops dep-plan-ops--cancel">
-                          <div className="dep-plan-ops-row">
-                            <span className="dep-plan-ops-label">Full canceled</span>
-                            <span className="dep-plan-ops-pct">
-                              {cancelPct}% ({canceledFields}/{mission.completionStats.totalFields})
-                            </span>
-                          </div>
-                          <div className="dep-plan-ops-bg">
                             <div
-                              className={`dep-plan-ops-fill dep-plan-ops-fill--cancel${cancelPct >= 100 ? ' is-full' : ''}`}
-                              style={{ width: `${Math.min(cancelPct, 100)}%` }}
+                              className={`dep-plan-ops-fill dep-plan-ops-fill--cancel${resolvedPct >= 100 ? ' is-full' : ''}`}
+                              style={{
+                                left: `${Math.min(opsShare, 100)}%`,
+                                width: `${Math.min(
+                                  Math.max(resolvedPct - opsShare, 0),
+                                  100 - Math.min(opsShare, 100)
+                                )}%`,
+                              }}
                             />
                           </div>
                         </div>
@@ -1280,7 +1520,7 @@ const DayEndProcess = () => {
                                 const response = await updateOpsApproval({ planId: mission.id, status: newStatus }).unwrap();
                                 if (response.status === 'true' || response.success === true) {
                                   toast.success('Status updated successfully');
-                                  await handleDateChange(selectedDate);
+                                  await handleDateChange();
                                 } else {
                                   setMissions(missions);
                                   toast.error(response.message || 'Update failed');

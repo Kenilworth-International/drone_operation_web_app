@@ -3,7 +3,7 @@
   "info": {
     "title": "DSMS API",
     "version": "6.0.0",
-    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 951\n- **Route files:** 80\n- **Schema overlays applied:** 330\n- **Generated:** 2026-10-21T09:43:40.920Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
+    "description": "Drone Services Management System — unified Node.js REST API.\n\n- **Total endpoints:** 961\n- **Route files:** 81\n- **Schema overlays applied:** 330\n- **Generated:** 2026-11-02T05:42:53.112Z\n\n**Authentication:** All protected endpoints require `Authorization: Bearer <token>`.\nObtain a token via `POST /api/public/login/verify-otp` (mobile apps and web HR support). OTP bypass test mobiles use `POST /api/public/login/hr-dev` after `POST /api/public/app-version/check`."
   },
   "servers": [
     {
@@ -31,6 +31,10 @@
     {
       "name": "App Version Admin",
       "description": "Admin management of mobile app version records."
+    },
+    {
+      "name": "Billable Extents Report",
+      "description": "Billable Extents Report endpoints"
     },
     {
       "name": "Booking Creation",
@@ -24953,6 +24957,132 @@
         ]
       }
     },
+    "/api/billable-extents-report/plantations": {
+      "post": {
+        "summary": "Plantations",
+        "description": "Module: Billable Extents Report",
+        "tags": [
+          "Billable Extents Report"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/billable-extents-report/estates": {
+      "post": {
+        "summary": "Estates",
+        "description": "Module: Billable Extents Report",
+        "tags": [
+          "Billable Extents Report"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/billable-extents-report/report": {
+      "post": {
+        "summary": "Report",
+        "description": "Module: Billable Extents Report",
+        "tags": [
+          "Billable Extents Report"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/opsroom-performance-summary/daily-performance-summary": {
       "post": {
         "summary": "Daily Performance Summary",
@@ -25786,6 +25916,300 @@
     "/api/mapping-hierarchy/plantations/toggle-activation": {
       "post": {
         "summary": "Toggle Activation",
+        "description": "Module: Mapping Hierarchy",
+        "tags": [
+          "Mapping Hierarchy"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/mapping-hierarchy/plantations/billing-rates/catalog/list": {
+      "post": {
+        "summary": "List",
+        "description": "Module: Mapping Hierarchy",
+        "tags": [
+          "Mapping Hierarchy"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/mapping-hierarchy/plantations/billing-rates/catalog/save": {
+      "post": {
+        "summary": "Save",
+        "description": "Module: Mapping Hierarchy",
+        "tags": [
+          "Mapping Hierarchy"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/mapping-hierarchy/plantations/billing-rates/catalog/deactivate": {
+      "post": {
+        "summary": "Deactivate",
+        "description": "Module: Mapping Hierarchy",
+        "tags": [
+          "Mapping Hierarchy"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/mapping-hierarchy/plantations/billing-rates/assignments/list": {
+      "post": {
+        "summary": "List",
+        "description": "Module: Mapping Hierarchy",
+        "tags": [
+          "Mapping Hierarchy"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/mapping-hierarchy/plantations/billing-rates/assignments/save": {
+      "post": {
+        "summary": "Save",
+        "description": "Module: Mapping Hierarchy",
+        "tags": [
+          "Mapping Hierarchy"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/mapping-hierarchy/plantations/billing-rates/assignments/deactivate": {
+      "post": {
+        "summary": "Deactivate",
+        "description": "Module: Mapping Hierarchy",
+        "tags": [
+          "Mapping Hierarchy"
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response"
+          },
+          "401": {
+            "description": "Unauthorized — missing or invalid Bearer token"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "422": {
+            "description": "Validation error"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/mapping-hierarchy/plantations/billing-rates/resolve": {
+      "post": {
+        "summary": "Resolve",
         "description": "Module: Mapping Hierarchy",
         "tags": [
           "Mapping Hierarchy"

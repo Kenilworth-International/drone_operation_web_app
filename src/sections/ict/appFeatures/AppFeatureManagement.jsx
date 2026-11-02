@@ -32,6 +32,16 @@ const ordinal = (n) => {
 
 const featureKeyOf = (f) => `${f.app_id}|${f.feature_key}`;
 
+const friendlyAppLabel = (appName, appId) => {
+  const name = String(appName || '').trim();
+  const id = String(appId || '').trim();
+  if (name && name !== id) return name;
+  const last = id.split('.').pop() || 'App';
+  return last
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+};
+
 const daysAheadText = (n) => {
   const v = Number(n);
   if (v <= 0) return 'today only';
@@ -507,8 +517,9 @@ export default function AppFeatureManagement() {
         groupedByApp.map((group) => (
           <section className="afm-app-card" key={group.appId}>
             <header className="afm-app-head">
-              <div>
-                <h2>{group.appName || 'Untitled app'}</h2>
+              <div className="afm-app-head-copy">
+                <p className="afm-app-eyebrow">Mobile app</p>
+                <h2 className="afm-app-title">{friendlyAppLabel(group.appName, group.appId)}</h2>
                 <code className="afm-app-id">{group.appId}</code>
               </div>
               <span className="afm-app-count">
@@ -526,15 +537,20 @@ export default function AppFeatureManagement() {
                   >
                     <div className="afm-feature-top">
                       <div className="afm-feature-title-block">
-                        <h3>{f.feature_name}</h3>
                         <span className={`afm-status ${f.is_enabled ? 'is-on' : 'is-off'}`}>
                           {f.is_enabled ? 'On' : 'Off'}
                         </span>
+                        <div className="afm-feature-heading">
+                          <h3 className="afm-feature-title">{f.feature_name}</h3>
+                          {f.feature_key ? (
+                            <code className="afm-feature-key">{f.feature_key}</code>
+                          ) : null}
+                        </div>
                       </div>
                       {f.registered ? (
                         <button
                           type="button"
-                          className="afm-btn afm-btn--primary"
+                          className="afm-btn afm-btn--primary afm-btn--edit"
                           onClick={() => openEdit(f)}
                         >
                           Edit rules
@@ -543,12 +559,17 @@ export default function AppFeatureManagement() {
                     </div>
                     {f.description ? <p className="afm-feature-desc">{f.description}</p> : null}
                     {rules.length ? (
-                      <ul className="afm-rule-list">
-                        {rules.map((r) => (
-                          <li key={r}>{r}</li>
-                        ))}
-                      </ul>
-                    ) : null}
+                      <div className="afm-rules-block">
+                        <p className="afm-rules-label">Active rules</p>
+                        <ul className="afm-rule-list">
+                          {rules.map((r) => (
+                            <li key={r}>{r}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : (
+                      <p className="afm-rules-empty">No rule summary for this feature.</p>
+                    )}
                     <footer className="afm-feature-meta">
                       {f.updated_at
                         ? `Updated ${f.updated_at}${f.updated_by_name ? ` · ${f.updated_by_name}` : ''}`

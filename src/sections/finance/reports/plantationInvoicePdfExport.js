@@ -1,8 +1,39 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import {
+  isBillableServiceLine,
+  sumInvoiceLineHa,
+  sumInvoiceLinePlans,
+} from './plantationInvoiceFuelSurcharge';
 
 const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function formatPlanCount(row) {
+  if (!isBillableServiceLine(row) || row.line_type === 'fuel_surcharge') return '—';
+  if (row.plan_count == null || row.plan_count === '') return '—';
+  return String(Number(row.plan_count));
+}
+
+function buildInvoiceLineTableRows(lineItems) {
+  const rows = (lineItems || []).map((row) => [
+    `${row.activity || ''}\n${row.description || ''}`,
+    formatPlanCount(row),
+    formatMoney(row.qty),
+    formatMoney(row.rate),
+    formatMoney(row.amount),
+  ]);
+  rows.push([
+    'Total',
+    String(sumInvoiceLinePlans(lineItems)),
+    formatMoney(sumInvoiceLineHa(lineItems)),
+    '',
+    formatMoney(
+      (lineItems || []).reduce((s, li) => s + (Number(li.amount) || 0), 0)
+    ),
+  ]);
+  return rows;
+}
 
 const formatDisplayDate = (d) => {
   if (!d) return '-';
@@ -139,17 +170,14 @@ export function downloadPlantationInvoicePdf(invoice) {
 
   y = Math.max(rowY, partiesY + metaRows.length * 5) + 6;
 
-  const lineRows = (invoice.line_items || []).map((row) => [
-    `${row.activity || ''}\n${row.description || ''}`,
-    formatMoney(row.qty),
-    formatMoney(row.rate),
-    formatMoney(row.amount),
-  ]);
-
-  const [lineW0, lineW1, lineW2, lineW3] = splitTableWidths(tableWidth, [0.52, 0.16, 0.16, 0.16]);
+  const lineRows = buildInvoiceLineTableRows(invoice.line_items);
+  const [lineW0, lineW1, lineW2, lineW3, lineW4] = splitTableWidths(
+    tableWidth,
+    [0.44, 0.12, 0.14, 0.15, 0.15]
+  );
 
   autoTable(doc, {
-    head: [['ACTIVITY', 'QTY', 'Rate (per Ha)', 'AMOUNT']],
+    head: [['ACTIVITY', 'PLANS', 'Ha', 'Rate (per Ha)', 'AMOUNT']],
     body: lineRows,
     startY: y,
     tableWidth,
@@ -167,6 +195,13 @@ export function downloadPlantationInvoicePdf(invoice) {
       1: { halign: 'right', cellWidth: lineW1 },
       2: { halign: 'right', cellWidth: lineW2 },
       3: { halign: 'right', cellWidth: lineW3 },
+      4: { halign: 'right', cellWidth: lineW4 },
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.row.index === lineRows.length - 1) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [248, 250, 252];
+      }
     },
   });
 
@@ -356,16 +391,14 @@ export function downloadEstateStatementPdf(statement) {
 
   y = Math.max(rowY, partiesY + 5 + estateNames.length * 4, metaY + 16) + 4;
 
-  const lineRows = (statement.line_items || []).map((row) => [
-    `${row.activity || ''}\n${row.description || ''}`,
-    formatMoney(row.qty),
-    formatMoney(row.rate),
-    formatMoney(row.amount),
-  ]);
-  const [lineW0, lineW1, lineW2, lineW3] = splitTableWidths(tableWidth, [0.52, 0.16, 0.16, 0.16]);
+  const lineRows = buildInvoiceLineTableRows(statement.line_items);
+  const [lineW0, lineW1, lineW2, lineW3, lineW4] = splitTableWidths(
+    tableWidth,
+    [0.44, 0.12, 0.14, 0.15, 0.15]
+  );
 
   autoTable(doc, {
-    head: [['ACTIVITY', 'QTY', 'Rate (per Ha)', 'AMOUNT']],
+    head: [['ACTIVITY', 'PLANS', 'Ha', 'Rate (per Ha)', 'AMOUNT']],
     body: lineRows,
     startY: y,
     tableWidth,
@@ -383,6 +416,13 @@ export function downloadEstateStatementPdf(statement) {
       1: { halign: 'right', cellWidth: lineW1 },
       2: { halign: 'right', cellWidth: lineW2 },
       3: { halign: 'right', cellWidth: lineW3 },
+      4: { halign: 'right', cellWidth: lineW4 },
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.row.index === lineRows.length - 1) {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [248, 250, 252];
+      }
     },
   });
 

@@ -39,6 +39,7 @@ import {
   FaIdCard,
   FaWrench,
   FaReceipt,
+  FaTags,
 } from 'react-icons/fa';
 
 const navbarCategories = [
@@ -48,6 +49,7 @@ const navbarCategories = [
     children: [
       { path: '/home/createBookings', label: 'Booking Creation', icon: FaPlusCircle },
       { path: '/home/corporate-customers', label: 'Corporate Customer', icon: FaBuilding },
+      { path: '/home/contract-rates', label: 'Contract Rates', icon: FaTags },
       { path: '/home/reports/corporate', label: 'Reports', icon: FaFileAlt },
       {
         path: '/home/planActivateRequests',
@@ -85,7 +87,7 @@ const navbarCategories = [
       { path: '/home/finance/purchase-order-payments', label: 'Purchase Order Payments', icon: FaShoppingCart },
       { path: '/home/finance/payroll', label: 'Payroll', icon: FaMoneyBill },
       { path: '/home/transport/finance', label: 'Transport Payments', icon: FaTruck },
-      { path: '/home/finance/work-summary', label: 'Work Summary', icon: FaChartBar },
+      { path: '/home/finance/work-summary', label: 'Plantation Invoices', icon: FaChartBar },
       { path: '/home/reports/finance', label: 'Reports', icon: FaFileAlt },
       { path: '/home/brokers', label: 'Brokers', icon: FaHandshake },
     ],

@@ -510,7 +510,7 @@ const WorkflowDashboard = () => {
     },
     {
       title: 'Day end process',
-      subtitle: 'Plans pending day end',
+      subtitle: 'Current month pending day end',
       count: dayEndProcessCount,
       unit: 'plans',
       path: '/home/dayEndProcess',

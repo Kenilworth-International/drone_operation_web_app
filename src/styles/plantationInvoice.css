@@ -408,9 +408,18 @@
 
 .plantation-invoice-preview-table td:nth-child(2),
 .plantation-invoice-preview-table td:nth-child(3),
-.plantation-invoice-preview-table td:nth-child(4) {
+.plantation-invoice-preview-table td:nth-child(4),
+.plantation-invoice-preview-table td:nth-child(5),
+.plantation-invoice-preview-table th.num,
+.plantation-invoice-preview-table td.num {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.plantation-invoice-preview-table tfoot td {
+  background: #f8fafc;
+  font-weight: 700;
+  color: #0f172a;
 }
 
 .plantation-invoice-totals {
@@ -660,13 +669,20 @@
 
 .plantation-invoice-doc-table td:nth-child(2),
 .plantation-invoice-doc-table td:nth-child(3),
-.plantation-invoice-doc-table td:nth-child(4) {
+.plantation-invoice-doc-table td:nth-child(4),
+.plantation-invoice-doc-table td:nth-child(5) {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 .plantation-invoice-doc-table .activity-name {
   font-weight: 600;
+}
+
+.plantation-invoice-doc-table tfoot td {
+  font-weight: 700;
+  border-top: 2px solid #cbd5e1;
+  background: #f8fafc;
 }
 
 .plantation-invoice-doc-bottom {

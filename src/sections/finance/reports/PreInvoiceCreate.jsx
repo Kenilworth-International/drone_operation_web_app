@@ -296,7 +296,7 @@ export default function PreInvoiceCreate({ onInvoicePreview }) {
 
               <div className="inv-kpi-grid">
                 <div className="inv-kpi">
-                  <div className="inv-kpi-label">Scheduled plans</div>
+                  <div className="inv-kpi-label">Monthly plans</div>
                   <div className="inv-kpi-value">{previewDraft.plan_count ?? 0}</div>
                 </div>
                 <div className="inv-kpi">
@@ -341,8 +341,8 @@ export default function PreInvoiceCreate({ onInvoicePreview }) {
                 </div>
               ) : (
                 <div className="inv-alert">
-                  No scheduled plans found for this month and estate selection. Adjust the month or estates
-                  before sending a pre-invoice.
+                  No monthly plans found for this month and estate selection. Ad-hoc plans are not
+                  included in pre-invoices. Adjust the month or estates before sending.
                 </div>
               )}
             </>

@@ -55,6 +55,8 @@ export function appendFuelSurchargeLines(
       activity: `Service: Spraying - ${estateName} Fuel surcharge`,
       description: String(line.description || '').replace(/\(Hectare\)$/i, ' Fuel surcharge'),
       qty,
+      // Fuel surcharge reuses spray Ha — never carry plan_count (would double-count plans).
+      plan_count: null,
       rate: ratePerHa,
       amount: round2(qty * ratePerHa),
       sku: '',
@@ -68,6 +70,28 @@ export function appendFuelSurchargeLines(
     });
   }
   return result;
+}
+
+export function isBillableServiceLine(line) {
+  return line && line.line_type !== 'fuel_surcharge';
+}
+
+/** Unique service plans only (excludes fuel surcharge rows). */
+export function sumInvoiceLinePlans(lineItems) {
+  return (lineItems || []).reduce((sum, li) => {
+    if (!isBillableServiceLine(li)) return sum;
+    return sum + (Number(li.plan_count) || 0);
+  }, 0);
+}
+
+/** Service Ha only (excludes fuel surcharge so spray Ha is not doubled). */
+export function sumInvoiceLineHa(lineItems) {
+  return round2(
+    (lineItems || []).reduce((sum, li) => {
+      if (!isBillableServiceLine(li)) return sum;
+      return sum + (Number(li.qty) || 0);
+    }, 0)
+  );
 }
 
 export function sumLineItemsAmount(lineItems) {

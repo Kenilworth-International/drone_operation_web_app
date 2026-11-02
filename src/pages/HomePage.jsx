@@ -58,7 +58,9 @@ const HomePage = () => {
   /** Corporate Customer: header fixed; table body scrolls with sticky column headers. */
   const isCorporateCustomersRoute =
     location.pathname === '/home/corporate-customers' ||
-    location.pathname.endsWith('/corporate-customers');
+    location.pathname.endsWith('/corporate-customers') ||
+    location.pathname === '/home/contract-rates' ||
+    location.pathname.endsWith('/contract-rates');
 
   /** HRM dashboard: scrollable overview page. */
   const isHrmDashboardRoute = location.pathname.includes('/hrm/dashboard');

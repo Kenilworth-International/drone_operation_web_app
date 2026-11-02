@@ -147,7 +147,7 @@
   background: #fff;
   border: 1px solid var(--afm-line);
   border-radius: var(--afm-radius);
-  padding: 1rem 1.1rem 1.15rem;
+  padding: 1.15rem 1.2rem 1.25rem;
   box-shadow: var(--afm-shadow);
 }
 
@@ -156,55 +156,78 @@
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 0.65rem;
-  margin-bottom: 0.9rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(0, 75, 113, 0.08);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid rgba(0, 75, 113, 0.1);
 }
 
+.afm-app-head-copy {
+  min-width: 0;
+}
+
+.afm-app-eyebrow {
+  margin: 0 0 0.2rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--afm-muted);
+}
+
+.afm-app-title,
 .afm-app-head h2 {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
   color: var(--afm-primary);
 }
 
 .afm-app-id {
-  display: block;
-  margin-top: 0.2rem;
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
   font-size: 0.72rem;
-  color: var(--afm-muted);
+  color: #475569;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
   word-break: break-all;
 }
 
 .afm-app-count {
+  flex-shrink: 0;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--afm-primary);
   background: var(--afm-soft);
+  border: 1px solid rgba(0, 75, 113, 0.12);
   border-radius: 999px;
-  padding: 0.25rem 0.65rem;
+  padding: 0.35rem 0.75rem;
 }
 
 .afm-feature-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 0.9rem;
 }
 
 .afm-feature-card {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
-  padding: 0.9rem 1rem;
-  border-radius: 12px;
+  gap: 0.7rem;
+  min-height: 220px;
+  padding: 1rem 1.05rem;
+  border-radius: 14px;
   border: 1px solid var(--afm-line);
-  background: linear-gradient(180deg, #fbfdff 0%, #fff 100%);
+  background: #fff;
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.03);
 }
 
 .afm-feature-card.is-off {
-  opacity: 0.88;
   background: #f8fafc;
+  border-color: #e2e8f0;
 }
 
 .afm-feature-top {
@@ -216,26 +239,44 @@
 
 .afm-feature-title-block {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem;
+  align-items: flex-start;
+  gap: 0.55rem;
   min-width: 0;
 }
 
+.afm-feature-heading {
+  min-width: 0;
+}
+
+.afm-feature-title,
 .afm-feature-title-block h3 {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.25;
   color: var(--afm-ink);
+}
+
+.afm-feature-key {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  padding: 0.08rem 0.35rem;
 }
 
 .afm-status {
   display: inline-flex;
   align-items: center;
-  padding: 0.12rem 0.5rem;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  padding: 0.18rem 0.55rem;
   border-radius: 999px;
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -243,18 +284,43 @@
 .afm-status.is-on {
   background: var(--afm-ok-soft);
   color: var(--afm-ok);
+  border: 1px solid #bbf7d0;
 }
 
 .afm-status.is-off {
   background: var(--afm-off-soft);
   color: var(--afm-off);
+  border: 1px solid #fed7aa;
 }
 
 .afm-feature-desc {
   margin: 0;
-  font-size: 0.8rem;
-  color: var(--afm-muted);
-  line-height: 1.4;
+  font-size: 0.82rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.afm-rules-block {
+  margin-top: 0.1rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.afm-rules-label {
+  margin: 0 0 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.afm-rules-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #94a3b8;
 }
 
 .afm-rule-list {
@@ -263,23 +329,31 @@
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .afm-rule-list li {
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   font-weight: 600;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: var(--afm-soft);
+  padding: 0.28rem 0.6rem;
+  border-radius: 8px;
+  background: #fff;
   color: var(--afm-primary);
-  border: 1px solid rgba(0, 75, 113, 0.1);
+  border: 1px solid rgba(0, 75, 113, 0.14);
 }
 
 .afm-feature-meta {
   margin-top: auto;
-  font-size: 0.7rem;
-  color: #94a3b8;
+  padding-top: 0.35rem;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.afm-btn--edit {
+  flex-shrink: 0;
+  box-shadow: 0 6px 14px rgba(0, 75, 113, 0.18);
 }
 
 /* ── Buttons ── */
@@ -632,7 +706,91 @@
   transform: translateX(18px);
 }
 
-/* ICT wing: keep App Features modal solid/readable (override glass dark theme) */
+/* ICT wing: keep App Features list + modal solid/readable (override glass dark theme) */
+body.wing-theme-ict .content-dashboard .afm-page.ict-dev-page {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-app-card,
+body.wing-theme-ict .content-dashboard .afm-feature-card,
+body.wing-theme-ict .content-dashboard .afm-state,
+body.wing-theme-ict .content-dashboard .afm-rules-block {
+  background: #ffffff !important;
+  border-color: rgba(0, 75, 113, 0.14) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 10px 28px rgba(0, 75, 113, 0.1) !important;
+  color: #0f172a !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-feature-card.is-off,
+body.wing-theme-ict .content-dashboard .afm-rules-block {
+  background: #f8fafc !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-app-title,
+body.wing-theme-ict .content-dashboard .afm-app-head h2,
+body.wing-theme-ict .content-dashboard .afm-feature-title,
+body.wing-theme-ict .content-dashboard .afm-feature-title-block h3,
+body.wing-theme-ict .content-dashboard .afm-app-card h2,
+body.wing-theme-ict .content-dashboard .afm-feature-card h3 {
+  color: #0f172a !important;
+  text-shadow: none !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-app-title,
+body.wing-theme-ict .content-dashboard .afm-app-head h2 {
+  color: #004b71 !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-app-eyebrow,
+body.wing-theme-ict .content-dashboard .afm-feature-desc,
+body.wing-theme-ict .content-dashboard .afm-feature-meta,
+body.wing-theme-ict .content-dashboard .afm-rules-label,
+body.wing-theme-ict .content-dashboard .afm-rules-empty {
+  color: #64748b !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-app-id,
+body.wing-theme-ict .content-dashboard .afm-feature-key {
+  color: #475569 !important;
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-app-count {
+  color: #004b71 !important;
+  background: #e8f2f7 !important;
+  border-color: rgba(0, 75, 113, 0.12) !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-rule-list li {
+  color: #004b71 !important;
+  background: #ffffff !important;
+  border-color: rgba(0, 75, 113, 0.14) !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-status.is-on {
+  color: #15803d !important;
+  background: #dcfce7 !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-status.is-off {
+  color: #b45309 !important;
+  background: #ffedd5 !important;
+}
+
+body.wing-theme-ict .content-dashboard .afm-page .afm-btn--primary {
+  background: #004b71 !important;
+  color: #fff !important;
+  border-color: #004b71 !important;
+  box-shadow: 0 6px 14px rgba(0, 75, 113, 0.22) !important;
+}
+
 body.wing-theme-ict .content-dashboard .afm-modal,
 body.wing-theme-ict .content-dashboard .afm-modal * {
   color: inherit;

@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import '../../../styles/plantationInvoice.css';
 import { downloadPlantationInvoicePdf } from './plantationInvoicePdfExport';
+import {
+  isBillableServiceLine,
+  sumInvoiceLineHa,
+  sumInvoiceLinePlans,
+} from './plantationInvoiceFuelSurcharge';
 
 const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -186,24 +191,44 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
           <thead>
             <tr>
               <th>ACTIVITY</th>
-              <th>QTY</th>
+              <th>PLANS</th>
+              <th>Ha</th>
               <th>Rate (per Ha)</th>
               <th>AMOUNT</th>
             </tr>
           </thead>
           <tbody>
-            {(invoice.line_items || []).map((row, idx) => (
-              <tr key={idx}>
-                <td>
-                  <div className="activity-name">{row.activity}</div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{row.description}</div>
-                </td>
-                <td>{formatMoney(row.qty)}</td>
-                <td>{formatMoney(row.rate)}</td>
-                <td>{formatMoney(row.amount)}</td>
-              </tr>
-            ))}
+            {(invoice.line_items || []).map((row, idx) => {
+              const isFuel = row.line_type === 'fuel_surcharge';
+              return (
+                <tr key={idx}>
+                  <td>
+                    <div className="activity-name">{row.activity}</div>
+                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{row.description}</div>
+                  </td>
+                  <td>
+                    {isFuel || !isBillableServiceLine(row)
+                      ? '—'
+                      : row.plan_count != null
+                        ? Number(row.plan_count)
+                        : '—'}
+                  </td>
+                  <td>{formatMoney(row.qty)}</td>
+                  <td>{formatMoney(row.rate)}</td>
+                  <td>{formatMoney(row.amount)}</td>
+                </tr>
+              );
+            })}
           </tbody>
+          <tfoot>
+            <tr>
+              <td>Total</td>
+              <td>{sumInvoiceLinePlans(invoice.line_items)}</td>
+              <td>{formatMoney(sumInvoiceLineHa(invoice.line_items))}</td>
+              <td />
+              <td>{formatMoney(invoice.subtotal)}</td>
+            </tr>
+          </tfoot>
         </table>
 
         <div className="plantation-invoice-doc-bottom">

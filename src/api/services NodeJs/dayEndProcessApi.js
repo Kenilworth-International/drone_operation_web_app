@@ -186,9 +186,13 @@ export const dayEndProcessApi = baseApi.injectEndpoints({
     }),
 
     getDayOverview: builder.query({
-      queryFn: async ({ date }) => {
+      queryFn: async ({ date, month, status } = {}) => {
+        const body = {};
+        if (month) body.month = month;
+        if (date) body.date = date;
+        if (status) body.status = status;
         const result = await nodeBackendBaseQuery(
-          { url: '/api/day-end-process/day-overview', method: 'POST', body: { date } },
+          { url: '/api/day-end-process/day-overview', method: 'POST', body },
           {},
           {}
         );
@@ -196,6 +200,23 @@ export const dayEndProcessApi = baseApi.injectEndpoints({
         return { data: result.data?.data || [] };
       },
       providesTags: ['DayEndProcess', 'PlansCompletionStats'],
+    }),
+
+    getMonthDateColors: builder.query({
+      queryFn: async ({ month }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/day-end-process/month-date-colors',
+            method: 'POST',
+            body: { month },
+          },
+          {},
+          {}
+        );
+        if (result.error) return { error: result.error };
+        return { data: result.data?.data || [] };
+      },
+      providesTags: ['DayEndProcess'],
     }),
 
     getDayEndPlanSummary: builder.query({
@@ -341,6 +362,8 @@ export const {
   useGetOpsRoomCanceledByDateRangeQuery,
   useGetDayOverviewQuery,
   useLazyGetDayOverviewQuery,
+  useGetMonthDateColorsQuery,
+  useLazyGetMonthDateColorsQuery,
   useGetDayEndPlanSummaryQuery,
   useLazyGetDayEndPlanSummaryQuery,
   useGetDayEndTasksByPlanAndFieldQuery,

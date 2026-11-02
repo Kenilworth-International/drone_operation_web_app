@@ -183,25 +183,30 @@ export default function EstateStatementPrint({ statement, onClose }) {
               <thead>
                 <tr>
                   <th>ACTIVITY</th>
-                  <th>QTY</th>
+                  <th>PLANS</th>
+                  <th>Ha</th>
                   <th>Rate (per Ha)</th>
                   <th>AMOUNT</th>
                 </tr>
               </thead>
               <tbody>
-                {(statement.line_items || []).map((row, idx) => (
-                  <tr key={idx}>
-                    <td>
-                      <div className="activity-name">{row.activity}</div>
-                      <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
-                        {row.description}
-                      </div>
-                    </td>
-                    <td>{formatMoney(row.qty)}</td>
-                    <td>{formatMoney(row.rate)}</td>
-                    <td>{formatMoney(row.amount)}</td>
-                  </tr>
-                ))}
+                {(statement.line_items || []).map((row, idx) => {
+                  const isFuel = row.line_type === 'fuel_surcharge';
+                  return (
+                    <tr key={idx}>
+                      <td>
+                        <div className="activity-name">{row.activity}</div>
+                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>
+                          {row.description}
+                        </div>
+                      </td>
+                      <td>{isFuel ? '—' : row.plan_count != null ? Number(row.plan_count) : '—'}</td>
+                      <td>{formatMoney(row.qty)}</td>
+                      <td>{formatMoney(row.rate)}</td>
+                      <td>{formatMoney(row.amount)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
 

@@ -55,6 +55,7 @@ import RequestProceed from './sections/opsroom/requests/RequestProceed';
 import MonthlyRequestProceed from './sections/opsroom/requests/MonthlyRequestProceed';
 import PlansWithWeather from './sections/opsroom/plans/PlansWithWeather';
 import CorporateCustomers from './sections/strategic/corporateCustomers/CorporateCustomers';
+import PlantationContractRates from './sections/strategic/corporateCustomers/PlantationContractRates';
 import StrategicFinanceApprovals from './sections/strategic/StrategicFinanceApprovals';
 import PilotAssignment from './sections/opsroom/pilot-assigment/PilotAssignment';
 import TransportArrangePage from './sections/opsroom/pilot-assigment/TransportArrangePage';
@@ -297,6 +298,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <CorporateCustomers />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="contract-rates"
+            element={
+              <ProtectedRoute>
+                <PlantationContractRates />
               </ProtectedRoute>
             }
           />
