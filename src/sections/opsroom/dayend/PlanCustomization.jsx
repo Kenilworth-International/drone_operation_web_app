@@ -101,7 +101,10 @@ const PlanCustomization = () => {
 
   const plans = plansData || [];
   const editContextPayload = editContext?.data || editContext || {};
-  const editContextBusy = editContextLoading || editContextFetching;
+  // Background RTK refetches set isFetching=true; don't treat that as a blocking load
+  // once we already have fields (it was disabling Add Selected while the list stayed visible).
+  const editContextBusy = editContextLoading && !editContextPayload?.fields;
+  const editContextRefetching = editContextFetching && !editContextLoading;
 
   const divisionNameMap = useMemo(() => {
     const map = {};
@@ -180,10 +183,28 @@ const PlanCustomization = () => {
   };
 
   const handleAddField = async () => {
-    if (!selectedPlan || selectedFieldIds.length === 0 || !editContextPayload?.timeOfDayId) return;
+    if (!selectedPlan) {
+      alert('No plan selected');
+      return;
+    }
+    if (selectedFieldIds.length === 0) {
+      alert('Select at least one field to add');
+      return;
+    }
+    const timeOfDayId = Number(editContextPayload?.timeOfDayId);
+    if (!Number.isFinite(timeOfDayId) || timeOfDayId <= 0) {
+      alert(
+        'This plan has no time-of-day / chemical schedule, so fields cannot be added yet. Set chemicals on the plan first, then try again.'
+      );
+      return;
+    }
     setSubmitting(true);
     try {
-      const currentFieldIds = (editContextPayload?.activePlanFieldIds || []).map((id) => Number(id));
+      const currentFieldIds = (
+        editContextPayload?.activePlanFieldIds ||
+        editContextPayload?.selectedFieldIds ||
+        []
+      ).map((id) => Number(id));
       const mergedFieldIds = Array.from(
         new Set([...currentFieldIds, ...selectedFieldIds.map((id) => Number(id))])
       ).filter((id) => Number.isFinite(id) && id > 0);
@@ -191,7 +212,7 @@ const PlanCustomization = () => {
       await submitPlanEdit({
         planId: selectedPlan.id,
         fieldIds: mergedFieldIds,
-        timeOfDayId: editContextPayload.timeOfDayId,
+        timeOfDayId,
         chemicals: editContextPayload.chemicalLines || [],
       }).unwrap();
 
@@ -535,9 +556,19 @@ const PlanCustomization = () => {
                   Cancel
                 </button>
                 <button
+                  type="button"
                   className="plan-customization-save-btn-pl-cuz"
                   onClick={handleAddField}
                   disabled={submitting || selectedFieldIds.length === 0 || editContextBusy}
+                  title={
+                    editContextBusy
+                      ? 'Loading plan context…'
+                      : selectedFieldIds.length === 0
+                        ? 'Select at least one field'
+                        : editContextRefetching
+                          ? 'Refreshing plan context…'
+                          : 'Add selected fields to this plan'
+                  }
                 >
                   {submitting ? 'Saving…' : 'Add Selected'}
                 </button>

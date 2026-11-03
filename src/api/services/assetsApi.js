@@ -563,16 +563,22 @@ export const assetsApi = baseApi.injectEndpoints({
           return { data: result.data?.data || null };
         }
 
-        // Backend host often cannot reach api.ceypetco.gov.lk — try CRA local proxy in dev.
-        try {
-          const { fetchOfficialFuelPricesViaLocalProxy } = await import(
-            '../../utils/cpcOfficialFuelPrices'
-          );
-          const proxied = await fetchOfficialFuelPricesViaLocalProxy();
-          return { data: proxied };
-        } catch (_) {
-          return { error: result.error };
+        // CRA `/cpc-fuel` exists only on localhost setupProxy — never call it on deployed hosts.
+        const host =
+          typeof window !== 'undefined' ? String(window.location.hostname || '') : '';
+        const isLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(host);
+        if (process.env.NODE_ENV === 'development' && isLocalHost) {
+          try {
+            const { fetchOfficialFuelPricesViaLocalProxy } = await import(
+              '../../utils/cpcOfficialFuelPrices'
+            );
+            const proxied = await fetchOfficialFuelPricesViaLocalProxy();
+            return { data: proxied };
+          } catch (_) {
+            /* fall through */
+          }
         }
+        return { error: result.error };
       },
     }),
 

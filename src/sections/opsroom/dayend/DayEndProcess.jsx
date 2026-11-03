@@ -423,18 +423,6 @@ const DayEndProcess = () => {
     }
   };
 
-  const isPlanFullyResolved = (planRow) => {
-    const stats = planRow?.completionStats || {};
-    const total = Number(stats.totalFields) || 0;
-    if (total <= 0) return false;
-    const resolvedPct = Number(stats.resolvedPercentage);
-    if (Number.isFinite(resolvedPct) && resolvedPct >= 100) return true;
-    const resolved =
-      Number(stats.resolvedFields) ||
-      Math.min(total, (Number(stats.completedFields) || 0) + (Number(stats.canceledFields) || 0));
-    return resolved >= total;
-  };
-
   const refreshAfterCancelChange = async () => {
     if (selectedMission) {
       await fetchCancelStatus(selectedMission.id);
@@ -1122,10 +1110,6 @@ const DayEndProcess = () => {
                 : prev
             );
           }
-          // Full right-side reload only when this plan is fully resolved
-          if (updatedPlan && isPlanFullyResolved(updatedPlan)) {
-            await handleDateChange();
-          }
         } catch (error) {
           console.error('Error refreshing after DJI submit:', error);
         }
@@ -1492,9 +1476,11 @@ const DayEndProcess = () => {
                       onClick={() => handleContainerClick(mission.id)}
                     >
                       <div className="dep-plan-row-info">
-                        <div className="dep-plan-row-name">{mission.group}</div>
-                        <div className="dep-plan-row-meta">
+                        <div className="dep-plan-row-name">
+                          <span className="dep-plan-row-estate">{mission.group}</span>
                           <span className="dep-plan-row-id">#{mission.id}</span>
+                        </div>
+                        <div className="dep-plan-row-meta">
                           {mission.picked_date ? (
                             <span className="dep-plan-row-date">{mission.picked_date}</span>
                           ) : null}
