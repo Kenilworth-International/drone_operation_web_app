@@ -254,7 +254,7 @@ export function downloadPlantationInvoicePdf(invoice) {
 
   const taxRows = (invoice.tax_lines || []).map((t) => [
     t.tax_name || '',
-    t.rate_percent != null ? `${Number(t.rate_percent)}%` : '',
+    t.rate_percent != null ? `${Number(t.rate_percent).toFixed(2)}%` : '',
     formatMoney(t.tax_amount),
     formatMoney(t.net_amount),
   ]);

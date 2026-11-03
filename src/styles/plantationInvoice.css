@@ -324,6 +324,9 @@
   margin: 0;
   padding: 0;
   border-top: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .plantation-invoice-fuel-price-row {
@@ -348,6 +351,18 @@
   color: #64748b;
 }
 
+.plantation-invoice-fuel-type-select {
+  max-width: 58%;
+  min-width: 140px;
+  flex-shrink: 0;
+  padding: 7px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #fff;
+  color: #0f172a;
+}
+
 .plantation-invoice-fuel-price-row input[type='number'] {
   width: 96px;
   flex-shrink: 0;
@@ -359,9 +374,25 @@
   text-align: right;
 }
 
+.plantation-invoice-fuel-hint {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.plantation-invoice-fuel-hint strong {
+  color: #0f172a;
+  font-weight: 700;
+}
+
 .plantation-invoice-fuel-saving {
   display: block;
-  margin-top: 6px;
+  margin-top: 0;
   font-size: 11px;
   color: #64748b;
 }

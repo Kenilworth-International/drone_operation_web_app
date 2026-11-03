@@ -331,6 +331,14 @@
 /* Work Summary tabs */
 .work-summary-page {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .work-summary-tabs {
@@ -369,12 +377,19 @@
 .work-summary-tab-panel {
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
     min-width: 0;
-    min-height: calc(100vh - 160px);
+    min-height: 0;
+    overflow: hidden;
 }
 
 .plantation-invoice-history {
-    padding: 4px 0 24px;
+    padding: 4px 0 8px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .plantation-invoice-history-toolbar {
@@ -513,6 +528,44 @@
   display: block;
   font-size: 12px;
   color: #64748b;
+}
+
+.work-summary-pdf-history.plantation-invoice-history {
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  height: 100% !important;
+  margin-top: 0 !important;
+  border-top: none !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.work-summary-pdf-history .plantation-invoice-history-toolbar {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+.work-summary-pdf-history .finance-table-container {
+  display: block;
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  height: auto !important;
+  margin-top: 0 !important;
+  overflow: auto !important;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.work-summary-pdf-history .plantation-invoice-history-loading,
+.work-summary-pdf-history .plantation-invoice-history-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
 }
 
 .work-summary-pdf-history .plantation-invoice-history-table th:last-child,

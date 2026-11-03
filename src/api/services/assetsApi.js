@@ -559,8 +559,20 @@ export const assetsApi = baseApi.injectEndpoints({
           {},
           {}
         );
-        if (result.error) return { error: result.error };
-        return { data: result.data?.data || null };
+        if (!result.error) {
+          return { data: result.data?.data || null };
+        }
+
+        // Backend host often cannot reach api.ceypetco.gov.lk — try CRA local proxy in dev.
+        try {
+          const { fetchOfficialFuelPricesViaLocalProxy } = await import(
+            '../../utils/cpcOfficialFuelPrices'
+          );
+          const proxied = await fetchOfficialFuelPricesViaLocalProxy();
+          return { data: proxied };
+        } catch (_) {
+          return { error: result.error };
+        }
       },
     }),
 

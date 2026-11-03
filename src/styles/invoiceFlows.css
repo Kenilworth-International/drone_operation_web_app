@@ -19,6 +19,26 @@
   min-width: 0;
 }
 
+.work-summary-page.inv-flow-page {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.work-summary-page.inv-flow-page > .inv-flow-tabs {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+}
+
+.work-summary-page.inv-flow-page > .work-summary-tab-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
 /* —— Page header + tabs —— */
 .inv-flow-header {
   margin-bottom: 18px;

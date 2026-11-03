@@ -8,8 +8,8 @@ import {
   useGetPlantationFinalInvoiceDraftMutation,
   useCreatePlantationInvoiceMutation,
   useLazyGetPlantationInvoiceByIdQuery,
-  useSaveInvoiceMonthlyFuelPriceMutation,
 } from '../../../api/services NodeJs/plantationInvoiceApi';
+import { useGetFuelCategoriesQuery } from '../../../api/services/assetsApi';
 import '../../../styles/plantationInvoice.css';
 import '../../../styles/invoiceFlows.css';
 import { mergeDraftWithWorkSummaryLines } from './plantationInvoiceLineItems';
@@ -18,6 +18,7 @@ import {
   FUEL_LITERS_PER_HA,
   billingMonthFromPeriodEnd,
   applyFuelSurchargeToDraft,
+  fuelSurchargeRatePerHa,
   isBillableServiceLine,
   sumInvoiceLinePlans,
   sumInvoiceLineHa,
@@ -25,6 +26,23 @@ import {
 
 const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** Prefer Petrol 92 (official code or name), else first priced category. */
+function findDefaultFuelCategory(categories = []) {
+  const list = Array.isArray(categories) ? categories : [];
+  const byCode = list.find((c) => String(c.official_fuel_type_code || '') === 'petrol_92');
+  if (byCode) return byCode;
+  const byName = list.find((c) =>
+    /petrol\s*92|92\s*octane|octane\s*92/i.test(String(c.category || ''))
+  );
+  if (byName) return byName;
+  return list.find((c) => c.unit_price != null && c.unit_price !== '') || list[0] || null;
+}
+
+function fuelCategoryPrice(category) {
+  const n = Number(category?.unit_price);
+  return Number.isFinite(n) ? n : null;
+}
 
 function computePreviewTaxes(subtotal, taxTypes, selectedIds) {
   const selected = taxTypes.filter((t) => selectedIds.includes(Number(t.id)));
@@ -70,11 +88,11 @@ export default function CreatePlantationInvoiceModal({
 }) {
   const { data: organizations = [] } = useGetInvoiceOrganizationsQuery(undefined, { skip: !open });
   const { data: taxTypes = [] } = useGetInvoiceTaxTypesQuery(undefined, { skip: !open });
+  const { data: fuelCategories = [] } = useGetFuelCategoriesQuery(undefined, { skip: !open });
   const [fetchDraft, { isLoading: postDraftLoading }] = useGetPlantationInvoiceDraftMutation();
   const [fetchPreDraft, { isLoading: preDraftLoading }] = useGetPlantationPreInvoiceDraftMutation();
   const [fetchFinalDraft, { isLoading: finalDraftLoading }] = useGetPlantationFinalInvoiceDraftMutation();
   const [createInvoice, { isLoading: saving }] = useCreatePlantationInvoiceMutation();
-  const [saveFuelPrice] = useSaveInvoiceMonthlyFuelPriceMutation();
   const [loadInvoice] = useLazyGetPlantationInvoiceByIdQuery();
 
   const draftLoading = postDraftLoading || preDraftLoading || finalDraftLoading;
@@ -90,10 +108,11 @@ export default function CreatePlantationInvoiceModal({
   const [invoiceDate, setInvoiceDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [includeFuelSurcharge, setIncludeFuelSurcharge] = useState(false);
+  const [selectedFuelCategoryId, setSelectedFuelCategoryId] = useState('');
   const [monthlyFuelPrice, setMonthlyFuelPrice] = useState('');
   const [billingMonth, setBillingMonth] = useState(null);
-  const [savingFuelPrice, setSavingFuelPrice] = useState(false);
   const [localHaPerPlan, setLocalHaPerPlan] = useState(String(haPerPlan ?? 15));
+  const fuelDefaultsAppliedRef = useRef(false);
 
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -119,6 +138,10 @@ export default function CreatePlantationInvoiceModal({
       setDraft(null);
       setLoadError(null);
       setOverlayReady(false);
+      setSelectedFuelCategoryId('');
+      setMonthlyFuelPrice('');
+      setIncludeFuelSurcharge(false);
+      fuelDefaultsAppliedRef.current = false;
       return undefined;
     }
     const t = window.setTimeout(() => setOverlayReady(true), 200);
@@ -195,12 +218,15 @@ export default function CreatePlantationInvoiceModal({
         const fuelCfg = data?.fuel_price_config || {};
         setBillingMonth(month);
         setDraft(data);
+        setSelectedFuelCategoryId('');
         if (fuelCfg.fuel_price != null && fuelCfg.fuel_price !== '') {
           setMonthlyFuelPrice(String(fuelCfg.fuel_price));
           setIncludeFuelSurcharge(true);
+          fuelDefaultsAppliedRef.current = true;
         } else {
           setMonthlyFuelPrice('');
           setIncludeFuelSurcharge(false);
+          fuelDefaultsAppliedRef.current = false;
         }
         setInvoiceNo(data?.suggested_invoice_no || '');
         const today = new Date().toISOString().slice(0, 10);
@@ -264,16 +290,52 @@ export default function CreatePlantationInvoiceModal({
     }
   }, [taxTypes, selectedTaxIds.length]);
 
+  /** Default fuel type = Petrol Octane 92; fill price from Fuel Prices when none saved for the month. */
+  useEffect(() => {
+    if (!open || !fuelCategories.length) return;
+
+    const defaultCat = findDefaultFuelCategory(fuelCategories);
+    if (!defaultCat) return;
+
+    if (!selectedFuelCategoryId) {
+      setSelectedFuelCategoryId(String(defaultCat.id));
+    }
+
+    if (!fuelDefaultsAppliedRef.current && monthlyFuelPrice === '') {
+      const cat =
+        (selectedFuelCategoryId
+          ? fuelCategories.find((c) => String(c.id) === String(selectedFuelCategoryId))
+          : null) || defaultCat;
+      const price = fuelCategoryPrice(cat);
+      if (price != null) {
+        setMonthlyFuelPrice(String(price));
+        fuelDefaultsAppliedRef.current = true;
+      }
+    } else if (monthlyFuelPrice !== '') {
+      fuelDefaultsAppliedRef.current = true;
+    }
+  }, [open, fuelCategories, selectedFuelCategoryId, monthlyFuelPrice]);
+
+  const fuelBasePrice = draft?.fuel_price_config?.base_fuel_price ?? BASE_FUEL_PRICE;
+  const fuelLitersPerHa = draft?.fuel_price_config?.liters_per_ha ?? FUEL_LITERS_PER_HA;
+  const selectedFuelCategory =
+    fuelCategories.find((c) => String(c.id) === String(selectedFuelCategoryId)) || null;
+  const fuelRatePreview = useMemo(() => {
+    const price = Number(monthlyFuelPrice);
+    if (!Number.isFinite(price)) return null;
+    return fuelSurchargeRatePerHa(price, fuelBasePrice, fuelLitersPerHa);
+  }, [monthlyFuelPrice, fuelBasePrice, fuelLitersPerHa]);
+
   const displayDraft = useMemo(() => {
     if (!draft) return null;
     const fuelPrice = Number(monthlyFuelPrice);
     return applyFuelSurchargeToDraft(draft, {
       enabled: includeFuelSurcharge && Number.isFinite(fuelPrice),
       fuelPrice,
-      baseFuelPrice: draft.fuel_price_config?.base_fuel_price ?? BASE_FUEL_PRICE,
-      litersPerHa: draft.fuel_price_config?.liters_per_ha ?? FUEL_LITERS_PER_HA,
+      baseFuelPrice: fuelBasePrice,
+      litersPerHa: fuelLitersPerHa,
     });
-  }, [draft, includeFuelSurcharge, monthlyFuelPrice]);
+  }, [draft, includeFuelSurcharge, monthlyFuelPrice, fuelBasePrice, fuelLitersPerHa]);
 
   const preview = useMemo(() => {
     if (!displayDraft) return null;
@@ -282,28 +344,37 @@ export default function CreatePlantationInvoiceModal({
   }, [displayDraft, taxTypes, selectedTaxIds]);
 
   const prepaid = Number(draft?.prepaid_applied || 0);
+  const priorCredit = Number(draft?.prior_credit_applied || 0);
+  const coverage = Math.round((prepaid + priorCredit) * 100) / 100;
   const previewNet =
-    preview && prepaid > 0 ? Math.round((preview.total - prepaid) * 100) / 100 : preview?.total;
+    preview && coverage > 0
+      ? Math.round((preview.total - coverage) * 100) / 100
+      : preview?.total;
   const isCreditNote =
-    isFinal && prepaid > 0 && Number.isFinite(previewNet) && previewNet < -0.009;
+    isFinal && coverage > 0 && Number.isFinite(previewNet) && previewNet < -0.009;
 
-  const persistFuelPrice = async (priceValue) => {
-    if (!billingMonth) return;
-    const price = Number(priceValue);
-    if (!Number.isFinite(price)) return;
-    setSavingFuelPrice(true);
-    try {
-      await saveFuelPrice({ billing_month: billingMonth, fuel_price: price }).unwrap();
-    } catch (err) {
-      console.error('Failed to save monthly fuel price', err);
-      toast.error(err?.data?.message || 'Could not save fuel price for this month');
-    } finally {
-      setSavingFuelPrice(false);
+  const handleFuelCategoryChange = (e) => {
+    const id = e.target.value;
+    setSelectedFuelCategoryId(id);
+    const cat = fuelCategories.find((c) => String(c.id) === String(id));
+    const price = fuelCategoryPrice(cat);
+    if (price != null) {
+      setMonthlyFuelPrice(String(price));
+      fuelDefaultsAppliedRef.current = true;
     }
   };
 
-  const handleFuelPriceBlur = () => {
-    if (monthlyFuelPrice !== '') void persistFuelPrice(monthlyFuelPrice);
+  const handleFuelSurchargeToggle = (checked) => {
+    setIncludeFuelSurcharge(checked);
+    if (!checked) return;
+    if (monthlyFuelPrice !== '') return;
+    const cat =
+      selectedFuelCategory || findDefaultFuelCategory(fuelCategories);
+    const price = fuelCategoryPrice(cat);
+    if (price != null) {
+      setMonthlyFuelPrice(String(price));
+      fuelDefaultsAppliedRef.current = true;
+    }
   };
 
   const toggleTax = (id) => {
@@ -326,7 +397,9 @@ export default function CreatePlantationInvoiceModal({
       toast.error('Select an organization');
       return;
     }
-    if (!displayDraft?.line_items?.length) {
+    const allowZeroSprayCredit =
+      isCreditNote && coverage > 0.009 && !(displayDraft?.line_items?.length);
+    if (!displayDraft?.line_items?.length && !allowZeroSprayCredit) {
       toast.error('No billable lines (check spray/spread rates and billing Ha)');
       return;
     }
@@ -341,10 +414,9 @@ export default function CreatePlantationInvoiceModal({
     if (includeFuelSurcharge) {
       const price = Number(monthlyFuelPrice);
       if (!Number.isFinite(price)) {
-        toast.error('Enter the monthly fuel price (1st of month) to apply fuel surcharge');
+        toast.error('Select a fuel type to apply fuel surcharge');
         return;
       }
-      await persistFuelPrice(price);
     }
 
     try {
@@ -358,7 +430,7 @@ export default function CreatePlantationInvoiceModal({
         period_end: endDate,
         estates: estateIds,
         selected_tax_ids: selectedTaxIds,
-        line_items: displayDraft.line_items,
+        line_items: Array.isArray(displayDraft.line_items) ? displayDraft.line_items : [],
         invoice_type: isPre ? 'pre' : isCreditNote ? 'credit_note' : 'post',
         ha_per_plan: isPre ? Number(localHaPerPlan) || 15 : undefined,
         plan_count: isPre ? draft?.plan_count : undefined,
@@ -515,7 +587,8 @@ export default function CreatePlantationInvoiceModal({
                 </div>
               ) : null}
 
-              {isFinal && (draft.reconciliation || draft.linked_pre_invoice) ? (
+              {isFinal &&
+              (draft.reconciliation || draft.linked_pre_invoice || priorCredit > 0) ? (
                 <div
                   className={`inv-callout ${isCreditNote ? 'inv-callout--credit' : 'inv-callout--final'}`}
                   style={{ marginBottom: 14 }}
@@ -523,21 +596,33 @@ export default function CreatePlantationInvoiceModal({
                   <div className="inv-callout-body">
                     <strong>
                       {isCreditNote
-                        ? 'Credit note (prepaid exceeds sprayed work)'
-                        : 'Advance reconciliation'}
+                        ? 'Credit note (coverage exceeds sprayed work — not a tax invoice)'
+                        : 'Advance / credit reconciliation'}
                     </strong>
                     {draft.linked_pre_invoice ? (
                       <p>
-                        Linked pre-invoice #{draft.linked_pre_invoice.invoice_no} - prepaid LKR{' '}
+                        Linked pre-invoice #{draft.linked_pre_invoice.invoice_no} — prepaid LKR{' '}
                         {formatMoney(draft.prepaid_applied)}.
-                        {draft.reconciliation?.guidance ? ` ${draft.reconciliation.guidance}` : ''}
                       </p>
                     ) : (
-                      <p>
-                        No matching pre-invoice found for this plantation / period / estates.
-                        {draft.reconciliation?.guidance ? ` ${draft.reconciliation.guidance}` : ''}
-                      </p>
+                      <p>No matching same-month pre-invoice for this plantation / period / estates.</p>
                     )}
+                    {priorCredit > 0 ? (
+                      <p>
+                        M-2 credit applied LKR {formatMoney(priorCredit)}
+                        {Array.isArray(draft.prior_credits) && draft.prior_credits.length
+                          ? ` (${draft.prior_credits
+                              .map((c) => c.invoice_no)
+                              .filter(Boolean)
+                              .join(', ')})`
+                          : ''}
+                        . Jan overpayment settles in March (fixed 2-month lag). Refunds remain
+                        available on the credit note.
+                      </p>
+                    ) : null}
+                    {draft.reconciliation?.guidance ? (
+                      <p>{draft.reconciliation.guidance}</p>
+                    ) : null}
                   </div>
                 </div>
               ) : null}
@@ -601,7 +686,7 @@ export default function CreatePlantationInvoiceModal({
                             onChange={() => toggleTax(Number(t.id))}
                           />
                           <span>
-                            {t.tax_name} ({t.rate_percent}%)
+                            {t.tax_name} ({Number(t.rate_percent).toFixed(2)}%)
                           </span>
                         </label>
                       ))}
@@ -612,7 +697,7 @@ export default function CreatePlantationInvoiceModal({
                       <input
                         type="checkbox"
                         checked={includeFuelSurcharge}
-                        onChange={(e) => setIncludeFuelSurcharge(e.target.checked)}
+                        onChange={(e) => handleFuelSurchargeToggle(e.target.checked)}
                       />
                       <span>Fuel surcharge</span>
                     </label>
@@ -620,39 +705,80 @@ export default function CreatePlantationInvoiceModal({
                       {includeFuelSurcharge ? (
                         <div className="plantation-invoice-fuel-fields">
                           <div className="plantation-invoice-fuel-price-row">
-                            <label htmlFor="inv-fuel-month" className="plantation-invoice-fuel-price-label">
-                              Monthly fuel price
+                            <label htmlFor="inv-fuel-type" className="plantation-invoice-fuel-price-label">
+                              Fuel type
+                            </label>
+                            <select
+                              id="inv-fuel-type"
+                              className="plantation-invoice-fuel-type-select"
+                              value={selectedFuelCategoryId}
+                              onChange={handleFuelCategoryChange}
+                            >
+                              {!fuelCategories.length ? (
+                                <option value="">No fuel prices in DB</option>
+                              ) : null}
+                              {fuelCategories.map((cat) => (
+                                <option key={cat.id} value={String(cat.id)}>
+                                  {cat.category}
+                                  {cat.unit_price != null && cat.unit_price !== ''
+                                    ? ` — ${formatMoney(cat.unit_price)}`
+                                    : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="plantation-invoice-fuel-price-row">
+                            <span className="plantation-invoice-fuel-price-label">
+                              Price (LKR / L)
                               <span className="plantation-invoice-fuel-month">
                                 {' '}
-                                (1st of {billingMonth ? billingMonth.slice(0, 7) : 'month'})
+                                · {billingMonth ? billingMonth.slice(0, 7) : 'month'}
                               </span>
-                            </label>
+                            </span>
                             <input
                               id="inv-fuel-month"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={monthlyFuelPrice}
-                              onChange={(e) => setMonthlyFuelPrice(e.target.value)}
-                              onBlur={handleFuelPriceBlur}
-                              placeholder={`${BASE_FUEL_PRICE}`}
-                              title={`Base reference: ${BASE_FUEL_PRICE}`}
+                              type="text"
+                              readOnly
+                              tabIndex={-1}
+                              className="plantation-invoice-input-readonly"
+                              value={
+                                monthlyFuelPrice !== ''
+                                  ? formatMoney(Number(monthlyFuelPrice))
+                                  : '—'
+                              }
+                              title={`From Fuel Prices (${selectedFuelCategory?.category || 'selected type'}). Edit master prices under Admin → Fuel Prices — not on invoices.`}
                             />
                           </div>
-                          {savingFuelPrice ? (
-                            <small className="plantation-invoice-fuel-saving">Saving…</small>
-                          ) : null}
+                          <p className="plantation-invoice-fuel-hint">
+                            <strong>1 Ha needs {fuelLitersPerHa} L</strong>
+                            {' · '}
+                            Rate/Ha = (price − {formatMoney(fuelBasePrice)}) × {fuelLitersPerHa}
+                            {fuelRatePreview != null ? (
+                              <>
+                                {' = '}
+                                <strong>{formatMoney(fuelRatePreview)}</strong>
+                              </>
+                            ) : null}
+                          </p>
+                          <p className="plantation-invoice-panel-muted" style={{ marginTop: 6 }}>
+                            Price is taken from Fuel Prices (fuel type). It cannot be edited on the invoice.
+                          </p>
                         </div>
-                      ) : null}
+                      ) : (
+                        <p className="plantation-invoice-panel-muted">
+                          Uses Fuel Prices (default Petrol Octane 92). 1 Ha = {fuelLitersPerHa} L.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
               {!displayDraft?.line_items?.length ? (
-                <p style={{ color: '#b45309' }}>
-                  No invoice lines. Ensure plantation has spray/spread rates in Corporate Customers and billing Ha
-                  &gt; 0 for selected estates.
+                <p style={{ color: isCreditNote && coverage > 0 ? '#9a3412' : '#b45309' }}>
+                  {isCreditNote && coverage > 0
+                    ? 'No sprayed work this period — line items stay empty. Sending creates a Credit Note for the full prepaid / prior credit (not a tax invoice).'
+                    : 'No invoice lines. Ensure plantation has spray/spread rates in Corporate Customers and billing Ha > 0 for selected estates.'}
                 </p>
               ) : (
                 <table className="plantation-invoice-preview-table">
@@ -717,12 +843,20 @@ export default function CreatePlantationInvoiceModal({
                     <span>Total</span>
                     <span>LKR {formatMoney(preview.total)}</span>
                   </div>
-                  {prepaid > 0 ? (
+                  {coverage > 0 ? (
                     <>
-                      <div>
-                        <span>Prepaid (from pre-invoice)</span>
-                        <span>− {formatMoney(prepaid)}</span>
-                      </div>
+                      {prepaid > 0 ? (
+                        <div>
+                          <span>Prepaid (from pre-invoice)</span>
+                          <span>− {formatMoney(prepaid)}</span>
+                        </div>
+                      ) : null}
+                      {priorCredit > 0 ? (
+                        <div>
+                          <span>Prior credit (M-2)</span>
+                          <span>− {formatMoney(priorCredit)}</span>
+                        </div>
+                      ) : null}
                       <div className="balance">
                         <span>{isCreditNote ? 'Credit amount' : 'Net balance due'}</span>
                         <span>LKR {formatMoney(Math.abs(previewNet || 0))}</span>
@@ -756,8 +890,9 @@ export default function CreatePlantationInvoiceModal({
               draftLoading ||
               createBlocked ||
               Boolean(loadError) ||
-              !displayDraft?.line_items?.length ||
-              !draft?.plantation?.plantation_code
+              !draft?.plantation?.plantation_code ||
+              (!(displayDraft?.line_items?.length) &&
+                !(isCreditNote && coverage > 0.009))
             }
             onClick={handleCreate}
           >

@@ -574,6 +574,22 @@
   z-index: 2000;
 }
 
+/* Sit above Transport HR / nested parent overlays (same 2000 base). */
+.update-popup-overlay-master-data.fuel-type-edit-overlay {
+  z-index: 3200;
+}
+
+.fuel-type-edit-error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: #991b1b;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
 .update-popup-card-master-data {
   width: min(520px, calc(100vw - 32px));
   background: #ffffff;
@@ -809,6 +825,16 @@
 .fuel-types-official-error {
   margin-top: 10px;
   font-size: 0.86rem;
+}
+
+.fuel-types-official-warning {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 0.45rem 0.65rem;
 }
 
 .fuel-types-list-master-data {

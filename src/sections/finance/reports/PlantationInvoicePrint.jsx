@@ -306,7 +306,7 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
                     <td>{t.tax_name}</td>
                     <td>
                       {t.rate_percent != null && t.rate_percent !== ''
-                        ? `${Number(t.rate_percent)}%`
+                        ? `${Number(t.rate_percent).toFixed(2)}%`
                         : ''}
                     </td>
                     <td>{formatMoney(t.tax_amount)}</td>

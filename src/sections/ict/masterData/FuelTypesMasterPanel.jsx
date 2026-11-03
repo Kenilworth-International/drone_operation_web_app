@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { toast } from 'react-toastify';
 import {
   useGetFuelCategoriesQuery,
   useSaveFuelCategoryMutation,
@@ -50,8 +51,14 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
   const [draftName, setDraftName] = useState('');
   const [draftOfficialCode, setDraftOfficialCode] = useState('');
   const [draftUnitPrice, setDraftUnitPrice] = useState('');
+  const [savingModal, setSavingModal] = useState(false);
+  const [modalError, setModalError] = useState('');
+  const [applyingOfficialId, setApplyingOfficialId] = useState(null);
 
-  const officialPrices = officialPayload?.prices || [];
+  const officialPrices = useMemo(
+    () => (Array.isArray(officialPayload?.prices) ? officialPayload.prices : []),
+    [officialPayload]
+  );
   const officialByCode = useMemo(() => {
     const map = new Map();
     officialPrices.forEach((row) => map.set(row.fuel_type, row));
@@ -63,6 +70,8 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
     setDraftName('');
     setDraftOfficialCode('');
     setDraftUnitPrice('');
+    setModalError('');
+    setSavingModal(false);
     setModalOpen(true);
   };
 
@@ -71,16 +80,27 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
     setDraftName(item.category || '');
     setDraftOfficialCode(item.official_fuel_type_code || '');
     setDraftUnitPrice(item.unit_price != null ? String(item.unit_price) : '');
+    setModalError('');
+    setSavingModal(false);
     setModalOpen(true);
   };
 
   const closeModal = () => {
+    if (savingModal) return;
     setModalOpen(false);
     setEditingItem(null);
     setDraftName('');
     setDraftOfficialCode('');
     setDraftUnitPrice('');
+    setModalError('');
   };
+
+  const saveErrorText = (err) =>
+    err?.data?.message ||
+    err?.data?.data?.message ||
+    err?.error ||
+    err?.message ||
+    'Failed to save fuel type.';
 
   const handleRefreshSnapshots = async () => {
     try {
@@ -101,37 +121,55 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
   const handleApplyOfficialPrice = async (item) => {
     const code = item.official_fuel_type_code;
     if (!code) {
-      onMessage?.({ type: 'error', text: 'Link an official fuel type first.' });
+      const text = 'Link an official fuel type first.';
+      onMessage?.({ type: 'error', text });
+      toast.error(text);
       return;
     }
     const official = officialByCode.get(code) || null;
     const officialPrice = official?.price_lkr ?? item.official_price_lkr;
-    if (officialPrice == null) {
-      onMessage?.({ type: 'error', text: 'No official CPC price available for this link.' });
+    if (officialPrice == null || officialPrice === '') {
+      const text = 'No official CPC price available for this link. Refresh official or Update linked snapshots first.';
+      onMessage?.({ type: 'error', text });
+      toast.error(text);
       return;
     }
+    if (applyingOfficialId != null) return;
+    setApplyingOfficialId(item.id);
     try {
+      // Pass the resolved price as unit_price so Save works even if live CPC is down.
       await saveFuelCategory({
         id: item.id,
         category: item.category,
-        unit_price: officialPrice,
+        unit_price: Number(officialPrice),
         official_fuel_type_code: code,
         apply_official_price: true,
         activated: item.activated ?? 1,
       }).unwrap();
       await refetchFuelCategories();
-      onMessage?.({ type: 'success', text: `Applied official price to ${item.category}.` });
+      const text = `Applied official price (${formatMoney(officialPrice)}) to ${item.category}.`;
+      onMessage?.({ type: 'success', text });
+      toast.success(text);
     } catch (err) {
-      onMessage?.({ type: 'error', text: err?.data?.message || err?.error || 'Failed to apply official price.' });
+      const text = saveErrorText(err) || 'Failed to apply official price.';
+      onMessage?.({ type: 'error', text });
+      toast.error(text);
+    } finally {
+      setApplyingOfficialId(null);
     }
   };
 
   const handleSaveModal = async () => {
     const name = String(draftName || '').trim();
     if (!name) {
-      onMessage?.({ type: 'error', text: 'Fuel type name is required.' });
+      const text = 'Fuel type name is required.';
+      setModalError(text);
+      onMessage?.({ type: 'error', text });
       return;
     }
+    if (savingModal) return;
+    setSavingModal(true);
+    setModalError('');
     try {
       await saveFuelCategory({
         id: editingItem?.id,
@@ -141,13 +179,22 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
         activated: editingItem?.activated ?? 1,
       }).unwrap();
       await refetchFuelCategories();
-      onMessage?.({
-        type: 'success',
-        text: editingItem ? 'Fuel type updated.' : 'Fuel type added.',
-      });
-      closeModal();
+      const text = editingItem ? 'Fuel type updated.' : 'Fuel type added.';
+      onMessage?.({ type: 'success', text });
+      toast.success(text);
+      setSavingModal(false);
+      setModalOpen(false);
+      setEditingItem(null);
+      setDraftName('');
+      setDraftOfficialCode('');
+      setDraftUnitPrice('');
+      setModalError('');
     } catch (err) {
-      onMessage?.({ type: 'error', text: err?.data?.message || err?.error || 'Failed to save fuel type.' });
+      const text = saveErrorText(err);
+      setModalError(text);
+      onMessage?.({ type: 'error', text });
+      toast.error(text);
+      setSavingModal(false);
     }
   };
 
@@ -184,6 +231,14 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
         {officialError ? (
           <p className="fuel-types-official-error">
             {officialErrorObj?.data?.message || officialErrorObj?.error || 'Could not load official prices.'}
+            {' '}
+            <a
+              href="https://ceypetco.gov.lk/marketing-sales"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open CPC marketing-sales
+            </a>
           </p>
         ) : (
           <div className="fuel-types-official-grid">
@@ -199,9 +254,14 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
             ) : null}
           </div>
         )}
+        {officialPayload?.warning ? (
+          <p className="fuel-types-official-warning">{officialPayload.warning}</p>
+        ) : null}
         {officialPayload?.last_verified_at ? (
           <p className="fuel-types-official-verified">
             Last verified: {new Date(officialPayload.last_verified_at).toLocaleString()}
+            {officialPayload?.stale ? ' (cached)' : ''}
+            {officialPayload?.source === 'local_cpc_proxy' ? ' via local CPC proxy' : ''}
           </p>
         ) : null}
       </div>
@@ -293,8 +353,9 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
                       type="button"
                       className="action-btn-master-data neutral-master-data"
                       onClick={() => void handleApplyOfficialPrice(item)}
+                      disabled={applyingOfficialId === item.id}
                     >
-                      Apply official
+                      {applyingOfficialId === item.id ? 'Applying…' : 'Apply official'}
                     </button>
                   ) : null}
                 </div>
@@ -305,9 +366,14 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
       </div>
 
       {modalOpen ? (
-        <div className="update-popup-overlay-master-data">
-          <div className="update-popup-card-master-data update-popup-card-wide-master-data">
-            <h3>{editingItem ? 'Edit fuel type' : 'Add fuel type'}</h3>
+        <div className="update-popup-overlay-master-data fuel-type-edit-overlay">
+          <div
+            className="update-popup-card-master-data update-popup-card-wide-master-data"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="fuel-type-edit-title"
+          >
+            <h3 id="fuel-type-edit-title">{editingItem ? 'Edit fuel type' : 'Add fuel type'}</h3>
             <div className="master-edit-grid-2col-master-data">
               <div className="master-edit-field-master-data master-edit-field-span2-master-data">
                 <label htmlFor="master-add-fuel-name">Fuel type name</label>
@@ -318,6 +384,7 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
                   onChange={(e) => setDraftName(e.target.value)}
                   placeholder="e.g. Diesel"
                   autoComplete="off"
+                  disabled={savingModal}
                 />
               </div>
               <div className="master-edit-field-master-data master-edit-field-span2-master-data">
@@ -327,6 +394,7 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
                   className="master-edit-input-master-data"
                   value={draftOfficialCode}
                   onChange={(e) => setDraftOfficialCode(e.target.value)}
+                  disabled={savingModal}
                 >
                   {OFFICIAL_CODE_OPTIONS.map((opt) => (
                     <option key={opt.value || 'none'} value={opt.value}>
@@ -346,6 +414,7 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
                   placeholder="Manual price"
                   min="0"
                   step="0.01"
+                  disabled={savingModal}
                 />
                 {draftOfficialCode && officialByCode.get(draftOfficialCode) ? (
                   <p className="vehicle-master-note-master-data" style={{ marginTop: 6 }}>
@@ -354,12 +423,27 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
                 ) : null}
               </div>
             </div>
+            {modalError ? (
+              <p className="fuel-type-edit-error" role="alert">
+                {modalError}
+              </p>
+            ) : null}
             <div className="update-popup-actions-master-data">
-              <button type="button" className="btn-search-master-data" onClick={closeModal}>
+              <button
+                type="button"
+                className="btn-search-master-data"
+                onClick={closeModal}
+                disabled={savingModal}
+              >
                 Cancel
               </button>
-              <button type="button" className="btn-submit-master-data" onClick={() => void handleSaveModal()}>
-                Save
+              <button
+                type="button"
+                className="btn-submit-master-data"
+                onClick={() => void handleSaveModal()}
+                disabled={savingModal}
+              >
+                {savingModal ? 'Saving…' : 'Save'}
               </button>
             </div>
           </div>

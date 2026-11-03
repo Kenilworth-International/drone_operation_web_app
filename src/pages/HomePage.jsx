@@ -62,6 +62,11 @@ const HomePage = () => {
     location.pathname === '/home/contract-rates' ||
     location.pathname.endsWith('/contract-rates');
 
+  /** Finance work summary: fill viewport; table/history panels scroll inside. */
+  const isWorkSummaryRoute =
+    location.pathname === '/home/finance/work-summary' ||
+    location.pathname.endsWith('/finance/work-summary');
+
   /** HRM dashboard: scrollable overview page. */
   const isHrmDashboardRoute = location.pathname.includes('/hrm/dashboard');
 
@@ -128,7 +133,7 @@ const HomePage = () => {
         />
       )}
       <div 
-        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isMappingUpdateRoute ? ' content-dashboard--mapping-update' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}`}
+        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isWorkSummaryRoute ? ' content-dashboard--work-summary' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isMappingUpdateRoute ? ' content-dashboard--mapping-update' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}`}
         style={{
           marginLeft: isExternalUser || fullWidthNoLeftNav ? '0' : '280px',
           width: isExternalUser || fullWidthNoLeftNav ? '100vw' : 'calc(100vw - 280px)',

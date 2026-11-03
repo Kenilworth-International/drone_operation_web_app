@@ -129,6 +129,9 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
     const [selectedMissionType, setSelectedMissionType] = useState('all');
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
     const [invoiceWorkSummaryRows, setInvoiceWorkSummaryRows] = useState([]);
+    const [invoiceDocKind, setInvoiceDocKind] = useState('final_invoice');
+    /** Paid pre / M-2 credit exists even when work summary has no spray rows. */
+    const [zeroSprayCreditAvailable, setZeroSprayCreditAvailable] = useState(false);
     const [localPreviewInvoice, setLocalPreviewInvoice] = useState(null);
     const [estateStatement, setEstateStatement] = useState(null);
     const [estateStatementLoading, setEstateStatementLoading] = useState(false);
@@ -280,6 +283,61 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
         setInvoiceWorkSummaryRows(rowsForInvoice);
         setShowInvoiceModal(true);
     };
+
+    /** Preview invoice vs credit note; detect paid pre with zero spray for May-style credit notes. */
+    useEffect(() => {
+        if (!selectedPlantation || !selectedEstates.length || !periodStart || !periodEnd) {
+            setInvoiceDocKind('final_invoice');
+            setZeroSprayCreditAvailable(false);
+            return undefined;
+        }
+        let cancelled = false;
+        const timer = setTimeout(() => {
+            void (async () => {
+                try {
+                    const draft = await fetchFinalDraft({
+                        plantation_id: selectedPlantation,
+                        start_date: periodStart.toLocaleDateString('en-CA'),
+                        end_date: periodEnd.toLocaleDateString('en-CA'),
+                        estates: selectedEstates,
+                        mission_filter: selectedMissionType || 'all',
+                    }).unwrap();
+                    if (cancelled) return;
+                    const kind =
+                        draft?.document_kind === 'credit_note' ||
+                        String(draft?.invoice_type || '') === 'credit_note'
+                            ? 'credit_note'
+                            : 'final_invoice';
+                    setInvoiceDocKind(kind);
+                    const coverage =
+                        (Number(draft?.prepaid_applied) || 0) +
+                        (Number(draft?.prior_credit_applied) || 0);
+                    const subtotal = Number(draft?.subtotal) || 0;
+                    setZeroSprayCreditAvailable(
+                        kind === 'credit_note' && coverage > 0.009 && subtotal <= 0.009
+                    );
+                } catch {
+                    if (!cancelled) {
+                        setInvoiceDocKind('final_invoice');
+                        setZeroSprayCreditAvailable(false);
+                    }
+                }
+            })();
+        }, 350);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [
+        selectedPlantation,
+        estatesKey,
+        selectedMonth,
+        selectedMissionType,
+        periodStart,
+        periodEnd,
+        fetchFinalDraft,
+        reportTick,
+    ]);
 
     const computeIndicativeTaxes = (subtotal, taxTypes) => {
         const sorted = [...(taxTypes || [])].sort(
@@ -903,8 +961,8 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
         selectedEstates.length > 0 &&
         periodStart &&
         periodEnd &&
-        filteredRows.length > 0 &&
-        !hasIssues;
+        !hasIssues &&
+        (filteredRows.length > 0 || zeroSprayCreditAvailable || invoiceDocKind === 'credit_note');
 
     const formatDateParam = (d) => d?.toLocaleDateString?.('en-CA') || '';
 
@@ -1004,11 +1062,21 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                                     <button
                                         type="button"
                                         onClick={openInvoiceModal}
-                                        className="finance-btn-invoice-work-summary flex items-center"
-                                        title="Create tax invoice from billing Ha (plantation payee)"
+                                        className={`finance-btn-invoice-work-summary flex items-center${
+                                            invoiceDocKind === 'credit_note'
+                                                ? ' finance-btn-credit-note-work-summary'
+                                                : ''
+                                        }`}
+                                        title={
+                                            invoiceDocKind === 'credit_note'
+                                                ? 'Prepaid / prior credit exceeds sprayed work — create a credit note (not a tax invoice)'
+                                                : 'Create tax invoice from billing Ha (plantation payee)'
+                                        }
                                     >
                                         <FiFileText />
-                                        Create Invoice
+                                        {invoiceDocKind === 'credit_note'
+                                            ? 'Create Credit Note'
+                                            : 'Create Invoice'}
                                     </button>
                                 </>
                         )}
@@ -1206,7 +1274,31 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
                                 </div>
                             ) : (
                                 <div className="no-data-message">
-                                    No data available for selected criteria
+                                    {zeroSprayCreditAvailable || invoiceDocKind === 'credit_note' ? (
+                                        <>
+                                            <div>
+                                                No sprayed work for this plantation / estates / month.
+                                            </div>
+                                            <div style={{ marginTop: 8, color: '#9a3412', fontWeight: 600 }}>
+                                                A paid pre-invoice (or M-2 credit) is on file — use{' '}
+                                                <strong>Create Credit Note</strong> above to return the
+                                                prepaid amount. This is not a tax invoice.
+                                            </div>
+                                            <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+                                                Tip: select the same estates as the pre-invoice so prepaid
+                                                coverage is found.
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div>No data available for selected criteria</div>
+                                            <div style={{ marginTop: 6, fontSize: 12, color: '#64748b' }}>
+                                                If a pre-invoice was paid but nothing was sprayed, select the
+                                                same estates as that pre-invoice — a Credit Note action will
+                                                appear when prepaid is detected.
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             )
                         )}
