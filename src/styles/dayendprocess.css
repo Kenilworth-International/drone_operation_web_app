@@ -1734,6 +1734,43 @@
   background: #fff;
 }
 .cancel-reason-flag-tag { font-size: 11px; font-weight: 600; color: var(--dc-muted); }
+.cancel-pilot-suggestion {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+}
+.cancel-pilot-suggestion-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #c2410c;
+}
+.cancel-pilot-suggestion-text {
+  flex: 1;
+  min-width: 140px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #9a3412;
+}
+.cancel-pilot-suggestion-use {
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px solid #fdba74;
+  background: #fff;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cancel-pilot-suggestion-use:hover { background: #ffedd5; }
+.cancel-pilot-suggestion-use:disabled { opacity: 0.55; cursor: not-allowed; }
 .cancel-reasons-list { display: flex; flex-direction: column; gap: 5px; }
 .cancel-reason-item {
   display: flex;
@@ -1750,9 +1787,30 @@
 }
 .cancel-reason-item:hover { background: #fef2f2; border-color: #fca5a5; }
 .cancel-reason-item.selected { background: #fef2f2; border-color: var(--dc-red); }
+.cancel-reason-item--pilot {
+  border-color: #fdba74;
+  background: #fffbeb;
+  order: -1;
+}
+.cancel-reason-item--pilot:hover { background: #fff7ed; border-color: #fb923c; }
+.cancel-reason-item--pilot.selected { background: #ffedd5; border-color: #ea580c; }
 .cancel-reason-radio { font-size: 15px; color: #cbd5e0; flex-shrink: 0; }
 .cancel-reason-item.selected .cancel-reason-radio { color: var(--dc-red); }
-.cancel-reason-text { flex: 1; }
+.cancel-reason-item--pilot.selected .cancel-reason-radio { color: #ea580c; }
+.cancel-reason-text { flex: 1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.cancel-reason-pilot-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #ffedd5;
+  border: 1px solid #fdba74;
+  color: #c2410c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
 .cancel-no-reasons { text-align: center; color: var(--dc-muted); font-size: 13px; padding: 20px; }
 .cancel-task-footer { padding: 11px 18px; border-top: 1px solid var(--dc-border); }
 .cancel-task-footer-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }

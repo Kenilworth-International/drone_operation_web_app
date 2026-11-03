@@ -390,7 +390,7 @@ const DayEndProcess = () => {
       const month = formatMonthKey(selectedMonth);
       const date = filterDate ? formatDayKey(filterDate) : undefined;
       const overviewResult = await fetchDayOverview({ month, date, status: statusFilter });
-      if (overviewResult.error) return;
+      if (overviewResult.error) return null;
       const allPlans = overviewResult.data || [];
       setMissions((prev) =>
         prev.map((mission) => {
@@ -416,9 +416,23 @@ const DayEndProcess = () => {
           };
         })
       );
+      return allPlans;
     } catch (e) {
       console.error('Error refreshing day progress stats:', e);
+      return null;
     }
+  };
+
+  const isPlanFullyResolved = (planRow) => {
+    const stats = planRow?.completionStats || {};
+    const total = Number(stats.totalFields) || 0;
+    if (total <= 0) return false;
+    const resolvedPct = Number(stats.resolvedPercentage);
+    if (Number.isFinite(resolvedPct) && resolvedPct >= 100) return true;
+    const resolved =
+      Number(stats.resolvedFields) ||
+      Math.min(total, (Number(stats.completedFields) || 0) + (Number(stats.canceledFields) || 0));
+    return resolved >= total;
   };
 
   const refreshAfterCancelChange = async () => {
@@ -473,16 +487,42 @@ const DayEndProcess = () => {
   };
 
   // Cancel task handlers
+  const getPilotSuggestedReason = (taskId) => {
+    const info = taskCancelStatusMap[taskId] || {};
+    const partialId = Number(info.pilot_partial_id) || 0;
+    if (partialId > 0) {
+      return {
+        id: partialId,
+        text: String(info.pilot_partial_reason || '').trim(),
+        kind: 'partial',
+      };
+    }
+    const cancelId = Number(info.pilot_cancel_id) || 0;
+    if (cancelId > 0) {
+      return {
+        id: cancelId,
+        text: String(info.pilot_cancel_reason || '').trim(),
+        kind: 'cancel',
+      };
+    }
+    return null;
+  };
+
   const handleCancelTaskClick = (fieldId, task) => {
     setCancelPopupMode('direct');
     setCancelReasonFlagFilter('');
     loadCancelReasonsForPopup('direct', '');
     setCancelTaskId(task.task_id);
     setCancelFieldId(fieldId);
-    // Pre-select existing ops cancel reason if task was already cancelled
+    // Prefer existing ops reason; otherwise pre-select the pilot's partial/cancel reason
     const cancelInfo = taskCancelStatusMap[task.task_id];
-    const existing = cancelInfo ? Number(cancelInfo.ops_cancel_id) : 0;
-    setSelectedCancelReason(existing > 0 ? existing : null);
+    const existingOps = cancelInfo ? Number(cancelInfo.ops_cancel_id) : 0;
+    if (existingOps > 0) {
+      setSelectedCancelReason(existingOps);
+    } else {
+      const pilotSuggested = getPilotSuggestedReason(task.task_id);
+      setSelectedCancelReason(pilotSuggested?.id || null);
+    }
     setShowCancelPopup(true);
   };
 
@@ -1009,7 +1049,12 @@ const DayEndProcess = () => {
       setCancelTaskId(currentTask.task_id);
       setCancelFieldId(currentTask.field_id);
       const existingOps = Number(taskCancelStatusMap[currentTask.task_id]?.ops_cancel_id || 0);
-      setSelectedCancelReason(existingOps > 0 ? existingOps : null);
+      if (existingOps > 0) {
+        setSelectedCancelReason(existingOps);
+      } else {
+        const pilotSuggested = getPilotSuggestedReason(currentTask.task_id);
+        setSelectedCancelReason(pilotSuggested?.id || null);
+      }
       setShowCancelPopup(true);
       toast.info('DJI field area is below 70%. Please save a partial (h) reason before submitting DJI data.');
       return;
@@ -1032,28 +1077,57 @@ const DayEndProcess = () => {
       }).unwrap();
 
       if (response?.success || response?.status === 'true') {
-        if (selectedMission?.id) {
-          await handleDateChange();
-        }
-
         toast.success('DJI map and data uploaded successfully!');
         try {
-          const updatedResult = await fetchTasksByPlanAndField(
-            { planId: selectedMission.id, fieldId: currentTask.field_id },
-            true
+          // Keep the open plan on the right; only refresh this field + left-list progress.
+          if (selectedMission?.id && currentTask?.field_id) {
+            const updatedResult = await fetchTasksByPlanAndField(
+              { planId: selectedMission.id, fieldId: currentTask.field_id },
+              true
+            );
+            const previousTasks = fieldTasks[currentTask.field_id]?.tasks || [];
+            setFieldTasks((prev) => ({
+              ...prev,
+              [currentTask.field_id]: mapTasksResponse(
+                updatedResult.data,
+                currentTask.field_id,
+                selectedMission.id,
+                previousTasks
+              ),
+            }));
+            await fetchCancelStatus(selectedMission.id);
+          }
+
+          const refreshedPlans = await refreshDayProgressStats();
+          const updatedPlan = (refreshedPlans || []).find(
+            (p) => Number(p.id) === Number(selectedMission?.id)
           );
-          const previousTasks = fieldTasks[currentTask.field_id]?.tasks || [];
-          setFieldTasks((prev) => ({
-            ...prev,
-            [currentTask.field_id]: mapTasksResponse(
-              updatedResult.data,
-              currentTask.field_id,
-              selectedMission.id,
-              previousTasks
-            ),
-          }));
+          if (updatedPlan?.completionStats && selectedMission?.id) {
+            setSelectedMission((prev) =>
+              prev && Number(prev.id) === Number(selectedMission.id)
+                ? {
+                    ...prev,
+                    completed: updatedPlan.completed ?? prev.completed,
+                    completionStats: {
+                      totalFields: Number(updatedPlan.completionStats.totalFields) || 0,
+                      completedFields: Number(updatedPlan.completionStats.completedFields) || 0,
+                      pendingFields: Number(updatedPlan.completionStats.pendingFields) || 0,
+                      resolvedFields: Number(updatedPlan.completionStats.resolvedFields) || 0,
+                      resolvedPercentage: Number(updatedPlan.completionStats.resolvedPercentage) || 0,
+                      canceledFields: Number(updatedPlan.completionStats.canceledFields) || 0,
+                      completionPercentage: Number(updatedPlan.completionStats.completionPercentage) || 0,
+                      cancelPercentage: Number(updatedPlan.completionStats.cancelPercentage) || 0,
+                    },
+                  }
+                : prev
+            );
+          }
+          // Full right-side reload only when this plan is fully resolved
+          if (updatedPlan && isPlanFullyResolved(updatedPlan)) {
+            await handleDateChange();
+          }
         } catch (error) {
-          console.error('Error refetching task data:', error);
+          console.error('Error refreshing after DJI submit:', error);
         }
         handleTaskPopupClose();
       } else {
@@ -1153,6 +1227,13 @@ const DayEndProcess = () => {
   };
 
   const sortedMissions = useMemo(() => [...missions].sort((a, b) => {
+    // Earliest plan date first within the month
+    const dateA = String(a.picked_date || '').slice(0, 10);
+    const dateB = String(b.picked_date || '').slice(0, 10);
+    if (dateA && dateB && dateA !== dateB) return dateA.localeCompare(dateB);
+    if (dateA && !dateB) return -1;
+    if (!dateA && dateB) return 1;
+
     if (a.activated === 0 && b.activated !== 0) return 1;
     if (a.activated !== 0 && b.activated === 0) return -1;
     if (a.team_assigned !== 0 && b.team_assigned === 0) return -1;
@@ -1639,8 +1720,10 @@ const DayEndProcess = () => {
                         ) : (
                           <div className="dep-task-card-grid">
                             {divisionTasks.map(({ task, field }) => {
-                              const hasPilotCancel = taskCancelStatusMap[task.task_id]?.pilot_cancel_id > 0;
-                              const hasOpsCancel = taskCancelStatusMap[task.task_id]?.ops_cancel_id > 0;
+                              const cancelInfo = taskCancelStatusMap[task.task_id] || {};
+                              const hasPilotCancel = Number(cancelInfo.pilot_cancel_id) > 0;
+                              const hasPilotPartial = Number(cancelInfo.pilot_partial_id) > 0;
+                              const hasOpsCancel = Number(cancelInfo.ops_cancel_id) > 0;
                               const isCancelled = hasPilotCancel || hasOpsCancel;
 
                               return (
@@ -1656,6 +1739,9 @@ const DayEndProcess = () => {
                                       </span>
                                       {hasPilotCancel && (
                                         <span className="dep-cancel-badge dep-cancel-badge--pilot">Pilot ✕</span>
+                                      )}
+                                      {!hasPilotCancel && hasPilotPartial && (
+                                        <span className="dep-cancel-badge dep-cancel-badge--pilot">Pilot Partial</span>
                                       )}
                                       {hasOpsCancel && (
                                         <span className="dep-cancel-badge dep-cancel-badge--ops">OPS ✕</span>
@@ -1799,13 +1885,19 @@ const DayEndProcess = () => {
                                   {hasPilotCancel && (
                                     <div className="dep-cancel-reason dep-cancel-reason-pilot">
                                       <span className="dep-cancel-reason-label">Pilot Cancel:</span>
-                                      <span>{taskCancelStatusMap[task.task_id].pilot_cancel_reason || 'Unknown'}</span>
+                                      <span>{cancelInfo.pilot_cancel_reason || 'Unknown'}</span>
+                                    </div>
+                                  )}
+                                  {hasPilotPartial && (
+                                    <div className="dep-cancel-reason dep-cancel-reason-pilot">
+                                      <span className="dep-cancel-reason-label">Pilot Partial:</span>
+                                      <span>{cancelInfo.pilot_partial_reason || 'Unknown'}</span>
                                     </div>
                                   )}
                                   {hasOpsCancel && (
                                     <div className="dep-cancel-reason dep-cancel-reason-ops">
                                       <span className="dep-cancel-reason-label">OPS Cancel:</span>
-                                      <span>{taskCancelStatusMap[task.task_id].ops_cancel_reason || 'Unknown'}</span>
+                                      <span>{cancelInfo.ops_cancel_reason || 'Unknown'}</span>
                                     </div>
                                   )}
 
@@ -2333,29 +2425,83 @@ const DayEndProcess = () => {
                   </select>
                 </div>
               ) : null}
-              <div className="cancel-reasons-list">
-                {cancelReasons.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    className={`cancel-reason-item ${Number(selectedCancelReason) === Number(r.id) ? 'selected' : ''}`}
-                    onClick={() => handleCancelReasonSelect(r.id)}
-                  >
-                    <span className="cancel-reason-radio">
-                      {Number(selectedCancelReason) === Number(r.id) ? '●' : '○'}
-                    </span>
-                    <span className="cancel-reason-text">
-                      {r.reason}
-                      {r.flag ? (
-                        <span className="cancel-reason-flag-tag"> ({String(r.flag).toLowerCase()})</span>
-                      ) : null}
-                    </span>
-                  </button>
-                ))}
-                {cancelReasons.length === 0 && (
-                  <p className="cancel-no-reasons">No reasons available for this filter.</p>
-                )}
-              </div>
+              {(() => {
+                const pilotSuggested = cancelTaskId ? getPilotSuggestedReason(cancelTaskId) : null;
+                const pilotReasonId = Number(pilotSuggested?.id) || 0;
+                const baseReasons = [...(cancelReasons || [])];
+                const pilotInList =
+                  pilotReasonId > 0 && baseReasons.some((r) => Number(r.id) === pilotReasonId);
+                // Keep pilot pick selectable even if current flag filter excludes it
+                if (pilotSuggested && pilotReasonId > 0 && !pilotInList) {
+                  baseReasons.unshift({
+                    id: pilotReasonId,
+                    reason: pilotSuggested.text || `Reason #${pilotReasonId}`,
+                    flag: pilotSuggested.kind === 'partial' ? 'h' : 'c',
+                  });
+                }
+                const sortedReasons = baseReasons.sort((a, b) => {
+                  const aIsPilot = pilotReasonId > 0 && Number(a.id) === pilotReasonId;
+                  const bIsPilot = pilotReasonId > 0 && Number(b.id) === pilotReasonId;
+                  if (aIsPilot && !bIsPilot) return -1;
+                  if (!aIsPilot && bIsPilot) return 1;
+                  return Number(a.id) - Number(b.id);
+                });
+
+                return (
+                  <>
+                    {pilotSuggested && (
+                      <div className="cancel-pilot-suggestion">
+                        <span className="cancel-pilot-suggestion-label">
+                          Pilot {pilotSuggested.kind === 'partial' ? 'partial' : 'cancel'} reason
+                        </span>
+                        <span className="cancel-pilot-suggestion-text">
+                          {pilotSuggested.text || `Reason #${pilotReasonId}`}
+                        </span>
+                        {Number(selectedCancelReason) !== pilotReasonId && (
+                          <button
+                            type="button"
+                            className="cancel-pilot-suggestion-use"
+                            onClick={() => setSelectedCancelReason(pilotReasonId)}
+                            disabled={cancelSubmitting}
+                          >
+                            Use this
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <div className="cancel-reasons-list">
+                      {sortedReasons.map((r) => {
+                        const isPilotPick = pilotReasonId > 0 && Number(r.id) === pilotReasonId;
+                        const isSelected = Number(selectedCancelReason) === Number(r.id);
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            className={`cancel-reason-item${isSelected ? ' selected' : ''}${isPilotPick ? ' cancel-reason-item--pilot' : ''}`}
+                            onClick={() => handleCancelReasonSelect(r.id)}
+                          >
+                            <span className="cancel-reason-radio">
+                              {isSelected ? '●' : '○'}
+                            </span>
+                            <span className="cancel-reason-text">
+                              {r.reason}
+                              {r.flag ? (
+                                <span className="cancel-reason-flag-tag"> ({String(r.flag).toLowerCase()})</span>
+                              ) : null}
+                              {isPilotPick ? (
+                                <span className="cancel-reason-pilot-tag">Pilot picked</span>
+                              ) : null}
+                            </span>
+                          </button>
+                        );
+                      })}
+                      {sortedReasons.length === 0 && (
+                        <p className="cancel-no-reasons">No reasons available for this filter.</p>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
             </div>
             <div className="cancel-task-footer">
               <div className="cancel-task-footer-actions">
