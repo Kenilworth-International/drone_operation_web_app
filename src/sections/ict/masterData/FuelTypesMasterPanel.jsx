@@ -257,6 +257,11 @@ const FuelTypesMasterPanel = ({ onMessage, showAddButton = true }) => {
         {officialPayload?.warning ? (
           <p className="fuel-types-official-warning">{officialPayload.warning}</p>
         ) : null}
+        {officialPayload?.live_error ? (
+          <p className="fuel-types-official-warning">
+            Server network detail: {officialPayload.live_error}
+          </p>
+        ) : null}
         {officialPayload?.last_verified_at ? (
           <p className="fuel-types-official-verified">
             Last verified: {new Date(officialPayload.last_verified_at).toLocaleString()}

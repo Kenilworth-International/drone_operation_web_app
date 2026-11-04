@@ -595,15 +595,22 @@
 }
 
 .plantation-invoice-doc-org {
-  text-align: right;
+  /* Sit on the right of the header; keep lines left-aligned inside the block. */
+  margin-left: auto;
+  text-align: left;
   font-size: 12px;
   line-height: 1.5;
+  max-width: min(360px, 62%);
 }
 
 .plantation-invoice-doc-org strong {
   display: block;
-  font-size: 14px;
+  font-size: 11px;
+  font-weight: 700;
   margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .plantation-invoice-doc-org .address-line {

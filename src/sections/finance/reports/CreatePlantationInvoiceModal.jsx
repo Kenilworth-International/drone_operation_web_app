@@ -650,7 +650,7 @@ export default function CreatePlantationInvoiceModal({
                     value={invoiceNo}
                     readOnly
                     aria-readonly="true"
-                    title="Format: YYMMM_CODE_PRE/POS#### (e.g. 26OCT_BTE_PRE0001). Assigned on create."
+                    title="Format: YYMMM_CODE_#### (e.g. 26NOV_BTE_0001). Assigned on create."
                   />
                   {!draft?.plantation?.plantation_code ? (
                     <small style={{ color: '#b45309', display: 'block', marginTop: 4 }}>
@@ -785,7 +785,7 @@ export default function CreatePlantationInvoiceModal({
                   <thead>
                     <tr>
                       <th>Activity</th>
-                      <th className="num">Plans</th>
+                      {isPre ? <th className="num">Plans</th> : null}
                       <th className="num">Ha</th>
                       <th className="num">Rate (per Ha)</th>
                       <th className="num">Amount</th>
@@ -803,13 +803,15 @@ export default function CreatePlantationInvoiceModal({
                             <div>{row.activity}</div>
                             <small style={{ color: '#64748b' }}>{row.description}</small>
                           </td>
-                          <td className="num">
-                            {isFuel || !isBillableServiceLine(row)
-                              ? '—'
-                              : row.plan_count != null
-                                ? Number(row.plan_count)
-                                : '—'}
-                          </td>
+                          {isPre ? (
+                            <td className="num">
+                              {isFuel || !isBillableServiceLine(row)
+                                ? '—'
+                                : row.plan_count != null
+                                  ? Number(row.plan_count)
+                                  : '—'}
+                            </td>
+                          ) : null}
                           <td className="num">{formatMoney(row.qty)}</td>
                           <td className="num">{formatMoney(row.rate)}</td>
                           <td className="num">{formatMoney(row.amount)}</td>
@@ -820,7 +822,9 @@ export default function CreatePlantationInvoiceModal({
                   <tfoot>
                     <tr className="plantation-invoice-preview-totals-row">
                       <td>Total</td>
-                      <td className="num">{sumInvoiceLinePlans(displayDraft.line_items)}</td>
+                      {isPre ? (
+                        <td className="num">{sumInvoiceLinePlans(displayDraft.line_items)}</td>
+                      ) : null}
                       <td className="num">{formatMoney(sumInvoiceLineHa(displayDraft.line_items))}</td>
                       <td />
                       <td className="num">{formatMoney(displayDraft.subtotal)}</td>

@@ -1,6 +1,5 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { COMPANY } from '../../../config/companyConstants';
 import {
   isBillableServiceLine,
   sumInvoiceLineHa,
@@ -16,23 +15,21 @@ function formatPlanCount(row) {
   return String(Number(row.plan_count));
 }
 
-function buildInvoiceLineTableRows(lineItems) {
-  const rows = (lineItems || []).map((row) => [
-    `${row.activity || ''}\n${row.description || ''}`,
-    formatPlanCount(row),
-    formatMoney(row.qty),
-    formatMoney(row.rate),
-    formatMoney(row.amount),
-  ]);
-  rows.push([
-    'Total',
-    String(sumInvoiceLinePlans(lineItems)),
+function buildInvoiceLineTableRows(lineItems, { showPlans = false } = {}) {
+  const rows = (lineItems || []).map((row) => {
+    const base = [`${row.activity || ''}\n${row.description || ''}`];
+    if (showPlans) base.push(formatPlanCount(row));
+    base.push(formatMoney(row.qty), formatMoney(row.rate), formatMoney(row.amount));
+    return base;
+  });
+  const totalRow = ['Total'];
+  if (showPlans) totalRow.push(String(sumInvoiceLinePlans(lineItems)));
+  totalRow.push(
     formatMoney(sumInvoiceLineHa(lineItems)),
     '',
-    formatMoney(
-      (lineItems || []).reduce((s, li) => s + (Number(li.amount) || 0), 0)
-    ),
-  ]);
+    formatMoney((lineItems || []).reduce((s, li) => s + (Number(li.amount) || 0), 0))
+  );
+  rows.push(totalRow);
   return rows;
 }
 
@@ -70,6 +67,45 @@ function tryAddLogo(doc, x, y, w, h) {
 }
 
 /**
+ * Draw org header flush to the right margin; all lines share one left edge (left-aligned).
+ * @returns {number} y after the last line
+ */
+function drawRightOrgBlock(doc, { title, detailLines }, rightX, startY) {
+  const titleText = String(title || '').trim();
+  const details = (detailLines || []).map((l) => String(l ?? '').trim()).filter(Boolean);
+  // Keep company name on one line: shrink until it fits beside the logo.
+  const maxTitleWidth = Math.max(70, rightX - 48);
+  let titleSize = 9;
+  doc.setFont('helvetica', 'bold');
+  while (titleSize > 7) {
+    doc.setFontSize(titleSize);
+    if (!titleText || doc.getTextWidth(titleText) <= maxTitleWidth) break;
+    titleSize -= 0.5;
+  }
+  doc.setFontSize(titleSize);
+  const titleW = titleText ? doc.getTextWidth(titleText) : 0;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  const detailW = details.length ? Math.max(...details.map((line) => doc.getTextWidth(line))) : 0;
+  const leftX = rightX - Math.max(titleW, detailW, 0);
+
+  let yy = startY;
+  if (titleText) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(titleSize);
+    doc.text(titleText, leftX, yy, { align: 'left' });
+    yy += 4.5;
+  }
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  details.forEach((line) => {
+    doc.text(line, leftX, yy, { align: 'left' });
+    yy += 4;
+  });
+  return yy;
+}
+
+/**
  * Build and download plantation tax invoice as A4 PDF.
  * @param {object} invoice
  */
@@ -83,34 +119,28 @@ export function downloadPlantationInvoicePdf(invoice) {
 
   tryAddLogo(doc, margin, y, 28, 28);
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  const orgRightX = pageWidth - margin;
   const orgName = invoice.org_name || 'Organization';
-  doc.text(orgName, pageWidth - margin, y + 4, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  let orgY = y + 9;
   const orgAddr = invoice.org_address_lines?.length
     ? invoice.org_address_lines
     : addressLines(invoice.org_address);
-  orgAddr.forEach((line) => {
-    doc.text(line, pageWidth - margin, orgY, { align: 'right' });
-    orgY += 4;
-  });
-  if (invoice.email) {
-    doc.text(invoice.email, pageWidth - margin, orgY, { align: 'right' });
-    orgY += 4;
-  }
-  const govtUid = String(invoice.br || COMPANY.govtUid || '').trim();
-  const tinNo = String(invoice.tin_no || COMPANY.tinNo || COMPANY.taxId || '').trim();
-  if (govtUid) {
-    doc.text(`Govt. UID: ${govtUid}`, pageWidth - margin, orgY, { align: 'right' });
-    orgY += 4;
-  }
-  if (tinNo) {
-    doc.text(`TIN NO: ${tinNo}`, pageWidth - margin, orgY, { align: 'right' });
-    orgY += 4;
-  }
+  // ICT Master Data → Invoice organization fields (BR / VAT) — no companyConstants fallback.
+  const govtUid = String(invoice.br || '').trim();
+  const vatNo = String(invoice.vat_no || '').trim();
+  const orgDetailLines = [
+    ...orgAddr,
+    invoice.telephone ? String(invoice.telephone) : null,
+    invoice.email ? String(invoice.email) : null,
+    govtUid ? `Govt. UID: ${govtUid}` : null,
+    vatNo ? `VAT Registration No: ${vatNo}` : null,
+  ].filter(Boolean);
+
+  const orgY = drawRightOrgBlock(
+    doc,
+    { title: orgName, detailLines: orgDetailLines },
+    orgRightX,
+    y + 4
+  );
 
   y = Math.max(y + 32, orgY + 4);
   doc.setFont('helvetica', 'bold');
@@ -177,14 +207,31 @@ export function downloadPlantationInvoicePdf(invoice) {
 
   y = Math.max(rowY, partiesY + metaRows.length * 5) + 6;
 
-  const lineRows = buildInvoiceLineTableRows(invoice.line_items);
-  const [lineW0, lineW1, lineW2, lineW3, lineW4] = splitTableWidths(
-    tableWidth,
-    [0.44, 0.12, 0.14, 0.15, 0.15]
-  );
+  const showPlansCol = String(invoice.invoice_type || '') === 'pre';
+  const lineRows = buildInvoiceLineTableRows(invoice.line_items, { showPlans: showPlansCol });
+  const lineHead = showPlansCol
+    ? ['ACTIVITY', 'PLANS', 'Ha', 'Rate (per Ha)', 'AMOUNT']
+    : ['ACTIVITY', 'Ha', 'Rate (per Ha)', 'AMOUNT'];
+  const lineWidths = showPlansCol
+    ? splitTableWidths(tableWidth, [0.44, 0.12, 0.14, 0.15, 0.15])
+    : splitTableWidths(tableWidth, [0.5, 0.16, 0.17, 0.17]);
+  const lineColStyles = showPlansCol
+    ? {
+        0: { cellWidth: lineWidths[0], halign: 'left' },
+        1: { halign: 'right', cellWidth: lineWidths[1] },
+        2: { halign: 'right', cellWidth: lineWidths[2] },
+        3: { halign: 'right', cellWidth: lineWidths[3] },
+        4: { halign: 'right', cellWidth: lineWidths[4] },
+      }
+    : {
+        0: { cellWidth: lineWidths[0], halign: 'left' },
+        1: { halign: 'right', cellWidth: lineWidths[1] },
+        2: { halign: 'right', cellWidth: lineWidths[2] },
+        3: { halign: 'right', cellWidth: lineWidths[3] },
+      };
 
   autoTable(doc, {
-    head: [['ACTIVITY', 'PLANS', 'Ha', 'Rate (per Ha)', 'AMOUNT']],
+    head: [lineHead],
     body: lineRows,
     startY: y,
     tableWidth,
@@ -197,13 +244,7 @@ export function downloadPlantationInvoicePdf(invoice) {
       fontStyle: 'bold',
       halign: 'center',
     },
-    columnStyles: {
-      0: { cellWidth: lineW0, halign: 'left' },
-      1: { halign: 'right', cellWidth: lineW1 },
-      2: { halign: 'right', cellWidth: lineW2 },
-      3: { halign: 'right', cellWidth: lineW3 },
-      4: { halign: 'right', cellWidth: lineW4 },
-    },
+    columnStyles: lineColStyles,
     didParseCell: (data) => {
       if (data.section === 'body' && data.row.index === lineRows.length - 1) {
         data.cell.styles.fontStyle = 'bold';
@@ -287,11 +328,11 @@ export function downloadPlantationInvoicePdf(invoice) {
 
   y = (doc.lastAutoTable?.finalY || y) + 6;
 
-  if (invoice.vat_no) {
+  if (vatNo) {
     doc.setFillColor(226, 232, 240);
     doc.rect(margin, y, pageWidth - margin * 2, 7, 'F');
     doc.setFontSize(8);
-    doc.text(`VAT Registration No: ${invoice.vat_no}`, margin + 2, y + 5);
+    doc.text(`VAT Registration No: ${vatNo}`, margin + 2, y + 5);
   }
 
   const footerY = pageHeight - 12;
@@ -320,19 +361,21 @@ export function downloadEstateStatementPdf(statement) {
 
   tryAddLogo(doc, margin, y, 28, 28);
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.text(statement.org_name || 'Organization', pageWidth - margin, y + 4, { align: 'right' });
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  let orgY = y + 9;
-  const orgAddr = statement.org_address_lines?.length
+  const stmtOrgRightX = pageWidth - margin;
+  const stmtOrgAddr = statement.org_address_lines?.length
     ? statement.org_address_lines
     : addressLines(statement.org_address);
-  orgAddr.forEach((line) => {
-    doc.text(line, pageWidth - margin, orgY, { align: 'right' });
-    orgY += 4;
-  });
+  const stmtOrgDetails = [
+    ...stmtOrgAddr,
+    statement.telephone ? String(statement.telephone) : null,
+    statement.email ? String(statement.email) : null,
+  ].filter(Boolean);
+  const orgY = drawRightOrgBlock(
+    doc,
+    { title: statement.org_name || 'Organization', detailLines: stmtOrgDetails },
+    stmtOrgRightX,
+    y + 4
+  );
 
   y = Math.max(y + 32, orgY + 4);
 

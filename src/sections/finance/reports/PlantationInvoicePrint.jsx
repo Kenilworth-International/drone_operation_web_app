@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { toast } from 'react-toastify';
 import '../../../styles/plantationInvoice.css';
-import { COMPANY } from '../../../config/companyConstants';
 import { downloadPlantationInvoicePdf } from './plantationInvoicePdfExport';
 import {
   isBillableServiceLine,
@@ -60,8 +59,11 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
   const orgLines = invoice.org_address_lines?.length
     ? invoice.org_address_lines
     : formatAddressLines(invoice.org_address);
-  const govtUid = String(invoice.br || COMPANY.govtUid || '').trim();
-  const tinNo = String(invoice.tin_no || COMPANY.tinNo || COMPANY.taxId || '').trim();
+  // From ICT Master Data → Invoice organization (BR / VAT registration) — not hardcoded.
+  const govtUid = String(invoice.br || '').trim();
+  const vatNo = String(invoice.vat_no || '').trim();
+  // Plans column only for pre-invoices (not final / credit note).
+  const showPlansCol = String(invoice.invoice_type || '') === 'pre';
 
   return (
     <div
@@ -116,7 +118,7 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
             ) : null}
             {invoice.email ? <span className="address-line">{invoice.email}</span> : null}
             {govtUid ? <span className="address-line">Govt. UID: {govtUid}</span> : null}
-            {tinNo ? <span className="address-line">TIN NO: {tinNo}</span> : null}
+            {vatNo ? <span className="address-line">VAT Registration No: {vatNo}</span> : null}
           </div>
         </header>
 
@@ -127,28 +129,6 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
               ? 'Credit Note'
               : 'Tax Invoice'}
         </h1>
-
-        {String(invoice.invoice_type || '') === 'pre' &&
-        (invoice.plan_count != null || invoice.estimated_ha != null) ? (
-          <p style={{ fontSize: 12, color: '#475569', margin: '0 0 12px' }}>
-            Pre-invoice basis: {invoice.plan_count ?? '-'} scheduled plans ×{' '}
-            {formatMoney(invoice.ha_per_plan)} Ha/plan = {formatMoney(invoice.estimated_ha)} Ha
-            estimated.
-          </p>
-        ) : null}
-
-        {(Number(invoice.prepaid_applied) > 0 || invoice.linked_pre_invoice) &&
-        String(invoice.invoice_type || '') !== 'pre' ? (
-          <p style={{ fontSize: 12, color: '#475569', margin: '0 0 12px' }}>
-            Reconciliation: prepaid LKR {formatMoney(invoice.prepaid_applied)}
-            {invoice.linked_pre_invoice?.invoice_no
-              ? ` from pre-invoice #${invoice.linked_pre_invoice.invoice_no}`
-              : ''}
-            {String(invoice.invoice_type) === 'credit_note' || Number(invoice.credit_amount) > 0
-              ? `. Credit amount LKR ${formatMoney(invoice.credit_amount || 0)}.`
-              : `. Net balance due LKR ${formatMoney(invoice.balance_due ?? invoice.total)}.`}
-          </p>
-        ) : null}
 
         <div className="plantation-invoice-doc-parties">
           <div>
@@ -195,7 +175,7 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
           <thead>
             <tr>
               <th>ACTIVITY</th>
-              <th>PLANS</th>
+              {showPlansCol ? <th>PLANS</th> : null}
               <th>Ha</th>
               <th>Rate (per Ha)</th>
               <th>AMOUNT</th>
@@ -210,13 +190,15 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
                     <div className="activity-name">{row.activity}</div>
                     <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>{row.description}</div>
                   </td>
-                  <td>
-                    {isFuel || !isBillableServiceLine(row)
-                      ? '—'
-                      : row.plan_count != null
-                        ? Number(row.plan_count)
-                        : '—'}
-                  </td>
+                  {showPlansCol ? (
+                    <td>
+                      {isFuel || !isBillableServiceLine(row)
+                        ? '—'
+                        : row.plan_count != null
+                          ? Number(row.plan_count)
+                          : '—'}
+                    </td>
+                  ) : null}
                   <td>{formatMoney(row.qty)}</td>
                   <td>{formatMoney(row.rate)}</td>
                   <td>{formatMoney(row.amount)}</td>
@@ -227,7 +209,7 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
           <tfoot>
             <tr>
               <td>Total</td>
-              <td>{sumInvoiceLinePlans(invoice.line_items)}</td>
+              {showPlansCol ? <td>{sumInvoiceLinePlans(invoice.line_items)}</td> : null}
               <td>{formatMoney(sumInvoiceLineHa(invoice.line_items))}</td>
               <td />
               <td>{formatMoney(invoice.subtotal)}</td>
@@ -315,8 +297,8 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
                 ))}
               </tbody>
             </table>
-            {invoice.vat_no ? (
-              <div className="plantation-invoice-vat-bar">VAT Registration No: {invoice.vat_no}</div>
+            {vatNo ? (
+              <div className="plantation-invoice-vat-bar">VAT Registration No: {vatNo}</div>
             ) : null}
           </section>
         </div>
