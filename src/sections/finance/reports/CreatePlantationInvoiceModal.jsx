@@ -110,6 +110,8 @@ export default function CreatePlantationInvoiceModal({
   const [includeFuelSurcharge, setIncludeFuelSurcharge] = useState(false);
   const [selectedFuelCategoryId, setSelectedFuelCategoryId] = useState('');
   const [monthlyFuelPrice, setMonthlyFuelPrice] = useState('');
+  const [fuelPriceSource, setFuelPriceSource] = useState('none');
+  const [fuelSourceInvoiceNo, setFuelSourceInvoiceNo] = useState(null);
   const [billingMonth, setBillingMonth] = useState(null);
   const [localHaPerPlan, setLocalHaPerPlan] = useState(String(haPerPlan ?? 15));
   const fuelDefaultsAppliedRef = useRef(false);
@@ -140,6 +142,8 @@ export default function CreatePlantationInvoiceModal({
       setOverlayReady(false);
       setSelectedFuelCategoryId('');
       setMonthlyFuelPrice('');
+      setFuelPriceSource('none');
+      setFuelSourceInvoiceNo(null);
       setIncludeFuelSurcharge(false);
       fuelDefaultsAppliedRef.current = false;
       return undefined;
@@ -216,10 +220,14 @@ export default function CreatePlantationInvoiceModal({
 
         const month = data?.billing_month || billingMonthFromPeriodEnd(endDate);
         const fuelCfg = data?.fuel_price_config || {};
+        const histSource = String(fuelCfg.price_source || 'none');
         setBillingMonth(month);
         setDraft(data);
         setSelectedFuelCategoryId('');
+        setFuelPriceSource(histSource);
+        setFuelSourceInvoiceNo(fuelCfg.source_invoice_no || null);
         if (fuelCfg.fuel_price != null && fuelCfg.fuel_price !== '') {
+          // Saved / previous billing price for this month — show and allow edit.
           setMonthlyFuelPrice(String(fuelCfg.fuel_price));
           setIncludeFuelSurcharge(true);
           fuelDefaultsAppliedRef.current = true;
@@ -290,7 +298,10 @@ export default function CreatePlantationInvoiceModal({
     }
   }, [taxTypes, selectedTaxIds.length]);
 
-  /** Default fuel type = Petrol Octane 92; fill price from Fuel Prices when none saved for the month. */
+  /**
+   * Default fuel type = Petrol Octane 92.
+   * Only fill price from current Fuel Prices master when this month has no saved/history price.
+   */
   useEffect(() => {
     if (!open || !fuelCategories.length) return;
 
@@ -301,6 +312,13 @@ export default function CreatePlantationInvoiceModal({
       setSelectedFuelCategoryId(String(defaultCat.id));
     }
 
+    const hasHistory =
+      fuelPriceSource === 'monthly_table' || fuelPriceSource === 'invoice_history';
+    if (hasHistory) {
+      fuelDefaultsAppliedRef.current = true;
+      return;
+    }
+
     if (!fuelDefaultsAppliedRef.current && monthlyFuelPrice === '') {
       const cat =
         (selectedFuelCategoryId
@@ -309,12 +327,13 @@ export default function CreatePlantationInvoiceModal({
       const price = fuelCategoryPrice(cat);
       if (price != null) {
         setMonthlyFuelPrice(String(price));
+        setFuelPriceSource('fuel_master');
         fuelDefaultsAppliedRef.current = true;
       }
     } else if (monthlyFuelPrice !== '') {
       fuelDefaultsAppliedRef.current = true;
     }
-  }, [open, fuelCategories, selectedFuelCategoryId, monthlyFuelPrice]);
+  }, [open, fuelCategories, selectedFuelCategoryId, monthlyFuelPrice, fuelPriceSource]);
 
   const fuelBasePrice = draft?.fuel_price_config?.base_fuel_price ?? BASE_FUEL_PRICE;
   const fuelLitersPerHa = draft?.fuel_price_config?.liters_per_ha ?? FUEL_LITERS_PER_HA;
@@ -360,8 +379,15 @@ export default function CreatePlantationInvoiceModal({
     const price = fuelCategoryPrice(cat);
     if (price != null) {
       setMonthlyFuelPrice(String(price));
+      setFuelPriceSource('fuel_master');
       fuelDefaultsAppliedRef.current = true;
     }
+  };
+
+  const handleFuelPriceChange = (e) => {
+    const raw = e.target.value;
+    setMonthlyFuelPrice(raw);
+    if (raw !== '') setFuelPriceSource('manual');
   };
 
   const handleFuelSurchargeToggle = (checked) => {
@@ -373,9 +399,29 @@ export default function CreatePlantationInvoiceModal({
     const price = fuelCategoryPrice(cat);
     if (price != null) {
       setMonthlyFuelPrice(String(price));
+      setFuelPriceSource('fuel_master');
       fuelDefaultsAppliedRef.current = true;
     }
   };
+
+  const fuelPriceHint = useMemo(() => {
+    const monthLabel = billingMonth ? billingMonth.slice(0, 7) : 'this month';
+    if (fuelPriceSource === 'monthly_table') {
+      return `Previous billing price saved for ${monthLabel} — edit if needed; creating the invoice updates it.`;
+    }
+    if (fuelPriceSource === 'invoice_history') {
+      return fuelSourceInvoiceNo
+        ? `Previous price from invoice #${fuelSourceInvoiceNo} (${monthLabel}) — editable.`
+        : `Previous price from an invoice in ${monthLabel} — editable.`;
+    }
+    if (fuelPriceSource === 'manual') {
+      return `Custom price for ${monthLabel} — saved when you create the invoice.`;
+    }
+    if (fuelPriceSource === 'fuel_master') {
+      return `No saved price for ${monthLabel} yet — using current Fuel Prices (editable).`;
+    }
+    return `Enter the LKR/L price for ${monthLabel} (editable).`;
+  }, [fuelPriceSource, fuelSourceInvoiceNo, billingMonth]);
 
   const toggleTax = (id) => {
     setSelectedTaxIds((prev) =>
@@ -413,8 +459,8 @@ export default function CreatePlantationInvoiceModal({
     }
     if (includeFuelSurcharge) {
       const price = Number(monthlyFuelPrice);
-      if (!Number.isFinite(price)) {
-        toast.error('Select a fuel type to apply fuel surcharge');
+      if (!Number.isFinite(price) || price < 0) {
+        toast.error('Enter a valid fuel price (LKR / L) for the surcharge');
         return;
       }
     }
@@ -728,27 +774,28 @@ export default function CreatePlantationInvoiceModal({
                             </select>
                           </div>
                           <div className="plantation-invoice-fuel-price-row">
-                            <span className="plantation-invoice-fuel-price-label">
+                            <label htmlFor="inv-fuel-month" className="plantation-invoice-fuel-price-label">
                               Price (LKR / L)
                               <span className="plantation-invoice-fuel-month">
                                 {' '}
                                 · {billingMonth ? billingMonth.slice(0, 7) : 'month'}
                               </span>
-                            </span>
+                            </label>
                             <input
                               id="inv-fuel-month"
-                              type="text"
-                              readOnly
-                              tabIndex={-1}
-                              className="plantation-invoice-input-readonly"
-                              value={
-                                monthlyFuelPrice !== ''
-                                  ? formatMoney(Number(monthlyFuelPrice))
-                                  : '—'
-                              }
-                              title={`From Fuel Prices (${selectedFuelCategory?.category || 'selected type'}). Edit master prices under Admin → Fuel Prices — not on invoices.`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="plantation-invoice-fuel-price-input"
+                              value={monthlyFuelPrice}
+                              onChange={handleFuelPriceChange}
+                              placeholder="e.g. 311"
+                              title={fuelPriceHint}
                             />
                           </div>
+                          <p className="plantation-invoice-fuel-hint plantation-invoice-fuel-hint--source">
+                            {fuelPriceHint}
+                          </p>
                           <p className="plantation-invoice-fuel-hint">
                             <strong>1 Ha needs {fuelLitersPerHa} L</strong>
                             {' · '}

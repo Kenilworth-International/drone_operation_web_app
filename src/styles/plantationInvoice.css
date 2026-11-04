@@ -385,6 +385,12 @@
   border-radius: 6px;
 }
 
+.plantation-invoice-fuel-hint--source {
+  color: #1e3a5f;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
 .plantation-invoice-fuel-hint strong {
   color: #0f172a;
   font-weight: 700;
