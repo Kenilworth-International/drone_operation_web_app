@@ -244,6 +244,7 @@ const MasterData = ({ mode = 'full' }) => {
   const [newOrgCode, setNewOrgCode] = useState('');
   const [newOrgBr, setNewOrgBr] = useState('');
   const [newOrgVatNo, setNewOrgVatNo] = useState('');
+  const [newOrgTinNo, setNewOrgTinNo] = useState('');
   const [newOrgAddress, setNewOrgAddress] = useState('');
   const [newOrgTelephone, setNewOrgTelephone] = useState('');
   const [newOrgEmail, setNewOrgEmail] = useState('');
@@ -484,6 +485,7 @@ const MasterData = ({ mode = 'full' }) => {
     setNewOrgCode('');
     setNewOrgBr('');
     setNewOrgVatNo('');
+    setNewOrgTinNo('');
     setNewOrgAddress('');
     setNewOrgTelephone('');
     setNewOrgEmail('');
@@ -510,6 +512,7 @@ const MasterData = ({ mode = 'full' }) => {
         org_code: newOrgCode || null,
         br: newOrgBr || null,
         vat_no: newOrgVatNo || null,
+        tin_no: newOrgTinNo || null,
         address: newOrgAddress || null,
         telephone: newOrgTelephone || null,
         email: newOrgEmail || null,
@@ -624,6 +627,7 @@ const MasterData = ({ mode = 'full' }) => {
         org_code: item.org_code || '',
         br: item.br || '',
         vat_no: item.vat_no || '',
+        tin_no: item.tin_no || '',
         address: item.address || '',
         telephone: item.telephone || '',
         email: item.email || '',
@@ -855,6 +859,7 @@ const MasterData = ({ mode = 'full' }) => {
           org_code: modalDraft.org_code || null,
           br: modalDraft.br || null,
           vat_no: modalDraft.vat_no || null,
+          tin_no: modalDraft.tin_no || null,
           address: modalDraft.address || null,
           telephone: modalDraft.telephone || null,
           email: modalDraft.email || null,
@@ -1673,7 +1678,7 @@ const MasterData = ({ mode = 'full' }) => {
                         <span className="master-label-master-data">{row.org_name}</span>
                         <span style={{ marginLeft: 8, fontSize: '0.82em', color: '#555' }}>
                           {row.org_code ? `[${row.org_code}] ` : ''}
-                          VAT: {row.vat_no || '—'} | BR: {row.br || '—'}
+                          VAT: {row.vat_no || '—'} | TIN: {row.tin_no || '—'} | BR: {row.br || '—'}
                         </span>
                       </div>
                       <div className="master-actions-master-data">
@@ -2265,6 +2270,16 @@ const MasterData = ({ mode = 'full' }) => {
                     autoComplete="off"
                   />
                 </div>
+                <div className="master-edit-field-master-data">
+                  <label htmlFor="master-edit-org-tin">TIN (income tax)</label>
+                  <input
+                    id="master-edit-org-tin"
+                    className="master-edit-input-master-data"
+                    value={modalDraft.tin_no || ''}
+                    onChange={(e) => setModalDraft((p) => ({ ...p, tin_no: e.target.value }))}
+                    autoComplete="off"
+                  />
+                </div>
                 <div className="master-edit-field-master-data master-edit-field-span2-master-data">
                   <label htmlFor="master-edit-org-address">Address</label>
                   <textarea
@@ -2806,6 +2821,16 @@ const MasterData = ({ mode = 'full' }) => {
                   className="master-edit-input-master-data"
                   value={newOrgVatNo}
                   onChange={(e) => setNewOrgVatNo(e.target.value)}
+                  autoComplete="off"
+                />
+              </div>
+              <div className="master-edit-field-master-data">
+                <label htmlFor="master-add-org-tin">TIN (income tax)</label>
+                <input
+                  id="master-add-org-tin"
+                  className="master-edit-input-master-data"
+                  value={newOrgTinNo}
+                  onChange={(e) => setNewOrgTinNo(e.target.value)}
                   autoComplete="off"
                 />
               </div>

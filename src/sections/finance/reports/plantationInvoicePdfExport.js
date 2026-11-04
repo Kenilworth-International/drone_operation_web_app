@@ -124,14 +124,16 @@ export function downloadPlantationInvoicePdf(invoice) {
   const orgAddr = invoice.org_address_lines?.length
     ? invoice.org_address_lines
     : addressLines(invoice.org_address);
-  // ICT Master Data → Invoice organization fields (BR / VAT) — no companyConstants fallback.
+  // ICT Master Data → Invoice organization fields (BR / VAT / TIN) — no companyConstants fallback.
   const govtUid = String(invoice.br || '').trim();
   const vatNo = String(invoice.vat_no || '').trim();
+  const tinNo = String(invoice.tin_no || '').trim();
   const orgDetailLines = [
     ...orgAddr,
     invoice.telephone ? String(invoice.telephone) : null,
     invoice.email ? String(invoice.email) : null,
     govtUid ? `Govt. UID: ${govtUid}` : null,
+    tinNo ? `TIN: ${tinNo}` : null,
     vatNo ? `VAT Registration No: ${vatNo}` : null,
   ].filter(Boolean);
 

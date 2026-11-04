@@ -27,7 +27,6 @@ export default function GRNDocument({ grn }) {
         {(COMPANY.phone || COMPANY.email) && (
           <div>{[COMPANY.phone, COMPANY.email].filter(Boolean).join(' / ')}</div>
         )}
-        {COMPANY.taxId && <div>GST / Tax ID: {COMPANY.taxId}</div>}
       </div>
 
       {/* GRN Title */}

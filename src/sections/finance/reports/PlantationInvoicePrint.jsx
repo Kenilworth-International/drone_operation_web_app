@@ -59,9 +59,10 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
   const orgLines = invoice.org_address_lines?.length
     ? invoice.org_address_lines
     : formatAddressLines(invoice.org_address);
-  // From ICT Master Data → Invoice organization (BR / VAT registration) — not hardcoded.
+  // From ICT Master Data → Invoice organization (BR / VAT / TIN) — not hardcoded.
   const govtUid = String(invoice.br || '').trim();
   const vatNo = String(invoice.vat_no || '').trim();
+  const tinNo = String(invoice.tin_no || '').trim();
   // Plans column only for pre-invoices (not final / credit note).
   const showPlansCol = String(invoice.invoice_type || '') === 'pre';
 
@@ -118,6 +119,7 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
             ) : null}
             {invoice.email ? <span className="address-line">{invoice.email}</span> : null}
             {govtUid ? <span className="address-line">Govt. UID: {govtUid}</span> : null}
+            {tinNo ? <span className="address-line">TIN: {tinNo}</span> : null}
             {vatNo ? <span className="address-line">VAT Registration No: {vatNo}</span> : null}
           </div>
         </header>
