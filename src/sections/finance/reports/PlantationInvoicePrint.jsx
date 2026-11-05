@@ -126,7 +126,7 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
 
         <h1 className="plantation-invoice-doc-title">
           {String(invoice.invoice_type || '') === 'pre'
-            ? 'Tax Invoice (Pre / Advance)'
+            ? 'Tax Invoice'
             : String(invoice.invoice_type || '') === 'credit_note'
               ? 'Credit Note'
               : 'Tax Invoice'}

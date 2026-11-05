@@ -150,7 +150,7 @@ export function downloadPlantationInvoicePdf(invoice) {
   doc.setTextColor(15, 76, 117);
   const docTitle =
     String(invoice.invoice_type || '') === 'pre'
-      ? 'Tax Invoice (Pre / Advance)'
+      ? 'Tax Invoice'
       : String(invoice.invoice_type || '') === 'credit_note'
         ? 'Credit Note'
         : 'Tax Invoice';
