@@ -37,6 +37,38 @@ export const generatorFuelApprovalsApi = baseApi.injectEndpoints({
       providesTags: ['GeneratorFuelApprovals'],
     }),
 
+    getGeneratorFuelReport: builder.query({
+      queryFn: async (params = {}) => {
+        try {
+          const qs = new URLSearchParams();
+          Object.entries(params || {}).forEach(([key, value]) => {
+            if (value == null || value === '' || value === 'all') return;
+            qs.set(key, String(value));
+          });
+          const q = qs.toString();
+          const result = await nodeBackendBaseQuery(
+            {
+              url: `/api/generator-fuel-approvals/report${q ? `?${q}` : ''}`,
+              method: 'GET',
+            },
+            {},
+            {}
+          );
+          if (result.error) return { error: result.error };
+          const payload = result.data?.data || result.data || {};
+          return {
+            data: {
+              summary: payload.summary || {},
+              rows: Array.isArray(payload.rows) ? payload.rows : [],
+            },
+          };
+        } catch (error) {
+          return { error: { status: 'FETCH_ERROR', error: error.message } };
+        }
+      },
+      providesTags: ['GeneratorFuelApprovals'],
+    }),
+
     decideGeneratorFuelApproval: builder.mutation({
       queryFn: async (body) => {
         try {
@@ -59,5 +91,6 @@ export const generatorFuelApprovalsApi = baseApi.injectEndpoints({
 export const {
   useGetPendingGeneratorFuelApprovalsQuery,
   useGetGeneratorFuelApprovalsHistoryQuery,
+  useGetGeneratorFuelReportQuery,
   useDecideGeneratorFuelApprovalMutation,
 } = generatorFuelApprovalsApi;

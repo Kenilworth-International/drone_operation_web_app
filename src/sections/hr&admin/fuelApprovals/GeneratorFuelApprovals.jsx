@@ -31,6 +31,7 @@ import {
   useDecideGeneratorFuelApprovalMutation,
 } from '../../../api/services NodeJs/generatorFuelApprovalsApi';
 import ZoomableImageDialog from '../../../components/ZoomableImageDialog';
+import GeneratorFuelReport from './GeneratorFuelReport';
 
 const formatDate = (value) => {
   if (!value) return '-';
@@ -73,6 +74,7 @@ const GeneratorFuelApprovals = ({ embedded = false }) => {
   } = useGetGeneratorFuelApprovalsHistoryQuery();
   const [decide, { isLoading: deciding }] = useDecideGeneratorFuelApprovalMutation();
 
+  const isReportTab = tab === 2;
   const rows = tab === 0 ? pending : history;
   const loading = tab === 0 ? pendingLoading : historyLoading;
 
@@ -149,11 +151,14 @@ const GeneratorFuelApprovals = ({ embedded = false }) => {
           <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mt: 1.2 }}>
             <Tab label={`Pending (${pending.length})`} />
             <Tab label={`History (${history.length})`} />
+            <Tab label="Fuel Report & Excel" />
           </Tabs>
         </CardContent>
       </Card>
 
-      {loading ? (
+      {isReportTab ? (
+        <GeneratorFuelReport embedded={embedded} />
+      ) : loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
           <CircularProgress />
         </Box>

@@ -776,8 +776,10 @@ export default function PlantationInvoiceHistory({ onInvoicePreview }) {
                 const payLabel = type === 'credit_note' ? 'Refund' : 'Pay';
                 return (
                   <tr key={row.id} style={isVoided ? { opacity: 0.65 } : undefined}>
-                    <td className="inv-cell-invoice">#{row.invoice_no}</td>
-                    <td>
+                    <td className="inv-cell-invoice" title={`#${row.invoice_no}`}>
+                      #{row.invoice_no}
+                    </td>
+                    <td className="inv-cell-type">
                       <span
                         className={`inv-badge inv-badge--${
                           type === 'pre' ? 'pre' : type === 'credit_note' ? 'credit' : 'post'

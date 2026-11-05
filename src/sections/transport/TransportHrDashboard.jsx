@@ -34,7 +34,9 @@ import {
 } from '../../api/services NodeJs/vehicleRentApi';
 import DriverAdvanceApprovals from '../hr&admin/driverAdvanceApprovals/DriverAdvanceApprovals';
 import FuelApprovals from '../hr&admin/fuelApprovals/FuelApprovals';
+import GeneratorFuelReport from '../hr&admin/fuelApprovals/GeneratorFuelReport';
 import { useGetPendingFuelApprovalsQuery } from '../../api/services NodeJs/fuelApprovalsApi';
+import { useGetPendingGeneratorFuelApprovalsQuery } from '../../api/services NodeJs/generatorFuelApprovalsApi';
 import DriverLeaveDatesHr from '../hr&admin/driverLeaveDates/DriverLeaveDatesHr';
 import VehicleRentApprovals from '../hr&admin/vehicleRentApprovals/VehicleRentApprovals';
 import VehicleManagement from '../administration/VehicleManagement';
@@ -126,11 +128,20 @@ const MODULE_META = [
   { key: 'advanceApprovals', title: 'Driver Advance Approvals', icon: FaMoneyBillWave },
   { key: 'maintenanceApprovals', title: 'Maintenance Approvals', icon: FaTools },
   { key: 'fuelApprovals', title: 'Fuel Approvals', icon: FaGasPump },
+  { key: 'generatorFuelReport', title: 'Fuel Report', icon: FaGasPump },
   { key: 'leaveDates', title: 'Driver Leave Dates', icon: FaCalendarAlt },
   { key: 'vehicleAdminVehicles', title: 'Vehicle Admin - Vehicles', icon: FaTools },
   { key: 'vehicleAdminMaintenance', title: 'Vehicle Admin - Maintenance', icon: FaTools },
 ];
-const SUMMARY_DETAIL_KEYS = new Set(['availableToday', 'rentApprovals', 'advanceApprovals', 'maintenanceApprovals', 'fuelApprovals', 'leaveDates']);
+const SUMMARY_DETAIL_KEYS = new Set([
+  'availableToday',
+  'rentApprovals',
+  'advanceApprovals',
+  'maintenanceApprovals',
+  'fuelApprovals',
+  'generatorFuelReport',
+  'leaveDates',
+]);
 
 const VEHICLE_MODULE_PARAM = 'vehicleManagement';
 
@@ -292,6 +303,10 @@ function TransportHrDashboard() {
     () => (fuelPendingRows || []).reduce((s, r) => s + (Number(r.amount) || 0), 0),
     [fuelPendingRows]
   );
+  const {
+    data: generatorFuelPendingRows = [],
+    isLoading: loadingGeneratorFuel,
+  } = useGetPendingGeneratorFuelApprovalsQuery();
   const effectiveChartMonth = chartMonth || monthKey;
   const chartOwnershipApi =
     chartOwnershipFilter === 'own' ? 'o' : chartOwnershipFilter === 'rented' ? 'r' : undefined;
@@ -1190,6 +1205,7 @@ function TransportHrDashboard() {
     if (detailModule === 'rentApprovals') return <VehicleRentApprovals embedded />;
     if (detailModule === 'advanceApprovals') return <DriverAdvanceApprovals embedded />;
     if (detailModule === 'fuelApprovals') return <FuelApprovals embedded />;
+    if (detailModule === 'generatorFuelReport') return <GeneratorFuelReport embedded />;
     if (detailModule === 'leaveDates') return <DriverLeaveDatesHr embedded />;
     if (detailModule === 'vehicleAdminVehicles') {
       return (
@@ -1760,6 +1776,33 @@ function TransportHrDashboard() {
             <span className="metric-chip-transport-hr">
               Pending total: LKR {loadingFuel ? '-' : fuelPendingTotal.toFixed(2)}
             </span>
+          </div>
+        </div>
+
+        <div
+          className="summary-card-transport-hr summary-card-clickable-transport-hr"
+          role="button"
+          tabIndex={0}
+          onClick={() => setDetailModule('generatorFuelReport')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setDetailModule('generatorFuelReport');
+            }
+          }}
+        >
+          <div className="summary-head-transport-hr">
+            <FaGasPump color="#0f766e" />
+            <strong>Fuel Report</strong>
+          </div>
+          <div className="metric-chip-row-transport-hr">
+            <span className="metric-chip-transport-hr">
+              Gen pending: {loadingGeneratorFuel ? '-' : generatorFuelPendingRows.length}
+            </span>
+            <span className="metric-chip-transport-hr">
+              Veh pending: {loadingFuel ? '-' : fuelPendingRows.length}
+            </span>
+            <span className="metric-chip-transport-hr">Month · Excel</span>
           </div>
         </div>
 

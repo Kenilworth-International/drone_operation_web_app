@@ -933,37 +933,37 @@
   white-space: nowrap;
 }
 
-/* Explicit shares so leftover width is not dumped into one column */
+/* Explicit shares — Inv needs room for full #YYMMM_CODE_####; Type stays compact */
 .plantation-invoice-history .inv-table .inv-col-invoice {
-  width: 6%;
-}
-
-.plantation-invoice-history .inv-table .inv-col-type {
-  width: 7%;
-}
-
-.plantation-invoice-history .inv-table .inv-col-status {
-  width: 8%;
-}
-
-.plantation-invoice-history .inv-table .inv-col-plantation {
   width: 16%;
 }
 
-.plantation-invoice-history .inv-table .inv-col-date {
-  width: 9%;
+.plantation-invoice-history .inv-table .inv-col-type {
+  width: 4%;
 }
 
-.plantation-invoice-history .inv-table .inv-col-period {
+.plantation-invoice-history .inv-table .inv-col-status {
+  width: 7%;
+}
+
+.plantation-invoice-history .inv-table .inv-col-plantation {
   width: 14%;
 }
 
+.plantation-invoice-history .inv-table .inv-col-date {
+  width: 8%;
+}
+
+.plantation-invoice-history .inv-table .inv-col-period {
+  width: 13%;
+}
+
 .plantation-invoice-history .inv-table .inv-col-money {
-  width: 10%;
+  width: 9%;
 }
 
 .plantation-invoice-history .inv-table .inv-col-actions {
-  width: 10%;
+  width: 11%;
 }
 
 .plantation-invoice-history .inv-table .inv-cell-plantation {
@@ -980,6 +980,16 @@
   font-weight: 700;
   color: #0f172a;
   font-variant-numeric: tabular-nums;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: nowrap;
+}
+
+.plantation-invoice-history .inv-table td.inv-cell-type {
+  overflow: visible;
+  text-align: center;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 
 .plantation-invoice-history .inv-badge {
