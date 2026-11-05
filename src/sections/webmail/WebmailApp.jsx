@@ -224,6 +224,63 @@ function extractDisplayName(fromStr) {
   return '';
 }
 
+function splitAddresses(value) {
+  return String(value || '')
+    .split(/[,;]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function normalizeEmailAddr(value) {
+  return extractEmail(value).trim().toLowerCase();
+}
+
+function htmlToPlainText(html) {
+  return String(html || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/\s*p\s*>/gi, '\n')
+    .replace(/<\/\s*div\s*>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function uniqueAddressList(parts, excludeEmails = []) {
+  const excluded = new Set(
+    (excludeEmails || []).map((e) => normalizeEmailAddr(e)).filter(Boolean)
+  );
+  const seen = new Set();
+  const out = [];
+  for (const part of parts || []) {
+    const email = normalizeEmailAddr(part);
+    if (!email || excluded.has(email) || seen.has(email)) continue;
+    seen.add(email);
+    out.push(extractEmail(part) || part);
+  }
+  return out;
+}
+
+function canReplyAllToMessage(message, myEmail) {
+  if (!message) return false;
+  const me = normalizeEmailAddr(myEmail);
+  const from = normalizeEmailAddr(message.from);
+  const others = [
+    ...splitAddresses(message.to),
+    ...splitAddresses(message.cc),
+  ].filter((p) => {
+    const email = normalizeEmailAddr(p);
+    return email && email !== me && email !== from;
+  });
+  return Boolean(String(message.cc || '').trim()) || others.length > 0;
+}
+
 function appendAddress(current, email) {
   const next = String(email || '').trim();
   if (!next) return current || '';
@@ -440,6 +497,7 @@ function ComposeModal({
     inReplyTo: seed?.inReplyTo || '',
     references: Array.isArray(seed?.references) ? seed.references.join(' ') : seed?.references || '',
     signatureId: selectedSig?.id || '',
+    replaceUid: seed?.draftUid || '',
   };
 
   const isDirty = () => {
@@ -512,7 +570,17 @@ function ComposeModal({
     <div className="webmail-modal-overlay" role="presentation">
       <div className="webmail-modal" role="dialog" aria-modal="true" aria-label="Compose">
         <header className="webmail-modal-head">
-          <h2>{mode === 'reply' ? 'Reply' : mode === 'forward' ? 'Forward' : 'Compose'}</h2>
+          <h2>
+            {mode === 'reply'
+              ? 'Reply'
+              : mode === 'replyAll'
+                ? 'Reply All'
+                : mode === 'forward'
+                  ? 'Forward'
+                  : mode === 'editDraft'
+                    ? 'Edit draft'
+                    : 'Compose'}
+          </h2>
           <button
             type="button"
             className="webmail-icon-btn webmail-icon-btn--panel"
@@ -1148,14 +1216,51 @@ export default function WebmailApp() {
     setComposeOpen(true);
   };
 
+  const quotedOriginalBody = (message) =>
+    message?.text || (message?.html ? htmlToPlainText(message.html) : '') || '';
+
   const handleReply = () => {
     if (!selected) return;
     openCompose('reply', {
       to: extractEmail(selected.from),
       subject: selected.subject?.startsWith('Re:') ? selected.subject : `Re: ${selected.subject || ''}`,
-      body: `\n\n----- Original message -----\nFrom: ${selected.from}\nDate: ${formatWhen(selected.date)}\n\n${selected.text || ''}`,
+      body: `\n\n----- Original message -----\nFrom: ${selected.from}\nDate: ${formatWhen(selected.date)}\n\n${quotedOriginalBody(selected)}`,
       inReplyTo: selected.messageId || '',
       references: selected.references || [],
+    });
+  };
+
+  const handleReplyAll = () => {
+    if (!selected) return;
+    const me = status?.email || '';
+    const fromEmail = extractEmail(selected.from);
+    const toList = uniqueAddressList(
+      [fromEmail, ...splitAddresses(selected.to)],
+      [me]
+    );
+    const ccList = uniqueAddressList(splitAddresses(selected.cc), [
+      me,
+      ...toList,
+    ]);
+    openCompose('replyAll', {
+      to: toList.join(', '),
+      cc: ccList.join(', '),
+      subject: selected.subject?.startsWith('Re:') ? selected.subject : `Re: ${selected.subject || ''}`,
+      body: `\n\n----- Original message -----\nFrom: ${selected.from}\nTo: ${selected.to || ''}\nCc: ${selected.cc || ''}\nDate: ${formatWhen(selected.date)}\n\n${quotedOriginalBody(selected)}`,
+      inReplyTo: selected.messageId || '',
+      references: selected.references || [],
+    });
+  };
+
+  const handleEditDraft = () => {
+    if (!selected || folder !== 'drafts') return;
+    openCompose('editDraft', {
+      to: selected.to || '',
+      cc: selected.cc || '',
+      bcc: selected.bcc || '',
+      subject: selected.subject || '',
+      body: quotedOriginalBody(selected),
+      draftUid: selected.uid,
     });
   };
 
@@ -1164,7 +1269,7 @@ export default function WebmailApp() {
     openCompose('forward', {
       to: '',
       subject: selected.subject?.startsWith('Fwd:') ? selected.subject : `Fwd: ${selected.subject || ''}`,
-      body: `\n\n----- Forwarded message -----\nFrom: ${selected.from}\nTo: ${selected.to}\nDate: ${formatWhen(selected.date)}\nSubject: ${selected.subject}\n\n${selected.text || ''}`,
+      body: `\n\n----- Forwarded message -----\nFrom: ${selected.from}\nTo: ${selected.to}\nDate: ${formatWhen(selected.date)}\nSubject: ${selected.subject}\n\n${quotedOriginalBody(selected)}`,
     });
   };
 
@@ -1576,11 +1681,25 @@ export default function WebmailApp() {
                         <MailIcon name="trash" /> Delete
                       </button>
                     </>
+                  ) : folder === 'drafts' ? (
+                    <>
+                      <button type="button" className="webmail-btn webmail-btn--primary" onClick={handleEditDraft}>
+                        <MailIcon name="pen" /> Edit draft
+                      </button>
+                      <button type="button" className="webmail-btn" onClick={handleForward}>
+                        <MailIcon name="share" /> Forward
+                      </button>
+                    </>
                   ) : (
                     <>
                       <button type="button" className="webmail-btn" onClick={handleReply}>
                         <MailIcon name="reply" /> Reply
                       </button>
+                      {canReplyAllToMessage(selected, status?.email) ? (
+                        <button type="button" className="webmail-btn" onClick={handleReplyAll}>
+                          <MailIcon name="reply" /> Reply All
+                        </button>
+                      ) : null}
                       <button type="button" className="webmail-btn" onClick={handleForward}>
                         <MailIcon name="share" /> Forward
                       </button>

@@ -120,8 +120,6 @@ export default function CreatePlantationInvoiceModal({
   const [sprayRateInput, setSprayRateInput] = useState('');
   const [spreadRateInput, setSpreadRateInput] = useState('');
   const [scoutRateInput, setScoutRateInput] = useState('');
-  const [billingRateSource, setBillingRateSource] = useState('none');
-  const [billingRateSourceInvoiceNo, setBillingRateSourceInvoiceNo] = useState(null);
   const fuelDefaultsAppliedRef = useRef(false);
 
   const onCloseRef = useRef(onClose);
@@ -156,8 +154,6 @@ export default function CreatePlantationInvoiceModal({
       setSprayRateInput('');
       setSpreadRateInput('');
       setScoutRateInput('');
-      setBillingRateSource('none');
-      setBillingRateSourceInvoiceNo(null);
       fuelDefaultsAppliedRef.current = false;
       return undefined;
     }
@@ -246,8 +242,6 @@ export default function CreatePlantationInvoiceModal({
         setScoutRateInput(
           plant.scout_rate != null && plant.scout_rate !== '' ? String(plant.scout_rate) : ''
         );
-        setBillingRateSource(String(plant.billing_rate_source || 'none'));
-        setBillingRateSourceInvoiceNo(plant.billing_rate_source_invoice_no || null);
         setSelectedFuelCategoryId('');
         setFuelPriceSource(histSource);
         setFuelSourceInvoiceNo(fuelCfg.source_invoice_no || null);
@@ -345,7 +339,7 @@ export default function CreatePlantationInvoiceModal({
     return set;
   }, [draft]);
 
-  const applyRatesToDraft = (nextSpray, nextSpread, nextScout, source = 'manual', sourceInvoiceNo = null) => {
+  const applyRatesToDraft = (nextSpray, nextSpread, nextScout) => {
     setDraft((prev) => {
       if (!prev) return prev;
       const applied = applyMissionRatesToLineItems(prev.line_items || [], {
@@ -363,8 +357,6 @@ export default function CreatePlantationInvoiceModal({
           spread_rate:
             nextSpread !== '' && nextSpread != null ? Number(nextSpread) : prev.plantation?.spread_rate,
           scout_rate: nextScout !== '' && nextScout != null ? Number(nextScout) : prev.plantation?.scout_rate,
-          billing_rate_source: source,
-          billing_rate_source_invoice_no: sourceInvoiceNo,
         },
       };
     });
@@ -377,51 +369,59 @@ export default function CreatePlantationInvoiceModal({
     if (mission === 'Spray') setSprayRateInput(value);
     if (mission === 'Spread') setSpreadRateInput(value);
     if (mission === 'Scout') setScoutRateInput(value);
-    setBillingRateSource('manual');
-    setBillingRateSourceInvoiceNo(null);
-    applyRatesToDraft(spray, spread, scout, 'manual', null);
+    applyRatesToDraft(spray, spread, scout);
   };
 
-  const useCurrentCatalogRates = () => {
+  const currentRates = useMemo(() => {
     const plant = draft?.plantation || {};
-    const spray =
-      plant.current_spray_rate != null && plant.current_spray_rate !== ''
-        ? String(plant.current_spray_rate)
-        : sprayRateInput;
-    const spread =
-      plant.current_spread_rate != null && plant.current_spread_rate !== ''
-        ? String(plant.current_spread_rate)
-        : spreadRateInput;
-    const scout =
-      plant.current_scout_rate != null && plant.current_scout_rate !== ''
-        ? String(plant.current_scout_rate)
-        : scoutRateInput;
-    setSprayRateInput(spray);
-    setSpreadRateInput(spread);
-    setScoutRateInput(scout);
-    const source = plant.current_billing_rate_source || 'rate_assignment';
-    setBillingRateSource(source);
-    setBillingRateSourceInvoiceNo(null);
-    applyRatesToDraft(spray, spread, scout, source, null);
+    return {
+      Spray: plant.current_spray_rate ?? null,
+      Spread: plant.current_spread_rate ?? null,
+      Scout: plant.current_scout_rate ?? null,
+    };
+  }, [draft]);
+
+  const swapToCurrentRate = (mission) => {
+    const current = currentRates[mission];
+    if (current == null || current === '') return;
+    const value = String(current);
+    const spray = mission === 'Spray' ? value : sprayRateInput;
+    const spread = mission === 'Spread' ? value : spreadRateInput;
+    const scout = mission === 'Scout' ? value : scoutRateInput;
+    if (mission === 'Spray') setSprayRateInput(value);
+    if (mission === 'Spread') setSpreadRateInput(value);
+    if (mission === 'Scout') setScoutRateInput(value);
+    applyRatesToDraft(spray, spread, scout);
   };
 
-  const billingRateHint = useMemo(() => {
-    if (billingRateSource === 'invoice_history') {
-      return billingRateSourceInvoiceNo
-        ? `Defaulted from earlier invoice #${billingRateSourceInvoiceNo} — edit for this invoice only, or use current rates.`
-        : 'Defaulted from an earlier invoice for this plantation — edit for this invoice only, or use current rates.';
+  const rateRows = useMemo(() => {
+    const rows = [];
+    if (missionsOnInvoice.has('Spray')) {
+      rows.push({
+        mission: 'Spray',
+        inputId: 'inv-spray-rate',
+        value: sprayRateInput,
+        current: currentRates.Spray,
+      });
     }
-    if (billingRateSource === 'manual') {
-      return 'Custom rates for this invoice only (not saved to plantation master).';
+    if (missionsOnInvoice.has('Spread')) {
+      rows.push({
+        mission: 'Spread',
+        inputId: 'inv-spread-rate',
+        value: spreadRateInput,
+        current: currentRates.Spread,
+      });
     }
-    if (billingRateSource === 'rate_assignment') {
-      return 'Using catalog / period rates active for this invoice period — editable for this invoice only.';
+    if (missionsOnInvoice.has('Scout')) {
+      rows.push({
+        mission: 'Scout',
+        inputId: 'inv-scout-rate',
+        value: scoutRateInput,
+        current: currentRates.Scout,
+      });
     }
-    if (billingRateSource === 'plantations') {
-      return 'Using plantation master rates — editable for this invoice only.';
-    }
-    return 'Rates apply only to this invoice. Earlier invoice rates are preferred when available.';
-  }, [billingRateSource, billingRateSourceInvoiceNo]);
+    return rows;
+  }, [missionsOnInvoice, sprayRateInput, spreadRateInput, scoutRateInput, currentRates]);
 
   useEffect(() => {
     if (organizations.length && !organizationId) {
@@ -856,78 +856,51 @@ export default function CreatePlantationInvoiceModal({
                 </div>
               </div>
 
-              {(missionsOnInvoice.has('Spray') ||
-                missionsOnInvoice.has('Spread') ||
-                missionsOnInvoice.has('Scout')) && (
+              {rateRows.length > 0 ? (
                 <div className="plantation-invoice-option-panel plantation-invoice-rates-panel">
-                  <div className="plantation-invoice-option-panel-title plantation-invoice-rates-title-row">
-                    <span>Service rates (LKR / Ha)</span>
-                    <button
-                      type="button"
-                      className="plantation-invoice-rates-current-btn"
-                      onClick={useCurrentCatalogRates}
-                      title="Load spray/spread/scout rates currently assigned for this period"
-                    >
-                      Use current rates
-                    </button>
-                  </div>
+                  <div className="plantation-invoice-option-panel-title">Rates (LKR / Ha)</div>
                   <div className="plantation-invoice-option-panel-body">
-                    <div className="plantation-invoice-rates-fields">
-                      {missionsOnInvoice.has('Spray') ? (
-                        <div className="plantation-invoice-fuel-price-row">
-                          <label htmlFor="inv-spray-rate" className="plantation-invoice-fuel-price-label">
-                            Spray
-                          </label>
-                          <input
-                            id="inv-spray-rate"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="plantation-invoice-fuel-price-input"
-                            value={sprayRateInput}
-                            onChange={(e) => handleMissionRateChange('Spray', e.target.value)}
-                          />
-                        </div>
-                      ) : null}
-                      {missionsOnInvoice.has('Spread') ? (
-                        <div className="plantation-invoice-fuel-price-row">
-                          <label htmlFor="inv-spread-rate" className="plantation-invoice-fuel-price-label">
-                            Spread
-                          </label>
-                          <input
-                            id="inv-spread-rate"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="plantation-invoice-fuel-price-input"
-                            value={spreadRateInput}
-                            onChange={(e) => handleMissionRateChange('Spread', e.target.value)}
-                          />
-                        </div>
-                      ) : null}
-                      {missionsOnInvoice.has('Scout') ? (
-                        <div className="plantation-invoice-fuel-price-row">
-                          <label htmlFor="inv-scout-rate" className="plantation-invoice-fuel-price-label">
-                            Scout
-                          </label>
-                          <input
-                            id="inv-scout-rate"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            className="plantation-invoice-fuel-price-input"
-                            value={scoutRateInput}
-                            onChange={(e) => handleMissionRateChange('Scout', e.target.value)}
-                          />
-                        </div>
-                      ) : null}
+                    <div className="plantation-invoice-rates-table">
+                      {rateRows.map((row) => {
+                        const currentNum =
+                          row.current != null && row.current !== '' ? Number(row.current) : null;
+                        const canSwap =
+                          Number.isFinite(currentNum) && String(row.value) !== String(currentNum);
+                        return (
+                          <div key={row.mission} className="plantation-invoice-rate-row">
+                            <label htmlFor={row.inputId} className="plantation-invoice-rate-label">
+                              {row.mission}
+                            </label>
+                            <input
+                              id={row.inputId}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              className="plantation-invoice-fuel-price-input"
+                              value={row.value}
+                              onChange={(e) => handleMissionRateChange(row.mission, e.target.value)}
+                            />
+                            <div className="plantation-invoice-rate-current">
+                              <span>
+                                Current{' '}
+                                {Number.isFinite(currentNum) ? formatMoney(currentNum) : '—'}
+                              </span>
+                              <button
+                                type="button"
+                                className="plantation-invoice-rates-current-btn"
+                                disabled={!canSwap}
+                                onClick={() => swapToCurrentRate(row.mission)}
+                              >
+                                Use
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                    <p className="plantation-invoice-fuel-hint plantation-invoice-fuel-hint--source">
-                      {billingRateHint}
-                    </p>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               <div className="plantation-invoice-taxes-fuel-section">
                 <div className="plantation-invoice-taxes-fuel-row">
