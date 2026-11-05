@@ -39,6 +39,12 @@ export const fuelGeneratorVoucherApi = baseApi.injectEndpoints({
           if (params.settled !== undefined && params.settled !== null && params.settled !== '') {
             search.set('settled', String(params.settled));
           }
+          const months = Array.isArray(params.months)
+            ? params.months.filter(Boolean).slice(0, 3)
+            : params.month
+              ? [params.month]
+              : [];
+          if (months.length) search.set('months', months.join(','));
           const qs = search.toString();
           const result = await nodeBackendBaseQuery(
             { url: `${BASE}/history${qs ? `?${qs}` : ''}`, method: 'GET' },

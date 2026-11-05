@@ -398,10 +398,17 @@ const VoucherPayments = () => {
                 const cardsTitle = isPurchase
                   ? [...poNos, ...suppliers].join('\n')
                   : cards
-                      .map(
-                        (c) =>
-                          `${c.card_number || '-'} ${c.card_holder || ''} · ${c.transaction_count} tx · ${formatMoney(c.amount)}`
-                      )
+                      .map((c) => {
+                        const bal =
+                          c.balance_after_payment != null
+                            ? ` · bal after ${formatMoney(c.balance_after_payment)}`
+                            : c.balance_after != null
+                              ? ` · bal after ${formatMoney(c.balance_after)}`
+                              : c.current_balance != null
+                                ? ` · bal ${formatMoney(c.current_balance)}`
+                                : '';
+                        return `${c.card_number || '-'} ${c.card_holder || ''} · ${c.transaction_count} tx · ${formatMoney(c.amount)}${bal}`;
+                      })
                       .join('\n');
                 return (
                   <tr key={voucher.id}>
@@ -448,6 +455,11 @@ const VoucherPayments = () => {
                               <span>
                                 {card.transaction_count}tx · {formatMoney(card.amount)}
                               </span>
+                              {isPaid && (card.balance_after_payment != null || card.balance_after != null) ? (
+                                <span className="vp-card-bal-after">
+                                  after {formatMoney(card.balance_after_payment ?? card.balance_after)}
+                                </span>
+                              ) : null}
                             </div>
                           ))}
                           {extraCards > 0 ? (
@@ -480,6 +492,20 @@ const VoucherPayments = () => {
                             <small>
                               {voucher.paid_by_name}
                               {voucher.paid_at ? ` · ${formatDateShort(voucher.paid_at)}` : ''}
+                            </small>
+                          ) : null}
+                          {cards.some((c) => c.balance_after_payment != null || c.balance_after != null) ? (
+                            <small className="vp-bal-after-line">
+                              Bal after:{' '}
+                              {cards
+                                .filter((c) => c.balance_after_payment != null || c.balance_after != null)
+                                .map(
+                                  (c) =>
+                                    `${shortCardNo(c.card_number)} ${formatMoney(
+                                      c.balance_after_payment ?? c.balance_after
+                                    )}`
+                                )
+                                .join(' · ')}
                             </small>
                           ) : null}
                           {voucher.payment_receipt_image_url ? (
@@ -628,19 +654,48 @@ const VoucherPayments = () => {
                   <p className="vp-muted">Card details unavailable until the backend is updated.</p>
                 ) : (
                   <ul>
-                    {payCards.map((card) => (
-                      <li key={card.card_id || card.card_number}>
-                        <div className="voucher-payments-card-main">
-                          <span className="voucher-payments-card-no">{shortCardNo(card.card_number)}</span>
-                          {card.card_holder ? (
-                            <span className="voucher-payments-card-holder">{card.card_holder}</span>
-                          ) : null}
-                        </div>
-                        <span className="voucher-payments-card-meta">
-                          {card.transaction_count} tx · {formatMoney(card.amount)}
-                        </span>
-                      </li>
-                    ))}
+                    {payCards.map((card) => {
+                      const isPaidCard = payVoucher?.payment_status === 'paid';
+                      const balAfter =
+                        card.balance_after_payment != null
+                          ? card.balance_after_payment
+                          : card.balance_after;
+                      const balBefore =
+                        card.balance_before != null
+                          ? card.balance_before
+                          : card.current_balance != null
+                            ? card.current_balance
+                            : null;
+                      const projectedAfter =
+                        !isPaidCard && balBefore != null
+                          ? Math.round((Number(balBefore) + Number(card.amount || 0)) * 100) / 100
+                          : balAfter;
+                      return (
+                        <li key={card.card_id || card.card_number}>
+                          <div className="voucher-payments-card-main">
+                            <span className="voucher-payments-card-no">{shortCardNo(card.card_number)}</span>
+                            {card.card_holder ? (
+                              <span className="voucher-payments-card-holder">{card.card_holder}</span>
+                            ) : null}
+                          </div>
+                          <div className="voucher-payments-card-meta-stack">
+                            <span className="voucher-payments-card-meta">
+                              {card.transaction_count} tx · {formatMoney(card.amount)}
+                            </span>
+                            {balBefore != null ? (
+                              <span className="voucher-payments-card-bal">
+                                {isPaidCard ? 'Before' : 'Current'}: {formatMoney(balBefore)}
+                              </span>
+                            ) : null}
+                            {projectedAfter != null ? (
+                              <span className="voucher-payments-card-bal voucher-payments-card-bal--after">
+                                After payment: {formatMoney(projectedAfter)}
+                              </span>
+                            ) : null}
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </section>

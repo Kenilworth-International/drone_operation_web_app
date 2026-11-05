@@ -98,6 +98,33 @@ const formatMonthLabel = (key) => {
   return new Date(y, m - 1, 1).toLocaleDateString(undefined, { year: 'numeric', month: 'long' });
 };
 
+const formatLkr = (value) =>
+  value == null || value === '' ? '—' : `LKR ${Number(value).toFixed(2)}`;
+
+const getHistoryVoucherDetails = (voucher) => {
+  const cards = Array.isArray(voucher?.cards_summary) ? voucher.cards_summary : [];
+  const txCount = Number(voucher?.transaction_count || 0);
+  const approvalType = getVoucherApprovalTypeLabel(voucher);
+  if (!cards.length) {
+    return {
+      main: `${approvalType} · ${txCount} tx`,
+      lines: [`${txCount} transaction${txCount === 1 ? '' : 's'}`],
+    };
+  }
+  return {
+    main: `${approvalType} · ${cards.length} card${cards.length === 1 ? '' : 's'} · ${txCount} tx`,
+    lines: cards.map((card) => {
+      const name = card.card_holder || (card.card_id ? `Card #${card.card_id}` : 'Card');
+      const masked = card.card_number ? ` ${card.card_number}` : '';
+      const after =
+        card.balance_after_payment != null || card.balance_after != null
+          ? ` · after ${formatLkr(card.balance_after_payment ?? card.balance_after)}`
+          : '';
+      return `${name}${masked}: ${formatLkr(card.amount)}${after}`;
+    }),
+  };
+};
+
 const selectProofImageFile = (file, onSelect, inputEl = null) => {
   if (!file) {
     onSelect(null);
@@ -215,8 +242,9 @@ const FinancialCards = () => {
   const [settlementImage, setSettlementImage] = useState(null);
   const [settlementFilter, setSettlementFilter] = useState('all'); // 'all', 'card', 'amount'
   const [settlementSearch, setSettlementSearch] = useState('');
-  const [settlementMonth, setSettlementMonth] = useState('');
+  const [settlementMonths, setSettlementMonths] = useState([]);
   const [settlementVoucherStatus, setSettlementVoucherStatus] = useState('all');
+  const [historyDetailId, setHistoryDetailId] = useState(null);
   const [cardFormData, setCardFormData] = useState({
     no: '',
     cvc: '',
@@ -254,7 +282,13 @@ const FinancialCards = () => {
     useDeclineFuelTransportVoucherByFinanceMutation();
   const [recordPhysicalApproval, { isLoading: recordingPhysicalApproval }] =
     useRecordFuelTransportPhysicalApprovalMutation();
-  const { data: voucherHistory = [], refetch: refetchVoucherHistory } = useGetFuelTransportVoucherHistoryQuery();
+  // Month filter args are history-only; To Settle uses pendingSettlements, not these queries.
+  const voucherHistoryQueryArgs = useMemo(
+    () => (settlementMonths.length ? { months: settlementMonths } : {}),
+    [settlementMonths]
+  );
+  const { data: voucherHistory = [], refetch: refetchVoucherHistory } =
+    useGetFuelTransportVoucherHistoryQuery(voucherHistoryQueryArgs);
   const [createGeneratorFuelVoucher, { isLoading: creatingGeneratorVoucher }] =
     useCreateFuelGeneratorVoucherMutation();
   const [declineGeneratorFuelVoucherByFinance, { isLoading: decliningGeneratorFinanceVoucher }] =
@@ -262,7 +296,7 @@ const FinancialCards = () => {
   const [recordGeneratorPhysicalApproval, { isLoading: recordingGeneratorPhysicalApproval }] =
     useRecordFuelGeneratorPhysicalApprovalMutation();
   const { data: generatorVoucherHistory = [], refetch: refetchGeneratorVoucherHistory } =
-    useGetFuelGeneratorVoucherHistoryQuery();
+    useGetFuelGeneratorVoucherHistoryQuery(voucherHistoryQueryArgs);
 
   // Top-level tab: 'cards' (card view) or 'settlements' (transactions to settle)
   const [activeTab, setActiveTab] = useState('cards');
@@ -289,6 +323,20 @@ const FinancialCards = () => {
   const { data: generatorVoucherDetailData } = useGetFuelGeneratorVoucherByIdQuery(detailVoucherId, {
     skip: !detailVoucherId || fuelSettlementSource !== 'generator',
   });
+  const { data: historyDetailTransport, isFetching: historyDetailTransportLoading } =
+    useGetFuelTransportVoucherByIdQuery(historyDetailId, {
+      skip: !historyDetailId || fuelSettlementSource !== 'vehicle',
+    });
+  const { data: historyDetailGenerator, isFetching: historyDetailGeneratorLoading } =
+    useGetFuelGeneratorVoucherByIdQuery(historyDetailId, {
+      skip: !historyDetailId || fuelSettlementSource !== 'generator',
+    });
+  const historyDetailVoucher =
+    fuelSettlementSource === 'generator' ? historyDetailGenerator : historyDetailTransport;
+  const historyDetailLoading =
+    fuelSettlementSource === 'generator'
+      ? historyDetailGeneratorLoading
+      : historyDetailTransportLoading;
 
   useEffect(() => {
     const detail = fuelSettlementSource === 'generator' ? generatorVoucherDetailData : voucherDetailData;
@@ -882,15 +930,25 @@ const FinancialCards = () => {
     fuelSettlementSource === 'generator' ? recordingGeneratorPhysicalApproval : recordingPhysicalApproval;
 
   const settlementMonthOptions = useMemo(() => {
-    const keys = new Set();
-    activeVoucherHistory.forEach((voucher) => {
-      if (isFinanceDeclinedVoucher(voucher)) return;
-      const key = toMonthKey(voucher.created_at);
-      if (key) keys.add(key);
+    const keys = [];
+    const now = new Date();
+    for (let i = 0; i < 18; i += 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    }
+    return keys;
+  }, []);
+
+  const toggleSettlementMonth = (key) => {
+    setSettlementMonths((prev) => {
+      if (prev.includes(key)) return prev.filter((m) => m !== key);
+      if (prev.length >= 3) {
+        toast.info('You can select up to 3 months at a time');
+        return prev;
+      }
+      return [...prev, key].sort().reverse();
     });
-    if (settlementMonth) keys.add(settlementMonth);
-    return [...keys].sort().reverse();
-  }, [activeVoucherHistory, settlementMonth]);
+  };
 
   // To Settle: all months, no status filter — only text search
   const filteredFuelRows = useMemo(() => {
@@ -915,18 +973,25 @@ const FinancialCards = () => {
     const statusFilter = HISTORY_STATUS_FILTERS.has(settlementVoucherStatus)
       ? settlementVoucherStatus
       : 'all';
+    const monthSet = new Set(settlementMonths);
     return activeVoucherHistory.filter((voucher) => {
       if (isFinanceDeclinedVoucher(voucher)) return false;
-      if (settlementMonth && toMonthKey(voucher.created_at) !== settlementMonth) return false;
+      if (monthSet.size && !monthSet.has(toMonthKey(voucher.created_at))) return false;
       if (statusFilter !== 'all' && voucher.status !== statusFilter) return false;
       if (!q) return true;
+      const cardHit = (voucher.cards_summary || []).some(
+        (card) =>
+          card.card_holder?.toLowerCase().includes(q) ||
+          String(card.card_number || '').toLowerCase().includes(q)
+      );
       return (
         voucher.voucher_no?.toLowerCase().includes(q) ||
         String(voucher.total_amount || '').includes(q) ||
-        getVoucherDecidedBy(voucher).toLowerCase().includes(q)
+        getVoucherDecidedBy(voucher).toLowerCase().includes(q) ||
+        cardHit
       );
     });
-  }, [activeVoucherHistory, settlementMonth, settlementVoucherStatus, settlementSearch]);
+  }, [activeVoucherHistory, settlementMonths, settlementVoucherStatus, settlementSearch]);
 
   const groupedFuelRows = useMemo(() => {
     const map = {};
@@ -1408,18 +1473,41 @@ const FinancialCards = () => {
               </div>
               {settlementsSubTab === 'voucher-history' ? (
                 <>
-                  <select
-                    value={settlementMonth}
-                    onChange={(e) => setSettlementMonth(e.target.value)}
-                    className="settlement-filter-select-financial-cards"
-                    aria-label="Filter by month"
-                    title="Voucher created month"
+                  <div
+                    className="settlement-month-multi-financial-cards"
+                    title="Select up to 3 months"
                   >
-                    <option value="">All months</option>
-                    {settlementMonthOptions.map((key) => (
-                      <option key={key} value={key}>{formatMonthLabel(key)}</option>
-                    ))}
-                  </select>
+                    <span className="settlement-month-multi-label-financial-cards">
+                      Months{settlementMonths.length ? ` (${settlementMonths.length}/3)` : ''}
+                    </span>
+                    <div className="settlement-month-multi-chips-financial-cards">
+                      <button
+                        type="button"
+                        className={`settlement-month-chip-financial-cards${
+                          settlementMonths.length === 0 ? ' active' : ''
+                        }`}
+                        onClick={() => setSettlementMonths([])}
+                      >
+                        All
+                      </button>
+                      {settlementMonthOptions.map((key) => {
+                        const selected = settlementMonths.includes(key);
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            className={`settlement-month-chip-financial-cards${
+                              selected ? ' active' : ''
+                            }`}
+                            onClick={() => toggleSettlementMonth(key)}
+                            aria-pressed={selected}
+                          >
+                            {formatMonthLabel(key)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <select
                     value={settlementVoucherStatus}
                     onChange={(e) => setSettlementVoucherStatus(e.target.value)}
@@ -1487,6 +1575,7 @@ const FinancialCards = () => {
                   onClick={() => {
                     setFuelSettlementSource('vehicle');
                     setSelectedTxIds([]);
+                    setHistoryDetailId(null);
                   }}
                 >
                   Vehicle Fuel
@@ -1500,6 +1589,7 @@ const FinancialCards = () => {
                   onClick={() => {
                     setFuelSettlementSource('generator');
                     setSelectedTxIds([]);
+                    setHistoryDetailId(null);
                   }}
                 >
                   Generator Fuel
@@ -1518,7 +1608,7 @@ const FinancialCards = () => {
                   onClick={() => {
                     setSettlementsSubTab('pending');
                     setSettlementSearch('');
-                    setSettlementMonth('');
+                    setSettlementMonths([]);
                     setSettlementVoucherStatus('all');
                     setSelectedTxIds([]);
                   }}
@@ -1534,7 +1624,7 @@ const FinancialCards = () => {
                   onClick={() => {
                     setSettlementsSubTab('voucher-history');
                     setSettlementSearch('');
-                    setSettlementMonth('');
+                    setSettlementMonths([]);
                     setSettlementVoucherStatus('all');
                     setSelectedTxIds([]);
                   }}
@@ -1730,11 +1820,13 @@ const FinancialCards = () => {
                     <tr>
                       <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                         No {fuelSettlementSource === 'generator' ? 'generator' : 'transport'} vouchers
-                        {settlementMonth ? ' for this month' : ' yet'}
+                        {settlementMonths.length ? ' for selected months' : ' yet'}
                       </td>
                     </tr>
                   ) : (
-                    voucherHistoryRows.map((voucher) => (
+                    voucherHistoryRows.map((voucher) => {
+                      const details = getHistoryVoucherDetails(voucher);
+                      return (
                       <tr key={voucher.id}>
                         <td>{voucher.voucher_no}</td>
                         <td>{new Date(voucher.created_at).toLocaleDateString()}</td>
@@ -1746,12 +1838,25 @@ const FinancialCards = () => {
                         <td>{getVoucherDecidedBy(voucher)}</td>
                         <td className="voucher-details-cell-financial-cards">
                           <div className="voucher-details-main-financial-cards">
-                            {getVoucherApprovalTypeLabel(voucher)} ({voucher.transaction_count || 0})
+                            {details.main}
                           </div>
-                          <div className="voucher-details-sub-financial-cards">
-                            {voucher.transaction_count || 0} transaction
-                            {(voucher.transaction_count || 0) === 1 ? '' : 's'}
-                          </div>
+                          {details.lines.slice(0, 3).map((line) => (
+                            <div key={line} className="voucher-details-sub-financial-cards">
+                              {line}
+                            </div>
+                          ))}
+                          {details.lines.length > 3 ? (
+                            <div className="voucher-details-sub-financial-cards">
+                              +{details.lines.length - 3} more
+                            </div>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="voucher-details-view-btn-financial-cards"
+                            onClick={() => setHistoryDetailId(voucher.id)}
+                          >
+                            View full details
+                          </button>
                         </td>
                         <td>LKR {Number(voucher.total_amount || 0).toFixed(2)}</td>
                         <td className="voucher-settled-cell-financial-cards">
@@ -1789,6 +1894,15 @@ const FinancialCards = () => {
                         </td>
                         <td className="voucher-history-actions-cell-financial-cards">
                           <div className="voucher-history-actions-financial-cards">
+                            <button
+                              type="button"
+                              className="voucher-action-btn-financial-cards voucher-action-btn-outline-financial-cards"
+                              onClick={() => setHistoryDetailId(voucher.id)}
+                              title="View details"
+                              aria-label="View voucher details"
+                            >
+                              <FaEye />
+                            </button>
                             <button
                               type="button"
                               className="voucher-action-btn-financial-cards voucher-action-btn-outline-financial-cards"
@@ -1831,12 +1945,196 @@ const FinancialCards = () => {
                           </div>
                         </td>
                       </tr>
-                    ))
+                      );
+                    })
                   )}
                 </tbody>
               </table>
             </div>
           )}
+        </div>
+      ) : null}
+
+      {historyDetailId ? (
+        <div
+          className="modal-overlay-financial-cards"
+          onClick={() => setHistoryDetailId(null)}
+        >
+          <div
+            className="modal-content-financial-cards voucher-history-detail-modal-financial-cards"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header-financial-cards">
+              <h2>
+                Voucher details
+                {historyDetailVoucher?.voucher_no ? ` · ${historyDetailVoucher.voucher_no}` : ''}
+              </h2>
+              <button
+                type="button"
+                className="modal-close-financial-cards"
+                onClick={() => setHistoryDetailId(null)}
+              >
+                ×
+              </button>
+            </div>
+            {historyDetailLoading && !historyDetailVoucher ? (
+              <div className="voucher-history-detail-loading-financial-cards">Loading details…</div>
+            ) : historyDetailVoucher ? (
+              <div className="voucher-history-detail-body-financial-cards">
+                <div className="voucher-history-detail-grid-financial-cards">
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">Created</span>
+                    <div>
+                      {historyDetailVoucher.created_at
+                        ? new Date(historyDetailVoucher.created_at).toLocaleString()
+                        : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">Status</span>
+                    <div>
+                      <span
+                        className={`voucher-status-pill-financial-cards ${historyDetailVoucher.status}`}
+                      >
+                        {voucherStatusLabel(historyDetailVoucher.status)}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">Amount</span>
+                    <div>{formatLkr(historyDetailVoucher.total_amount)}</div>
+                  </div>
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">Approval</span>
+                    <div>{getVoucherApprovalTypeLabel(historyDetailVoucher)}</div>
+                  </div>
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">
+                      Approved / Declined by
+                    </span>
+                    <div>{getVoucherDecidedBy(historyDetailVoucher) || '—'}</div>
+                  </div>
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">Payment</span>
+                    <div>
+                      {Number(historyDetailVoucher.settled) === 1
+                        ? `Paid${
+                            historyDetailVoucher.settled_at
+                              ? ` · ${new Date(historyDetailVoucher.settled_at).toLocaleString()}`
+                              : ''
+                          }${
+                            historyDetailVoucher.settled_by_name
+                              ? ` · ${historyDetailVoucher.settled_by_name}`
+                              : ''
+                          }`
+                        : 'Not paid'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">Created by</span>
+                    <div>{historyDetailVoucher.created_by_name || '—'}</div>
+                  </div>
+                  <div>
+                    <span className="voucher-history-detail-label-financial-cards">Transactions</span>
+                    <div>{historyDetailVoucher.transaction_count || historyDetailVoucher.lines?.length || 0}</div>
+                  </div>
+                </div>
+
+                <h3 className="voucher-history-detail-section-title-financial-cards">
+                  Cards & balances after payment
+                </h3>
+                {(historyDetailVoucher.cards_summary || []).length === 0 ? (
+                  <p className="voucher-history-detail-empty-financial-cards">No card summary available.</p>
+                ) : (
+                  <table className="voucher-history-detail-table-financial-cards">
+                    <thead>
+                      <tr>
+                        <th>Card</th>
+                        <th>Number</th>
+                        <th>Top-up</th>
+                        <th>Before</th>
+                        <th>After payment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {historyDetailVoucher.cards_summary.map((card) => (
+                        <tr key={`${card.card_id}-${card.card_number || ''}`}>
+                          <td>{card.card_holder || (card.card_id ? `#${card.card_id}` : '—')}</td>
+                          <td>{card.card_number || '—'}</td>
+                          <td>{formatLkr(card.amount)}</td>
+                          <td>{formatLkr(card.balance_before)}</td>
+                          <td>
+                            {formatLkr(card.balance_after_payment ?? card.balance_after)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {(historyDetailVoucher.lines || []).length > 0 ? (
+                  <>
+                    <h3 className="voucher-history-detail-section-title-financial-cards">
+                      Line items
+                    </h3>
+                    <table className="voucher-history-detail-table-financial-cards">
+                      <thead>
+                        <tr>
+                          <th>Driver / User</th>
+                          <th>Description</th>
+                          <th>Liters</th>
+                          <th>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {historyDetailVoucher.lines.map((line) => (
+                          <tr key={line.id || `${line.card_id}-${line.amount}-${line.description}`}>
+                            <td>{line.driver_name || line.user_name || line.card_holder || '—'}</td>
+                            <td>{line.fuel_description || line.description || '—'}</td>
+                            <td>{line.fuel_liters ?? line.quantity ?? '—'}</td>
+                            <td>{formatLkr(line.amount)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                ) : null}
+
+                <div className="voucher-history-detail-actions-financial-cards">
+                  {historyDetailVoucher.settlement_proof_image_url ? (
+                    <button
+                      type="button"
+                      className="btn-primary-financial-cards"
+                      onClick={() => openSettlementProof(historyDetailVoucher.settlement_proof_image_url)}
+                    >
+                      View payment proof
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="btn-primary-financial-cards"
+                    onClick={() => {
+                      openVoucherPrint(historyDetailVoucher);
+                      setHistoryDetailId(null);
+                    }}
+                  >
+                    <FaPrint aria-hidden="true" /> Print
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-cancel-financial-cards"
+                    onClick={() => setHistoryDetailId(null)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="voucher-history-detail-loading-financial-cards">
+                Could not load voucher details.
+              </div>
+            )}
+          </div>
         </div>
       ) : null}
 

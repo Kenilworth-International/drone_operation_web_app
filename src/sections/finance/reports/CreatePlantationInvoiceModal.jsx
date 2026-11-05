@@ -12,7 +12,10 @@ import {
 import { useGetFuelCategoriesQuery } from '../../../api/services/assetsApi';
 import '../../../styles/plantationInvoice.css';
 import '../../../styles/invoiceFlows.css';
-import { mergeDraftWithWorkSummaryLines } from './plantationInvoiceLineItems';
+import {
+  applyMissionRatesToLineItems,
+  mergeDraftWithWorkSummaryLines,
+} from './plantationInvoiceLineItems';
 import {
   BASE_FUEL_PRICE,
   FUEL_LITERS_PER_HA,
@@ -114,6 +117,11 @@ export default function CreatePlantationInvoiceModal({
   const [fuelSourceInvoiceNo, setFuelSourceInvoiceNo] = useState(null);
   const [billingMonth, setBillingMonth] = useState(null);
   const [localHaPerPlan, setLocalHaPerPlan] = useState(String(haPerPlan ?? 15));
+  const [sprayRateInput, setSprayRateInput] = useState('');
+  const [spreadRateInput, setSpreadRateInput] = useState('');
+  const [scoutRateInput, setScoutRateInput] = useState('');
+  const [billingRateSource, setBillingRateSource] = useState('none');
+  const [billingRateSourceInvoiceNo, setBillingRateSourceInvoiceNo] = useState(null);
   const fuelDefaultsAppliedRef = useRef(false);
 
   const onCloseRef = useRef(onClose);
@@ -145,6 +153,11 @@ export default function CreatePlantationInvoiceModal({
       setFuelPriceSource('none');
       setFuelSourceInvoiceNo(null);
       setIncludeFuelSurcharge(false);
+      setSprayRateInput('');
+      setSpreadRateInput('');
+      setScoutRateInput('');
+      setBillingRateSource('none');
+      setBillingRateSourceInvoiceNo(null);
       fuelDefaultsAppliedRef.current = false;
       return undefined;
     }
@@ -223,6 +236,18 @@ export default function CreatePlantationInvoiceModal({
         const histSource = String(fuelCfg.price_source || 'none');
         setBillingMonth(month);
         setDraft(data);
+        const plant = data?.plantation || {};
+        setSprayRateInput(
+          plant.spray_rate != null && plant.spray_rate !== '' ? String(plant.spray_rate) : ''
+        );
+        setSpreadRateInput(
+          plant.spread_rate != null && plant.spread_rate !== '' ? String(plant.spread_rate) : ''
+        );
+        setScoutRateInput(
+          plant.scout_rate != null && plant.scout_rate !== '' ? String(plant.scout_rate) : ''
+        );
+        setBillingRateSource(String(plant.billing_rate_source || 'none'));
+        setBillingRateSourceInvoiceNo(plant.billing_rate_source_invoice_no || null);
         setSelectedFuelCategoryId('');
         setFuelPriceSource(histSource);
         setFuelSourceInvoiceNo(fuelCfg.source_invoice_no || null);
@@ -279,12 +304,124 @@ export default function CreatePlantationInvoiceModal({
         estates: estateIds,
         ha_per_plan: Number(localHaPerPlan) || 15,
       }).unwrap();
-      setDraft(data);
+      const plant = data?.plantation || {};
+      const applied = applyMissionRatesToLineItems(data?.line_items || [], {
+        sprayRate: sprayRateInput,
+        spreadRate: spreadRateInput,
+        scoutRate: scoutRateInput,
+      });
+      setDraft({
+        ...data,
+        line_items: applied.line_items,
+        subtotal: applied.subtotal,
+        plantation: {
+          ...plant,
+          spray_rate: sprayRateInput !== '' ? Number(sprayRateInput) : plant.spray_rate,
+          spread_rate: spreadRateInput !== '' ? Number(spreadRateInput) : plant.spread_rate,
+          scout_rate: scoutRateInput !== '' ? Number(scoutRateInput) : plant.scout_rate,
+        },
+      });
       onHaPerPlanChange?.(Number(localHaPerPlan) || 15);
     } catch (err) {
       toast.error(err?.data?.message || err?.message || 'Failed to refresh pre-invoice draft');
     }
   };
+
+  const missionsOnInvoice = useMemo(() => {
+    const set = new Set();
+    for (const line of draft?.line_items || []) {
+      if (!line || line.line_type === 'fuel_surcharge') continue;
+      const m = String(line.mission_type || '');
+      if (m === 'Spray' || m === 'Spread' || m === 'Scout') set.add(m);
+    }
+    for (const g of draft?.plan_groups || []) {
+      const m = String(g.mission_type || '');
+      if (m === 'Spray' || m === 'Spread' || m === 'Scout') set.add(m);
+    }
+    const billing = draft?.billing_ha || {};
+    if (Number(billing.Spray) > 0) set.add('Spray');
+    if (Number(billing.Spread) > 0) set.add('Spread');
+    if (Number(billing.Scout) > 0) set.add('Scout');
+    return set;
+  }, [draft]);
+
+  const applyRatesToDraft = (nextSpray, nextSpread, nextScout, source = 'manual', sourceInvoiceNo = null) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const applied = applyMissionRatesToLineItems(prev.line_items || [], {
+        sprayRate: nextSpray,
+        spreadRate: nextSpread,
+        scoutRate: nextScout,
+      });
+      return {
+        ...prev,
+        line_items: applied.line_items,
+        subtotal: applied.subtotal,
+        plantation: {
+          ...(prev.plantation || {}),
+          spray_rate: nextSpray !== '' && nextSpray != null ? Number(nextSpray) : prev.plantation?.spray_rate,
+          spread_rate:
+            nextSpread !== '' && nextSpread != null ? Number(nextSpread) : prev.plantation?.spread_rate,
+          scout_rate: nextScout !== '' && nextScout != null ? Number(nextScout) : prev.plantation?.scout_rate,
+          billing_rate_source: source,
+          billing_rate_source_invoice_no: sourceInvoiceNo,
+        },
+      };
+    });
+  };
+
+  const handleMissionRateChange = (mission, value) => {
+    const spray = mission === 'Spray' ? value : sprayRateInput;
+    const spread = mission === 'Spread' ? value : spreadRateInput;
+    const scout = mission === 'Scout' ? value : scoutRateInput;
+    if (mission === 'Spray') setSprayRateInput(value);
+    if (mission === 'Spread') setSpreadRateInput(value);
+    if (mission === 'Scout') setScoutRateInput(value);
+    setBillingRateSource('manual');
+    setBillingRateSourceInvoiceNo(null);
+    applyRatesToDraft(spray, spread, scout, 'manual', null);
+  };
+
+  const useCurrentCatalogRates = () => {
+    const plant = draft?.plantation || {};
+    const spray =
+      plant.current_spray_rate != null && plant.current_spray_rate !== ''
+        ? String(plant.current_spray_rate)
+        : sprayRateInput;
+    const spread =
+      plant.current_spread_rate != null && plant.current_spread_rate !== ''
+        ? String(plant.current_spread_rate)
+        : spreadRateInput;
+    const scout =
+      plant.current_scout_rate != null && plant.current_scout_rate !== ''
+        ? String(plant.current_scout_rate)
+        : scoutRateInput;
+    setSprayRateInput(spray);
+    setSpreadRateInput(spread);
+    setScoutRateInput(scout);
+    const source = plant.current_billing_rate_source || 'rate_assignment';
+    setBillingRateSource(source);
+    setBillingRateSourceInvoiceNo(null);
+    applyRatesToDraft(spray, spread, scout, source, null);
+  };
+
+  const billingRateHint = useMemo(() => {
+    if (billingRateSource === 'invoice_history') {
+      return billingRateSourceInvoiceNo
+        ? `Defaulted from earlier invoice #${billingRateSourceInvoiceNo} — edit for this invoice only, or use current rates.`
+        : 'Defaulted from an earlier invoice for this plantation — edit for this invoice only, or use current rates.';
+    }
+    if (billingRateSource === 'manual') {
+      return 'Custom rates for this invoice only (not saved to plantation master).';
+    }
+    if (billingRateSource === 'rate_assignment') {
+      return 'Using catalog / period rates active for this invoice period — editable for this invoice only.';
+    }
+    if (billingRateSource === 'plantations') {
+      return 'Using plantation master rates — editable for this invoice only.';
+    }
+    return 'Rates apply only to this invoice. Earlier invoice rates are preferred when available.';
+  }, [billingRateSource, billingRateSourceInvoiceNo]);
 
   useEffect(() => {
     if (organizations.length && !organizationId) {
@@ -718,6 +855,79 @@ export default function CreatePlantationInvoiceModal({
                   <input id="inv-due" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
                 </div>
               </div>
+
+              {(missionsOnInvoice.has('Spray') ||
+                missionsOnInvoice.has('Spread') ||
+                missionsOnInvoice.has('Scout')) && (
+                <div className="plantation-invoice-option-panel plantation-invoice-rates-panel">
+                  <div className="plantation-invoice-option-panel-title plantation-invoice-rates-title-row">
+                    <span>Service rates (LKR / Ha)</span>
+                    <button
+                      type="button"
+                      className="plantation-invoice-rates-current-btn"
+                      onClick={useCurrentCatalogRates}
+                      title="Load spray/spread/scout rates currently assigned for this period"
+                    >
+                      Use current rates
+                    </button>
+                  </div>
+                  <div className="plantation-invoice-option-panel-body">
+                    <div className="plantation-invoice-rates-fields">
+                      {missionsOnInvoice.has('Spray') ? (
+                        <div className="plantation-invoice-fuel-price-row">
+                          <label htmlFor="inv-spray-rate" className="plantation-invoice-fuel-price-label">
+                            Spray
+                          </label>
+                          <input
+                            id="inv-spray-rate"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="plantation-invoice-fuel-price-input"
+                            value={sprayRateInput}
+                            onChange={(e) => handleMissionRateChange('Spray', e.target.value)}
+                          />
+                        </div>
+                      ) : null}
+                      {missionsOnInvoice.has('Spread') ? (
+                        <div className="plantation-invoice-fuel-price-row">
+                          <label htmlFor="inv-spread-rate" className="plantation-invoice-fuel-price-label">
+                            Spread
+                          </label>
+                          <input
+                            id="inv-spread-rate"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="plantation-invoice-fuel-price-input"
+                            value={spreadRateInput}
+                            onChange={(e) => handleMissionRateChange('Spread', e.target.value)}
+                          />
+                        </div>
+                      ) : null}
+                      {missionsOnInvoice.has('Scout') ? (
+                        <div className="plantation-invoice-fuel-price-row">
+                          <label htmlFor="inv-scout-rate" className="plantation-invoice-fuel-price-label">
+                            Scout
+                          </label>
+                          <input
+                            id="inv-scout-rate"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="plantation-invoice-fuel-price-input"
+                            value={scoutRateInput}
+                            onChange={(e) => handleMissionRateChange('Scout', e.target.value)}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                    <p className="plantation-invoice-fuel-hint plantation-invoice-fuel-hint--source">
+                      {billingRateHint}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="plantation-invoice-taxes-fuel-section">
                 <div className="plantation-invoice-taxes-fuel-row">

@@ -1760,7 +1760,8 @@
 }
 
 .voucher-details-cell-financial-cards {
-  min-width: 110px;
+  min-width: 200px;
+  max-width: 320px;
 }
 
 .voucher-details-main-financial-cards {
@@ -2680,6 +2681,144 @@
   outline: none;
   border-color: #004B71;
   box-shadow: 0 0 0 3px rgba(0, 75, 113, 0.1);
+}
+
+.settlement-month-multi-financial-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  max-width: min(520px, 100%);
+  flex: 1 1 280px;
+}
+
+.settlement-month-multi-label-financial-cards {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  line-height: 1;
+}
+
+.settlement-month-multi-chips-financial-cards {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.3rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  max-width: 100%;
+}
+
+.settlement-month-chip-financial-cards {
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 0.55rem;
+  border: 1px solid #dbe3ea;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.settlement-month-chip-financial-cards:hover {
+  border-color: #004B71;
+  color: #004B71;
+}
+
+.settlement-month-chip-financial-cards.active {
+  background: #004B71;
+  border-color: #004B71;
+  color: #fff;
+}
+
+.voucher-details-view-btn-financial-cards {
+  margin-top: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #004B71;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.voucher-history-detail-modal-financial-cards {
+  width: min(760px, 96vw);
+  max-height: 90vh;
+  overflow: auto;
+}
+
+.voucher-history-detail-loading-financial-cards {
+  padding: 1.5rem;
+  color: #64748b;
+  text-align: center;
+}
+
+.voucher-history-detail-body-financial-cards {
+  padding: 0 1.25rem 1.25rem;
+}
+
+.voucher-history-detail-grid-financial-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.voucher-history-detail-label-financial-cards {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.15rem;
+}
+
+.voucher-history-detail-section-title-financial-cards {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.92rem;
+  color: #0f172a;
+}
+
+.voucher-history-detail-empty-financial-cards {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.voucher-history-detail-table-financial-cards {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.voucher-history-detail-table-financial-cards th,
+.voucher-history-detail-table-financial-cards td {
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0.45rem 0.4rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.voucher-history-detail-table-financial-cards thead {
+  background: #f8fafc;
+}
+
+.voucher-history-detail-actions-financial-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+}
+
+@media (max-width: 640px) {
+  .voucher-history-detail-grid-financial-cards {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settlements-approved-note-financial-cards {

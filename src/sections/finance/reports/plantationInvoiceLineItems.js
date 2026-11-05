@@ -8,7 +8,14 @@ export function activityLabel(missionType, estateName = '') {
   const name = String(estateName || '').trim() || 'Estate';
   if (missionType === 'Spray') return `Service: Spraying - ${name}`;
   if (missionType === 'Spread') return `Service: Spreading - ${name}`;
+  if (missionType === 'Scout') return `Service: Scouting - ${name}`;
   return `Service: ${missionType} - ${name}`;
+}
+
+function rateForMission(plantation, mission) {
+  if (mission === 'Spread') return plantation?.spread_rate;
+  if (mission === 'Scout') return plantation?.scout_rate;
+  return plantation?.spray_rate;
 }
 
 /**
@@ -33,7 +40,7 @@ export function buildInvoiceLineItemsFromWorkSummary({
 
   for (const row of rows) {
     const mission = row.missionType;
-    if (mission !== 'Spray' && mission !== 'Spread') continue;
+    if (mission !== 'Spray' && mission !== 'Spread' && mission !== 'Scout') continue;
     if (missionFilter !== 'all' && mission !== missionFilter) continue;
     const estateId = Number(row.estateId);
     if (!selectedIds.includes(estateId)) continue;
@@ -46,13 +53,13 @@ export function buildInvoiceLineItemsFromWorkSummary({
   const lineItems = [];
   for (const estateId of selectedIds) {
     const estateName = estateNameById.get(estateId) || '';
-    for (const mission of ['Spray', 'Spread']) {
+    for (const mission of ['Spray', 'Spread', 'Scout']) {
       const qty = round2(totals.get(`${estateId}:${mission}`) || 0);
       if (qty <= 0) continue;
-      const rate =
-        mission === 'Spray' ? plantation.spray_rate : plantation.spread_rate;
+      const rate = rateForMission(plantation, mission);
       if (rate == null) continue;
       const rateNum = Number(rate);
+      if (!Number.isFinite(rateNum)) continue;
       lineItems.push({
         activity: activityLabel(mission, estateName),
         description,
@@ -83,14 +90,14 @@ export function buildInvoiceLineItemsFromBillingByEstate({
   for (const entry of billingHaByEstate) {
     const estateId = Number(entry.estate_id);
     const estateName = String(entry.estate_name || '').trim();
-    for (const mission of ['Spray', 'Spread']) {
+    for (const mission of ['Spray', 'Spread', 'Scout']) {
       if (missionFilter !== 'all' && mission !== missionFilter) continue;
       const qty = round2(entry[mission] || 0);
       if (qty <= 0) continue;
-      const rate =
-        mission === 'Spray' ? plantation.spray_rate : plantation.spread_rate;
+      const rate = rateForMission(plantation, mission);
       if (rate == null) continue;
       const rateNum = Number(rate);
+      if (!Number.isFinite(rateNum)) continue;
       lineItems.push({
         activity: activityLabel(mission, estateName),
         description,
@@ -106,6 +113,30 @@ export function buildInvoiceLineItemsFromBillingByEstate({
   }
 
   return lineItems;
+}
+
+/**
+ * Apply edited spray/spread/scout rates onto service lines (not fuel surcharge).
+ * Returns updated line_items + subtotal for invoice-only edits.
+ */
+export function applyMissionRatesToLineItems(lineItems, { sprayRate, spreadRate, scoutRate } = {}) {
+  const next = (lineItems || []).map((line) => {
+    if (!line || line.line_type === 'fuel_surcharge') return line;
+    const mission = String(line.mission_type || '');
+    let rate = Number(line.rate);
+    if (mission === 'Spray' && sprayRate != null && sprayRate !== '') {
+      rate = Number(sprayRate);
+    } else if (mission === 'Spread' && spreadRate != null && spreadRate !== '') {
+      rate = Number(spreadRate);
+    } else if (mission === 'Scout' && scoutRate != null && scoutRate !== '') {
+      rate = Number(scoutRate);
+    }
+    if (!Number.isFinite(rate)) return line;
+    const qty = Number(line.qty) || 0;
+    return { ...line, rate, amount: round2(qty * rate) };
+  });
+  const subtotal = round2(next.reduce((s, li) => s + (Number(li.amount) || 0), 0));
+  return { line_items: next, subtotal };
 }
 
 /** Prefer work-summary / per-estate API data over merged single-line drafts. */

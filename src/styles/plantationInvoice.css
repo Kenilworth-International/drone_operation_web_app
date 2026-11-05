@@ -285,6 +285,40 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
+.plantation-invoice-rates-panel {
+  margin: 0 0 14px;
+}
+
+.plantation-invoice-rates-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plantation-invoice-rates-current-btn {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f4c81;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.plantation-invoice-rates-current-btn:hover {
+  border-color: #0f4c81;
+  background: #f8fafc;
+}
+
+.plantation-invoice-rates-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px 14px;
+}
+
 .plantation-invoice-fuel-title-toggle {
   display: flex;
   align-items: center;
