@@ -37,6 +37,27 @@
   flex: 1 1 0;
   min-height: 0;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Pre-invoice tab: fill panel and keep estimate/table scrollable */
+.work-summary-tab-panel > .pre-invoice-create {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.work-summary-tab-panel > .pre-invoice-create > .inv-panel {
+  flex: 0 0 auto;
+}
+
+.work-summary-tab-panel > .pre-invoice-create > .inv-pre-layout {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 /* —— Page header + tabs —— */
@@ -571,13 +592,15 @@
   grid-template-columns: minmax(240px, 280px) 1fr;
   gap: 16px;
   align-items: stretch;
-  min-height: calc(100vh - 260px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 960px) {
   .inv-pre-layout {
     grid-template-columns: 1fr;
     min-height: 0;
+    overflow: auto;
   }
 }
 
@@ -586,6 +609,7 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 .inv-estate-panel .inv-section-title {
@@ -611,8 +635,7 @@
   flex-direction: column;
   gap: 4px;
   flex: 1 1 auto;
-  min-height: 420px;
-  max-height: calc(100vh - 340px);
+  min-height: 0;
   overflow-y: auto;
   padding-right: 2px;
 }
@@ -659,11 +682,25 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
+  overflow: hidden;
+}
+
+.inv-pre-layout > .inv-panel:last-child .inv-section-title,
+.inv-pre-layout > .inv-panel:last-child .inv-section-sub,
+.inv-pre-layout > .inv-panel:last-child .inv-kpi-grid,
+.inv-pre-layout > .inv-panel:last-child .inv-alert {
+  flex: 0 0 auto;
+}
+
+.inv-pre-layout > .inv-panel:last-child .inv-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
 }
 
 .inv-pre-layout > .inv-panel:last-child .inv-empty {
   flex: 1;
-  min-height: 420px;
+  min-height: 0;
 }
 
 /* —— KPI strip —— */

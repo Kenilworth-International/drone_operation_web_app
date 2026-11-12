@@ -1,293 +1,365 @@
-/* Transport Finance — aligned with Transport HR shell */
+/* Transport Payments — dense professional ops hub */
 
 .transport-finance-shell {
-  min-height: 100vh;
-  padding: 16px 20px 24px;
+  --tf-ink: #0f172a;
+  --tf-muted: #64748b;
+  --tf-line: #e2e8f0;
+  --tf-surface: #ffffff;
+  --tf-soft: #f8fafc;
+  --tf-navy: #0c4a6e;
+  --tf-navy-deep: #082f49;
+  --tf-teal: #0f766e;
+  --tf-amber: #b45309;
+  --tf-green: #15803d;
+  --tf-violet: #6d28d9;
+  --tf-radius: 10px;
+  --tf-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 20px rgba(15, 23, 42, 0.04);
+  min-height: 100%;
+  padding: 14px 16px 20px;
   box-sizing: border-box;
-  background:
-    radial-gradient(circle at top right, rgba(0, 75, 113, 0.12), transparent 42%),
-    radial-gradient(circle at top left, rgba(11, 110, 159, 0.09), transparent 45%),
-    #f3f7fb;
+  color: var(--tf-ink);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #f1f5f9;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .transport-finance-shell--drilled {
   gap: 0;
-  padding-bottom: 12px;
+  padding: 12px;
 }
 
 /* ── Header ───────────────────────────────────────────── */
-.transport-finance-head {
-  position: relative;
-  overflow: hidden;
+.transport-finance-hero {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   gap: 14px;
   flex-wrap: wrap;
-  background: #ffffff;
-  border: 1px solid #d7e2eb;
-  border-radius: 16px;
-  padding: 18px 20px;
-  box-shadow: 0 14px 36px rgba(2, 32, 49, 0.08);
+  padding: 12px 14px;
+  border-radius: var(--tf-radius);
+  border: 1px solid var(--tf-line);
+  background: var(--tf-surface);
+  box-shadow: var(--tf-shadow);
 }
 
-.transport-finance-head::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #004b71, #0b6e9f);
+.transport-finance-hero-copy {
+  min-width: 0;
 }
 
-.transport-finance-head h2 {
-  margin: 0;
-  color: #0a2437;
-  font-size: 24px;
+.transport-finance-hero-kicker {
+  margin: 0 0 2px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tf-muted);
 }
 
-.transport-finance-head p {
-  margin: 6px 0 0;
-  color: #5d7080;
-  font-size: 13px;
+.transport-finance-hero h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: var(--tf-ink);
 }
 
+.transport-finance-hero-lead {
+  margin: 3px 0 0;
+  max-width: 520px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--tf-muted);
+}
+
+.transport-finance-hero-aside {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.transport-finance-hero-pulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--tf-soft);
+  border: 1px solid var(--tf-line);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tf-ink);
+  white-space: nowrap;
+}
+
+.transport-finance-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  flex-shrink: 0;
+}
+
+.transport-finance-pulse-dot.is-active {
+  background: #f59e0b;
+  animation: transport-finance-pulse 1.8s ease-out infinite;
+}
+
+@keyframes transport-finance-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(245, 158, 11, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+}
+
+/* ── Month filter ─────────────────────────────────────── */
 .transport-finance-month-filter {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 12px;
-  color: #3e5568;
-  font-weight: 600;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tf-muted);
 }
 
 .transport-finance-month-filter select {
-  border: 1px solid #c4d3df;
-  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
   background: #fff;
-  color: #0f2a3d;
-  padding: 9px 12px;
-  min-width: 220px;
+  color: var(--tf-ink);
+  padding: 7px 10px;
+  min-width: 180px;
   font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.transport-finance-month-filter select:focus {
+  outline: none;
+  border-color: var(--tf-navy);
+  box-shadow: 0 0 0 3px rgba(12, 74, 110, 0.12);
 }
 
 /* ── Loading ──────────────────────────────────────────── */
 .transport-finance-loading {
-  min-height: 280px;
-  border: 1px solid #d8e2ea;
-  border-radius: 14px;
-  background: #fff;
+  min-height: 200px;
+  border: 1px solid var(--tf-line);
+  border-radius: var(--tf-radius);
+  background: var(--tf-surface);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  gap: 10px;
 }
 
 .transport-finance-loading p {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
-  color: #004b71;
+  color: var(--tf-navy);
 }
 
 /* ── KPI strip ────────────────────────────────────────── */
-.transport-finance-kpi-grid {
+.transport-finance-kpi-panel {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 
 .transport-finance-kpi-card {
-  background: #ffffff;
-  border: 1px solid #dfe7ee;
-  border-radius: 12px;
-  padding: 14px 16px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  background: var(--tf-surface);
+  border: 1px solid var(--tf-line);
+  border-radius: var(--tf-radius);
+  padding: 10px 12px;
+  box-shadow: var(--tf-shadow);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  min-width: 0;
+  border-left: 3px solid transparent;
+}
+
+.transport-finance-kpi-card--paid { border-left-color: var(--tf-green); }
+.transport-finance-kpi-card--pending { border-left-color: var(--tf-amber); }
+.transport-finance-kpi-card--unpaid { border-left-color: var(--tf-violet); }
+.transport-finance-kpi-card--records { border-left-color: var(--tf-navy); }
+
+.transport-finance-kpi-label {
+  color: var(--tf-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.transport-finance-kpi-value {
+  font-size: 20px;
+  line-height: 1.1;
+  color: var(--tf-ink);
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.transport-finance-kpi-value small {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--tf-muted);
+}
+
+.transport-finance-kpi-breakdown {
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid #eef2f7;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.transport-finance-kpi-breakdown > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
 }
 
-.transport-finance-kpi-card span {
-  display: block;
-  color: #41566a;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.transport-finance-kpi-card strong {
-  display: block;
-  font-size: 26px;
-  line-height: 1.05;
-  color: #0b1f32;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.transport-finance-kpi-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.transport-finance-kpi-chip {
-  background: #f6f8fb;
-  color: #4a6072;
-  border: 1px solid #e3eaf1;
-  border-radius: 999px;
-  padding: 3px 8px;
+.transport-finance-kpi-breakdown dt {
+  margin: 0;
+  color: var(--tf-muted);
   font-size: 10px;
   font-weight: 600;
-  line-height: 1.25;
+}
+
+.transport-finance-kpi-breakdown dd {
+  margin: 0;
+  color: var(--tf-ink);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.transport-finance-kpi-card--paid {
-  border-left: 3px solid #1f7a44;
+.transport-finance-kpi-chips,
+.transport-finance-kpi-chip {
+  display: none;
 }
 
-.transport-finance-kpi-card--pending {
-  border-left: 3px solid #9a6700;
-}
-
-.transport-finance-kpi-card--unpaid {
-  border-left: 3px solid #5a3d9a;
-}
-
-.transport-finance-kpi-card--records {
-  border-left: 3px solid #004b71;
-}
-
-/* ── Section label ────────────────────────────────────── */
-.transport-finance-section-label {
-  margin: 4px 0 0;
-  color: #0b2234;
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.transport-finance-section-hint {
-  margin: 2px 0 0;
-  color: #6b7f90;
-  font-size: 12px;
-}
-
-/* ── Charts ───────────────────────────────────────────── */
-.transport-finance-chart-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.transport-finance-chart-card {
-  border: 1px solid #dfe7ee;
-  border-radius: 14px;
-  padding: 14px 16px;
-  background: #fff;
-  min-width: 0;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-}
-
-.transport-finance-chart-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.transport-finance-chart-head h4 {
-  margin: 0;
-  color: #0b2234;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.transport-finance-chart-head span {
-  font-size: 11px;
-  color: #6b7f90;
-  font-weight: 600;
-}
-
-.transport-finance-chart-empty {
-  min-height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6b7f90;
-  font-size: 13px;
-}
-
-/* ── Module cards ─────────────────────────────────────── */
-.transport-finance-module-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.transport-finance-module-card {
-  border: 1px solid #dfe7ee;
-  border-radius: 14px;
-  background: #ffffff;
-  padding: 16px 18px;
-  text-align: left;
+/* ── Section blocks ───────────────────────────────────── */
+.transport-finance-block {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.transport-finance-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.transport-finance-block-head h2,
+.transport-finance-section-label {
+  margin: 0;
+  color: var(--tf-ink);
+  font-size: 14px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.transport-finance-block-head p,
+.transport-finance-section-hint {
+  margin: 0;
+  color: var(--tf-muted);
+  font-size: 12px;
+}
+
+/* ── Module queue (dense rows) ─────────────────────────── */
+.transport-finance-module-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  background: var(--tf-surface);
+  border: 1px solid var(--tf-line);
+  border-radius: var(--tf-radius);
+  padding: 6px;
+  box-shadow: var(--tf-shadow);
+}
+
+.transport-finance-module-card {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  padding: 10px 12px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(220px, 1.4fr) auto;
+  align-items: center;
+  gap: 12px;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  width: 100%;
+  font: inherit;
+  color: inherit;
 }
 
 .transport-finance-module-card:hover {
-  transform: translateY(-1px);
-  border-color: #cbd9e5;
-  box-shadow: 0 8px 18px rgba(0, 75, 113, 0.1);
+  background: #f8fafc;
+  border-color: #dbe4ee;
 }
 
 .transport-finance-module-card:focus-visible {
-  outline: 2px solid #004b71;
-  outline-offset: 2px;
+  outline: 2px solid var(--tf-navy);
+  outline-offset: 1px;
 }
 
 .transport-finance-module-top {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 
 .transport-finance-module-icon {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #edf4fa;
-  border: 1px solid #dce8f2;
-  color: #004b71;
-  font-size: 18px;
+  background: #eef2f7;
+  border: 1px solid #dce4ec;
+  color: var(--tf-navy);
+  font-size: 14px;
+}
+
+.transport-finance-module-icon--navy {
+  background: #e8f1f7;
+  border-color: #c9dce8;
+  color: var(--tf-navy);
 }
 
 .transport-finance-module-icon--teal {
-  background: #e8f7f4;
-  border-color: #c5e8e0;
-  color: #0f766e;
+  background: #e7f5f2;
+  border-color: #c5e5de;
+  color: var(--tf-teal);
 }
 
 .transport-finance-module-icon--amber {
-  background: #fff8e8;
-  border-color: #f3e0b5;
-  color: #9a6700;
+  background: #fff7e8;
+  border-color: #edd9ad;
+  color: var(--tf-amber);
 }
 
 .transport-finance-module-icon--slate {
@@ -303,79 +375,171 @@
 
 .transport-finance-module-copy strong {
   display: block;
-  color: #0f1f32;
-  font-size: 15px;
-  font-weight: 700;
+  color: var(--tf-ink);
+  font-size: 13.5px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
 }
 
 .transport-finance-module-copy span {
   display: block;
-  margin-top: 3px;
-  color: #5b7081;
-  font-size: 12px;
+  margin-top: 1px;
+  color: var(--tf-muted);
+  font-size: 11.5px;
   line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transport-finance-module-badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff7ed;
+  color: var(--tf-amber);
+  border: 1px solid #fed7aa;
+  font-size: 11px;
+  font-weight: 750;
 }
 
 .transport-finance-module-stats {
-  margin-top: 4px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
 .transport-finance-module-stat {
-  border-radius: 999px;
-  padding: 4px 10px;
-  border: 1px solid #e3eaf1;
-  background: #f6f8fb;
+  border-radius: 7px;
+  padding: 5px 9px;
+  border: 1px solid #e7eef4;
+  background: var(--tf-soft);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  font-weight: 600;
-  color: #4a6072;
+  font-weight: 650;
+  color: var(--tf-muted);
+  white-space: nowrap;
 }
 
 .transport-finance-module-stat b {
   font-size: 13px;
-  font-weight: 700;
-  line-height: 1;
+  font-weight: 750;
+  color: var(--tf-ink);
+  font-variant-numeric: tabular-nums;
 }
 
 .transport-finance-module-stat.pending {
-  background: #fff7e5;
-  border-color: #fde3a7;
-  color: #9a6200;
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
 }
+
+.transport-finance-module-stat.pending b { color: var(--tf-amber); }
 
 .transport-finance-module-stat.approvedNotPaid {
-  background: #f1ecff;
-  border-color: #ddd0ff;
-  color: #5a3d9a;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+  color: #5b21b6;
 }
 
+.transport-finance-module-stat.approvedNotPaid b { color: var(--tf-violet); }
+
 .transport-finance-module-stat.paid {
-  background: #ebf9f1;
-  border-color: #bfe8cf;
-  color: #1f7a42;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.transport-finance-module-stat.paid b { color: var(--tf-green); }
+
+.transport-finance-module-note {
+  font-size: 12px;
+  color: var(--tf-muted);
 }
 
 .transport-finance-module-go {
-  margin-top: auto;
-  padding-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
   font-size: 12px;
+  font-weight: 750;
+  color: var(--tf-navy);
+  white-space: nowrap;
+}
+
+.transport-finance-module-card:hover .transport-finance-module-go {
+  color: var(--tf-navy-deep);
+}
+
+/* ── Charts ───────────────────────────────────────────── */
+.transport-finance-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.transport-finance-chart-card {
+  border: 1px solid var(--tf-line);
+  border-radius: var(--tf-radius);
+  padding: 12px 14px;
+  background: var(--tf-surface);
+  min-width: 0;
+  box-shadow: var(--tf-shadow);
+}
+
+.transport-finance-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.transport-finance-chart-head h3,
+.transport-finance-chart-head h4 {
+  margin: 0;
+  color: var(--tf-ink);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.transport-finance-chart-head span {
+  font-size: 10px;
+  color: var(--tf-muted);
   font-weight: 700;
-  color: #004b71;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.transport-finance-chart-empty {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tf-muted);
+  font-size: 12.5px;
+  border: 1px dashed #d5e0e9;
+  border-radius: 8px;
+  background: var(--tf-soft);
 }
 
 /* ── Drill-in panel ───────────────────────────────────── */
 .transport-finance-standalone-panel {
   flex: 1;
-  min-height: calc(100vh - 48px);
-  border: 1px solid #d7e2eb;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 14px 36px rgba(2, 32, 49, 0.08);
+  min-height: calc(100vh - 40px);
+  border: 1px solid var(--tf-line);
+  border-radius: var(--tf-radius);
+  background: var(--tf-surface);
+  box-shadow: var(--tf-shadow);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -385,83 +549,103 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
-  padding: 14px 16px;
-  border-bottom: 1px solid #e4edf4;
-  background: linear-gradient(180deg, #fbfdff 0%, #f4f8fb 100%);
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--tf-line);
+  background: #f8fafc;
 }
 
 .transport-finance-section-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .transport-finance-section-toolbar strong {
-  color: #0a2437;
-  font-size: 16px;
-  font-weight: 700;
+  color: var(--tf-ink);
+  font-size: 14px;
+  font-weight: 750;
 }
 
 .transport-finance-section-toolbar-meta {
   display: block;
-  margin-top: 2px;
-  font-size: 12px;
+  margin-top: 1px;
+  font-size: 11.5px;
   font-weight: 500;
-  color: #6b7f90;
+  color: var(--tf-muted);
 }
 
 .transport-finance-back-btn {
-  border: 1px solid #c4d3df;
-  background: #f3f7fa;
-  color: #2d4557;
-  border-radius: 10px;
-  font-size: 13px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+  border-radius: 8px;
+  font-size: 12.5px;
   font-weight: 700;
-  padding: 8px 12px;
+  padding: 7px 10px;
   cursor: pointer;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .transport-finance-back-btn:hover {
-  background: #e8eff5;
+  background: #f1f5f9;
+  border-color: #94a3b8;
 }
 
 .transport-finance-section-wrap {
   flex: 1;
   overflow: auto;
-  padding: 12px 14px 16px;
-  background: #f7fafc;
+  padding: 12px;
+  background: #f8fafc;
 }
 
-@media (max-width: 1100px) {
-  .transport-finance-kpi-grid {
+.transport-finance-head {
+  display: none;
+}
+
+@media (max-width: 980px) {
+  .transport-finance-kpi-panel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .transport-finance-chart-grid,
-  .transport-finance-module-grid {
+  .transport-finance-chart-grid {
     grid-template-columns: 1fr;
+  }
+
+  .transport-finance-module-card {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .transport-finance-module-go {
+    justify-content: flex-start;
   }
 }
 
 @media (max-width: 640px) {
   .transport-finance-shell {
-    padding: 12px;
+    padding: 10px;
   }
 
-  .transport-finance-kpi-grid {
+  .transport-finance-kpi-panel {
     grid-template-columns: 1fr;
   }
 
-  .transport-finance-head h2 {
-    font-size: 20px;
+  .transport-finance-hero-aside {
+    width: 100%;
   }
 
   .transport-finance-month-filter select {
-    min-width: 160px;
+    min-width: 0;
     width: 100%;
+  }
+
+  .transport-finance-kpi-breakdown {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }

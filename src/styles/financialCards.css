@@ -2531,7 +2531,11 @@
   }
 
   .transport-voucher-print-overlay,
-  .transport-voucher-print-overlay * {
+  .transport-voucher-print-overlay *,
+  .plantation-invoice-print-overlay,
+  .plantation-invoice-print-overlay *,
+  .fuel-transport-voucher-print-overlay,
+  .fuel-transport-voucher-print-overlay * {
     visibility: visible;
   }
 

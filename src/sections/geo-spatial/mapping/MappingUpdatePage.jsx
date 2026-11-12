@@ -2,10 +2,18 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   FaPlus, FaEdit, FaSave, FaTimes, FaMap, FaImage, FaExpand,
   FaLayerGroup, FaSeedling, FaGlobeAmericas, FaBuilding, FaProjectDiagram,
+  FaDrawPolygon, FaTrash, FaSpinner,
 } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { downloadMappingFieldsExcel } from './mappingFieldsExcelExport';
-import { CircleMarker, MapContainer, TileLayer, useMapEvents } from 'react-leaflet';
+import {
+  normalizeFieldBoundaryInput,
+  parseBoundaryFromField,
+  toLeafletFeature,
+  fieldHasBoundary,
+} from './fieldBoundaryGeoJson';
+import L from 'leaflet';
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import '../../../styles/mappingUpdatePage.css';
 import {
@@ -34,8 +42,18 @@ import {
   useSetMappingHierarchyMapImageMutation,
   useToggleMappingDivisionActivationMutation,
   useToggleMappingFieldActivationMutation,
+  useSetMappingFieldBoundaryMutation,
+  useClearMappingFieldBoundaryMutation,
+  useLazyGetMappingFieldMapBoundariesQuery,
   useLazyGetMappingAllFieldsReportQuery,
 } from '../../../api/services NodeJs/mappingHierarchyApi';
+import {
+  buildMapLegend,
+  colorDimensionForScope,
+  colorDimensionLabel,
+  colorForField,
+  popupSecondaryLabel,
+} from './fieldMapRegionColors';
 import {
   useGetMissionPartialReasonsQuery,
   useSaveMissionPartialReasonMutation,
@@ -47,6 +65,7 @@ import { getResourceUrl } from '../../../utils/resourceUrls';
 import MappingHierarchyNav from './MappingHierarchyNav';
 import MappingHierarchyCardGrid from './MappingHierarchyCardGrid';
 import MappingFieldsPanel from './MappingFieldsPanel';
+import ContentViewToggle from './ContentViewToggle';
 
 const HIERARCHY_LEVELS = [
   { key: 'group', label: 'Group', icon: FaLayerGroup, nameField: 'group' },
@@ -130,6 +149,273 @@ const MAP_SATELLITE_URL =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 const MAP_SATELLITE_LABELS_URL =
   'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+
+const FitGeoJsonBounds = ({ feature }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!feature?.geometry || !map) return undefined;
+    try {
+      const temp = L.geoJSON(feature);
+      const bounds = temp.getBounds();
+      if (bounds?.isValid?.()) {
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 16 });
+      }
+    } catch {
+      /* ignore fit errors */
+    }
+    return undefined;
+  }, [feature, map]);
+  return null;
+};
+
+const FieldBoundaryMapPreview = ({ geometry }) => {
+  const [satelliteEnabled, setSatelliteEnabled] = useState(true);
+  const feature = useMemo(() => toLeafletFeature(geometry), [geometry]);
+
+  return (
+    <div className="estate-coordinate-map-wrap-map-update">
+      <div className="estate-coordinate-map-toolbar-map-update">
+        <button
+          type="button"
+          className={`btn-satellite-toggle-map-update${satelliteEnabled ? ' is-active' : ''}`}
+          onClick={() => setSatelliteEnabled((prev) => !prev)}
+          title={satelliteEnabled ? 'Switch to street map' : 'Switch to satellite'}
+        >
+          <FaGlobeAmericas />
+          {satelliteEnabled ? 'Satellite: On' : 'Satellite: Off'}
+        </button>
+      </div>
+      <MapContainer
+        key={geometry ? JSON.stringify(geometry.type) + String(geometry.coordinates?.length || 0) : 'empty'}
+        center={DEFAULT_MAP_CENTER}
+        zoom={7}
+        minZoom={6}
+        maxZoom={18}
+        maxBounds={SRI_LANKA_BOUNDS}
+        maxBoundsViscosity={1.0}
+        scrollWheelZoom
+        className="estate-coordinate-map-map-update field-boundary-map-map-update"
+      >
+        {satelliteEnabled ? (
+          <>
+            <TileLayer
+              attribution='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+              url={MAP_SATELLITE_URL}
+              maxZoom={18}
+            />
+            <TileLayer
+              attribution=""
+              url={MAP_SATELLITE_LABELS_URL}
+              maxZoom={18}
+              opacity={0.9}
+            />
+          </>
+        ) : (
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url={MAP_STREET_URL}
+          />
+        )}
+        {feature ? (
+          <>
+            <GeoJSON
+              data={feature}
+              style={{
+                color: '#0d9488',
+                weight: 2,
+                fillColor: '#14b8a6',
+                fillOpacity: 0.35,
+              }}
+            />
+            <FitGeoJsonBounds feature={feature} />
+          </>
+        ) : null}
+      </MapContainer>
+    </div>
+  );
+};
+
+const InvalidateHierarchyMapSize = () => {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return undefined;
+    const refresh = () => {
+      try {
+        map.invalidateSize({ animate: false });
+      } catch {
+        /* ignore */
+      }
+    };
+    refresh();
+    const t1 = window.setTimeout(refresh, 80);
+    const t2 = window.setTimeout(refresh, 320);
+    window.addEventListener('resize', refresh);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+      window.removeEventListener('resize', refresh);
+    };
+  }, [map]);
+  return null;
+};
+
+const FitHierarchyFieldsBounds = ({ fields }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !fields?.length) return undefined;
+    try {
+      const collection = {
+        type: 'FeatureCollection',
+        features: fields
+          .filter((f) => f.geometry)
+          .map((f) => ({
+            type: 'Feature',
+            properties: {},
+            geometry: f.geometry,
+          })),
+      };
+      if (!collection.features.length) return undefined;
+      const temp = L.geoJSON(collection);
+      const bounds = temp.getBounds();
+      if (bounds?.isValid?.()) {
+        map.invalidateSize({ animate: false });
+        map.fitBounds(bounds, { padding: [36, 36], maxZoom: 15 });
+      }
+    } catch {
+      /* ignore */
+    }
+    return undefined;
+  }, [fields, map]);
+  return null;
+};
+
+const HierarchyFieldsMapView = ({ fields, colorBy = 'region', onLegendItemClick }) => {
+  const [satelliteEnabled, setSatelliteEnabled] = useState(true);
+  const legend = useMemo(() => buildMapLegend(fields, colorBy), [fields, colorBy]);
+  const legendTitle = colorDimensionLabel(colorBy);
+  const legendClickable = typeof onLegendItemClick === 'function';
+
+  return (
+    <div className="hierarchy-fields-map-wrap-map-update">
+      <div className="estate-coordinate-map-wrap-map-update hierarchy-fields-map-frame-map-update">
+        <div className="estate-coordinate-map-toolbar-map-update">
+          <button
+            type="button"
+            className={`btn-satellite-toggle-map-update${satelliteEnabled ? ' is-active' : ''}`}
+            onClick={() => setSatelliteEnabled((prev) => !prev)}
+            title={satelliteEnabled ? 'Switch to street map' : 'Switch to satellite'}
+          >
+            <FaGlobeAmericas />
+            {satelliteEnabled ? 'Satellite: On' : 'Satellite: Off'}
+          </button>
+        </div>
+        {legend.length > 0 && (
+          <div className="hierarchy-fields-map-legend-overlay-map-update">
+            <span className="hierarchy-fields-map-legend-title-map-update">
+              {legendTitle}
+              {legendClickable ? ' · click to open' : ''}
+            </span>
+            <div className="hierarchy-fields-map-legend-items-map-update hierarchy-fields-map-legend-items--column-map-update">
+              {legend.map((item) => {
+                const canOpen = legendClickable && item.id != null;
+                const ItemTag = canOpen ? 'button' : 'div';
+                return (
+                  <ItemTag
+                    key={String(item.id ?? 'unknown')}
+                    type={canOpen ? 'button' : undefined}
+                    className={`hierarchy-fields-map-legend-item-map-update${canOpen ? ' is-clickable' : ''}`}
+                    onClick={canOpen ? () => onLegendItemClick(colorBy, item) : undefined}
+                    title={canOpen ? `Open ${item.name}` : undefined}
+                  >
+                    <span
+                      className="hierarchy-fields-map-legend-swatch-map-update"
+                      style={{ background: item.color }}
+                    />
+                    <span>{item.name}</span>
+                  </ItemTag>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <MapContainer
+          center={DEFAULT_MAP_CENTER}
+          zoom={7}
+          minZoom={6}
+          maxZoom={18}
+          maxBounds={SRI_LANKA_BOUNDS}
+          maxBoundsViscosity={1.0}
+          scrollWheelZoom
+          className="estate-coordinate-map-map-update hierarchy-fields-map-map-update"
+        >
+          {satelliteEnabled ? (
+            <>
+              <TileLayer
+                attribution='Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics'
+                url={MAP_SATELLITE_URL}
+                maxZoom={18}
+              />
+              <TileLayer
+                attribution=""
+                url={MAP_SATELLITE_LABELS_URL}
+                maxZoom={18}
+                opacity={0.9}
+              />
+            </>
+          ) : (
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              url={MAP_STREET_URL}
+            />
+          )}
+          {fields.map((f) => {
+            const color = colorForField(f, colorBy);
+            const secondary = popupSecondaryLabel(f, colorBy);
+            const shortName = f.short_name || f.field || `Field #${f.id}`;
+            return (
+              <GeoJSON
+                key={`${f.id}-${colorBy}-${shortName}`}
+                data={{
+                  type: 'Feature',
+                  properties: {
+                    name: shortName,
+                    secondary,
+                  },
+                  geometry: f.geometry,
+                }}
+                style={{
+                  color,
+                  weight: 2,
+                  fillColor: color,
+                  fillOpacity: 0.35,
+                }}
+                onEachFeature={(feature, layer) => {
+                  const name = feature.properties?.name || 'Field';
+                  const label = feature.properties?.secondary || '';
+                  // Ring centroid can sit near an edge on irregular fields;
+                  // pin the label to the bounding-box middle instead.
+                  if (typeof layer.getBounds === 'function') {
+                    layer.getCenter = () => layer.getBounds().getCenter();
+                  }
+                  layer.bindTooltip(name, {
+                    permanent: true,
+                    direction: 'center',
+                    offset: [0, 0],
+                    className: 'field-boundary-name-label-map-update',
+                    opacity: 1,
+                  });
+                  layer.bindPopup(`<strong>${name}</strong><br/>${label}`);
+                }}
+              />
+            );
+          })}
+          <InvalidateHierarchyMapSize />
+          <FitHierarchyFieldsBounds fields={fields} />
+        </MapContainer>
+      </div>
+    </div>
+  );
+};
 
 const EstateCoordinateMapPicker = ({ latitude, longitude, onPick }) => {
   const parsedLat = Number(latitude);
@@ -281,6 +567,16 @@ const MappingUpdatePage = () => {
   const [hierarchyMapImageModal, setHierarchyMapImageModal] = useState(null);
   const [hierarchyMapImageSaving, setHierarchyMapImageSaving] = useState(false);
   const [mapImageFullscreen, setMapImageFullscreen] = useState(false);
+  const [fieldBoundaryModal, setFieldBoundaryModal] = useState(null);
+  const [fieldBoundarySaving, setFieldBoundarySaving] = useState(false);
+  const [contentViewMode, setContentViewMode] = useState('cards');
+  const [inlineMapState, setInlineMapState] = useState({
+    loading: false,
+    fields: [],
+    error: null,
+    scope: null,
+    title: null,
+  });
 
   const { data: groupsResponse = [], isLoading: groupsLoading } = useGetMappingGroupsQuery();
   const { data: plantationsResponse = [], isLoading: plantationsLoading } = useGetMappingPlantationsByGroupQuery(selectedGroup, { skip: !selectedGroup });
@@ -315,12 +611,15 @@ const MappingUpdatePage = () => {
   const [setEstateFinalized] = useSetMappingEstateFinalizedMutation();
   const [setEstatePlanSizes] = useSetMappingEstatePlanSizesMutation();
   const [setHierarchyMapImage] = useSetMappingHierarchyMapImageMutation();
+  const [setFieldBoundary] = useSetMappingFieldBoundaryMutation();
+  const [clearFieldBoundary] = useClearMappingFieldBoundaryMutation();
   const [toggleGroupActivation] = useToggleMappingGroupActivationMutation();
   const [togglePlantationActivation] = useToggleMappingPlantationActivationMutation();
   const [toggleRegionActivation] = useToggleMappingRegionActivationMutation();
   const [toggleEstateActivation] = useToggleMappingEstateActivationMutation();
   const [toggleDivisionActivation] = useToggleMappingDivisionActivationMutation();
   const [triggerAllFieldsReport, { isFetching: allFieldsLoading }] = useLazyGetMappingAllFieldsReportQuery();
+  const [triggerFieldMapBoundaries] = useLazyGetMappingFieldMapBoundariesQuery();
 
   useEffect(() => {
     if (!selectedDivision) {
@@ -732,9 +1031,275 @@ const MappingUpdatePage = () => {
     setDivisionCoordinateModal(null);
     setHierarchyMapImageModal(null);
     setMapImageFullscreen(false);
+    setFieldBoundaryModal(null);
     setAvailabilityModal(null);
     setReasonManageOpen(false);
     setEditingReasonRow(null);
+  };
+
+  const resolveHierarchyMapScope = () => {
+    if (selectedDivision) {
+      return {
+        scope: 'division',
+        id: selectedDivision,
+        title: selectedNames.division || 'Division',
+      };
+    }
+    if (selectedEstate) {
+      return {
+        scope: 'estate',
+        id: selectedEstate,
+        title: selectedNames.estate || 'Estate',
+      };
+    }
+    if (selectedRegion) {
+      return {
+        scope: 'region',
+        id: selectedRegion,
+        title: selectedNames.region || 'Region',
+      };
+    }
+    if (selectedPlantation) {
+      return {
+        scope: 'plantation',
+        id: selectedPlantation,
+        title: selectedNames.plantation || 'Plantation',
+      };
+    }
+    if (selectedGroup) {
+      return {
+        scope: 'group',
+        id: selectedGroup,
+        title: selectedNames.group || 'Group',
+      };
+    }
+    return {
+      scope: 'all',
+      id: null,
+      title: 'All groups',
+    };
+  };
+
+  const loadInlineMapBoundaries = async () => {
+    const resolved = resolveHierarchyMapScope();
+    setInlineMapState({
+      loading: true,
+      fields: [],
+      error: null,
+      scope: resolved.scope,
+      title: resolved.title,
+    });
+    try {
+      const result = await triggerFieldMapBoundaries({
+        scope: resolved.scope,
+        id: resolved.id,
+      }).unwrap();
+      if (result?.status === false) {
+        setInlineMapState({
+          loading: false,
+          fields: [],
+          error: result.message || 'Failed to load map',
+          scope: resolved.scope,
+          title: resolved.title,
+        });
+        return;
+      }
+      const list = Array.isArray(result?.data) ? result.data : [];
+      setInlineMapState({
+        loading: false,
+        fields: list,
+        error: null,
+        scope: resolved.scope,
+        title: resolved.title,
+      });
+    } catch (error) {
+      setInlineMapState({
+        loading: false,
+        fields: [],
+        error: error?.data?.message || error?.message || 'Failed to load map',
+        scope: resolved.scope,
+        title: resolved.title,
+      });
+    }
+  };
+
+  const handleContentViewModeChange = (mode) => {
+    setContentViewMode(mode);
+  };
+
+  const mapScopeKey = useMemo(() => {
+    const resolved = resolveHierarchyMapScope();
+    return `${resolved.scope}:${resolved.id ?? 'all'}`;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGroup, selectedPlantation, selectedRegion, selectedEstate, selectedDivision, selectedNames]);
+
+  useEffect(() => {
+    if (contentViewMode !== 'map') return undefined;
+    loadInlineMapBoundaries();
+    return undefined;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentViewMode, mapScopeKey]);
+
+  const inlineMapPanel = (
+    <div className="inline-hierarchy-map-panel-map-update">
+      <div className="inline-hierarchy-map-meta-map-update">
+        <span>
+          Field map — {inlineMapState.title || '…'}
+          {inlineMapState.scope ? (
+            <span className="hierarchy-fields-map-scope-badge-map-update">{inlineMapState.scope}</span>
+          ) : null}
+        </span>
+        <span className="form-hint-map-update" style={{ margin: 0 }}>
+          {inlineMapState.scope === 'all'
+            ? 'Colored by group · click legend to open'
+            : inlineMapState.scope === 'group'
+              ? 'Colored by plantation · click legend to open'
+              : inlineMapState.scope === 'plantation'
+                ? 'Colored by region · click legend to open'
+                : inlineMapState.scope === 'region'
+                  ? 'Colored by estate · click legend to open'
+                  : inlineMapState.scope === 'estate'
+                    ? 'Colored by division · click legend to open'
+                    : 'Division fields'}
+        </span>
+      </div>
+      {inlineMapState.loading ? (
+        <div className="loading-map-update">
+          <FaSpinner className="spinner-icon-map-update" />
+          <span>Loading field boundaries...</span>
+        </div>
+      ) : inlineMapState.error ? (
+        <div className="field-boundary-empty-map-map-update">{inlineMapState.error}</div>
+      ) : inlineMapState.fields.length === 0 ? (
+        <div className="field-boundary-empty-map-map-update">
+          No field boundaries uploaded yet for this {inlineMapState.scope || 'selection'}.
+        </div>
+      ) : (
+        <>
+          <p className="field-boundary-area-hint-map-update">
+            {inlineMapState.fields.length} field
+            {inlineMapState.fields.length !== 1 ? 's' : ''} with boundary
+          </p>
+          <HierarchyFieldsMapView
+            fields={inlineMapState.fields}
+            colorBy={colorDimensionForScope(inlineMapState.scope)}
+            onLegendItemClick={(dimension, item) => {
+              if (item?.id == null) return;
+              const handler = selectHandlers[dimension];
+              if (typeof handler === 'function') handler(item.id);
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+
+  const openFieldBoundaryModal = (field) => {
+    const existing = parseBoundaryFromField(field);
+    setFieldBoundaryModal({
+      fieldId: field.id,
+      fieldName: field.short_name || field.field || `Field #${field.id}`,
+      sourceName: field.boundary_source_name || null,
+      hasSavedBoundary: fieldHasBoundary(field),
+      geometry: existing?.geometry || null,
+      areaHa: existing?.areaHa ?? (field.area_mapping != null ? Number(field.area_mapping) : null),
+      selectedFileName: null,
+      pendingGeometry: null,
+      pendingAreaHa: null,
+      parseError: null,
+    });
+  };
+
+  const handleFieldBoundaryFileChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !fieldBoundaryModal) return;
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith('.geojson') && !lower.endsWith('.json')) {
+      toast.error('Please select a .geojson or .json file');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const text = typeof reader.result === 'string' ? reader.result : '';
+        const { geometry, areaHa } = normalizeFieldBoundaryInput(text);
+        setFieldBoundaryModal((prev) =>
+          prev
+            ? {
+                ...prev,
+                selectedFileName: file.name,
+                pendingGeometry: geometry,
+                pendingAreaHa: areaHa,
+                geometry,
+                areaHa,
+                parseError: null,
+              }
+            : prev
+        );
+      } catch (err) {
+        setFieldBoundaryModal((prev) =>
+          prev
+            ? {
+                ...prev,
+                selectedFileName: file.name,
+                pendingGeometry: null,
+                pendingAreaHa: null,
+                parseError: err?.message || 'Failed to parse GeoJSON',
+              }
+            : prev
+        );
+        toast.error(err?.message || 'Failed to parse GeoJSON');
+      }
+    };
+    reader.onerror = () => toast.error('Failed to read file');
+    reader.readAsText(file);
+  };
+
+  const handleFieldBoundarySave = async () => {
+    if (!fieldBoundaryModal?.pendingGeometry) {
+      toast.error('Select a GeoJSON file to upload');
+      return;
+    }
+    setFieldBoundarySaving(true);
+    try {
+      const result = await setFieldBoundary({
+        id: fieldBoundaryModal.fieldId,
+        boundary_geojson: fieldBoundaryModal.pendingGeometry,
+        boundary_source_name: fieldBoundaryModal.selectedFileName || null,
+      }).unwrap();
+      if (result?.status) {
+        toast.success(result.message || 'Field boundary saved');
+        setFieldBoundaryModal(null);
+        refetchFields();
+      } else {
+        toast.error(result?.message || 'Failed to save boundary');
+      }
+    } catch (error) {
+      toast.error(error?.data?.message || error?.message || 'Failed to save boundary');
+    } finally {
+      setFieldBoundarySaving(false);
+    }
+  };
+
+  const handleFieldBoundaryClear = async () => {
+    if (!fieldBoundaryModal?.fieldId) return;
+    if (!window.confirm('Clear the saved boundary for this field?')) return;
+    setFieldBoundarySaving(true);
+    try {
+      const result = await clearFieldBoundary(fieldBoundaryModal.fieldId).unwrap();
+      if (result?.status) {
+        toast.success(result.message || 'Field boundary cleared');
+        setFieldBoundaryModal(null);
+        refetchFields();
+      } else {
+        toast.error(result?.message || 'Failed to clear boundary');
+      }
+    } catch (error) {
+      toast.error(error?.data?.message || error?.message || 'Failed to clear boundary');
+    } finally {
+      setFieldBoundarySaving(false);
+    }
   };
 
   const openEstatePlanSizeModal = (estateId) => {
@@ -1023,35 +1588,62 @@ const MappingUpdatePage = () => {
             showFieldActionsColumn={showFieldActionsColumn}
             missionReasons={missionReasons}
             onFieldEdit={handleFieldEdit}
+            onFieldBoundary={openFieldBoundaryModal}
             onAvailabilityModal={openAvailabilityModal}
             onToggleFieldActivation={handleToggleFieldActivation}
             onAddField={() => { setActiveCreateLevel('field'); setNewItem({}); }}
             onDownloadExcel={handleDownloadExcel}
             onBlockReasons={() => setReasonManageOpen(true)}
+            contentViewMode={contentViewMode}
+            onContentViewModeChange={handleContentViewModeChange}
+            mapPanel={inlineMapPanel}
           />
         ) : (
-          currentLevelConfig && (
-            <MappingHierarchyCardGrid
-              level={currentViewLevel}
-              levelConfig={currentLevelConfig}
-              data={getLevelData(currentViewLevel)}
-              loading={getLevelLoading(currentViewLevel)}
-              selectedId={getSelectedId(currentViewLevel)}
-              onSelect={selectHandlers[currentViewLevel]}
-              onToggleActivation={toggleHandlers[currentViewLevel]}
-              hasActivateFeature={hasActivateFeature}
-              hasEditFeature={hasEditFeature}
-              hasAddFeature={hasAddFeature}
-              onPlanSizeModal={openEstatePlanSizeModal}
-              onCoordinateModal={currentViewLevel === 'estate' ? openEstateCoordinateModal : openDivisionCoordinateModal}
-              onMapImageModal={openHierarchyMapImageModal}
-              onSetFinalized={handleSetEstateFinalized}
-              estatePlanSizeSummary={estatePlanSizeSummary}
-              estateCoordinateSummary={estateCoordinateSummary}
-              estateCoordinatesMissing={estateCoordinatesMissing}
-              animKey={`${currentViewLevel}-${selectedGroup}-${selectedPlantation}-${selectedRegion}-${selectedEstate}`}
-            />
-          )
+          currentLevelConfig && (() => {
+            const LevelIcon = currentLevelConfig.icon;
+            return (
+              <div className="hierarchy-level-shell-map-update">
+                <div className="hierarchy-level-toolbar-map-update">
+                  <div className="hierarchy-level-toolbar-title-map-update">
+                    <LevelIcon className="fields-card-icon-map-update" />
+                    <h2 className="fields-card-title-map-update">
+                      {currentLevelConfig.label}s
+                    </h2>
+                  </div>
+                  <ContentViewToggle
+                    mode={contentViewMode}
+                    onChange={handleContentViewModeChange}
+                  />
+                </div>
+                {contentViewMode === 'map' ? (
+                  <div className="hierarchy-level-map-body-map-update">
+                    {inlineMapPanel}
+                  </div>
+                ) : (
+                  <MappingHierarchyCardGrid
+                    level={currentViewLevel}
+                    levelConfig={currentLevelConfig}
+                    data={getLevelData(currentViewLevel)}
+                    loading={getLevelLoading(currentViewLevel)}
+                    selectedId={getSelectedId(currentViewLevel)}
+                    onSelect={selectHandlers[currentViewLevel]}
+                    onToggleActivation={toggleHandlers[currentViewLevel]}
+                    hasActivateFeature={hasActivateFeature}
+                    hasEditFeature={hasEditFeature}
+                    hasAddFeature={hasAddFeature}
+                    onPlanSizeModal={openEstatePlanSizeModal}
+                    onCoordinateModal={currentViewLevel === 'estate' ? openEstateCoordinateModal : openDivisionCoordinateModal}
+                    onMapImageModal={openHierarchyMapImageModal}
+                    onSetFinalized={handleSetEstateFinalized}
+                    estatePlanSizeSummary={estatePlanSizeSummary}
+                    estateCoordinateSummary={estateCoordinateSummary}
+                    estateCoordinatesMissing={estateCoordinatesMissing}
+                    animKey={`${currentViewLevel}-${selectedGroup}-${selectedPlantation}-${selectedRegion}-${selectedEstate}`}
+                  />
+                )}
+              </div>
+            );
+          })()
         )}
       </section>
 
@@ -1614,6 +2206,92 @@ const MappingUpdatePage = () => {
             </div>
             <div className="modal-footer-map-update">
               <button type="button" onClick={closeModal} className="btn-ghost-map-update">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== FIELD BOUNDARY GEOJSON MODAL ===== */}
+      {fieldBoundaryModal && hasEditFeature && (
+        <div className="modal-overlay-map-update" onClick={closeModal}>
+          <div
+            className="modal-map-update modal-map-coordinate-large-map-update field-boundary-modal-map-update"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header-map-update">
+              <h3 className="modal-title-map-update">
+                <FaDrawPolygon className="modal-title-icon-map-update" />
+                Field boundary — {fieldBoundaryModal.fieldName}
+              </h3>
+              <button type="button" onClick={closeModal} className="modal-close-map-update">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-body-map-update">
+              <div className="form-group-map-update">
+                <label className="label-map-update">GeoJSON file</label>
+                <label className="btn-ghost-sm-map-update field-boundary-file-btn-map-update">
+                  <input
+                    type="file"
+                    accept=".geojson,.json,application/geo+json,application/json"
+                    onChange={handleFieldBoundaryFileChange}
+                    hidden
+                  />
+                  {fieldBoundaryModal.hasSavedBoundary && !fieldBoundaryModal.pendingGeometry
+                    ? 'Replace GeoJSON'
+                    : 'Choose GeoJSON'}
+                </label>
+                {fieldBoundaryModal.selectedFileName && (
+                  <p className="form-hint-map-update">Selected: {fieldBoundaryModal.selectedFileName}</p>
+                )}
+                {!fieldBoundaryModal.selectedFileName && fieldBoundaryModal.sourceName && (
+                  <p className="form-hint-map-update">Saved from: {fieldBoundaryModal.sourceName}</p>
+                )}
+                {fieldBoundaryModal.parseError && (
+                  <p className="form-hint-map-update field-boundary-error-hint-map-update">
+                    {fieldBoundaryModal.parseError}
+                  </p>
+                )}
+                <p className="form-hint-map-update">
+                  File is parsed in the browser and stored as polygon data in the database (not saved as a file on the server).
+                  Accepts standard GeoJSON or Esri JSON polygons.
+                </p>
+              </div>
+              {fieldBoundaryModal.areaHa != null && Number.isFinite(Number(fieldBoundaryModal.areaHa)) && (
+                <p className="field-boundary-area-hint-map-update">
+                  Mapped area (preview): <strong>{Number(fieldBoundaryModal.areaHa).toFixed(2)} Ha</strong>
+                </p>
+              )}
+              {fieldBoundaryModal.geometry ? (
+                <FieldBoundaryMapPreview geometry={fieldBoundaryModal.geometry} />
+              ) : (
+                <div className="field-boundary-empty-map-map-update">
+                  Upload a GeoJSON file to preview the field outline on the Sri Lanka map.
+                </div>
+              )}
+            </div>
+            <div className="modal-footer-map-update">
+              {fieldBoundaryModal.hasSavedBoundary && (
+                <button
+                  type="button"
+                  className="btn-ghost-map-update field-boundary-clear-btn-map-update"
+                  onClick={handleFieldBoundaryClear}
+                  disabled={fieldBoundarySaving}
+                >
+                  <FaTrash /> Clear
+                </button>
+              )}
+              <button type="button" onClick={closeModal} className="btn-ghost-map-update">
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-primary-map-update"
+                onClick={handleFieldBoundarySave}
+                disabled={fieldBoundarySaving || !fieldBoundaryModal.pendingGeometry}
+              >
+                <FaSave /> {fieldBoundarySaving ? 'Saving...' : 'Save boundary'}
+              </button>
             </div>
           </div>
         </div>

@@ -164,6 +164,28 @@
   color: #fff;
 }
 
+.nav-map-btn-map-update {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: #ecfdf5;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+  border-radius: var(--mu-radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--mu-transition);
+}
+
+.nav-map-btn-map-update:hover {
+  background: #0f766e;
+  color: #fff;
+  border-color: #0f766e;
+}
+
 /* ---- Content Pane (90%) ---- */
 .content-pane-map-update {
   flex: 1 1 auto;
@@ -466,6 +488,229 @@
   border-color: transparent;
 }
 
+.card-action-btn-boundary-on-map-update {
+  color: #15803d;
+  background: #dcfce7;
+  border-color: transparent;
+}
+
+.card-action-btn-boundary-on-map-update:hover {
+  background: #16a34a;
+  color: #fff;
+  border-color: transparent;
+}
+
+.card-action-btn-boundary-off-map-update {
+  color: #ca8a04;
+  background: #fef9c3;
+  border-color: transparent;
+}
+
+.card-action-btn-boundary-off-map-update:hover {
+  background: #eab308;
+  color: #fff;
+  border-color: transparent;
+}
+
+.field-boundary-modal-map-update .field-boundary-file-btn-map-update {
+  display: inline-flex;
+  cursor: pointer;
+  margin-top: 4px;
+}
+
+.field-boundary-area-hint-map-update {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.field-boundary-error-hint-map-update {
+  color: #b91c1c !important;
+}
+
+.field-boundary-empty-map-map-update {
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 28px 16px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+  background: #f8fafc;
+}
+
+.field-boundary-clear-btn-map-update {
+  margin-right: auto;
+  color: #b91c1c;
+}
+
+.field-boundary-map-map-update {
+  min-height: 360px;
+}
+
+.hierarchy-fields-map-wrap-map-update {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  height: 100%;
+}
+
+.hierarchy-fields-map-frame-map-update {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  display: block;
+}
+
+.hierarchy-fields-map-frame-map-update.estate-coordinate-map-wrap-map-update {
+  height: 100%;
+  min-height: 0;
+}
+
+.hierarchy-fields-map-frame-map-update .estate-coordinate-map-toolbar-map-update {
+  right: auto;
+  left: 10px;
+}
+
+.hierarchy-fields-map-map-update.estate-coordinate-map-map-update,
+.hierarchy-fields-map-map-update {
+  position: absolute !important;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.hierarchy-fields-map-legend-overlay-map-update {
+  position: absolute;
+  top: 52px;
+  right: 10px;
+  z-index: 1000;
+  max-width: 240px;
+  max-height: min(55vh, 360px);
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.16);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.hierarchy-fields-map-legend-title-map-update {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mu-gray-500);
+  margin-bottom: 8px;
+  text-align: left;
+}
+
+.hierarchy-fields-map-legend-items-map-update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 8px 14px;
+}
+
+.hierarchy-fields-map-legend-items--column-map-update {
+  flex-direction: column;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.hierarchy-fields-map-legend-item-map-update {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  color: #0f172a;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 6px;
+  margin: 0;
+}
+
+.hierarchy-fields-map-legend-item-map-update.is-clickable {
+  cursor: pointer;
+}
+
+.hierarchy-fields-map-legend-item-map-update.is-clickable:hover {
+  background: #ecfdf5;
+  color: #0f766e;
+}
+
+.hierarchy-fields-map-legend-swatch-map-update {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.leaflet-tooltip.field-boundary-name-label-map-update {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #0f172a;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.15;
+  padding: 0;
+  margin: 0 !important;
+  text-shadow:
+    0 0 3px #fff,
+    0 0 3px #fff,
+    0 1px 2px #fff,
+    1px 0 2px #fff,
+    -1px 0 2px #fff,
+    0 -1px 2px #fff;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.leaflet-tooltip-pane .leaflet-tooltip.field-boundary-name-label-map-update {
+  margin: 0 !important;
+}
+
+.leaflet-tooltip.field-boundary-name-label-map-update::before {
+  display: none;
+}
+
+.hierarchy-fields-map-scope-badge-map-update {
+  margin-left: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #0f766e;
+  background: #ecfdf5;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.page-map-update .nav-map-btn-map-update {
+  padding: 7px 14px;
+  border-radius: var(--mu-radius-sm);
+  font-size: 12.5px;
+  font-weight: 600;
+  gap: 6px;
+}
+
+.fields-card-actions-map-update .btn-ghost-sm-map-update svg {
+  margin-right: 4px;
+}
+
 /* ===================================================
    Fields Panel
    =================================================== */
@@ -563,7 +808,141 @@
 .fields-card-actions-map-update {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.content-view-toggle-map-update {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  gap: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 75, 113, 0.12);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.content-view-toggle-btn-map-update {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 88px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--mu-gray-500);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.content-view-toggle-btn-map-update svg {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.content-view-toggle-btn-map-update:hover:not(.is-active) {
+  color: var(--mu-primary);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.content-view-toggle-btn-map-update:focus-visible {
+  outline: 2px solid rgba(0, 75, 113, 0.35);
+  outline-offset: 2px;
+}
+
+.content-view-toggle-btn-map-update.is-active {
+  background: #fff;
+  color: var(--mu-primary);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.06),
+    0 4px 10px rgba(0, 75, 113, 0.12);
+}
+
+.content-view-toggle-btn-map-update.is-active svg {
+  opacity: 1;
+  color: var(--mu-primary);
+}
+
+.hierarchy-level-shell-map-update {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+  background: #fff;
+}
+
+.hierarchy-level-toolbar-map-update {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--mu-gray-100);
+  background: var(--mu-gray-50);
+  flex-shrink: 0;
+}
+
+.hierarchy-level-toolbar-title-map-update {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hierarchy-level-map-body-map-update,
+.fields-inline-map-scroll-map-update {
+  flex: 1 1 auto;
+  height: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.inline-hierarchy-map-panel-map-update {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+}
+
+.inline-hierarchy-map-meta-map-update {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #0f172a;
+  flex-shrink: 0;
+}
+
+.inline-hierarchy-map-panel-map-update .field-boundary-area-hint-map-update {
+  flex-shrink: 0;
+  margin-bottom: 0;
+}
+
+.inline-hierarchy-map-panel-map-update .hierarchy-fields-map-wrap-map-update {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .fields-card-count-map-update {
@@ -1879,6 +2258,24 @@
   box-shadow: none;
 }
 
+.page-map-update .hierarchy-fields-map-legend-overlay-map-update {
+  text-align: left;
+}
+
+.page-map-update .hierarchy-fields-map-legend-title-map-update {
+  text-align: left;
+}
+
+.page-map-update button.hierarchy-fields-map-legend-item-map-update {
+  display: flex;
+  width: 100%;
+  justify-content: flex-start;
+  align-items: center;
+  text-align: left;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
 /* Re-apply specific button styles after reset */
 .page-map-update .btn-primary-map-update {
   padding: 8px 16px;
@@ -2100,6 +2497,30 @@
   font-size: 13px;
   background: #fff;
   color: var(--mu-gray-500);
+}
+
+.page-map-update .card-action-btn-boundary-on-map-update {
+  color: #15803d;
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.page-map-update .card-action-btn-boundary-on-map-update:hover {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+
+.page-map-update .card-action-btn-boundary-off-map-update {
+  color: #ca8a04;
+  background: #fef9c3;
+  border-color: #fde047;
+}
+
+.page-map-update .card-action-btn-boundary-off-map-update:hover {
+  background: #eab308;
+  color: #fff;
+  border-color: #eab308;
 }
 
 /* ===================================================

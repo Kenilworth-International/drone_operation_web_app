@@ -422,6 +422,8 @@
 
 .geo-dash-meter-fill--teal { background: linear-gradient(90deg, #0f766e, #14b8a6); }
 .geo-dash-meter-fill--blue { background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
+.geo-dash-meter-fill--amber { background: linear-gradient(90deg, #b45309, #f59e0b); }
+.geo-dash-meter-fill--violet { background: linear-gradient(90deg, #6d28d9, #a78bfa); }
 
 .geo-dash-meter-detail {
   margin: 0.25rem 0 0;

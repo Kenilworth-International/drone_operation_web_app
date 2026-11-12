@@ -325,7 +325,7 @@ const VehicleRent = ({
 
   return (
     <Box
-      className="vehicle-rent-container"
+      className={`vehicle-rent-container${embedded ? ' vehicle-rent-container--embedded' : ''}`}
       sx={embedded
         ? { p: 0, m: 0, backgroundColor: 'transparent', minHeight: 'auto' }
         : { p: { xs: 2, sm: 3 }, backgroundColor: '#f3f7fb', minHeight: '100vh' }}

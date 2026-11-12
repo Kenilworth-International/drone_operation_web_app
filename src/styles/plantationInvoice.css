@@ -939,40 +939,55 @@
 }
 
 @media print {
+  /*
+   * financialCards.css hides body * on print (voucher-only pattern).
+   * Re-show plantation invoice / estate statement overlays so Print works.
+   */
+  .plantation-invoice-print-overlay,
+  .plantation-invoice-print-overlay *,
+  .fuel-transport-voucher-print-overlay,
+  .fuel-transport-voucher-print-overlay * {
+    visibility: visible !important;
+  }
+
   .plantation-invoice-print-toolbar,
   .plantation-invoice-print-toolbar-actions {
     display: none !important;
   }
 
   .plantation-invoice-print-overlay,
-  .plantation-invoice-preview-popup {
-    position: static;
-    inset: auto;
+  .plantation-invoice-preview-popup,
+  .fuel-transport-voucher-print-overlay {
+    position: absolute !important;
+    inset: 0 !important;
     background: #fff !important;
     padding: 0 !important;
+    margin: 0 !important;
     overflow: visible !important;
+    z-index: auto !important;
   }
 
   .plantation-invoice-preview-shell {
-    width: auto;
-    max-width: none;
-    max-height: none;
-    overflow: visible;
-    background: #fff;
-    border-radius: 0;
-    padding: 0;
-    box-shadow: none;
+    width: auto !important;
+    max-width: none !important;
+    max-height: none !important;
+    overflow: visible !important;
+    background: #fff !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
   }
 
-  .plantation-invoice-document {
-    width: 100%;
+  .plantation-invoice-document,
+  .estate-statement-document {
+    width: 100% !important;
     min-height: 277mm;
-    max-width: none;
-    margin: 0;
-    padding: 10mm 10mm 8mm;
-    box-shadow: none;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10mm 10mm 8mm !important;
+    box-shadow: none !important;
     page-break-after: avoid;
-    display: flex;
+    display: flex !important;
     flex-direction: column;
   }
 

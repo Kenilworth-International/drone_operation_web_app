@@ -2,8 +2,10 @@ import React from 'react';
 import {
   FaLeaf, FaPlus, FaFileExcel, FaSearch, FaTimes,
   FaEdit, FaToggleOn, FaToggleOff, FaProjectDiagram,
-  FaSpinner, FaInbox,
+  FaSpinner, FaInbox, FaDrawPolygon,
 } from 'react-icons/fa';
+import { fieldHasBoundary } from './fieldBoundaryGeoJson';
+import ContentViewToggle from './ContentViewToggle';
 
 const LoadingSpinner = ({ text = 'Loading...' }) => (
   <div className="loading-map-update">
@@ -99,10 +101,12 @@ const FieldCard = ({
   showFieldActionsColumn,
   missionReasons,
   onFieldEdit,
+  onFieldBoundary,
   onAvailabilityModal,
   onToggleFieldActivation,
 }) => {
   const hasActions = showFieldActionsColumn && (hasEditFeature || hasActivateFeature);
+  const hasBoundary = fieldHasBoundary(field);
 
   return (
     <div
@@ -151,6 +155,16 @@ const FieldCard = ({
               <FaEdit />
             </button>
           )}
+          {hasEditFeature && (
+            <button
+              type="button"
+              onClick={() => onFieldBoundary(field)}
+              className={`card-action-btn-map-update ${hasBoundary ? 'card-action-btn-boundary-on-map-update' : 'card-action-btn-boundary-off-map-update'}`}
+              title={hasBoundary ? 'View / replace field boundary (GeoJSON)' : 'Upload field boundary (GeoJSON)'}
+            >
+              <FaDrawPolygon />
+            </button>
+          )}
           {hasActivateFeature && (
             <button
               type="button"
@@ -179,12 +193,18 @@ const MappingFieldsPanel = ({
   showFieldActionsColumn,
   missionReasons,
   onFieldEdit,
+  onFieldBoundary,
   onAvailabilityModal,
   onToggleFieldActivation,
   onAddField,
   onDownloadExcel,
   onBlockReasons,
+  contentViewMode = 'cards',
+  onContentViewModeChange,
+  mapPanel = null,
 }) => {
+  const showMap = contentViewMode === 'map';
+
   return (
     <div className="fields-card-map-update">
       <div className="fields-card-header-map-update">
@@ -200,6 +220,7 @@ const MappingFieldsPanel = ({
           </div>
           {selectedDivision && (
             <div className="fields-card-actions-map-update">
+              <ContentViewToggle mode={contentViewMode} onChange={onContentViewModeChange} />
               {hasEditFeature && (
                 <button
                   type="button"
@@ -211,6 +232,7 @@ const MappingFieldsPanel = ({
                 </button>
               )}
               <button
+                type="button"
                 onClick={onDownloadExcel}
                 className="btn-excel-map-update"
                 title="Download Excel"
@@ -219,6 +241,7 @@ const MappingFieldsPanel = ({
               </button>
               {hasAddFeature && (
                 <button
+                  type="button"
                   onClick={onAddField}
                   className="btn-primary-sm-map-update"
                   title="Create Field"
@@ -230,7 +253,7 @@ const MappingFieldsPanel = ({
           )}
         </div>
 
-        {selectedDivision && (
+        {selectedDivision && !showMap && (
           <div className="search-map-update">
             <FaSearch className="search-icon-map-update" />
             <input
@@ -249,7 +272,11 @@ const MappingFieldsPanel = ({
         )}
       </div>
 
-      {!selectedDivision ? (
+      {showMap ? (
+        <div className="fields-card-scroll-map-update fields-inline-map-scroll-map-update">
+          {mapPanel}
+        </div>
+      ) : !selectedDivision ? (
         <div className="fields-card-scroll-map-update fields-card-scroll-map-update--center">
           <EmptyState
             icon={FaProjectDiagram}
@@ -287,6 +314,7 @@ const MappingFieldsPanel = ({
                 showFieldActionsColumn={showFieldActionsColumn}
                 missionReasons={missionReasons}
                 onFieldEdit={onFieldEdit}
+                onFieldBoundary={onFieldBoundary}
                 onAvailabilityModal={onAvailabilityModal}
                 onToggleFieldActivation={onToggleFieldActivation}
               />

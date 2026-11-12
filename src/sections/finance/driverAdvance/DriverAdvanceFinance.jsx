@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
   CircularProgress,
   FormControl,
@@ -22,6 +21,7 @@ import {
   useGetAdvanceRequestsForFinanceQuery,
   useUpdateAdvanceFinanceStatusMutation,
 } from '../../../api/services NodeJs/vehicleRentApi';
+import '../../../styles/driverAdvanceFinance.css';
 
 const SELECT_MENU_Z_INDEX = 6100;
 const selectMenuPropsAboveOverlay = {
@@ -111,91 +111,69 @@ const DriverAdvanceFinance = ({ embedded = false, externalMonth = '', onMonthCha
 
   return (
     <Box
+      className={`daf-root${embedded ? ' daf-root--embedded' : ''}`}
       sx={embedded
         ? { p: 0, m: 0, backgroundColor: 'transparent', minHeight: 'auto' }
-        : { p: 3, backgroundColor: '#f3f7fb', minHeight: '100vh' }}
+        : { p: 3, backgroundColor: '#f1f5f9', minHeight: '100vh' }}
     >
-      {!embedded ? (
-        <Card
-          elevation={0}
-          sx={{
-            p: 0,
-            mb: 1.5,
-            border: '1px solid #d9e5ef',
-            borderRadius: 2,
-            background: 'linear-gradient(180deg, #fdfefe 0%, #f6fbff 100%)',
-          }}
-        >
-          <CardContent sx={{ p: '14px !important' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#102739', m: 0 }}>
-                Driver Advance Finance
-              </Typography>
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(120px, 1fr))' },
-                  gap: 1,
-                  width: { xs: '100%', sm: 'auto' },
-                  minWidth: { sm: 420 },
+      <div className="daf-summary-strip" aria-label="Advance status summary">
+        {!embedded ? (
+          <div className="daf-summary-title">
+            <strong>Driver Advance Finance</strong>
+            <FormControl size="small" sx={{ minWidth: 180 }}>
+              <InputLabel>Month</InputLabel>
+              <Select
+                value={selectedMonth}
+                label="Month"
+                disabled={isMonthLocked && !onMonthChange}
+                onChange={(e) => {
+                  const nextMonth = e.target.value;
+                  setSelectedMonth(nextMonth);
+                  if (onMonthChange) onMonthChange(nextMonth);
                 }}
+                MenuProps={selectMenuPropsAboveOverlay}
               >
-                <Box sx={{ border: '1px solid #f6dfb0', background: '#fff7e8', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
-                  <Typography sx={{ fontSize: 11, color: '#7b5600', lineHeight: 1.2 }}>Pending</Typography>
-                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#9a6700', lineHeight: 1.1 }}>{pendingCount}</Typography>
-                </Box>
-                <Box sx={{ border: '1px solid #ddd0ff', background: '#f1ecff', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
-                  <Typography sx={{ fontSize: 11, color: '#4a2f8a', lineHeight: 1.2 }}>Approved, Not Paid</Typography>
-                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#5a3d9a', lineHeight: 1.1 }}>{approvedNotPaidCount}</Typography>
-                </Box>
-                <Box sx={{ border: '1px solid #c7ecd8', background: '#eaf8ef', borderRadius: 1.5, px: 1.2, py: 0.7 }}>
-                  <Typography sx={{ fontSize: 11, color: '#1d6b3b', lineHeight: 1.2 }}>Paid</Typography>
-                  <Typography sx={{ fontSize: 18, fontWeight: 700, color: '#1f7a44', lineHeight: 1.1 }}>{paidCount}</Typography>
-                </Box>
-              </Box>
-            </Box>
-            <Box sx={{ mt: 1.2 }}>
-              <FormControl size="small" sx={{ minWidth: 220 }}>
-                <InputLabel>Month</InputLabel>
-                <Select
-                  value={selectedMonth}
-                  label="Month"
-                  disabled={isMonthLocked && !onMonthChange}
-                  onChange={(e) => {
-                    const nextMonth = e.target.value;
-                    setSelectedMonth(nextMonth);
-                    if (onMonthChange) onMonthChange(nextMonth);
-                  }}
-                  MenuProps={selectMenuPropsAboveOverlay}
-                >
-                  {months.map((m) => (
-                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </CardContent>
-        </Card>
-      ) : null}
+                {months.map((m) => (
+                  <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
+        ) : null}
+        <div className="daf-kpi-row">
+          <div className="daf-kpi daf-kpi--pending">
+            <span>Pending</span>
+            <b>{pendingCount}</b>
+          </div>
+          <div className="daf-kpi daf-kpi--unpaid">
+            <span>Approved, not paid</span>
+            <b>{approvedNotPaidCount}</b>
+          </div>
+          <div className="daf-kpi daf-kpi--paid">
+            <span>Paid</span>
+            <b>{paidCount}</b>
+          </div>
+        </div>
+      </div>
 
       {isLoading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, minHeight: embedded ? 200 : 260 }}>
-          <CircularProgress />
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, minHeight: embedded ? 180 : 240 }}>
+          <CircularProgress size={28} />
         </Box>
       ) : (
-        <Card sx={{ boxShadow: 'none', border: '1px solid #d9e5ef', borderRadius: 2, overflow: 'hidden' }}>
-          <TableContainer sx={{ maxHeight: embedded ? '66vh' : 'unset' }}>
-            <Table size="small">
+        <Card className="daf-table-card" sx={{ boxShadow: 'none', border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+          <TableContainer sx={{ maxHeight: embedded ? '68vh' : 'unset' }}>
+            <Table size="small" stickyHeader={embedded}>
               <TableHead>
-                <TableRow sx={{ backgroundColor: '#f4f8fc' }}>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Request Date</TableCell>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Driver</TableCell>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Vehicle</TableCell>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Amount (LKR)</TableCell>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Finance Approval</TableCell>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Paid</TableCell>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Payment Proof</TableCell>
-                  <TableCell sx={{ fontWeight: 700, whiteSpace: 'nowrap' }}>Actions</TableCell>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Request Date</TableCell>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Driver</TableCell>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Vehicle</TableCell>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Amount (LKR)</TableCell>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Finance Approval</TableCell>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Paid</TableCell>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Payment Proof</TableCell>
+                  <TableCell sx={{ fontWeight: 750, whiteSpace: 'nowrap' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

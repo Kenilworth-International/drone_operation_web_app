@@ -904,6 +904,62 @@ export const mappingHierarchyApi = baseApi.injectEndpoints({
       invalidatesTags: ['Fields'],
     }),
 
+    getMappingFieldMapBoundaries: builder.query({
+      queryFn: async ({ scope, id }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/fields/map-boundaries',
+            method: 'POST',
+            body: { scope, id },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      providesTags: ['Fields'],
+    }),
+
+    setMappingFieldBoundary: builder.mutation({
+      queryFn: async ({ id, boundary_geojson, boundary_source_name }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/fields/set-boundary',
+            method: 'POST',
+            body: { id, boundary_geojson, boundary_source_name },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: (result, error, data) => [
+        { type: 'Fields', id: data?.id },
+        'Fields',
+        'MappingDashboard',
+      ],
+    }),
+
+    clearMappingFieldBoundary: builder.mutation({
+      queryFn: async (id) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/mapping-hierarchy/fields/clear-boundary',
+            method: 'POST',
+            body: { id },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: (result, error, id) => [
+        { type: 'Fields', id },
+        'Fields',
+        'MappingDashboard',
+      ],
+    }),
+
   }),
 });
 
@@ -962,11 +1018,15 @@ export const {
   useLazyGetMappingAllFieldsReportQuery,
   useGetMappingFieldsByDivisionQuery,
   useGetMappingFieldsByDivisionAllQuery,
+  useGetMappingFieldMapBoundariesQuery,
+  useLazyGetMappingFieldMapBoundariesQuery,
   useSearchMappingFieldsQuery,
   useCreateMappingFieldMutation,
   useUpdateMappingFieldMutation,
   useDeleteMappingFieldMutation,
   useToggleMappingFieldActivationMutation,
+  useSetMappingFieldBoundaryMutation,
+  useClearMappingFieldBoundaryMutation,
   // Mission Partial Reasons
   useGetMappingMissionPartialReasonsQuery,
   useGetMappingMissionPartialReasonQuery,

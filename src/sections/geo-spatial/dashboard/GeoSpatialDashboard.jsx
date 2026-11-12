@@ -28,6 +28,7 @@ import {
   FaExclamationTriangle,
   FaArrowRight,
   FaFileExcel,
+  FaDrawPolygon,
 } from 'react-icons/fa';
 import {
   useGetMappingDashboardStatsQuery,
@@ -425,6 +426,13 @@ const GeoSpatialDashboard = () => {
                   tone="amber"
                   detail={`${formatCount(stats.divisions?.missingCoordinates)} divisions need coordinates for weather prediction`}
                 />
+                <ProgressMeter
+                  label="Field GeoJSON boundary uploaded"
+                  value={stats.fields?.withBoundary}
+                  total={stats.fields?.total}
+                  tone="violet"
+                  detail={`${formatCount(stats.fields?.missingBoundary)} fields still need a boundary`}
+                />
               </div>
               <div className="geo-dash-mini-kpi-row">
                 <div className="geo-dash-mini-kpi">
@@ -446,6 +454,13 @@ const GeoSpatialDashboard = () => {
                   <div>
                     <span>Division coords</span>
                     <strong>{formatCount(stats.divisions?.withCoordinates)}</strong>
+                  </div>
+                </div>
+                <div className="geo-dash-mini-kpi">
+                  <FaDrawPolygon />
+                  <div>
+                    <span>Field GeoJSON</span>
+                    <strong>{formatCount(stats.fields?.withBoundary)}</strong>
                   </div>
                 </div>
               </div>

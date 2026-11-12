@@ -1,0 +1,134 @@
+/* Driver Advance Finance — dense queue UI */
+
+.daf-root {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.daf-summary-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.daf-summary-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.daf-summary-title strong {
+  font-size: 16px;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.daf-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.daf-kpi {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-left: 3px solid #cbd5e1;
+}
+
+.daf-kpi span {
+  font-size: 11px;
+  font-weight: 650;
+  color: #64748b;
+}
+
+.daf-kpi b {
+  font-size: 18px;
+  font-weight: 750;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.daf-kpi--pending {
+  border-left-color: #b45309;
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.daf-kpi--pending b { color: #b45309; }
+
+.daf-kpi--unpaid {
+  border-left-color: #6d28d9;
+  background: #f5f3ff;
+  border-color: #ddd6fe;
+}
+
+.daf-kpi--unpaid b { color: #6d28d9; }
+
+.daf-kpi--paid {
+  border-left-color: #15803d;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.daf-kpi--paid b { color: #15803d; }
+
+.daf-root--embedded .daf-summary-strip {
+  margin-bottom: 8px;
+}
+
+.daf-root--embedded .daf-kpi {
+  padding: 7px 9px;
+}
+
+.daf-root--embedded .daf-kpi b {
+  font-size: 16px;
+}
+
+.daf-table-card .MuiTableCell-head {
+  background: #f8fafc !important;
+  font-size: 11.5px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.daf-table-card .MuiTableCell-root {
+  padding-top: 7px !important;
+  padding-bottom: 7px !important;
+  font-size: 12.5px;
+}
+
+.daf-table-card .MuiTableRow-root:nth-of-type(even) {
+  background: #fbfdff;
+}
+
+.daf-table-card .MuiButton-root {
+  text-transform: none;
+  border-radius: 7px;
+  font-weight: 650;
+}
+
+.daf-table-card .MuiChip-root {
+  height: 22px;
+  font-weight: 650;
+}
+
+@media (max-width: 720px) {
+  .daf-kpi-row {
+    grid-template-columns: 1fr;
+  }
+}

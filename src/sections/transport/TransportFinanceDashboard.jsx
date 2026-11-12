@@ -9,7 +9,14 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { FaCarSide, FaClipboardList, FaMoneyBillWave, FaTools } from 'react-icons/fa';
+import {
+  FaArrowLeft,
+  FaArrowRight,
+  FaCarSide,
+  FaClipboardList,
+  FaMoneyBillWave,
+  FaTools,
+} from 'react-icons/fa';
 import {
   useGetAdvanceRequestsForFinanceQuery,
   useGetApprovedForFinanceQuery,
@@ -44,7 +51,7 @@ const MODULE_ICONS = {
   vehicleSummary: { Icon: FaCarSide, tone: 'slate' },
   monthlyRecords: { Icon: FaClipboardList, tone: 'amber' },
   driverAdvance: { Icon: FaMoneyBillWave, tone: 'teal' },
-  maintenanceFinance: { Icon: FaTools, tone: '' },
+  maintenanceFinance: { Icon: FaTools, tone: 'navy' },
 };
 
 function TransportFinanceDashboard() {
@@ -151,12 +158,13 @@ function TransportFinanceDashboard() {
   }, [advanceRows]);
 
   const loading = rentLoading || advanceLoading || maintenanceLoading;
+  const attentionCount = kpi.pendingFinanceTotal + kpi.approvedNotPaidTotal;
 
   const sectionCards = [
     {
       key: 'vehicleSummary',
       title: 'Vehicle Summary',
-      caption: 'Month-wise vehicle rent totals and deductions.',
+      caption: 'Month-wise rent totals and deductions.',
     },
     {
       key: 'monthlyRecords',
@@ -181,7 +189,7 @@ function TransportFinanceDashboard() {
     {
       key: 'maintenanceFinance',
       title: 'Maintenance',
-      caption: 'Finance approve → voucher → MD → settle.',
+      caption: 'Approve → voucher → MD → settle.',
       stats: [
         { label: 'Pending', value: kpi.maintenancePendingFinance, tone: 'pending' },
         { label: 'MD queue', value: kpi.maintenanceVoucherPending, tone: 'pending' },
@@ -236,7 +244,7 @@ function TransportFinanceDashboard() {
 
   const monthSelect = (
     <label className="transport-finance-month-filter">
-      Month
+      <span>Billing month</span>
       <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
         {monthOptions.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -256,7 +264,7 @@ function TransportFinanceDashboard() {
                 className="transport-finance-back-btn"
                 onClick={() => setActiveSection('')}
               >
-                ← Back
+                <FaArrowLeft aria-hidden /> Back
               </button>
               <div>
                 <strong>{activeCard?.title || 'Finance Section'}</strong>
@@ -279,13 +287,28 @@ function TransportFinanceDashboard() {
 
   return (
     <div className="transport-finance-shell">
-      <div className="transport-finance-head">
-        <div>
-          <h2>Transport Payments</h2>
-          <p>Rent, driver advance, and maintenance — approvals and settlements.</p>
+      <header className="transport-finance-hero">
+        <div className="transport-finance-hero-copy">
+          <p className="transport-finance-hero-kicker">Finance · Transport</p>
+          <h1>Transport Payments</h1>
+          <p className="transport-finance-hero-lead">
+            Approve and settle vehicle rent, driver advances, and maintenance in one queue.
+          </p>
         </div>
-        {monthSelect}
-      </div>
+        <div className="transport-finance-hero-aside">
+          {!loading ? (
+            <div className="transport-finance-hero-pulse" aria-live="polite">
+              <span className={`transport-finance-pulse-dot${attentionCount > 0 ? ' is-active' : ''}`} />
+              <span>
+                {attentionCount > 0
+                  ? `${attentionCount} need attention`
+                  : 'All clear'}
+              </span>
+            </div>
+          ) : null}
+          {monthSelect}
+        </div>
+      </header>
 
       {loading ? (
         <div className="transport-finance-loading">
@@ -294,135 +317,161 @@ function TransportFinanceDashboard() {
         </div>
       ) : (
         <>
-          <div className="transport-finance-kpi-grid">
-            <div className="transport-finance-kpi-card transport-finance-kpi-card--paid">
-              <span>Total paid</span>
-              <strong>LKR {toMoney(kpi.totalPaidAmount)}</strong>
-              <div className="transport-finance-kpi-chips">
-                <span className="transport-finance-kpi-chip">Rent {toMoney(kpi.rentPaidAmount)}</span>
-                <span className="transport-finance-kpi-chip">Advance {toMoney(kpi.advancePaidAmount)}</span>
-                <span className="transport-finance-kpi-chip">Maint {toMoney(kpi.maintenancePaidAmount)}</span>
+          <section className="transport-finance-kpi-panel" aria-label="Month summary">
+            <article className="transport-finance-kpi-card transport-finance-kpi-card--paid">
+              <div className="transport-finance-kpi-label">Total paid</div>
+              <div className="transport-finance-kpi-value">
+                <small>LKR</small>
+                {toMoney(kpi.totalPaidAmount)}
               </div>
-            </div>
-            <div className="transport-finance-kpi-card transport-finance-kpi-card--pending">
-              <span>Pending approvals</span>
-              <strong>{kpi.pendingFinanceTotal}</strong>
-              <div className="transport-finance-kpi-chips">
-                <span className="transport-finance-kpi-chip">Rent {kpi.rentPendingApproval}</span>
-                <span className="transport-finance-kpi-chip">Advance {kpi.advPendingApproval}</span>
-                <span className="transport-finance-kpi-chip">Maint {kpi.maintenancePendingFinance}</span>
-              </div>
-            </div>
-            <div className="transport-finance-kpi-card transport-finance-kpi-card--unpaid">
-              <span>Approved, not paid</span>
-              <strong>{kpi.approvedNotPaidTotal}</strong>
-              <div className="transport-finance-kpi-chips">
-                <span className="transport-finance-kpi-chip">Rent {kpi.rentApprovedNotPaid}</span>
-                <span className="transport-finance-kpi-chip">Advance {kpi.advApprovedNotPaid}</span>
-                <span className="transport-finance-kpi-chip">Maint {kpi.maintenanceApprovedNotPaid}</span>
-              </div>
-            </div>
-            <div className="transport-finance-kpi-card transport-finance-kpi-card--records">
-              <span>Paid records</span>
-              <strong>{kpi.paidRecordsTotal}</strong>
-              <div className="transport-finance-kpi-chips">
-                <span className="transport-finance-kpi-chip">Rent {kpi.rentPaidCount}</span>
-                <span className="transport-finance-kpi-chip">Advance {kpi.advPaidCount}</span>
-                <span className="transport-finance-kpi-chip">Maint {kpi.maintenancePaidCount}</span>
-              </div>
-            </div>
-          </div>
+              <dl className="transport-finance-kpi-breakdown">
+                <div><dt>Rent</dt><dd>{toMoney(kpi.rentPaidAmount)}</dd></div>
+                <div><dt>Advance</dt><dd>{toMoney(kpi.advancePaidAmount)}</dd></div>
+                <div><dt>Maint</dt><dd>{toMoney(kpi.maintenancePaidAmount)}</dd></div>
+              </dl>
+            </article>
 
-          <div>
-            <h3 className="transport-finance-section-label">Work queues</h3>
-            <p className="transport-finance-section-hint">Open a module to review and process payments.</p>
-          </div>
+            <article className="transport-finance-kpi-card transport-finance-kpi-card--pending">
+              <div className="transport-finance-kpi-label">Pending approvals</div>
+              <div className="transport-finance-kpi-value">{kpi.pendingFinanceTotal}</div>
+              <dl className="transport-finance-kpi-breakdown">
+                <div><dt>Rent</dt><dd>{kpi.rentPendingApproval}</dd></div>
+                <div><dt>Advance</dt><dd>{kpi.advPendingApproval}</dd></div>
+                <div><dt>Maint</dt><dd>{kpi.maintenancePendingFinance}</dd></div>
+              </dl>
+            </article>
 
-          <div className="transport-finance-module-grid">
-            {sectionCards.map((card) => {
-              const meta = MODULE_ICONS[card.key] || MODULE_ICONS.vehicleSummary;
-              const { Icon } = meta;
-              const iconClass = meta.tone
-                ? `transport-finance-module-icon transport-finance-module-icon--${meta.tone}`
-                : 'transport-finance-module-icon';
-              return (
-                <button
-                  key={card.key}
-                  type="button"
-                  className="transport-finance-module-card"
-                  onClick={() => setActiveSection(card.key)}
-                >
-                  <div className="transport-finance-module-top">
-                    <span className={iconClass} aria-hidden>
-                      <Icon />
+            <article className="transport-finance-kpi-card transport-finance-kpi-card--unpaid">
+              <div className="transport-finance-kpi-label">Approved, not paid</div>
+              <div className="transport-finance-kpi-value">{kpi.approvedNotPaidTotal}</div>
+              <dl className="transport-finance-kpi-breakdown">
+                <div><dt>Rent</dt><dd>{kpi.rentApprovedNotPaid}</dd></div>
+                <div><dt>Advance</dt><dd>{kpi.advApprovedNotPaid}</dd></div>
+                <div><dt>Maint</dt><dd>{kpi.maintenanceApprovedNotPaid}</dd></div>
+              </dl>
+            </article>
+
+            <article className="transport-finance-kpi-card transport-finance-kpi-card--records">
+              <div className="transport-finance-kpi-label">Paid records</div>
+              <div className="transport-finance-kpi-value">{kpi.paidRecordsTotal}</div>
+              <dl className="transport-finance-kpi-breakdown">
+                <div><dt>Rent</dt><dd>{kpi.rentPaidCount}</dd></div>
+                <div><dt>Advance</dt><dd>{kpi.advPaidCount}</dd></div>
+                <div><dt>Maint</dt><dd>{kpi.maintenancePaidCount}</dd></div>
+              </dl>
+            </article>
+          </section>
+
+          <section className="transport-finance-block">
+            <div className="transport-finance-block-head">
+              <h2>Work queues</h2>
+              <p>Select a queue to process</p>
+            </div>
+
+            <div className="transport-finance-module-grid" role="list">
+              {sectionCards.map((card) => {
+                const meta = MODULE_ICONS[card.key] || MODULE_ICONS.vehicleSummary;
+                const { Icon } = meta;
+                const waiting = (card.stats || [])
+                  .filter((s) => s.tone !== 'paid')
+                  .reduce((sum, s) => sum + Number(s.value || 0), 0);
+                return (
+                  <button
+                    key={card.key}
+                    type="button"
+                    className="transport-finance-module-card"
+                    role="listitem"
+                    onClick={() => setActiveSection(card.key)}
+                  >
+                    <div className="transport-finance-module-top">
+                      <span
+                        className={`transport-finance-module-icon transport-finance-module-icon--${meta.tone || 'navy'}`}
+                        aria-hidden
+                      >
+                        <Icon />
+                      </span>
+                      <div className="transport-finance-module-copy">
+                        <strong>{card.title}</strong>
+                        <span>{card.caption}</span>
+                      </div>
+                      {waiting > 0 ? (
+                        <span className="transport-finance-module-badge" title="Needs attention">
+                          {waiting}
+                        </span>
+                      ) : null}
+                    </div>
+                    {card.stats ? (
+                      <div className="transport-finance-module-stats">
+                        {card.stats.map((stat) => (
+                          <div
+                            key={`${card.key}-${stat.label}`}
+                            className={`transport-finance-module-stat ${stat.tone}`}
+                          >
+                            <span>{stat.label}</span>
+                            <b>{stat.value}</b>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="transport-finance-module-note">Month totals &amp; deductions</div>
+                    )}
+                    <span className="transport-finance-module-go">
+                      Open <FaArrowRight aria-hidden />
                     </span>
-                    <div className="transport-finance-module-copy">
-                      <strong>{card.title}</strong>
-                      <span>{card.caption}</span>
-                    </div>
-                  </div>
-                  {card.stats ? (
-                    <div className="transport-finance-module-stats">
-                      {card.stats.map((stat) => (
-                        <div key={`${card.key}-${stat.label}`} className={`transport-finance-module-stat ${stat.tone}`}>
-                          <span>{stat.label}</span>
-                          <b>{stat.value}</b>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                  <span className="transport-finance-module-go">Open →</span>
-                </button>
-              );
-            })}
-          </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-          <div>
-            <h3 className="transport-finance-section-label">Paid this month</h3>
-            <p className="transport-finance-section-hint">{selectedMonthLabel}</p>
-          </div>
-
-          <div className="transport-finance-chart-grid">
-            <div className="transport-finance-chart-card">
-              <div className="transport-finance-chart-head">
-                <h4>Paid rent by vehicle</h4>
-                <span>Top 8</span>
-              </div>
-              {rentByVehicleChart.length ? (
-                <ResponsiveContainer width="100%" height={210}>
-                  <BarChart data={rentByVehicleChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5eef5" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7f90' }} interval={0} angle={-20} textAnchor="end" height={48} />
-                    <YAxis tick={{ fontSize: 10, fill: '#6b7f90' }} width={44} />
-                    <Tooltip formatter={(value) => [`LKR ${toMoney(value)}`, 'Paid']} />
-                    <Bar dataKey="amount" name="Paid" fill="#004B71" radius={[6, 6, 0, 0]} maxBarSize={42} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="transport-finance-chart-empty">No paid rent for this month.</div>
-              )}
+          <section className="transport-finance-block">
+            <div className="transport-finance-block-head">
+              <h2>Paid this month</h2>
+              <p>{selectedMonthLabel}</p>
             </div>
 
-            <div className="transport-finance-chart-card">
-              <div className="transport-finance-chart-head">
-                <h4>Paid advance by driver</h4>
-                <span>Top 8</span>
+            <div className="transport-finance-chart-grid">
+              <div className="transport-finance-chart-card">
+                <div className="transport-finance-chart-head">
+                  <h3>Paid rent by vehicle</h3>
+                  <span>Top 8</span>
+                </div>
+                {rentByVehicleChart.length ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={rentByVehicleChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e8eef3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-18} textAnchor="end" height={44} />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748b' }} width={40} />
+                      <Tooltip formatter={(value) => [`LKR ${toMoney(value)}`, 'Paid']} />
+                      <Bar dataKey="amount" name="Paid" fill="#0c4a6e" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="transport-finance-chart-empty">No paid rent for this month.</div>
+                )}
               </div>
-              {advanceByDriverChart.length ? (
-                <ResponsiveContainer width="100%" height={210}>
-                  <BarChart data={advanceByDriverChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5eef5" vertical={false} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7f90' }} interval={0} angle={-20} textAnchor="end" height={48} />
-                    <YAxis tick={{ fontSize: 10, fill: '#6b7f90' }} width={44} />
-                    <Tooltip formatter={(value) => [`LKR ${toMoney(value)}`, 'Paid']} />
-                    <Bar dataKey="amount" name="Paid" fill="#0f766e" radius={[6, 6, 0, 0]} maxBarSize={42} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="transport-finance-chart-empty">No paid advance for this month.</div>
-              )}
+
+              <div className="transport-finance-chart-card">
+                <div className="transport-finance-chart-head">
+                  <h3>Paid advance by driver</h3>
+                  <span>Top 8</span>
+                </div>
+                {advanceByDriverChart.length ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <BarChart data={advanceByDriverChart} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e8eef3" vertical={false} />
+                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#64748b' }} interval={0} angle={-18} textAnchor="end" height={44} />
+                      <YAxis tick={{ fontSize: 10, fill: '#64748b' }} width={40} />
+                      <Tooltip formatter={(value) => [`LKR ${toMoney(value)}`, 'Paid']} />
+                      <Bar dataKey="amount" name="Paid" fill="#0f766e" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="transport-finance-chart-empty">No paid advance for this month.</div>
+                )}
+              </div>
             </div>
-          </div>
+          </section>
         </>
       )}
     </div>

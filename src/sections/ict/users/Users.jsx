@@ -189,6 +189,8 @@ export default function UsersDirectory({
   const [userSearchTerm, setUserSearchTerm] = useState("");
   const [userTypeFilter, setUserTypeFilter] = useState("");
   const [userRoleFilter, setUserRoleFilter] = useState("");
+  const [userPlantationFilter, setUserPlantationFilter] = useState("");
+  const [userEstateFilter, setUserEstateFilter] = useState("");
   const [showEditPopup, setShowEditPopup] = useState(false);
   const [editMessage, setEditMessage] = useState({ type: "", text: "" });
   const [showUpdatePopup, setShowUpdatePopup] = useState(false);
@@ -286,6 +288,8 @@ export default function UsersDirectory({
 
   const filteredUsers = useMemo(() => {
     const q = userSearchTerm.trim().toLowerCase();
+    const plantationFilter = String(userPlantationFilter || "").trim();
+    const estateFilter = String(userEstateFilter || "").trim();
     return allUsers.filter((u) => {
       const matchesSearch =
         !q ||
@@ -308,9 +312,27 @@ export default function UsersDirectory({
         !userTypeFilter || String(u?.member_type || "") === userTypeFilter;
       const matchesRole =
         !userRoleFilter || String(u?.job_role || "") === userRoleFilter;
-      return matchesSearch && matchesType && matchesRole;
+      const userPlantationId = String(u?.plantation || "").trim();
+      const matchesPlantation =
+        !plantationFilter || userPlantationId === plantationFilter;
+      const userEstateId = String(u?.estate || "").trim();
+      const matchesEstate = !estateFilter || userEstateId === estateFilter;
+      return (
+        matchesSearch &&
+        matchesType &&
+        matchesRole &&
+        matchesPlantation &&
+        matchesEstate
+      );
     });
-  }, [allUsers, userSearchTerm, userTypeFilter, userRoleFilter]);
+  }, [
+    allUsers,
+    userSearchTerm,
+    userTypeFilter,
+    userRoleFilter,
+    userPlantationFilter,
+    userEstateFilter,
+  ]);
 
   const memberTypeLabelMap = useMemo(() => {
     const map = {};
@@ -401,7 +423,7 @@ export default function UsersDirectory({
     return label;
   };
 
-  const formatUserWorkLocation = (user) => {
+  const formatUserEstate = (user) => {
     const raw =
       estateLabelMap[String(user?.estate || "").trim()] ||
       user?.estate_name ||
@@ -412,6 +434,15 @@ export default function UsersDirectory({
     if (!label || label === "0") return "—";
     return label;
   };
+
+  const estateFilterOptions = useMemo(() => {
+    const plantationId = String(userPlantationFilter || "").trim();
+    const list = Array.isArray(estates) ? estates : [];
+    if (!plantationId) return list;
+    return list.filter(
+      (e) => String(e?.plantation || "").trim() === plantationId,
+    );
+  }, [estates, userPlantationFilter]);
 
   const wingLabelMap = useMemo(() => {
     const map = {};
@@ -1104,7 +1135,7 @@ export default function UsersDirectory({
       Mobile: user.mobile_no || "",
       Email: user.email || "",
       Plantation: formatUserPlantation(user),
-      "Work location": formatUserWorkLocation(user),
+      Estate: formatUserEstate(user),
       Wing:
         wingLabelMap[String(user.sect_command || user.wing || "")] ||
         user.wing_name ||
@@ -1129,9 +1160,9 @@ export default function UsersDirectory({
     .toLowerCase();
   const showInternalColumns =
     normalizedTypeFilter === "i" || normalizedTypeFilter === "internal";
-  // Plantation + Work location (estate) always shown; NIC / Type removed.
+  // Plantation (with estate under it) always shown; NIC / Type removed.
   const usersTableColSpan =
-    (isMgmtList ? 10 : 11) + (showInternalColumns ? 1 : 0);
+    (isMgmtList ? 9 : 10) + (showInternalColumns ? 1 : 0);
   const profileUser = allUsers.find(
     (u) => String(u.id) === String(mgmtProfileUserId || selectedUserId || ""),
   );
@@ -1922,6 +1953,41 @@ export default function UsersDirectory({
                   ))}
                 </select>
               </div>
+              <div className="users-filter-group">
+                <label htmlFor="users-plantation-filter">Plantation</label>
+                <select
+                  id="users-plantation-filter"
+                  value={userPlantationFilter}
+                  onChange={(e) => {
+                    setUserPlantationFilter(e.target.value);
+                    setUserEstateFilter("");
+                  }}
+                  aria-label="Filter users by plantation"
+                >
+                  <option value="">All plantations</option>
+                  {plantations.map((plantation) => (
+                    <option key={plantation.id} value={String(plantation.id)}>
+                      {plantation.plantation || plantation.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="users-filter-group">
+                <label htmlFor="users-estate-filter">Estate</label>
+                <select
+                  id="users-estate-filter"
+                  value={userEstateFilter}
+                  onChange={(e) => setUserEstateFilter(e.target.value)}
+                  aria-label="Filter users by estate"
+                >
+                  <option value="">All estates</option>
+                  {estateFilterOptions.map((estate) => (
+                    <option key={estate.id} value={String(estate.id)}>
+                      {estate.estate || estate.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <button
                 type="button"
                 className="btn-search users-download-excel-btn"
@@ -1943,8 +2009,7 @@ export default function UsersDirectory({
                     <th>Name</th>
                     <th>Mobile</th>
                     {showInternalColumns && <th>Wing</th>}
-                    <th>Plantation</th>
-                    <th>Work location</th>
+                    <th>Plantation / Estate</th>
                     <th>Role</th>
                     <th>Part Time Driver</th>
                     <th>Status</th>
@@ -2013,8 +2078,16 @@ export default function UsersDirectory({
                               "-"}
                           </td>
                         )}
-                        <td>{formatUserPlantation(user)}</td>
-                        <td>{formatUserWorkLocation(user)}</td>
+                        <td>
+                          <div className="users-plantation-cell">
+                            <span className="users-plantation-name">
+                              {formatUserPlantation(user)}
+                            </span>
+                            <span className="users-estate-name">
+                              {formatUserEstate(user)}
+                            </span>
+                          </div>
+                        </td>
                         <td>
                           {jobRoleLabelMap[
                             String(user.job_role || "").trim()
