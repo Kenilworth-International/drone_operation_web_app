@@ -23,7 +23,7 @@ import {
   useSaveVehicleAppVehicleMutation,
 } from '../../api/services NodeJs/vehicleAppApi';
 import { useGetDriverFuelCardsQuery } from '../../api/services NodeJs/jdManagementApi';
-import { getNodeBackendUrl } from '../../api/services NodeJs/nodeBackendConfig';
+import { getNodeBackendUrl, getToken } from '../../api/services NodeJs/nodeBackendConfig';
 import { getFilenameResourceUrlCandidates } from '../../utils/resourceUrls';
 import {
   useGetAdvanceRequestsForHrQuery,
@@ -34,9 +34,7 @@ import {
 } from '../../api/services NodeJs/vehicleRentApi';
 import DriverAdvanceApprovals from '../hr&admin/driverAdvanceApprovals/DriverAdvanceApprovals';
 import FuelApprovals from '../hr&admin/fuelApprovals/FuelApprovals';
-import GeneratorFuelReport from '../hr&admin/fuelApprovals/GeneratorFuelReport';
 import { useGetPendingFuelApprovalsQuery } from '../../api/services NodeJs/fuelApprovalsApi';
-import { useGetPendingGeneratorFuelApprovalsQuery } from '../../api/services NodeJs/generatorFuelApprovalsApi';
 import DriverLeaveDatesHr from '../hr&admin/driverLeaveDates/DriverLeaveDatesHr';
 import VehicleRentApprovals from '../hr&admin/vehicleRentApprovals/VehicleRentApprovals';
 import VehicleManagement from '../administration/VehicleManagement';
@@ -51,6 +49,30 @@ import PoolVehicleTasksPanel from './PoolVehicleTasksPanel';
 import FuelPricesModal from './FuelPricesModal';
 import { formatDriverArrivalTimeForInput, formatApiDateYmd, formatTransportTimeDisplay, getColomboYmd } from '../../utils/transportAssignment';
 import '../../styles/transportHrDashboard.css';
+
+/** Public upload hosts to try when mobile wrote to one API and HR reads another. */
+const MAINTENANCE_UPLOAD_HOSTS = [
+  '',
+  'https://dsms-web-api-dev.kenilworthinternational.com',
+  'https://dsms-web-api.kenilworthinternational.com',
+];
+const MAINTENANCE_UPLOAD_FOLDERS = ['/uploads/maintenance_requests', '/uploads/vehicle_day'];
+
+function expandMaintenanceFilenameCandidates(fileName) {
+  const safe = String(fileName || '')
+    .trim()
+    .split(/[/\\]/)
+    .pop();
+  if (!safe || !/\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(safe)) return [];
+  const out = [];
+  for (const host of MAINTENANCE_UPLOAD_HOSTS) {
+    for (const folder of MAINTENANCE_UPLOAD_FOLDERS) {
+      out.push(`${host}${folder}/${safe}`);
+    }
+  }
+  out.push(...getFilenameResourceUrlCandidates(safe));
+  return [...new Set(out.filter(Boolean))];
+}
 
 function getTodayInfo() {
   const today = getColomboYmd();
@@ -101,8 +123,9 @@ function resolveMaintenanceImageCandidates(row, type) {
     try {
       const parsed = new URL(text);
       const fileName = (parsed.pathname.split('/').pop() || '').trim();
-      if (fileName && /\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(fileName)) {
-        candidates.push(...getFilenameResourceUrlCandidates(fileName));
+      candidates.push(...expandMaintenanceFilenameCandidates(fileName));
+      if (parsed.pathname.includes('/uploads/maintenance_requests/')) {
+        candidates.push(text.replace('/uploads/maintenance_requests/', '/uploads/vehicle_day/'));
       }
     } catch (_) {}
     return [...new Set(candidates)];
@@ -112,14 +135,19 @@ function resolveMaintenanceImageCandidates(row, type) {
   if (normalizedPath.startsWith('/uploads/') || normalizedPath.startsWith('/documents/')) {
     candidates.push(`${apiBase}${normalizedPath}`);
     candidates.push(normalizedPath);
+    const fileName = normalizedPath.split('/').pop();
+    candidates.push(...expandMaintenanceFilenameCandidates(fileName));
     return [...new Set(candidates)];
   }
 
-  const fileName = text.split('/').pop();
-  if (fileName && /\.(jpg|jpeg|png|webp|gif|pdf)$/i.test(fileName)) {
-    candidates.push(...getFilenameResourceUrlCandidates(fileName));
-  }
+  candidates.push(...expandMaintenanceFilenameCandidates(text.split('/').pop()));
   return [...new Set(candidates)];
+}
+
+function maintenanceMediaKind(type) {
+  if (type === 'bill') return 'bill';
+  if (type === 'receipt' || type === 'payment') return 'payment';
+  return 'damage';
 }
 
 const MODULE_META = [
@@ -128,7 +156,6 @@ const MODULE_META = [
   { key: 'advanceApprovals', title: 'Driver Advance Approvals', icon: FaMoneyBillWave },
   { key: 'maintenanceApprovals', title: 'Maintenance Approvals', icon: FaTools },
   { key: 'fuelApprovals', title: 'Fuel Approvals', icon: FaGasPump },
-  { key: 'generatorFuelReport', title: 'Fuel Report', icon: FaGasPump },
   { key: 'leaveDates', title: 'Driver Leave Dates', icon: FaCalendarAlt },
   { key: 'vehicleAdminVehicles', title: 'Vehicle Admin - Vehicles', icon: FaTools },
   { key: 'vehicleAdminMaintenance', title: 'Vehicle Admin - Maintenance', icon: FaTools },
@@ -139,7 +166,6 @@ const SUMMARY_DETAIL_KEYS = new Set([
   'advanceApprovals',
   'maintenanceApprovals',
   'fuelApprovals',
-  'generatorFuelReport',
   'leaveDates',
 ]);
 
@@ -212,6 +238,8 @@ function TransportHrDashboard() {
     urls: [],
     index: 0,
     failed: false,
+    objectUrl: null,
+    loading: false,
   });
   const [vehicleCardModal, setVehicleCardModal] = useState({ open: false, row: null, cardId: '' });
   const [vehicleDriverModal, setVehicleDriverModal] = useState({ open: false, row: null, driverId: '' });
@@ -303,10 +331,6 @@ function TransportHrDashboard() {
     () => (fuelPendingRows || []).reduce((s, r) => s + (Number(r.amount) || 0), 0),
     [fuelPendingRows]
   );
-  const {
-    data: generatorFuelPendingRows = [],
-    isLoading: loadingGeneratorFuel,
-  } = useGetPendingGeneratorFuelApprovalsQuery();
   const effectiveChartMonth = chartMonth || monthKey;
   const chartOwnershipApi =
     chartOwnershipFilter === 'own' ? 'o' : chartOwnershipFilter === 'rented' ? 'r' : undefined;
@@ -346,8 +370,14 @@ function TransportHrDashboard() {
   const isPrimaryLoading = loadingVehicles || loadingMaintenance || loadingLeaves || loadingRent || loadingAdvance;
   const hrTransportEstimates = hrTransportEstimatePayload?.data || [];
   const transportOptions = transportOptionsData?.data || null;
-  const transportDrivers = transportOptions?.drivers || [];
-  const transportEstates = transportOptions?.estates || [];
+  const transportDrivers = useMemo(
+    () => transportOptions?.drivers || [],
+    [transportOptions]
+  );
+  const transportEstates = useMemo(
+    () => transportOptions?.estates || [],
+    [transportOptions]
+  );
   const hasTransportEstates = transportEstates.length > 0;
   const transportArrangementRows = transportArrangementListData?.data || [];
   const transportSelectedDateRows = transportArrangementRows.filter(
@@ -537,8 +567,11 @@ function TransportHrDashboard() {
     [leaveRows]
   );
 
-  const leaveHistoryPayload = leaveByMonthResult.data || { months: [] };
-  const leaveHistoryMonths = leaveHistoryPayload.months || [];
+  const leaveHistoryPayload = leaveByMonthResult.data;
+  const leaveHistoryMonths = useMemo(
+    () => leaveHistoryPayload?.months || [],
+    [leaveHistoryPayload]
+  );
   const loadingLeaveByMonth = leaveByMonthResult.isFetching;
   const leaveHistoryError = leaveByMonthResult.isError;
 
@@ -628,13 +661,6 @@ function TransportHrDashboard() {
         .sort((a, b) => String(b?.date || '').localeCompare(String(a?.date || '')))[0] || null,
     [maintenanceRequests]
   );
-  const maintenancePreviewRows = useMemo(
-    () =>
-      [...(maintenanceRequests || [])]
-        .filter((row) => String(row?.hr_approval || row?.approval || 'p') === 'p')
-        .slice(0, 5),
-    [maintenanceRequests]
-  );
   const maintenanceVehicleOptions = useMemo(
     () => [...new Set((maintenanceRequests || []).map((r) => String(r?.vehicle_no || r?.vehicle || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
     [maintenanceRequests]
@@ -705,32 +731,83 @@ function TransportHrDashboard() {
       }));
     }
   };
-  const openImagePreview = (urlOrUrls, title) => {
+  const openImagePreview = (urlOrUrls, title, extra = {}) => {
     const baseUrls = Array.isArray(urlOrUrls) ? urlOrUrls : [urlOrUrls];
     const primary = String(baseUrls[0] || '').trim();
-    if (!primary) return;
     const urls = baseUrls.filter(Boolean).map((item) => String(item).trim());
-    try {
-      const parsed = new URL(primary, window.location.origin);
-      // Try same path on current host too (helps when API base URL points elsewhere).
-      urls.push(`${window.location.origin}${parsed.pathname}`);
-      if (parsed.pathname.includes('/uploads/maintenance_requests/')) {
-        urls.push(`${window.location.origin}${parsed.pathname.replace('/uploads/maintenance_requests/', '/uploads/vehicle_day/')}`);
+    if (primary) {
+      try {
+        const parsed = new URL(primary, window.location.origin);
+        urls.push(`${window.location.origin}${parsed.pathname}`);
+        if (parsed.pathname.includes('/uploads/maintenance_requests/')) {
+          urls.push(
+            `${window.location.origin}${parsed.pathname.replace(
+              '/uploads/maintenance_requests/',
+              '/uploads/vehicle_day/'
+            )}`
+          );
+        }
+      } catch (_) {}
+      if (primary.includes('/uploads/maintenance_requests/')) {
+        urls.push(primary.replace('/uploads/maintenance_requests/', '/uploads/vehicle_day/'));
       }
-    } catch (_) {}
-    if (primary.includes('/uploads/maintenance_requests/')) {
-      urls.push(primary.replace('/uploads/maintenance_requests/', '/uploads/vehicle_day/'));
     }
+    if (extra?.objectUrl) {
+      urls.unshift(extra.objectUrl);
+    }
+    const uniqueUrls = [...new Set(urls.filter(Boolean))];
+    if (!uniqueUrls.length && !extra?.loading) return;
     setImagePreview({
       open: true,
       title: title || 'Image Preview',
-      urls: [...new Set(urls)],
+      urls: uniqueUrls,
       index: 0,
       failed: false,
+      objectUrl: extra?.objectUrl || null,
+      loading: Boolean(extra?.loading),
     });
   };
+
+  const openMaintenanceImagePreview = async (row, type, title) => {
+    const fallbackUrls = resolveMaintenanceImageCandidates(row, type);
+    const requestId = Number(row?.id);
+    const kind = maintenanceMediaKind(type);
+    if (!Number.isFinite(requestId) || requestId <= 0) {
+      openImagePreview(fallbackUrls, title);
+      return;
+    }
+
+    openImagePreview(fallbackUrls, title, { loading: true });
+    const apiBase = String(getNodeBackendUrl() || '').replace(/\/+$/, '');
+    const mediaUrl = `${apiBase}/api/vehicle-app/admin/maintenance-requests/${requestId}/media/${kind}`;
+    try {
+      const token = getToken();
+      const res = await fetch(mediaUrl, {
+        method: 'GET',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        cache: 'no-store',
+      });
+      if (!res.ok) throw new Error(`media ${res.status}`);
+      const contentType = String(res.headers.get('content-type') || '');
+      if (contentType.includes('application/json')) throw new Error('media json');
+      const blob = await res.blob();
+      if (!blob || blob.size < 32) throw new Error('empty media');
+      const objectUrl = URL.createObjectURL(blob);
+      openImagePreview(fallbackUrls, title, { objectUrl, loading: false });
+    } catch (_) {
+      openImagePreview(fallbackUrls, title, { loading: false });
+    }
+  };
+
   const closeImagePreview = () => {
-    setImagePreview({ open: false, title: '', urls: [], index: 0, failed: false });
+    setImagePreview((prev) => {
+      if (prev.objectUrl) {
+        try {
+          URL.revokeObjectURL(prev.objectUrl);
+        } catch (_) {}
+      }
+      return { open: false, title: '', urls: [], index: 0, failed: false, objectUrl: null, loading: false };
+    });
   };
   const renderImagePreviewModal = () => (
     imagePreview.open ? (
@@ -750,13 +827,14 @@ function TransportHrDashboard() {
             <button type="button" className="action-btn-secondary-transport-hr" onClick={closeImagePreview}>Close</button>
           </div>
           <div className="quick-add-modal-body-transport-hr" style={{ textAlign: 'center' }}>
-            {(() => {
+            {imagePreview.loading && !imagePreview.urls[imagePreview.index] ? (
+              <p style={{ color: '#6b7280' }}>Loading image…</p>
+            ) : (() => {
               const currentUrl = imagePreview.urls[imagePreview.index] || '';
               if (!currentUrl) {
                 return <p style={{ color: '#6b7280' }}>Image URL not available.</p>;
               }
-              const isPdf = /\.pdf($|\?)/i.test(currentUrl);
-              if (isPdf) {
+              if (/\.pdf($|\?)/i.test(currentUrl)) {
                 return (
                   <iframe
                     src={currentUrl}
@@ -767,22 +845,25 @@ function TransportHrDashboard() {
               }
               return (
                 <img
+                  key={`${imagePreview.index}-${currentUrl}`}
                   src={currentUrl}
                   alt="preview"
                   style={{ maxWidth: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 8 }}
                   onError={() => {
                     if (imagePreview.index + 1 < imagePreview.urls.length) {
-                      setImagePreview((prev) => ({ ...prev, index: prev.index + 1, failed: false }));
+                      setImagePreview((prev) => ({ ...prev, index: prev.index + 1, failed: false, loading: false }));
                     } else {
-                      setImagePreview((prev) => ({ ...prev, failed: true }));
+                      setImagePreview((prev) => ({ ...prev, failed: true, loading: false }));
                     }
                   }}
+                  onLoad={() => setImagePreview((prev) => ({ ...prev, failed: false, loading: false }))}
                 />
               );
             })()}
             {imagePreview.failed ? (
               <p style={{ marginTop: 10, color: '#b91c1c', fontWeight: 600 }}>
-                Image not found.
+                Image not found. If it was uploaded from the transport app, confirm the same API
+                environment (dev/prod) is used and the file exists under uploads/maintenance_requests.
               </p>
             ) : null}
           </div>
@@ -1205,7 +1286,6 @@ function TransportHrDashboard() {
     if (detailModule === 'rentApprovals') return <VehicleRentApprovals embedded />;
     if (detailModule === 'advanceApprovals') return <DriverAdvanceApprovals embedded />;
     if (detailModule === 'fuelApprovals') return <FuelApprovals embedded />;
-    if (detailModule === 'generatorFuelReport') return <GeneratorFuelReport embedded />;
     if (detailModule === 'leaveDates') return <DriverLeaveDatesHr embedded />;
     if (detailModule === 'vehicleAdminVehicles') {
       return (
@@ -1367,7 +1447,9 @@ function TransportHrDashboard() {
                       <button
                         type="button"
                         className="image-view-btn-maintenance-approv"
-                        onClick={() => openImagePreview(damageUrls, `Incident Image - Request #${row.id}`)}
+                        onClick={() =>
+                          openMaintenanceImagePreview(row, 'damage', `Incident Image - Request #${row.id}`)
+                        }
                       >
                         View
                       </button>
@@ -1380,7 +1462,9 @@ function TransportHrDashboard() {
                       <button
                         type="button"
                         className="image-view-btn-maintenance-approv"
-                        onClick={() => openImagePreview(billUrls, `Bill Image - Request #${row.id}`)}
+                        onClick={() =>
+                          openMaintenanceImagePreview(row, 'bill', `Bill Image - Request #${row.id}`)
+                        }
                       >
                         View
                       </button>
@@ -1403,7 +1487,9 @@ function TransportHrDashboard() {
                         <button
                           type="button"
                           className="image-view-btn-maintenance-approv"
-                          onClick={() => openImagePreview(receiptUrls, `Paid Receipt - Request #${row.id}`)}
+                          onClick={() =>
+                            openMaintenanceImagePreview(row, 'receipt', `Paid Receipt - Request #${row.id}`)
+                          }
                         >
                           View
                         </button>
@@ -1783,33 +1869,6 @@ function TransportHrDashboard() {
           className="summary-card-transport-hr summary-card-clickable-transport-hr"
           role="button"
           tabIndex={0}
-          onClick={() => setDetailModule('generatorFuelReport')}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              setDetailModule('generatorFuelReport');
-            }
-          }}
-        >
-          <div className="summary-head-transport-hr">
-            <FaGasPump color="#0f766e" />
-            <strong>Fuel Report</strong>
-          </div>
-          <div className="metric-chip-row-transport-hr">
-            <span className="metric-chip-transport-hr">
-              Gen pending: {loadingGeneratorFuel ? '-' : generatorFuelPendingRows.length}
-            </span>
-            <span className="metric-chip-transport-hr">
-              Veh pending: {loadingFuel ? '-' : fuelPendingRows.length}
-            </span>
-            <span className="metric-chip-transport-hr">Month · Excel</span>
-          </div>
-        </div>
-
-        <div
-          className="summary-card-transport-hr summary-card-clickable-transport-hr"
-          role="button"
-          tabIndex={0}
           onClick={() => setDetailModule('rentApprovals')}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -2141,7 +2200,7 @@ function TransportHrDashboard() {
             </div>
             <p className="quick-add-modal-hint-transport-hr">
               Last 24 months of active leave records, grouped by calendar month (newest first).
-              {leaveHistoryPayload.totalRows != null && !loadingLeaveByMonth
+              {leaveHistoryPayload?.totalRows != null && !loadingLeaveByMonth
                 ? ` ${leaveHistoryPayload.totalRows} total record(s) loaded.`
                 : ''}
             </p>

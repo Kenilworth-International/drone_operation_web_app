@@ -1,9 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useGetAppFeaturesQuery, useUpdateAppFeatureMutation } from '../../../api/services NodeJs/appFeaturesApi';
 import '../../../styles/ictDevelopment.css';
 import '../appVersions/appVersionManagement.css';
 import './appFeatureManagement.css';
+
+const EDITABLE_FEATURE_KEYS = new Set([
+  'monthly_plan_request',
+  'manager_approval',
+  'adhoc_plan_request',
+]);
 
 const WEEKDAYS = [
   { value: 0, short: 'Sun' },
@@ -23,6 +29,12 @@ const HOLIDAY_TYPES = [
 
 const DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => i + 1);
 const DAYS_AHEAD_OPTIONS = Array.from({ length: 31 }, (_, i) => i);
+
+const FEATURE_META = {
+  monthly_plan_request: { tone: 'calendar', mark: 'M' },
+  manager_approval: { tone: 'manager', mark: 'A' },
+  adhoc_plan_request: { tone: 'adhoc', mark: '+' },
+};
 
 const ordinal = (n) => {
   const s = ['th', 'st', 'nd', 'rd'];
@@ -48,6 +60,14 @@ const daysAheadText = (n) => {
   if (v === 1) return 'today & tomorrow';
   return `today + ${v} days`;
 };
+
+function minDaysAheadText(n) {
+  const v = Number(n) || 0;
+  if (v <= 0) return 'from today';
+  if (v === 1) return 'from tomorrow (today blocked)';
+  if (v === 2) return 'from day after tomorrow (today & tomorrow blocked)';
+  return `from today + ${v} days (earlier dates blocked)`;
+}
 
 function summarizeMonthlyRules(config = {}) {
   const parts = [];
@@ -77,17 +97,25 @@ function summarizeManagerRules(config = {}) {
   if (!config.reschedule_enabled) {
     parts.push('Reschedule off');
   } else {
+    const min = Number(config.reschedule_min_days_ahead) || 0;
     const max = Number(config.reschedule_max_days_ahead) || 0;
     parts.push(
-      `Reschedule${config.reschedule_block_past ? ' (no past dates)' : ''}${max > 0 ? ` within ${max} days` : ''}`
+      `Reschedule ${minDaysAheadText(min)}${config.reschedule_block_past ? '; no past dates' : ''}${
+        max > 0 ? `; within ${max} days` : ''
+      }`
     );
   }
   return parts;
 }
 
+function summarizeAdhocRules(config = {}) {
+  return [`Earliest date ${minDaysAheadText(config.min_days_ahead)}`];
+}
+
 function summarizeRules(feature) {
   if (feature.feature_key === 'monthly_plan_request') return summarizeMonthlyRules(feature.config);
   if (feature.feature_key === 'manager_approval') return summarizeManagerRules(feature.config);
+  if (feature.feature_key === 'adhoc_plan_request') return summarizeAdhocRules(feature.config);
   return [];
 }
 
@@ -110,36 +138,53 @@ export default function AppFeatureManagement() {
   const routerLocation = useLocation();
   const navigate = useNavigate();
   const devBgUrl = `${process.env.PUBLIC_URL || ''}/assets/images/bg.jpg`;
-  const { data: features = [], isLoading, isError, error, refetch } = useGetAppFeaturesQuery();
+  const { data: features = [], isLoading, isError, error, refetch, isFetching } = useGetAppFeaturesQuery();
   const [updateAppFeature, { isLoading: saving }] = useUpdateAppFeatureMutation();
 
+  const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(null);
   const [formError, setFormError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  useEffect(() => {
+    const root = document.querySelector('.content-dashboard');
+    root?.classList.add('content-dashboard--app-features');
+    return () => root?.classList.remove('content-dashboard--app-features');
+  }, []);
+
   const groupedByApp = useMemo(() => {
+    const q = query.trim().toLowerCase();
     const map = new Map();
     features.forEach((f) => {
+      if (statusFilter === 'on' && !f.is_enabled) return;
+      if (statusFilter === 'off' && f.is_enabled) return;
+      if (q) {
+        const hay = `${f.feature_name || ''} ${f.feature_key || ''} ${f.description || ''} ${f.app_name || ''} ${f.app_id || ''}`.toLowerCase();
+        if (!hay.includes(q)) return;
+      }
       if (!map.has(f.app_id)) map.set(f.app_id, { appId: f.app_id, appName: f.app_name, items: [] });
       map.get(f.app_id).items.push(f);
     });
     return [...map.values()];
-  }, [features]);
+  }, [features, query, statusFilter]);
 
-  const enabledCount = useMemo(
-    () => features.filter((f) => f.is_enabled).length,
-    [features]
-  );
+  const enabledCount = useMemo(() => features.filter((f) => f.is_enabled).length, [features]);
+  const offCount = features.length - enabledCount;
 
   const openEdit = (feature) => {
+    const config = feature.config || {};
     setEditing(feature);
     setFormError('');
     setForm({
       is_enabled: Boolean(feature.is_enabled),
-      ...feature.config,
-      blocked_holiday_types: [...(feature.config?.blocked_holiday_types || [])],
-      blocked_weekdays: [...(feature.config?.blocked_weekdays || [])].map(Number),
+      ...config,
+      min_days_ahead: config.min_days_ahead ?? 2,
+      reschedule_min_days_ahead: config.reschedule_min_days_ahead ?? 2,
+      reschedule_max_days_ahead: config.reschedule_max_days_ahead ?? 0,
+      blocked_holiday_types: [...(config.blocked_holiday_types || [])],
+      blocked_weekdays: [...(config.blocked_weekdays || [])].map(Number),
     });
   };
 
@@ -149,6 +194,19 @@ export default function AppFeatureManagement() {
     setForm(null);
     setFormError('');
   };
+
+  useEffect(() => {
+    if (!editing) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape' && !saving) {
+        setEditing(null);
+        setForm(null);
+        setFormError('');
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [editing, saving]);
 
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -173,8 +231,17 @@ export default function AppFeatureManagement() {
   };
 
   const validateManager = () => {
+    const min = Number(form.reschedule_min_days_ahead);
     const max = Number(form.reschedule_max_days_ahead);
+    if (!Number.isInteger(min) || min < 0 || min > 365) return 'Reschedule min days ahead must be 0–365';
     if (!Number.isInteger(max) || max < 0 || max > 365) return 'Reschedule max days ahead must be 0–365';
+    if (max > 0 && max < min) return 'Reschedule max days ahead must be 0 (no limit) or ≥ min days ahead';
+    return '';
+  };
+
+  const validateAdhoc = () => {
+    const min = Number(form.min_days_ahead);
+    if (!Number.isInteger(min) || min < 0 || min > 365) return 'Adhoc min days ahead must be 0–365';
     return '';
   };
 
@@ -192,7 +259,14 @@ export default function AppFeatureManagement() {
         ...config,
         approve_days_ahead: Number(config.approve_days_ahead),
         edit_days_ahead: Number(config.edit_days_ahead),
+        reschedule_min_days_ahead: Number(config.reschedule_min_days_ahead),
         reschedule_max_days_ahead: Number(config.reschedule_max_days_ahead),
+      };
+    }
+    if (editing.feature_key === 'adhoc_plan_request') {
+      return {
+        ...config,
+        min_days_ahead: Number(config.min_days_ahead),
       };
     }
     return config;
@@ -203,6 +277,7 @@ export default function AppFeatureManagement() {
     let validation = '';
     if (editing.feature_key === 'monthly_plan_request') validation = validateMonthly();
     if (editing.feature_key === 'manager_approval') validation = validateManager();
+    if (editing.feature_key === 'adhoc_plan_request') validation = validateAdhoc();
     if (validation) {
       setFormError(validation);
       return;
@@ -252,9 +327,7 @@ export default function AppFeatureManagement() {
         <SwitchRow
           label="Managers only"
           description={
-            form.manager_only
-              ? 'Only estate managers can request'
-              : 'Any estate user can request'
+            form.manager_only ? 'Only estate managers can request' : 'Any estate user can request'
           }
           checked={form.manager_only}
           onChange={(e) => setField('manager_only', e.target.checked)}
@@ -275,7 +348,9 @@ export default function AppFeatureManagement() {
               onChange={(e) => setField('window_start_day', Number(e.target.value))}
             >
               {DAY_OPTIONS.map((d) => (
-                <option key={d} value={d}>{ordinal(d)}</option>
+                <option key={d} value={d}>
+                  {ordinal(d)}
+                </option>
               ))}
             </select>
           </div>
@@ -287,7 +362,9 @@ export default function AppFeatureManagement() {
               onChange={(e) => setField('window_end_day', Number(e.target.value))}
             >
               {DAY_OPTIONS.filter((d) => d < 31).map((d) => (
-                <option key={d} value={d}>{ordinal(d)}</option>
+                <option key={d} value={d}>
+                  {ordinal(d)}
+                </option>
               ))}
               <option value={31}>Month end</option>
             </select>
@@ -351,8 +428,8 @@ export default function AppFeatureManagement() {
         <header className="afm-panel-head">
           <h4>Approve</h4>
           <p>
-            Pending plans after this window stay listed and can be cancelled, but not approved.
-            Chemical limit applies to spray plans (default 12 kg per Ha).
+            Pending plans after this window stay listed and can be cancelled, but not approved. Chemical
+            limit applies to spray plans (default 12 kg per Ha).
           </p>
         </header>
         <div className="afm-grid afm-grid--2">
@@ -438,17 +515,33 @@ export default function AppFeatureManagement() {
               checked={form.reschedule_block_past}
               onChange={(e) => setField('reschedule_block_past', e.target.checked)}
             />
-            <div className="afm-field">
-              <label htmlFor="afm-resched-max">Max days ahead</label>
-              <input
-                id="afm-resched-max"
-                type="number"
-                min={0}
-                max={365}
-                value={form.reschedule_max_days_ahead}
-                onChange={(e) => setField('reschedule_max_days_ahead', e.target.value)}
-              />
-              <p className="afm-field-hint">Use 0 for no limit.</p>
+            <div className="afm-grid afm-grid--2">
+              <div className="afm-field">
+                <label htmlFor="afm-resched-min">Min days ahead</label>
+                <input
+                  id="afm-resched-min"
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={form.reschedule_min_days_ahead ?? 2}
+                  onChange={(e) => setField('reschedule_min_days_ahead', e.target.value)}
+                />
+                <p className="afm-field-hint">
+                  2 = today and tomorrow blocked. 0 = no minimum.
+                </p>
+              </div>
+              <div className="afm-field">
+                <label htmlFor="afm-resched-max">Max days ahead</label>
+                <input
+                  id="afm-resched-max"
+                  type="number"
+                  min={0}
+                  max={365}
+                  value={form.reschedule_max_days_ahead}
+                  onChange={(e) => setField('reschedule_max_days_ahead', e.target.value)}
+                />
+                <p className="afm-field-hint">Use 0 for no limit.</p>
+              </div>
             </div>
           </div>
         ) : null}
@@ -456,13 +549,42 @@ export default function AppFeatureManagement() {
     </>
   );
 
+  const renderAdhocForm = () => (
+    <section className="afm-panel">
+      <header className="afm-panel-head">
+        <h4>Request date window</h4>
+        <p>How soon managers may submit an adhoc calendar request from the app.</p>
+      </header>
+      <div className="afm-field">
+        <label htmlFor="afm-adhoc-min">Min days ahead</label>
+        <input
+          id="afm-adhoc-min"
+          type="number"
+          min={0}
+          max={365}
+          value={form.min_days_ahead ?? 2}
+          onChange={(e) => setField('min_days_ahead', e.target.value)}
+        />
+        <p className="afm-field-hint">
+          2 = today and tomorrow cannot be requested (earliest = day after tomorrow). Relative to Sri
+          Lankan today.
+        </p>
+      </div>
+      <div className="afm-callout">
+        <strong>Live rule</strong>
+        <span>{minDaysAheadText(form.min_days_ahead ?? 2)}</span>
+      </div>
+    </section>
+  );
+
   return (
     <div
       className="avm-container afm-page ict-dev-page ict-dev-stack"
       style={{ '--ict-dev-bg-url': `url("${devBgUrl}")` }}
     >
-      <header className="afm-hero">
-        <div className="afm-hero-main">
+      <div className="afm-page-chrome">
+      <header className="afm-shell-hero">
+        <div className="afm-shell-copy">
           <button
             className="afm-back"
             type="button"
@@ -475,33 +597,76 @@ export default function AppFeatureManagement() {
           >
             ← Dev Center
           </button>
-          <div>
-            <h1 className="afm-hero-title">App Features</h1>
-            <p className="afm-hero-sub">
-              Turn mobile app features on or off and manage their rules from ICT.
-            </p>
-          </div>
+          <p className="afm-kicker">ICT System Admin</p>
+          <h1 className="afm-hero-title">App Features</h1>
+          <p className="afm-hero-sub">
+            Switch plantation mobile features on or off and tune request, approval, and reschedule
+            rules.
+          </p>
         </div>
-        {!isLoading && !isError && features.length > 0 ? (
-          <div className="afm-hero-stats">
-            <div className="afm-stat">
-              <span className="afm-stat-value">{features.length}</span>
-              <span className="afm-stat-label">Features</span>
+        <div className="afm-shell-side">
+          <div className="afm-metric-rail" aria-label="Feature counts">
+            <div className="afm-metric">
+              <span className="afm-metric-value">{features.length}</span>
+              <span className="afm-metric-label">Features</span>
             </div>
-            <div className="afm-stat">
-              <span className="afm-stat-value">{enabledCount}</span>
-              <span className="afm-stat-label">On</span>
+            <div className="afm-metric">
+              <span className="afm-metric-value">{enabledCount}</span>
+              <span className="afm-metric-label">On</span>
             </div>
-            <div className="afm-stat">
-              <span className="afm-stat-value">{groupedByApp.length}</span>
-              <span className="afm-stat-label">Apps</span>
+            <div className="afm-metric">
+              <span className="afm-metric-value">{offCount}</span>
+              <span className="afm-metric-label">Off</span>
+            </div>
+            <div className="afm-metric">
+              <span className="afm-metric-value">{new Set(features.map((f) => f.app_id)).size}</span>
+              <span className="afm-metric-label">Apps</span>
             </div>
           </div>
-        ) : null}
+          <button
+            type="button"
+            className="afm-btn afm-btn--ghost afm-btn--light"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            {isFetching ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
       </header>
 
-      {successMsg ? <div className="afm-flash afm-flash--ok">{successMsg}</div> : null}
+      <div className="afm-toolbar">
+        <label className="afm-search" htmlFor="afm-search">
+          <span className="afm-search-label">Search</span>
+          <input
+            id="afm-search"
+            type="search"
+            placeholder="Feature, key, or app…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </label>
+        <div className="afm-filter-pills" role="group" aria-label="Status filter">
+          {[
+            { id: 'all', label: 'All' },
+            { id: 'on', label: 'On' },
+            { id: 'off', label: 'Off' },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              className={`afm-pill${statusFilter === opt.id ? ' is-active' : ''}`}
+              onClick={() => setStatusFilter(opt.id)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
+      {successMsg ? <div className="afm-flash afm-flash--ok">{successMsg}</div> : null}
+      </div>
+
+      <div className="afm-page-body">
       {isLoading ? (
         <div className="afm-state">Loading features…</div>
       ) : isError ? (
@@ -512,42 +677,61 @@ export default function AppFeatureManagement() {
           </button>
         </div>
       ) : groupedByApp.length === 0 ? (
-        <div className="afm-state">No app features configured.</div>
+        <div className="afm-state">No features match this filter.</div>
       ) : (
-        groupedByApp.map((group) => (
-          <section className="afm-app-card" key={group.appId}>
-            <header className="afm-app-head">
-              <div className="afm-app-head-copy">
-                <p className="afm-app-eyebrow">Mobile app</p>
-                <h2 className="afm-app-title">{friendlyAppLabel(group.appName, group.appId)}</h2>
-                <code className="afm-app-id">{group.appId}</code>
-              </div>
-              <span className="afm-app-count">
-                {group.items.length} feature{group.items.length === 1 ? '' : 's'}
-              </span>
-            </header>
+        <div className="afm-app-stack">
+          {groupedByApp.map((group) => (
+            <section className="afm-app-block" key={group.appId}>
+              <header className="afm-app-banner">
+                <div>
+                  <p className="afm-app-eyebrow">Mobile app</p>
+                  <h2 className="afm-app-title">{friendlyAppLabel(group.appName, group.appId)}</h2>
+                  <code className="afm-app-id">{group.appId}</code>
+                </div>
+                <span className="afm-app-count">
+                  {group.items.length} feature{group.items.length === 1 ? '' : 's'}
+                </span>
+              </header>
 
-            <div className="afm-feature-grid">
-              {group.items.map((f) => {
-                const rules = summarizeRules(f);
-                return (
-                  <article
-                    className={`afm-feature-card${f.is_enabled ? '' : ' is-off'}`}
-                    key={featureKeyOf(f)}
-                  >
-                    <div className="afm-feature-top">
-                      <div className="afm-feature-title-block">
-                        <span className={`afm-status ${f.is_enabled ? 'is-on' : 'is-off'}`}>
-                          {f.is_enabled ? 'On' : 'Off'}
-                        </span>
-                        <div className="afm-feature-heading">
-                          <h3 className="afm-feature-title">{f.feature_name}</h3>
-                          {f.feature_key ? (
-                            <code className="afm-feature-key">{f.feature_key}</code>
-                          ) : null}
-                        </div>
+              <ul className="afm-feature-list">
+                {group.items.map((f, index) => {
+                  const rules = summarizeRules(f);
+                  const meta = FEATURE_META[f.feature_key] || { tone: 'default', mark: 'F' };
+                  const canEdit = Boolean(f.registered) || EDITABLE_FEATURE_KEYS.has(f.feature_key);
+                  return (
+                    <li
+                      className={`afm-feature-row${f.is_enabled ? '' : ' is-off'}`}
+                      key={featureKeyOf(f)}
+                      style={{ '--afm-stagger': `${index * 40}ms` }}
+                    >
+                      <div className={`afm-feature-mark tone-${meta.tone}`} aria-hidden>
+                        {meta.mark}
                       </div>
-                      {f.registered ? (
+                      <div className="afm-feature-main">
+                        <div className="afm-feature-heading">
+                          <span className={`afm-status ${f.is_enabled ? 'is-on' : 'is-off'}`}>
+                            {f.is_enabled ? 'On' : 'Off'}
+                          </span>
+                          <h3 className="afm-feature-title">{f.feature_name}</h3>
+                          {f.feature_key ? <code className="afm-feature-key">{f.feature_key}</code> : null}
+                        </div>
+                        {f.description ? <p className="afm-feature-desc">{f.description}</p> : null}
+                        {rules.length ? (
+                          <ul className="afm-rule-list">
+                            {rules.map((r) => (
+                              <li key={r}>{r}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="afm-rules-empty">No rule summary for this feature.</p>
+                        )}
+                        <p className="afm-feature-meta">
+                          {f.updated_at
+                            ? `Updated ${f.updated_at}${f.updated_by_name ? ` · ${f.updated_by_name}` : ''}`
+                            : 'Using default settings'}
+                        </p>
+                      </div>
+                      {canEdit ? (
                         <button
                           type="button"
                           className="afm-btn afm-btn--primary afm-btn--edit"
@@ -556,32 +740,15 @@ export default function AppFeatureManagement() {
                           Edit rules
                         </button>
                       ) : null}
-                    </div>
-                    {f.description ? <p className="afm-feature-desc">{f.description}</p> : null}
-                    {rules.length ? (
-                      <div className="afm-rules-block">
-                        <p className="afm-rules-label">Active rules</p>
-                        <ul className="afm-rule-list">
-                          {rules.map((r) => (
-                            <li key={r}>{r}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : (
-                      <p className="afm-rules-empty">No rule summary for this feature.</p>
-                    )}
-                    <footer className="afm-feature-meta">
-                      {f.updated_at
-                        ? `Updated ${f.updated_at}${f.updated_by_name ? ` · ${f.updated_by_name}` : ''}`
-                        : 'Using default settings'}
-                    </footer>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        ))
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
       )}
+      </div>
 
       {editing && form ? (
         <div className="afm-overlay" onClick={closeEdit} role="presentation">
@@ -596,9 +763,7 @@ export default function AppFeatureManagement() {
               <div>
                 <p className="afm-modal-eyebrow">{editing.app_name || editing.app_id}</p>
                 <h2 id="afm-modal-title">{editing.feature_name}</h2>
-                {editing.description ? (
-                  <p className="afm-modal-sub">{editing.description}</p>
-                ) : null}
+                {editing.description ? <p className="afm-modal-sub">{editing.description}</p> : null}
               </div>
               <button type="button" className="afm-modal-close" onClick={closeEdit} aria-label="Close">
                 ×
@@ -621,6 +786,7 @@ export default function AppFeatureManagement() {
 
               {editing.feature_key === 'monthly_plan_request' ? renderMonthlyForm() : null}
               {editing.feature_key === 'manager_approval' ? renderManagerForm() : null}
+              {editing.feature_key === 'adhoc_plan_request' ? renderAdhocForm() : null}
 
               {formError ? <div className="afm-flash afm-flash--error">{formError}</div> : null}
 

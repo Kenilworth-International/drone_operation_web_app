@@ -1,0 +1,315 @@
+.fuel-reports-page {
+  padding: 20px 22px 32px;
+  min-height: 100%;
+  background:
+    radial-gradient(1200px 420px at 8% -10%, rgba(15, 118, 110, 0.12), transparent 55%),
+    radial-gradient(900px 380px at 92% 0%, rgba(29, 78, 216, 0.10), transparent 50%),
+    linear-gradient(180deg, #f4f8fb 0%, #eef3f7 100%);
+  color: #102739;
+}
+
+.fuel-reports-embedded {
+  padding: 8px;
+  min-height: auto;
+  background: transparent;
+}
+
+.fr-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.fr-hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f766e;
+  margin-bottom: 4px;
+}
+
+.fr-hero-title {
+  margin: 0 !important;
+  font-size: 1.65rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em;
+  color: #0b1f2d !important;
+}
+
+.fr-hero-sub {
+  margin: 6px 0 0 !important;
+  max-width: 640px;
+  color: #5f7383 !important;
+  font-size: 0.92rem !important;
+  line-height: 1.45 !important;
+}
+
+.fr-hero-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.fr-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid #d5e2ec;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  margin-bottom: 12px;
+}
+
+.fr-tabs {
+  margin-bottom: 12px;
+  min-height: 42px !important;
+  border-bottom: 1px solid #d5e2ec;
+}
+
+.fr-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.fr-stat {
+  border: 1px solid #d5e2ec;
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: #fff;
+  min-height: 84px;
+}
+
+.fr-stat-blue {
+  border-color: #bfdbfe;
+  background: linear-gradient(180deg, #eff6ff 0%, #fff 70%);
+}
+
+.fr-stat-teal {
+  border-color: #a5f3fc;
+  background: linear-gradient(180deg, #ecfeff 0%, #fff 70%);
+}
+
+.fr-stat-ok {
+  border-color: #bbf7d0;
+  background: linear-gradient(180deg, #f0fdf4 0%, #fff 70%);
+}
+
+.fr-stat-warn {
+  border-color: #fed7aa;
+  background: linear-gradient(180deg, #fff7ed 0%, #fff 70%);
+}
+
+.fr-stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.fr-stat-value {
+  margin-top: 4px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #0f172a;
+  word-break: break-word;
+}
+
+.fr-stat-hint {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #7c8a99;
+  line-height: 1.3;
+}
+
+.fr-table-wrap {
+  border: 1px solid #d5e2ec;
+  border-radius: 12px;
+  background: #fff;
+  max-height: 68vh;
+  overflow: auto;
+}
+
+.fuel-reports-embedded .fr-table-wrap {
+  max-height: 60vh;
+}
+
+.fr-table-wrap .MuiTableCell-head {
+  font-weight: 700 !important;
+  background: #f4f8fc !important;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.fr-strong {
+  font-weight: 650;
+}
+
+.fr-muted {
+  font-size: 11px;
+  color: #7c8a99;
+}
+
+.fr-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+
+.fr-metric-km {
+  font-weight: 750;
+  color: #1d4ed8;
+}
+
+.fr-metric-ha {
+  font-weight: 750;
+  color: #0e7490;
+}
+
+.fr-pilot-cell {
+  vertical-align: middle !important;
+  text-align: center;
+  background: linear-gradient(180deg, #f0fdfa 0%, #fff 55%);
+  border-right: 1px solid #d5e2ec;
+  min-width: 150px;
+}
+
+.fr-pilot-ha {
+  vertical-align: middle !important;
+  text-align: center !important;
+  background: #f0fdfa;
+  border-right: 1px solid #d5e2ec;
+  font-size: 1.05rem;
+}
+
+.fr-pilot-group-start td:nth-child(2) {
+  vertical-align: middle !important;
+  text-align: center;
+  background: #f8fffe;
+  border-right: 1px solid #e2e8f0;
+}
+
+.fr-pilot-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #0f766e;
+  font-weight: 650;
+}
+
+.fr-pilot-group-start {
+  border-top: 2px solid #99f6e4;
+}
+
+.fr-vehicle-cell {
+  vertical-align: middle !important;
+  text-align: center;
+  background: linear-gradient(180deg, #eff6ff 0%, #fff 55%);
+  border-right: 1px solid #d5e2ec;
+  min-width: 150px;
+}
+
+.fr-vehicle-month {
+  vertical-align: middle !important;
+  text-align: center;
+  background: #f8fbff;
+  border-right: 1px solid #e2e8f0;
+}
+
+.fr-vehicle-km {
+  vertical-align: middle !important;
+  text-align: center !important;
+  background: #eff6ff;
+  border-right: 1px solid #d5e2ec;
+  font-size: 1.05rem;
+}
+
+.fr-vehicle-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #1d4ed8;
+  font-weight: 650;
+}
+
+.fr-vehicle-group-start {
+  border-top: 2px solid #bfdbfe;
+}
+
+.fr-avg-per-l {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #64748b;
+  line-height: 1.2;
+}
+
+.fr-empty {
+  padding: 36px 12px !important;
+  color: #7c8a99;
+}
+
+.fr-error {
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  padding: 14px 16px;
+  color: #a63640;
+  background: #fff5f5;
+}
+
+.fr-reject {
+  display: block !important;
+  color: #a63640 !important;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fr-chip {
+  font-weight: 650 !important;
+}
+
+.fr-chip-pending {
+  background: #fff7e8 !important;
+  color: #9a6700 !important;
+}
+
+.fr-chip-ok {
+  background: #eaf8ef !important;
+  color: #1f7a44 !important;
+}
+
+.fr-chip-bad {
+  background: #fdeff1 !important;
+  color: #a63640 !important;
+}
+
+.fr-chip-warn {
+  background: #fff3e0 !important;
+  color: #e65100 !important;
+}
+
+.fr-chip-muted {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+@media (max-width: 720px) {
+  .fuel-reports-page {
+    padding: 12px;
+  }
+
+  .fr-hero-title {
+    font-size: 1.35rem !important;
+  }
+}

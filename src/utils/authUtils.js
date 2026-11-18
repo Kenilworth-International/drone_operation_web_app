@@ -234,6 +234,10 @@ export const getAllowedPaths = (visibility = {}, pathPermissions = {}, userData 
   if (mergedPathPermissions['/home/fleet-update'] === true) {
     mergedPathPermissions['/home/transport/hr'] = true;
   }
+  // Fuel Reports is a dedicated nav page spun out of TOD; inherit TOD path grant.
+  if (mergedPathPermissions['/home/transport/hr'] === true) {
+    mergedPathPermissions['/home/transport/fuel-reports'] = true;
+  }
   if (mergedPathPermissions['/home/reports/finance'] === true) {
     mergedPathPermissions['/home/finance/work-summary'] = true;
   }

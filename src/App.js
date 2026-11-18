@@ -62,7 +62,6 @@ import TransportArrangePage from './sections/opsroom/pilot-assigment/TransportAr
 import TodayPlans from './sections/opsroom/today-plans/TodayPlans';
 import EmergencyMoving from './sections/opsroom/emergency/EmergencyMoving';
 import FieldSizeAdjustments from './sections/opsroom/fieldSizeAdjustments/FieldSizeAdjustments';
-import EmployeeProfileDetails from './sections/hr&admin/EmployeeProfileDetails';
 import HrmDashboard from './sections/hr&admin/dashboard/HrmDashboard';
 import HrmInvestigationsPage, {
   HrmInvestigationDetailPage,
@@ -87,6 +86,7 @@ import Workshop from './sections/administration/Workshop';
 import WorkshopInventoryPage from './sections/administration/WorkshopInventory';
 import WorkshopAccidentReportPage from './sections/administration/WorkshopAccidentReportPage';
 import GeneratorFuelApprovals from './sections/hr&admin/fuelApprovals/GeneratorFuelApprovals';
+import FuelReports from './sections/hr&admin/fuelApprovals/FuelReports';
 import ManagerApprovalQueue from './sections/opsroom/manager-approval/ManagerApprovalQueue';
 import FieldUnblockRequestQueue from './sections/opsroom/field-unblock/FieldUnblockRequestQueue';
 import PendingPaymentQueue from './sections/opsroom/pending-payment/PendingPaymentQueue';
@@ -107,7 +107,6 @@ import MovementHub from './sections/stock-assets/MovementHub';
 import ProcurementProcess from './sections/stock-assets/ProcurementProcess';
 import CentralStores from './sections/stock-assets/CentralStores';
 import MasterData from './sections/ict/masterData/MasterData';
-import PlantationDashboard from './sections/plantation/plantationDashboard/PlantationDashboard';
 import PlantationExternalShell from './sections/plantation/plantationDashboard/PlantationExternalShell';
 import PlantationHomeTab from './sections/plantation/plantationDashboard/tabs/PlantationHomeTab';
 import PlantationCalendarTab from './sections/plantation/plantationDashboard/tabs/PlantationCalendarTab';
@@ -702,6 +701,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <TransportHrDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="transport/fuel-reports"
+            element={
+              <ProtectedRoute>
+                <FuelReports />
               </ProtectedRoute>
             }
           />

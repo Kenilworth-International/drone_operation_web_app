@@ -32,7 +32,6 @@ import {
   FaCheck,
   FaTachometerAlt,
   FaCloudSunRain,
-  FaServer,
   FaBullhorn,
   FaLaptop,
   FaExchangeAlt,
@@ -40,6 +39,7 @@ import {
   FaWrench,
   FaReceipt,
   FaTags,
+  FaGasPump,
 } from 'react-icons/fa';
 
 const navbarCategories = [
@@ -157,6 +157,7 @@ const navbarCategories = [
     icon: FaBuilding,
     children: [
       { path: '/home/transport/hr', label: 'T. O. D.', icon: FaTruck },
+      { path: '/home/transport/fuel-reports', label: 'Fuel Reports', icon: FaGasPump },
       { path: '/home/generator-fuel-approvals', label: 'Generator Fuel Approvals', icon: FaTruck },
       {
         path: '/home/stock-assets/catalog/suppliers',

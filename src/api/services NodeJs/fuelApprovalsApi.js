@@ -46,6 +46,12 @@ export const fuelApprovalsApi = baseApi.injectEndpoints({
           Object.entries(params || {}).forEach(([key, value]) => {
             if (value == null || value === '') return;
             if (key !== 'fuel_source' && value === 'all') return;
+            if (Array.isArray(value)) {
+              const joined = value.filter(Boolean).map(String).join(',');
+              if (!joined) return;
+              qs.set(key, joined);
+              return;
+            }
             qs.set(key, String(value));
           });
           const q = qs.toString();
