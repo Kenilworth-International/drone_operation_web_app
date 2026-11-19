@@ -213,9 +213,15 @@ export default function AppFeatureManagement() {
   const toggleInList = (field, value) =>
     setForm((prev) => {
       const list = prev[field] || [];
+      const isWeekday = field === 'blocked_weekdays';
+      const norm = (v) => (isWeekday ? Number(v) : String(v));
+      const target = norm(value);
+      const has = list.some((v) => norm(v) === target);
       return {
         ...prev,
-        [field]: list.includes(value) ? list.filter((v) => v !== value) : [...list, value],
+        [field]: has
+          ? list.filter((v) => norm(v) !== target)
+          : [...list, isWeekday ? Number(value) : value],
       };
     });
 
@@ -390,32 +396,42 @@ export default function AppFeatureManagement() {
         </header>
         <div className="afm-field">
           <span className="afm-field-caption">Holidays</span>
-          <div className="afm-chip-group">
-            {HOLIDAY_TYPES.map((h) => (
-              <button
-                type="button"
-                key={h.value}
-                className={`afm-chip ${(form.blocked_holiday_types || []).includes(h.value) ? 'is-on' : ''}`}
-                onClick={() => toggleInList('blocked_holiday_types', h.value)}
-              >
-                {h.label}
-              </button>
-            ))}
+          <p className="afm-chip-legend">Dark = blocked · Light = allowed</p>
+          <div className="afm-chip-group" role="group" aria-label="Blocked holiday types">
+            {HOLIDAY_TYPES.map((h) => {
+              const on = (form.blocked_holiday_types || []).some((v) => String(v) === String(h.value));
+              return (
+                <button
+                  type="button"
+                  key={h.value}
+                  className={`afm-chip${on ? ' is-on' : ''}`}
+                  aria-pressed={on}
+                  onClick={() => toggleInList('blocked_holiday_types', h.value)}
+                >
+                  {h.label}
+                </button>
+              );
+            })}
           </div>
         </div>
         <div className="afm-field">
           <span className="afm-field-caption">Weekdays</span>
-          <div className="afm-chip-group">
-            {WEEKDAYS.map((w) => (
-              <button
-                type="button"
-                key={w.value}
-                className={`afm-chip ${(form.blocked_weekdays || []).includes(w.value) ? 'is-on' : ''}`}
-                onClick={() => toggleInList('blocked_weekdays', w.value)}
-              >
-                {w.short}
-              </button>
-            ))}
+          <p className="afm-chip-legend">Dark = blocked · Light = allowed</p>
+          <div className="afm-chip-group" role="group" aria-label="Blocked weekdays">
+            {WEEKDAYS.map((w) => {
+              const on = (form.blocked_weekdays || []).map(Number).includes(Number(w.value));
+              return (
+                <button
+                  type="button"
+                  key={w.value}
+                  className={`afm-chip${on ? ' is-on' : ''}`}
+                  aria-pressed={on}
+                  onClick={() => toggleInList('blocked_weekdays', w.value)}
+                >
+                  {w.short}
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>

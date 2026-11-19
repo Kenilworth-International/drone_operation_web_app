@@ -242,17 +242,36 @@ function TransportHrDashboard() {
     loading: false,
   });
   const [vehicleCardModal, setVehicleCardModal] = useState({ open: false, row: null, cardId: '' });
-  const [vehicleDriverModal, setVehicleDriverModal] = useState({ open: false, row: null, driverId: '' });
+  const [vehicleDriverModal, setVehicleDriverModal] = useState({
+    open: false,
+    row: null,
+    driverId: '',
+    secondaryDriverId: '',
+  });
   const [fetchLeaveByMonth, leaveByMonthResult] = useLazyGetLeaveDaysForHrByMonthQuery();
   const rollingMonthOptions = useMemo(() => getRollingMonthOptions(24), []);
   const { today, monthKey } = useMemo(() => getTodayInfo(), []);
 
   const closeVehicleCardModal = () => setVehicleCardModal({ open: false, row: null, cardId: '' });
-  const closeVehicleDriverModal = () => setVehicleDriverModal({ open: false, row: null, driverId: '' });
+  const closeVehicleDriverModal = () =>
+    setVehicleDriverModal({ open: false, row: null, driverId: '', secondaryDriverId: '' });
 
   const submitVehicleDriver = async () => {
     const row = vehicleDriverModal.row;
     if (!row?.id) return;
+    if (
+      vehicleDriverModal.driverId &&
+      vehicleDriverModal.secondaryDriverId &&
+      String(vehicleDriverModal.driverId) === String(vehicleDriverModal.secondaryDriverId)
+    ) {
+      setHrDecisionNotice({
+        open: true,
+        title: 'Action needed',
+        message: 'Secondary driver must be different from the primary driver.',
+        tone: 'error',
+      });
+      return;
+    }
     try {
       await saveVehicleAppVehicle({
         id: row.id,
@@ -260,6 +279,9 @@ function TransportHrDashboard() {
         make: row.make ?? null,
         model: row.model ?? null,
         driver: vehicleDriverModal.driverId ? Number(vehicleDriverModal.driverId) : null,
+        secondary_driver: vehicleDriverModal.secondaryDriverId
+          ? Number(vehicleDriverModal.secondaryDriverId)
+          : null,
         activated: row.activated,
         vehicle_category_id: row.vehicle_category_id ?? row.normalized_vehicle_category_id ?? null,
         fuel_category_id: row.fuel_category_id ?? row.normalized_fuel_category_id ?? null,
@@ -269,7 +291,7 @@ function TransportHrDashboard() {
       }).unwrap();
       refetchVehicles();
       closeVehicleDriverModal();
-      setHrDecisionNotice({ open: true, title: 'Saved', message: 'Vehicle driver updated.', tone: 'success' });
+      setHrDecisionNotice({ open: true, title: 'Saved', message: 'Vehicle drivers updated.', tone: 'success' });
     } catch (e) {
       setHrDecisionNotice({
         open: true,
@@ -1298,7 +1320,7 @@ function TransportHrDashboard() {
             <thead>
               <tr>
                 <th>Vehicle No</th>
-                <th>Driver</th>
+                <th>Drivers</th>
                 <th>Fuel card</th>
                 <th>Ownership</th>
                 <th>Category</th>
@@ -1312,7 +1334,12 @@ function TransportHrDashboard() {
               {vehicles.map((row) => (
                 <tr key={row.id}>
                   <td>{row.vehicle_no || '-'}</td>
-                  <td>{row.assigned_driver_name || '-'}</td>
+                  <td>
+                    {row.assigned_driver_name || '-'}
+                    {row.assigned_secondary_driver_name
+                      ? ` / ${row.assigned_secondary_driver_name}`
+                      : ''}
+                  </td>
                   <td>{row.linked_card_no_masked || (row.linked_card_id ? `Card #${row.linked_card_id}` : '—')}</td>
                   <td>{row.ownership === 'r' ? 'Rented' : row.ownership === 'o' ? 'Own' : '-'}</td>
                   <td>{row.vehicle_category_name || '-'}</td>
@@ -1346,10 +1373,12 @@ function TransportHrDashboard() {
                             open: true,
                             row,
                             driverId: row.driver != null ? String(row.driver) : '',
+                            secondaryDriverId:
+                              row.secondary_driver != null ? String(row.secondary_driver) : '',
                           })
                         }
                       >
-                        Set driver
+                        Set drivers
                       </button>
                     ) : null}
                   </td>
@@ -2114,7 +2143,7 @@ function TransportHrDashboard() {
           >
             <div className="quick-add-modal-toolbar-transport-hr">
               <h3 className="quick-add-modal-title-transport-hr">
-                Set driver — {vehicleDriverModal.row.vehicle_no || vehicleDriverModal.row.id}
+                Set drivers — {vehicleDriverModal.row.vehicle_no || vehicleDriverModal.row.id}
               </h3>
               <button type="button" className="action-btn-secondary-transport-hr" onClick={closeVehicleDriverModal}>
                 Close
@@ -2122,10 +2151,10 @@ function TransportHrDashboard() {
             </div>
             <div className="quick-add-modal-body-transport-hr">
               <p className="quick-add-modal-hint-transport-hr" style={{ marginBottom: 10 }}>
-                Assigning the same driver (vehicle_drivers record) to multiple vehicles lets them swap between vehicles in the app.
+                Optional secondary driver (KWIL). Whoever starts first must end their meter reading before the other can start.
               </p>
               <label style={{ display: 'grid', gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563' }}>Driver</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563' }}>Primary driver</span>
                 <select
                   value={vehicleDriverModal.driverId}
                   onChange={(e) => setVehicleDriverModal((prev) => ({ ...prev, driverId: e.target.value }))}
@@ -2138,6 +2167,28 @@ function TransportHrDashboard() {
                       {Number(d.assigned_vehicle_count) > 0 ? ` — ${d.assigned_vehicle_count} vehicle(s)` : ''}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label style={{ display: 'grid', gap: 6, marginTop: 12 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#4b5563' }}>Secondary driver</span>
+                <select
+                  value={vehicleDriverModal.secondaryDriverId}
+                  onChange={(e) =>
+                    setVehicleDriverModal((prev) => ({ ...prev, secondaryDriverId: e.target.value }))
+                  }
+                >
+                  <option value="">— None —</option>
+                  {(vehicleDrivers || [])
+                    .filter((d) => String(d.id) !== String(vehicleDriverModal.driverId || ''))
+                    .map((d) => (
+                      <option key={d.id} value={String(d.id)}>
+                        {d.user_name || d.name || `Driver #${d.id}`}
+                        {d.mobile_no ? ` (${d.mobile_no})` : ''}
+                        {Number(d.assigned_vehicle_count) > 0
+                          ? ` — ${d.assigned_vehicle_count} vehicle(s)`
+                          : ''}
+                      </option>
+                    ))}
                 </select>
               </label>
               <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>

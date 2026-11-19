@@ -778,29 +778,107 @@
   color: #dc2626;
 }
 
-/* Responsive */
+/* Responsive — tablet landscape / small laptop */
 @media (max-width: 1200px) {
+  .wrapper-req-proceed {
+    padding: 10px;
+  }
+
   .content-container-req-proceed {
     grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .requests-column-req-proceed {
+    max-height: min(42dvh, 360px);
+    min-width: 0;
+  }
+
+  .heading-req-proceed {
+    font-size: 22px;
+    padding: 0 44px;
+  }
+
+  .calendar-day-empty-req-proceed,
+  .calendar-day-req-proceed {
+    min-height: 64px;
+  }
+
+  .calendar-weekday-header-req-proceed {
+    font-size: 11px;
+    padding: 6px 2px;
+  }
+}
+
+/* Tablet portrait / narrow */
+@media (max-width: 900px) {
+  .header-req-proceed {
+    justify-content: flex-start;
+    padding-left: 44px;
+  }
+
+  .center-header-req-proceed {
+    align-items: flex-start;
+  }
+
+  .heading-req-proceed {
+    font-size: 18px;
+    text-align: left;
+    padding: 0;
+  }
+
+  .tile-row-req-proceed {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .tile-label-req-proceed {
+    min-width: auto;
+  }
+
+  .calendar-grid-wrapper-req-proceed {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendar-grid-req-proceed {
+    min-width: 560px;
+  }
+
+  .requests-column-req-proceed {
+    max-height: none;
+  }
+
+  .back-btn-req-proceed {
+    width: auto !important;
   }
 }
 
 @media (max-width: 768px) {
-  .heading-req-proceed {
-    font-size: 20px;
+  .wrapper-req-proceed {
+    padding: 8px;
   }
-  
+
+  .heading-req-proceed {
+    font-size: 18px;
+  }
+
   .column-title-req-proceed {
     font-size: 14px;
   }
-  
+
   .tile-row-req-proceed {
     flex-direction: column;
     gap: 4px;
   }
-  
+
   .tile-label-req-proceed {
     min-width: auto;
+  }
+
+  .calendar-day-empty-req-proceed,
+  .calendar-day-req-proceed {
+    min-height: 56px;
   }
 }
 

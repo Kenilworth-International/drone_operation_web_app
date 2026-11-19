@@ -117,6 +117,10 @@
 }
 
 /* Grid */
+.grid-scroll-booking-calendar {
+  width: 100%;
+  overflow-x: visible;
+}
 .grid-booking-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e5e7eb; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
 .weekday-booking-calendar { background: #f9fafb; color: #374151; font-size: 12px; font-weight: 600; padding: 6px; text-align: center; }
 .cell-blank-booking-calendar { background: #fff; min-height: 110px; }
@@ -401,13 +405,178 @@
 .legend-dot-item { display: inline-flex; align-items: center; gap: 3px; color: #374151; }
 .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
+/* Tablet landscape / small laptop */
+@media (max-width: 1200px) {
+  .wrapper-booking-calendar {
+    padding: 8px;
+  }
+
+  .heading-booking-calendar {
+    font-size: 16px;
+  }
+
+  .month-title-booking-calendar {
+    min-width: 0;
+    font-size: 14px;
+  }
+
+  .top-filters-booking-calendar {
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .top-filter-group-booking-calendar {
+    flex: 1 1 220px;
+  }
+
+  .cell-blank-booking-calendar,
+  .cell-booking-calendar {
+    min-height: 88px;
+    padding: 4px;
+  }
+
+  .daynum-booking-calendar {
+    font-size: 16px;
+  }
+
+  .item-booking-calendar {
+    font-size: 11px;
+    padding: 2px 4px;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .modal-booking-calendar--estate-fields .fields-grid-booking-calendar {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .modal-footer-booking-calendar {
+    flex-wrap: wrap;
+    justify-content: stretch;
+  }
+
+  .modal-footer-booking-calendar > * {
+    flex: 1 1 auto;
+  }
+
+  .hierarchy-filter-grid-booking-calendar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Tablet portrait / narrow */
 @media (max-width: 980px) {
-  .hierarchy-filter-grid-booking-calendar { grid-template-columns: 1fr; }
-  .hierarchy-filter-field-booking-calendar { grid-template-columns: 84px 1fr; }
+  .header-booking-calendar {
+    justify-content: flex-start;
+    padding-left: 44px;
+    margin-bottom: 8px;
+  }
+
+  .center-header-booking-calendar {
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .heading-booking-calendar {
+    text-align: left;
+    font-size: 15px;
+  }
+
+  .controls-booking-calendar {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .top-filters-booking-calendar {
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .hierarchy-filter-wrap-booking-calendar {
+    flex-wrap: wrap;
+  }
+
+  .hierarchy-filter-grid-booking-calendar {
+    grid-template-columns: 1fr;
+  }
+
+  .hierarchy-filter-field-booking-calendar {
+    grid-template-columns: 84px 1fr;
+  }
+
+  .grid-scroll-booking-calendar {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .grid-booking-calendar {
+    min-width: 640px;
+  }
+
+  .weekday-booking-calendar {
+    font-size: 11px;
+    padding: 4px 2px;
+  }
+
+  .cell-blank-booking-calendar,
+  .cell-booking-calendar {
+    min-height: 72px;
+    padding: 3px;
+  }
+
+  .daynum-booking-calendar {
+    font-size: 14px;
+  }
+
+  .count-booking-calendar {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .modal-booking-calendar {
+    width: min(96vw, 920px);
+    max-height: 90dvh;
+  }
+
+  .modal-booking-calendar--estate-fields .fields-grid-booking-calendar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .fields-grid-booking-calendar {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+
+  .summary-row-booking-calendar {
+    flex-wrap: wrap;
+  }
+
+  .pilot-btn-booking-calendar {
+    margin-left: 0;
+  }
+
+  .back-btn-booking-calendar {
+    width: auto !important;
+  }
 }
 
 @media (max-width: 600px) {
-  .hierarchy-filter-grid-booking-calendar { grid-template-columns: 1fr; }
+  .hierarchy-filter-grid-booking-calendar {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-booking-calendar {
+    min-width: 560px;
+  }
+
+  .modal-booking-calendar--estate-fields .fields-grid-booking-calendar {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Plan activation request (opsroom calendar only) */

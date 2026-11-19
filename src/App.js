@@ -62,6 +62,7 @@ import TransportArrangePage from './sections/opsroom/pilot-assigment/TransportAr
 import TodayPlans from './sections/opsroom/today-plans/TodayPlans';
 import EmergencyMoving from './sections/opsroom/emergency/EmergencyMoving';
 import FieldSizeAdjustments from './sections/opsroom/fieldSizeAdjustments/FieldSizeAdjustments';
+import ChangeVehicleDriver from './sections/opsroom/changeVehicleDriver/ChangeVehicleDriver';
 import HrmDashboard from './sections/hr&admin/dashboard/HrmDashboard';
 import HrmInvestigationsPage, {
   HrmInvestigationDetailPage,
@@ -537,6 +538,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <FieldSizeAdjustments />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="changeVehicleDriver"
+            element={
+              <ProtectedRoute>
+                <ChangeVehicleDriver />
               </ProtectedRoute>
             }
           />

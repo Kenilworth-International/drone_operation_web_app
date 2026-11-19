@@ -803,29 +803,71 @@
 .afm-chip-group {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.45rem;
+}
+
+.afm-chip-legend {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 600;
 }
 
 .afm-chip {
-  border: 1px solid #cbd5e1;
-  background: #fff;
-  color: #475569;
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1.5px solid #94a3b8;
+  background: #f8fafc;
+  color: #64748b;
   border-radius: 999px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.4rem 0.85rem;
   font-size: 0.78rem;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
+  line-height: 1.2;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.afm-chip::before {
+  content: '';
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  border: 1.5px solid #94a3b8;
+  background: #fff;
+  vertical-align: -0.05rem;
 }
 
 .afm-chip:hover {
-  border-color: var(--afm-primary);
-  color: var(--afm-primary);
+  border-color: #64748b;
+  color: #334155;
+  background: #fff;
 }
 
-.afm-chip.is-on {
-  background: var(--afm-primary);
-  border-color: var(--afm-primary);
-  color: #fff;
+/* Selected = blocked day — strong filled state */
+.afm-chip.is-on,
+.afm-chip[aria-pressed='true'] {
+  background: #004b71 !important;
+  border-color: #003a58 !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(0, 75, 113, 0.28);
+}
+
+.afm-chip.is-on::before,
+.afm-chip[aria-pressed='true']::before {
+  border-color: #fff;
+  background: #22c55e;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.afm-chip.is-on:hover,
+.afm-chip[aria-pressed='true']:hover {
+  background: #0b618f !important;
+  border-color: #0b618f !important;
+  color: #fff !important;
 }
 
 .afm-switch-stack {

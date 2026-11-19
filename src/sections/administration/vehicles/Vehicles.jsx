@@ -748,6 +748,7 @@ const Vehicles = ({ embeddedInVehicleManagement = false }) => {
       wing_id: wingId || '',
       // Driver information (vehicle_drivers table ID)
       driver: asset?.driver != null ? String(asset.driver) : '',
+      secondary_driver: asset?.secondary_driver != null ? String(asset.secondary_driver) : '',
       copy_of_registration_document: asset?.copy_of_registration_document ?? '',
       // Vehicle details
       vehicle_category: isVehicleRecord(asset)
@@ -822,6 +823,7 @@ const Vehicles = ({ embeddedInVehicleManagement = false }) => {
           asset?.chassis_no,
           asset?.engine_no,
           asset?.driver_name,
+          asset?.secondary_driver_name,
           asset?.driver_mobile_no,
           formatVehicleDriverDisplay(asset),
           asset?.owner_contact_no,
@@ -903,6 +905,16 @@ const Vehicles = ({ embeddedInVehicleManagement = false }) => {
       }
       if (name === 'make') {
         updated.model = '';
+      }
+      if (name === 'ownership' && value !== 'o') {
+        updated.secondary_driver = '';
+      }
+      if (
+        name === 'driver' &&
+        updated.secondary_driver &&
+        String(updated.secondary_driver) === String(normalizedValue || '')
+      ) {
+        updated.secondary_driver = '';
       }
 
       return updated;
@@ -1076,8 +1088,10 @@ const Vehicles = ({ embeddedInVehicleManagement = false }) => {
             activated: formData.activated,
             purchase_price: normalizedPrice,
             wing: wingId,
-            // Driver information (vehicle_drivers table ID)
+            // Driver information (vehicle_drivers table ID); secondary = KWIL own only
             driver: formData.driver || null,
+            secondary_driver:
+              formData.ownership === 'o' ? formData.secondary_driver || null : null,
             copy_of_registration_document: formData.copy_of_registration_document || null,
             // Vehicle details
             vehicle_category: formData.vehicle_category ? parseInt(formData.vehicle_category, 10) : null,
@@ -1262,7 +1276,15 @@ const Vehicles = ({ embeddedInVehicleManagement = false }) => {
           <td className="vehicle-person-cell-td">
             {renderVehiclePersonCell(
               formatVehicleDriverDisplay(asset),
-              asset?.driver_mobile_no
+              [
+                asset?.driver_mobile_no,
+                asset?.secondary_driver_name
+                  ? `2nd: ${asset.secondary_driver_name}`
+                  : null,
+              ]
+                .map((s) => String(s || '').trim())
+                .filter(Boolean)
+                .join(' · ')
             )}
           </td>
           <td className="vehicle-person-cell-td">
@@ -1350,6 +1372,10 @@ const Vehicles = ({ embeddedInVehicleManagement = false }) => {
                 if (line === '-' && !mobile) return '-';
                 return mobile ? `${line}\n${mobile}` : line;
               })(),
+            },
+            {
+              label: 'Secondary driver',
+              value: String(selectedAsset?.secondary_driver_name || '').trim() || '-',
             },
             { label: 'Insurance Expiry', value: formatDateForInput(selectedAsset.insurance_expire_date) },
             { label: 'Revenue License Expiry', value: formatDateForInput(selectedAsset.revenue_license_expire_date) },
@@ -1802,6 +1828,53 @@ const Vehicles = ({ embeddedInVehicleManagement = false }) => {
                           Driver license images are reused from User Registration.
                         </small>
                       </div>
+                      {formData.ownership === 'o' ? (
+                        <div className="form-group-assets">
+                          <label htmlFor="secondary_driver">Secondary driver (KWIL)</label>
+                          <div className="driver-field-row-assets">
+                            <select
+                              id="secondary_driver"
+                              name="secondary_driver"
+                              value={formData.secondary_driver || ''}
+                              onChange={handleFormChange}
+                              disabled={vehicleDriversLoading}
+                            >
+                              <option value="">
+                                {vehicleDriversLoading
+                                  ? 'Loading drivers...'
+                                  : internalDrivers.length === 0
+                                    ? 'No drivers available'
+                                    : 'Select secondary driver (optional)'}
+                              </option>
+                              {internalDrivers
+                                .filter((d) => String(d.id) !== String(formData.driver || ''))
+                                .map((driver) => (
+                                  <option key={driver.id} value={driver.id}>
+                                    {driver.user_name} {driver.user_nic ? `(${driver.user_nic})` : ''}
+                                    {Number(driver.assigned_vehicle_count) > 0
+                                      ? ` — ${driver.assigned_vehicle_count} vehicle(s)`
+                                      : ''}
+                                  </option>
+                                ))}
+                            </select>
+                            <button
+                              type="button"
+                              className="driver-clear-btn-assets"
+                              title="Remove secondary driver"
+                              aria-label="Remove secondary driver"
+                              disabled={!formData.secondary_driver || vehicleDriversLoading}
+                              onClick={() =>
+                                handleFormChange({ target: { name: 'secondary_driver', value: '' } })
+                              }
+                            >
+                              <FaTimes />
+                            </button>
+                          </div>
+                          <small className="form-field-helper-assets">
+                            Optional second driver for this vehicle. The first driver must end their day trip before the other can start meter reading.
+                          </small>
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="form-row-assets">

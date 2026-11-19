@@ -24,6 +24,7 @@ import {
   FaRulerCombined,
   FaBolt,
   FaCogs,
+  FaCarSide,
   FaHome,
 } from 'react-icons/fa';
 import {
@@ -568,6 +569,13 @@ const WorkflowDashboard = () => {
       path: '/home/planCustomization',
       icon: FaCogs,
       featureCode: FEATURE_CODES.WORKFLOW_QUICK_PLAN_CUSTOMIZATION,
+    },
+    {
+      label: 'Change vehicle driver',
+      description: 'KWIL / Pool driver assign',
+      path: '/home/changeVehicleDriver',
+      icon: FaCarSide,
+      featureCode: FEATURE_CODES.WORKFLOW_QUICK_CHANGE_VEHICLE_DRIVER,
     },
   ];
 

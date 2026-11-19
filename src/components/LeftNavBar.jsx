@@ -444,7 +444,7 @@ const LeftNavBar = ({ showSidebar = false, onClose = () => { }, onCollapseChange
                       );
                     }
                     const activeAliases = {
-                      '/home/workflowDashboard': ['/home/opsroomPlanCalendar', '/home/requestsQueue', '/home/requestProceed', '/home/dayEndProcess', '/home/todayPlans', '/home/emergencyMoving', '/home/fieldHistory', '/home/reports/ops', '/home/fieldSizeAdjustments', '/home/opsAsign'],
+                      '/home/workflowDashboard': ['/home/opsroomPlanCalendar', '/home/requestsQueue', '/home/requestProceed', '/home/dayEndProcess', '/home/todayPlans', '/home/emergencyMoving', '/home/fieldHistory', '/home/reports/ops', '/home/fieldSizeAdjustments', '/home/opsAsign', '/home/planCustomization', '/home/changeVehicleDriver'],
                       '/home/monitoringDashboard': [],
                       '/home/dataViewer': ['/home/dataViewer/chart-breakdown'],
                       '/home/ict/development/dev-center': devCenterAliasPaths,

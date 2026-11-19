@@ -135,6 +135,7 @@ const FuelApprovals = ({ embedded = false }) => {
               </Typography>
               <Typography variant="caption" sx={{ color: '#5f7383' }}>
                 Approve or decline driver-submitted fuel bills. Approval debits the linked card balance.
+                Finance/admin decline after approval credits the amount back so a corrected resubmit does not double-debit.
               </Typography>
             </Box>
             <Box sx={{ display: 'flex', gap: 0.8, flexWrap: 'wrap' }}>
@@ -296,6 +297,19 @@ const FuelApprovals = ({ embedded = false }) => {
                               Decline
                             </Button>
                           </Box>
+                        ) : row.approved === 1 && Number(row.settled) !== 1 ? (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="error"
+                            startIcon={<CancelIcon />}
+                            disabled={deciding}
+                            onClick={() => setDecline({ row, reason: '' })}
+                            sx={{ textTransform: 'none' }}
+                            title="Decline and restore card balance"
+                          >
+                            Decline
+                          </Button>
                         ) : (
                           <span style={{ color: '#aab4be' }}>—</span>
                         )}

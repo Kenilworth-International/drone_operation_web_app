@@ -24,6 +24,7 @@ const OD_WORKFLOW_PATH_PREFIXES = [
   '/home/requestProceed',
   '/home/monthlyRequestProceed',
   '/home/planCustomization',
+  '/home/changeVehicleDriver',
 ];
 
 export function isOdWingWorkflowShellPath(pathname) {

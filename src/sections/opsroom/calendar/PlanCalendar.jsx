@@ -662,58 +662,60 @@ const PlanCalendar = () => {
         </div>
       )}
 
-      <div className="grid-booking-calendar">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-          <div key={d} className="weekday-booking-calendar">{d}</div>
-        ))}
-        {/* leading blanks */}
-        {Array.from({ length: startOfMonth(currentMonth).getDay() }).map((_, i) => (
-          <div key={`blank-${i}`} className="cell-blank-booking-calendar" />
-        ))}
+      <div className="grid-scroll-booking-calendar">
+        <div className="grid-booking-calendar">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
+            <div key={d} className="weekday-booking-calendar">{d}</div>
+          ))}
+          {/* leading blanks */}
+          {Array.from({ length: startOfMonth(currentMonth).getDay() }).map((_, i) => (
+            <div key={`blank-${i}`} className="cell-blank-booking-calendar" />
+          ))}
 
-        {daysInMonth.map((day) => {
-          const key = format(day, 'yyyy-MM-dd');
-          const flagOrder = { np: 0, ap: 1, rp: 2 };
-          const items = (filteredPlansByDate[key] || []).slice().sort((a, b) => {
-            const aActive = Number(a.activated) === 1 ? 0 : 1;
-            const bActive = Number(b.activated) === 1 ? 0 : 1;
-            if (aActive !== bActive) return aActive - bActive;
-            return (flagOrder[a.flag] ?? 3) - (flagOrder[b.flag] ?? 3);
-          });
-          const count = items.length;
-          return (
-            <div key={key} className="cell-booking-calendar">
-              <div className="cell-header-booking-calendar">
-                <span className="daynum-booking-calendar">{format(day, 'd')}</span>
-                {count > 0 && <span className="count-booking-calendar">{count}</span>}
+          {daysInMonth.map((day) => {
+            const key = format(day, 'yyyy-MM-dd');
+            const flagOrder = { np: 0, ap: 1, rp: 2 };
+            const items = (filteredPlansByDate[key] || []).slice().sort((a, b) => {
+              const aActive = Number(a.activated) === 1 ? 0 : 1;
+              const bActive = Number(b.activated) === 1 ? 0 : 1;
+              if (aActive !== bActive) return aActive - bActive;
+              return (flagOrder[a.flag] ?? 3) - (flagOrder[b.flag] ?? 3);
+            });
+            const count = items.length;
+            return (
+              <div key={key} className="cell-booking-calendar">
+                <div className="cell-header-booking-calendar">
+                  <span className="daynum-booking-calendar">{format(day, 'd')}</span>
+                  {count > 0 && <span className="count-booking-calendar">{count}</span>}
+                </div>
+                <div className="items-booking-calendar">
+                  {items.map((p) => {
+                    const planTypeClass =
+                      p.flag === 'ap' ? 'item-type-adhoc' :
+                      p.flag === 'rp' ? 'item-type-rescheduled' :
+                      'item-type-revolving';
+
+                    const statusColor = getPlanStatusColor(p);
+
+                    return (
+                      <div
+                        key={p.id}
+                        className={`item-booking-calendar ${planTypeClass}`}
+                        title={`${p.estate} · ${p.area || 0} Ha · #${p.id}`}
+                        onClick={() => setSelectedPlan(p)}
+                      >
+                        <span className="item-status-dot" style={{ background: statusColor }} />
+                        <span className="item-text-booking-calendar">
+                          {p.estate} · {p.area || 0} Ha
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="items-booking-calendar">
-                {items.map((p) => {
-                  const planTypeClass =
-                    p.flag === 'ap' ? 'item-type-adhoc' :
-                    p.flag === 'rp' ? 'item-type-rescheduled' :
-                    'item-type-revolving';
-
-                  const statusColor = getPlanStatusColor(p);
-
-                  return (
-                    <div
-                      key={p.id}
-                      className={`item-booking-calendar ${planTypeClass}`}
-                      title={`${p.estate} · ${p.area || 0} Ha · #${p.id}`}
-                      onClick={() => setSelectedPlan(p)}
-                    >
-                      <span className="item-status-dot" style={{ background: statusColor }} />
-                      <span className="item-text-booking-calendar">
-                        {p.estate} · {p.area || 0} Ha
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {selectedPlan && (
