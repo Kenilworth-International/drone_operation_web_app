@@ -27,7 +27,7 @@ const startOfMonth = () => {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 };
 
-const PilotSummaryCombined = () => {
+const PilotSummaryCombined = ({ onExportReady }) => {
   const dispatch = useAppDispatch();
   const workspace = useOpsReportWorkspace();
   const [startDate, setStartDate] = useState(startOfMonth);
@@ -166,6 +166,11 @@ const PilotSummaryCombined = () => {
       rows: dataRows,
     });
   };
+
+  useEffect(() => {
+    onExportReady?.(handleExport);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sorted, startDate, endDate, totals]);
 
   useEffect(() => {
     if (!workspace?.setSidebar) return undefined;

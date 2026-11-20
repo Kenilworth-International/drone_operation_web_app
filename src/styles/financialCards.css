@@ -595,7 +595,18 @@
   text-overflow: ellipsis;
 }
 
+.bank-card-category-badge-financial-cards.is-uncategorized-financial-cards {
+  background: rgba(148, 163, 184, 0.28);
+  border-color: rgba(148, 163, 184, 0.55);
+  color: #e2e8f0;
+}
+
 /* Category themes (front + back) */
+.bank-card-front-financial-cards.bank-card-theme-uncategorized-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-uncategorized-financial-cards {
+  background: linear-gradient(135deg, #475569 0%, #64748b 52%, #94a3b8 100%);
+}
+
 .bank-card-front-financial-cards.bank-card-theme-fuel-financial-cards,
 .bank-card-back-financial-cards.bank-card-theme-fuel-financial-cards {
   background: linear-gradient(135deg, #0f3d3e 0%, #14532d 48%, #166534 100%);

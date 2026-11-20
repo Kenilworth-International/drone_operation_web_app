@@ -3,8 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Bars } from 'react-loader-spinner';
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
   LineChart,
   Line,
   XAxis,
@@ -49,9 +47,24 @@ const lastMonthRange = () => {
 };
 
 const TAB_META = {
-  management: { label: 'Management', theme: 'theme-mgmt' },
-  ops: { label: 'Operations Room', theme: 'theme-ops' },
-  plantation: { label: 'Plantation', theme: 'theme-plant' },
+  management: {
+    label: 'Management',
+    theme: 'theme-mgmt',
+    boardTitle: 'Management board',
+    accent: '#1e3a5f',
+  },
+  ops: {
+    label: 'Operations Room',
+    theme: 'theme-ops',
+    boardTitle: 'Operations board',
+    accent: '#0f6b4c',
+  },
+  plantation: {
+    label: 'Plantation',
+    theme: 'theme-plant',
+    boardTitle: 'Plantation board',
+    accent: '#6b5a3e',
+  },
 };
 
 const clampPct = (v) => Math.max(0, Math.min(100, Number(v) || 0));
@@ -80,7 +93,7 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
 
   const currentTab = lockedCategory || (activeTab === 'finance' ? 'plantation' : activeTab);
   const catalog = reportCatalog[currentTab] || { title: '', reports: [] };
-  const themeClass = TAB_META[currentTab]?.theme || 'theme-mgmt';
+  const tabMeta = TAB_META[currentTab] || TAB_META.management;
 
   const periodValue = useMemo(
     () => ({
@@ -140,7 +153,6 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
         ...t,
         completedPilot: Number((t.completedPilot || 0).toFixed(2)),
         completedOps: Number((t.completedOps || 0).toFixed(2)),
-        assigned: Number((t.assigned || 0).toFixed(2)),
       })),
     [overviewRows]
   );
@@ -159,362 +171,13 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
   };
 
   const openReport = (report) => setSelectedReport(report);
-
-  const renderMgmtOverview = () => (
-    <div className="rds-mgmt">
-      <div className="rds-mgmt-hero">
-        <div>
-          <div className="rds-mgmt-kicker">Executive view</div>
-          <h2 className="rds-mgmt-title">Management decisions</h2>
-          <p className="rds-mgmt-lede">
-            Period {periodValue.startYmd} → {periodValue.endYmd}. Browse the index below — each
-            report opens in a focused workspace. Exports use this exact range.
-          </p>
-        </div>
-        {!overviewLoading && (
-          <div className="rds-mgmt-metrics">
-            <div className="rds-mgmt-metric">
-              <div className="rds-mgmt-metric-val">{formatHa(summary.assigned)}</div>
-              <div className="rds-mgmt-metric-lbl">Assigned Ha</div>
-            </div>
-            <div className="rds-mgmt-metric">
-              <div className="rds-mgmt-metric-val">{formatPct(summary.pctPilot)}</div>
-              <div className="rds-mgmt-metric-lbl">Pilot %</div>
-            </div>
-            <div className="rds-mgmt-metric">
-              <div className="rds-mgmt-metric-val">{formatPct(summary.pctOps)}</div>
-              <div className="rds-mgmt-metric-lbl">OpsRoom %</div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {overviewLoading ? (
-        <div className="rds-loading">
-          <Bars height={32} width={32} color="#1e3a5f" />
-        </div>
-      ) : (
-        <div className="rds-mgmt-chart">
-          <div className="rds-mgmt-chart-label">Completion trend · Pilot vs OpsRoom</div>
-          {trend.length === 0 ? (
-            <div className="rds-empty">No trend for this period</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={trend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="mgmtPilot" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="mgmtOps" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#1e3a5f" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#1e3a5f" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 6" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={40} />
-                <Tooltip />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Area type="monotone" dataKey="completedPilot" name="Pilot" stroke="#0ea5e9" fill="url(#mgmtPilot)" strokeWidth={2} />
-                <Area type="monotone" dataKey="completedOps" name="OpsRoom" stroke="#1e3a5f" fill="url(#mgmtOps)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-      )}
-
-      <div className="rds-mgmt-index">
-        <div className="rds-mgmt-index-head">
-          <span>#</span>
-          <span>Report</span>
-          <span />
-        </div>
-        {(catalog.reports || []).map((report, i) => (
-          <button
-            key={report.id}
-            type="button"
-            className="rds-mgmt-index-row"
-            style={{ animationDelay: `${i * 0.04}s` }}
-            onClick={() => openReport(report)}
-          >
-            <span className="rds-mgmt-index-num">{String(i + 1).padStart(2, '0')}</span>
-            <span>
-              <p className="rds-mgmt-index-name">{report.name}</p>
-              <p className="rds-mgmt-index-desc">{report.description}</p>
-            </span>
-            <span className="rds-mgmt-index-go" aria-hidden>
-              →
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderOpsOverview = () => {
-    const pilotPct = clampPct(summary.pctPilot);
-    const opsPct = clampPct(summary.pctOps);
-    return (
-      <div className="rds-ops">
-        <aside className="rds-ops-rail">
-          <div className="rds-ops-rail-label">Report rail</div>
-          {(catalog.reports || []).map((report) => (
-            <button
-              key={report.id}
-              type="button"
-              className="rds-ops-rail-item"
-              onClick={() => openReport(report)}
-            >
-              <span className="rds-ops-rail-name">{report.name}</span>
-              <span className="rds-ops-rail-desc">{report.description}</span>
-            </button>
-          ))}
-        </aside>
-
-        <section className="rds-ops-stage">
-          <div>
-            <h2 className="rds-ops-stage-title">Operations board</h2>
-            <p className="rds-ops-stage-sub">
-              Snapshot for {periodValue.startYmd} → {periodValue.endYmd}. Open a report from the rail —
-              each report keeps its own dates and Excel download.
-            </p>
-            <div className="rds-ops-board-dates">
-              <label className="rds-ops-field">
-                <span>From</span>
-                <input
-                  type="date"
-                  value={periodValue.startYmd}
-                  max={periodValue.endYmd}
-                  onChange={(e) => {
-                    setActivePreset(null);
-                    if (e.target.value) setStartDate(new Date(`${e.target.value}T00:00:00`));
-                  }}
-                />
-              </label>
-              <label className="rds-ops-field">
-                <span>To</span>
-                <input
-                  type="date"
-                  value={periodValue.endYmd}
-                  min={periodValue.startYmd}
-                  max={toYmd(new Date())}
-                  onChange={(e) => {
-                    setActivePreset(null);
-                    if (e.target.value) setEndDate(new Date(`${e.target.value}T00:00:00`));
-                  }}
-                />
-              </label>
-              <div className="rds-ops-view-toggle">
-                {[
-                  ['week', 'Week'],
-                  ['month', 'Month'],
-                  ['last', 'Last'],
-                ].map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`rds-ops-view-btn${activePreset === key ? ' is-active' : ''}`}
-                    onClick={() => applyPreset(key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {overviewLoading ? (
-            <div className="rds-loading">
-              <Bars height={32} width={32} color="#0f6b4c" />
-            </div>
-          ) : (
-            <>
-              <div className="rds-ops-gauges">
-                <div>
-                  <div className="rds-ops-gauge-head">
-                    <span>Pilot completion</span>
-                    <strong>{formatPct(summary.pctPilot)}</strong>
-                  </div>
-                  <div className="rds-ops-gauge-track">
-                    <div className="rds-ops-gauge-fill" style={{ width: `${pilotPct}%` }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="rds-ops-gauge-head">
-                    <span>OpsRoom completion</span>
-                    <strong>{formatPct(summary.pctOps)}</strong>
-                  </div>
-                  <div className="rds-ops-gauge-track">
-                    <div className="rds-ops-gauge-fill is-ops" style={{ width: `${opsPct}%` }} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="rds-ops-dual">
-                <div>
-                  <div className="rds-ops-dual-val">{formatHa(summary.completedPilot)}</div>
-                  <div className="rds-ops-dual-lbl">Pilot Ha completed</div>
-                </div>
-                <div>
-                  <div className="rds-ops-dual-val">{formatHa(summary.completedOps)}</div>
-                  <div className="rds-ops-dual-lbl">OpsRoom Ha completed</div>
-                </div>
-              </div>
-
-              <div className="rds-ops-chart">
-                <div className="rds-ops-chart-label">Daily completed Ha</div>
-                {trend.length === 0 ? (
-                  <div className="rds-empty">No daily series</div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={220}>
-                    <LineChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="2 6" stroke="#c9d9d2" vertical={false} />
-                      <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#5b726a' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: '#5b726a' }} axisLine={false} tickLine={false} width={40} />
-                      <Tooltip />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Line type="monotone" dataKey="completedPilot" name="Pilot" stroke="#0f6b4c" strokeWidth={2.5} dot={false} />
-                      <Line type="monotone" dataKey="completedOps" name="OpsRoom" stroke="#34d399" strokeWidth={2.5} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-            </>
-          )}
-        </section>
-      </div>
-    );
-  };
-
-  const renderPlantOverview = () => (
-    <div className="rds-plant">
-      <div className="rds-plant-intro">
-        <div className="rds-plant-kicker">Field & estate</div>
-        <h2 className="rds-plant-title">Plantation reports</h2>
-        <p className="rds-plant-story">
-          For{' '}
-          <em>
-            {periodValue.startYmd} → {periodValue.endYmd}
-          </em>
-          , operations covered{' '}
-          <em>{overviewLoading ? '…' : formatHa(summary.completedOps)} Ha</em> (OpsRoom) against{' '}
-          <em>{overviewLoading ? '…' : formatHa(summary.assigned)} Ha</em> assigned. Open a report
-          below — each uses a quieter, reading-first layout.
-        </p>
-        {!overviewLoading && trend.length > 0 && (
-          <div className="rds-plant-spark rds-ui-sans">
-            <ResponsiveContainer width="100%" height={140}>
-              <AreaChart data={trend} margin={{ top: 8, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="plantFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#a67c52" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="#a67c52" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="date" hide />
-                <YAxis hide />
-                <Tooltip />
-                <Area
-                  type="monotone"
-                  dataKey="completedOps"
-                  name="OpsRoom Ha"
-                  stroke="#6b5a3e"
-                  fill="url(#plantFill)"
-                  strokeWidth={1.5}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      <div className="rds-plant-flow">
-        {(catalog.reports || []).map((report, i) => (
-          <button
-            key={report.id}
-            type="button"
-            className="rds-plant-item"
-            onClick={() => openReport(report)}
-          >
-            <span className="rds-plant-item-mark">
-              {String.fromCharCode(65 + (i % 26))}
-            </span>
-            <span>
-              <p className="rds-plant-item-name">{report.name}</p>
-              <p className="rds-plant-item-desc">{report.description}</p>
-            </span>
-            <span className="rds-plant-item-action">Open report →</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderOverview = () => {
-    if (currentTab === 'ops') return renderOpsOverview();
-    if (currentTab === 'plantation') return renderPlantOverview();
-    return renderMgmtOverview();
-  };
-
   const ReportComponent = selectedReport?.component;
-  const uiKind = selectedReport?.uiKind || 'ui-dense';
-  const isOpsTab = currentTab === 'ops';
-  const showTopPeriod = !isOpsTab;
 
   return (
     <ReportsPeriodContext.Provider value={periodValue}>
       <OpsReportWorkspaceProvider>
-        <div className={`rds-shell ${themeClass}`}>
-          {showTopPeriod && (
-            <div className="rds-period">
-              <div className="rds-period-field">
-                <span className="rds-period-label">From</span>
-                <input
-                  type="date"
-                  value={periodValue.startYmd}
-                  max={periodValue.endYmd}
-                  onChange={(e) => {
-                    setActivePreset(null);
-                    const v = e.target.value;
-                    if (v) setStartDate(new Date(`${v}T00:00:00`));
-                  }}
-                />
-              </div>
-              <div className="rds-period-field">
-                <span className="rds-period-label">To</span>
-                <input
-                  type="date"
-                  value={periodValue.endYmd}
-                  min={periodValue.startYmd}
-                  max={toYmd(new Date())}
-                  onChange={(e) => {
-                    setActivePreset(null);
-                    const v = e.target.value;
-                    if (v) setEndDate(new Date(`${v}T00:00:00`));
-                  }}
-                />
-              </div>
-              <div className="rds-presets">
-                {[
-                  ['week', 'This week'],
-                  ['month', 'This month'],
-                  ['last', 'Last month'],
-                ].map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`rds-preset${activePreset === key ? ' is-active' : ''}`}
-                    onClick={() => applyPreset(key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {isCorporateView && !selectedReport && (
+        <div className={`rds-shell ${tabMeta.theme}`}>
+          {isCorporateView && (
             <div className="rds-tabs">
               {['management', 'ops', 'plantation'].map((tab) => (
                 <button
@@ -529,8 +192,8 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
             </div>
           )}
 
-          {!selectedReport && category === 'ops' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+          {category === 'ops' && !selectedReport && (
+            <div style={{ marginBottom: '0.75rem' }}>
               <button
                 type="button"
                 className="rds-back"
@@ -546,111 +209,344 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
             </div>
           )}
 
-          {!selectedReport && renderOverview()}
-
-          {selectedReport && isOpsTab && (
-            <OpsSelectedReportLayout
-              catalog={catalog}
-              selectedReport={selectedReport}
-              onBack={() => setSelectedReport(null)}
-              onSelectReport={openReport}
-              ReportComponent={ReportComponent}
-            />
-          )}
-
-          {selectedReport && !isOpsTab && (
-            <div
-              className={`rds-report-host ${uiKind}${
-                selectedReport.id === 'plan_execution_reasons' ? ' plan-excu-host' : ''
-              }`}
-            >
-              <div className="rds-report-toolbar">
-                <button type="button" className="rds-back" onClick={() => setSelectedReport(null)}>
-                  ← All reports
-                </button>
-                <h2 className="rds-report-title">{selectedReport.name}</h2>
-                {typeof exportHandler === 'function' && (
-                  <button type="button" className="rds-export-btn" onClick={() => exportHandler()}>
-                    Download Excel
-                  </button>
-                )}
-              </div>
-              <p className="rds-muted" style={{ margin: 0 }}>
-                {selectedReport.description}
-                <span aria-hidden> · </span>
-                {periodValue.startYmd} → {periodValue.endYmd}
-              </p>
-              <div
-                className={
-                  selectedReport.id === 'plan_execution_reasons' ? 'plan-excu-host-content' : undefined
-                }
-              >
-                {ReportComponent ? (
-                  <ReportComponent
-                    startDate={startDate}
-                    endDate={endDate}
-                    onExportReady={onExportReady}
-                  />
-                ) : (
-                  <div className="rds-empty">Report unavailable.</div>
-                )}
-              </div>
-            </div>
-          )}
+          <BoardLayout
+            catalog={catalog}
+            tabMeta={tabMeta}
+            selectedReport={selectedReport}
+            onSelectReport={openReport}
+            onClearReport={() => setSelectedReport(null)}
+            periodValue={periodValue}
+            setStartDate={setStartDate}
+            setEndDate={setEndDate}
+            activePreset={activePreset}
+            setActivePreset={setActivePreset}
+            applyPreset={applyPreset}
+            overviewLoading={overviewLoading}
+            summary={summary}
+            trend={trend}
+            ReportComponent={ReportComponent}
+            exportHandler={exportHandler}
+            onExportReady={onExportReady}
+            startDate={startDate}
+            endDate={endDate}
+          />
         </div>
       </OpsReportWorkspaceProvider>
     </ReportsPeriodContext.Provider>
   );
 };
 
-/** Ops Room: left = view options / dates / excel; right = chart/table. */
-function OpsSelectedReportLayout({
+function BoardLayout({
   catalog,
+  tabMeta,
   selectedReport,
-  onBack,
   onSelectReport,
+  onClearReport,
+  periodValue,
+  setStartDate,
+  setEndDate,
+  activePreset,
+  setActivePreset,
+  applyPreset,
+  overviewLoading,
+  summary,
+  trend,
   ReportComponent,
+  exportHandler,
+  onExportReady,
+  startDate,
+  endDate,
 }) {
   const workspace = useOpsReportWorkspace();
   const usesWorkspaceControls = Boolean(selectedReport?.opsWorkspace);
+  const pilotPct = clampPct(summary.pctPilot);
+  const opsPct = clampPct(summary.pctOps);
 
   useEffect(() => {
+    if (!selectedReport) {
+      workspace?.clearSidebar?.();
+      return undefined;
+    }
     if (usesWorkspaceControls) return undefined;
+
+    // Legacy / non-workspace reports: dates + Excel live in the left data-view panel
     workspace?.setSidebar?.(
       <div className="rds-ops-controls">
+        <div className="rds-ops-controls-block">
+          <div className="rds-ops-controls-label">Date range</div>
+          <label className="rds-ops-field">
+            <span>From</span>
+            <input
+              type="date"
+              value={periodValue.startYmd}
+              max={periodValue.endYmd}
+              onChange={(e) => {
+                setActivePreset(null);
+                if (e.target.value) setStartDate(new Date(`${e.target.value}T00:00:00`));
+              }}
+            />
+          </label>
+          <label className="rds-ops-field">
+            <span>To</span>
+            <input
+              type="date"
+              value={periodValue.endYmd}
+              min={periodValue.startYmd}
+              max={toYmd(new Date())}
+              onChange={(e) => {
+                setActivePreset(null);
+                if (e.target.value) setEndDate(new Date(`${e.target.value}T00:00:00`));
+              }}
+            />
+          </label>
+          <div className="rds-ops-view-toggle">
+            {[
+              ['week', 'Week'],
+              ['month', 'Month'],
+              ['last', 'Last'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={`rds-ops-view-btn${activePreset === key ? ' is-active' : ''}`}
+                onClick={() => applyPreset(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <p className="rds-ops-hint">
-          This report keeps its own date and export controls in the view on the right.
+          Chart / table and any extra filters appear on the right. Use Download Excel above the data
+          when available.
         </p>
       </div>
     );
     return () => workspace?.clearSidebar?.();
-  }, [usesWorkspaceControls, selectedReport?.id, workspace]);
+  }, [
+    selectedReport,
+    usesWorkspaceControls,
+    periodValue.startYmd,
+    periodValue.endYmd,
+    activePreset,
+    workspace,
+    setStartDate,
+    setEndDate,
+    setActivePreset,
+    applyPreset,
+  ]);
 
   return (
-    <div className="rds-ops rds-ops-report-open">
+    <div className={`rds-ops${selectedReport ? ' rds-ops-report-open' : ''}`}>
       <aside className="rds-ops-rail">
-        <button type="button" className="rds-back rds-ops-back" onClick={onBack}>
-          ← Board
-        </button>
-        <div className="rds-ops-rail-label">Reports</div>
+        {selectedReport && (
+          <button type="button" className="rds-back rds-ops-back" onClick={onClearReport}>
+            ← Board
+          </button>
+        )}
+        <div className="rds-ops-rail-label">Report rail</div>
         {(catalog.reports || []).map((report) => (
           <button
             key={report.id}
             type="button"
-            className={`rds-ops-rail-item${selectedReport.id === report.id ? ' is-active' : ''}`}
+            className={`rds-ops-rail-item${selectedReport?.id === report.id ? ' is-active' : ''}`}
             onClick={() => onSelectReport(report)}
           >
             <span className="rds-ops-rail-name">{report.name}</span>
+            {!selectedReport && (
+              <span className="rds-ops-rail-desc">{report.description}</span>
+            )}
           </button>
         ))}
-        <div className="rds-ops-rail-divider" />
-        <div className="rds-ops-rail-label">Data view</div>
-        <h3 className="rds-ops-active-title">{selectedReport.name}</h3>
-        <p className="rds-ops-active-desc">{selectedReport.description}</p>
-        {workspace?.sidebar}
+
+        {selectedReport && (
+          <>
+            <div className="rds-ops-rail-divider" />
+            <div className="rds-ops-rail-label">Data view</div>
+            <h3 className="rds-ops-active-title">{selectedReport.name}</h3>
+            <p className="rds-ops-active-desc">{selectedReport.description}</p>
+            {workspace?.sidebar}
+          </>
+        )}
       </aside>
+
       <section className="rds-ops-stage">
-        {ReportComponent ? <ReportComponent /> : <div className="rds-empty">Report unavailable.</div>}
+        {!selectedReport && (
+          <>
+            <div>
+              <h2 className="rds-ops-stage-title">{tabMeta.boardTitle}</h2>
+              <p className="rds-ops-stage-sub">
+                Snapshot for {periodValue.startYmd} → {periodValue.endYmd}. Open a report from the
+                rail — chart / table on the right, Excel from the report toolbar.
+              </p>
+              <div className="rds-ops-board-dates">
+                <label className="rds-ops-field">
+                  <span>From</span>
+                  <input
+                    type="date"
+                    value={periodValue.startYmd}
+                    max={periodValue.endYmd}
+                    onChange={(e) => {
+                      setActivePreset(null);
+                      if (e.target.value) setStartDate(new Date(`${e.target.value}T00:00:00`));
+                    }}
+                  />
+                </label>
+                <label className="rds-ops-field">
+                  <span>To</span>
+                  <input
+                    type="date"
+                    value={periodValue.endYmd}
+                    min={periodValue.startYmd}
+                    max={toYmd(new Date())}
+                    onChange={(e) => {
+                      setActivePreset(null);
+                      if (e.target.value) setEndDate(new Date(`${e.target.value}T00:00:00`));
+                    }}
+                  />
+                </label>
+                <div className="rds-ops-view-toggle">
+                  {[
+                    ['week', 'Week'],
+                    ['month', 'Month'],
+                    ['last', 'Last'],
+                  ].map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      className={`rds-ops-view-btn${activePreset === key ? ' is-active' : ''}`}
+                      onClick={() => applyPreset(key)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {overviewLoading ? (
+              <div className="rds-loading">
+                <Bars height={32} width={32} color={tabMeta.accent} />
+              </div>
+            ) : (
+              <>
+                <div className="rds-ops-gauges">
+                  <div>
+                    <div className="rds-ops-gauge-head">
+                      <span>Pilot completion</span>
+                      <strong>{formatPct(summary.pctPilot)}</strong>
+                    </div>
+                    <div className="rds-ops-gauge-track">
+                      <div className="rds-ops-gauge-fill" style={{ width: `${pilotPct}%` }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="rds-ops-gauge-head">
+                      <span>OpsRoom completion</span>
+                      <strong>{formatPct(summary.pctOps)}</strong>
+                    </div>
+                    <div className="rds-ops-gauge-track">
+                      <div className="rds-ops-gauge-fill is-ops" style={{ width: `${opsPct}%` }} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rds-ops-dual">
+                  <div>
+                    <div className="rds-ops-dual-val">{formatHa(summary.completedPilot)}</div>
+                    <div className="rds-ops-dual-lbl">Pilot Ha completed</div>
+                  </div>
+                  <div>
+                    <div className="rds-ops-dual-val">{formatHa(summary.completedOps)}</div>
+                    <div className="rds-ops-dual-lbl">OpsRoom Ha completed</div>
+                  </div>
+                </div>
+
+                <div className="rds-ops-chart">
+                  <div className="rds-ops-chart-label">Daily completed Ha</div>
+                  {trend.length === 0 ? (
+                    <div className="rds-empty">No daily series</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height={220}>
+                      <LineChart data={trend} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="2 6" stroke="#c9d9d2" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fontSize: 10, fill: '#5b726a' }}
+                          axisLine={false}
+                          tickLine={false}
+                        />
+                        <YAxis
+                          tick={{ fontSize: 10, fill: '#5b726a' }}
+                          axisLine={false}
+                          tickLine={false}
+                          width={40}
+                        />
+                        <Tooltip />
+                        <Legend wrapperStyle={{ fontSize: 12 }} />
+                        <Line
+                          type="monotone"
+                          dataKey="completedPilot"
+                          name="Pilot"
+                          stroke="#0f6b4c"
+                          strokeWidth={2.5}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="completedOps"
+                          name="OpsRoom"
+                          stroke="#34d399"
+                          strokeWidth={2.5}
+                          dot={false}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {selectedReport && (
+          <div
+            className={`rds-stage-report${
+              selectedReport.id === 'plan_execution_reasons' ? ' plan-excu-host' : ''
+            }`}
+          >
+            <div className="rds-stage-report-top">
+              <div>
+                <h2 className="rds-ops-stage-title" style={{ marginBottom: 0 }}>
+                  {selectedReport.name}
+                </h2>
+                <p className="rds-ops-stage-sub" style={{ marginTop: '0.25rem' }}>
+                  {periodValue.startYmd} → {periodValue.endYmd}
+                </p>
+              </div>
+              {typeof exportHandler === 'function' && (
+                <button type="button" className="rds-export-btn" onClick={() => exportHandler()}>
+                  Download Excel
+                </button>
+              )}
+            </div>
+            <div
+              className={
+                selectedReport.id === 'plan_execution_reasons' ? 'plan-excu-host-content' : undefined
+              }
+            >
+              {ReportComponent ? (
+                <ReportComponent
+                  startDate={startDate}
+                  endDate={endDate}
+                  onExportReady={onExportReady}
+                />
+              ) : (
+                <div className="rds-empty">Report unavailable.</div>
+              )}
+            </div>
+          </div>
+        )}
       </section>
     </div>
   );

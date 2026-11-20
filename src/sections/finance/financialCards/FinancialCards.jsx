@@ -110,10 +110,20 @@ const CARD_THEME_FALLBACKS = [
   'bank-card-theme-navy-financial-cards',
 ];
 
+const isUncategorizedCard = (card) => {
+  const catId = String(card?.category ?? '').trim();
+  const catName = String(card?.category_name || '').trim().toLowerCase();
+  return !catId && (!catName || catName === 'uncategorized');
+};
+
 const getCardThemeClass = (card) => {
   const catId = String(card?.category ?? '').trim();
   const catName = String(card?.category_name || '').trim().toLowerCase();
   const sub = String(card?.sub_category_name || '').trim().toLowerCase();
+
+  if (isUncategorizedCard(card)) {
+    return 'bank-card-theme-uncategorized-financial-cards';
+  }
 
   if (catId === '1' || catName.includes('fuel')) {
     if (sub === 'vehicle') return 'bank-card-theme-fuel-vehicle-financial-cards';
@@ -1510,6 +1520,7 @@ const FinancialCards = () => {
             const isFlipped = flippedCardId === card.id;
             const cardThemeClass = getCardThemeClass(card);
             const cardCategoryLabel = getCardCategoryLabel(card);
+            const cardUncategorized = isUncategorizedCard(card);
             return (
               <div key={card.id} className="card-item-financial-cards">
                 <div 
@@ -1590,7 +1601,12 @@ const FinancialCards = () => {
                           </button>
                         </div>
                       </div>
-                      <div className="bank-card-category-badge-financial-cards" title={cardCategoryLabel}>
+                      <div
+                        className={`bank-card-category-badge-financial-cards${
+                          cardUncategorized ? ' is-uncategorized-financial-cards' : ''
+                        }`}
+                        title={cardCategoryLabel}
+                      >
                         {cardCategoryLabel}
                       </div>
                       <div className="bank-card-number-financial-cards">

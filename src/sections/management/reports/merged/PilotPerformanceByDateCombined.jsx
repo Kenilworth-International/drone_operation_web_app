@@ -25,7 +25,7 @@ const currentYearMonth = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
-const PilotPerformanceByDateCombined = () => {
+const PilotPerformanceByDateCombined = ({ onExportReady }) => {
   const dispatch = useAppDispatch();
   const workspace = useOpsReportWorkspace();
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
@@ -187,6 +187,11 @@ const PilotPerformanceByDateCombined = () => {
       ],
     });
   };
+
+  useEffect(() => {
+    onExportReady?.(handleExport);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pilotRows, dateKeys, start, end, teamRows]);
 
   useEffect(() => {
     if (!workspace?.setSidebar) return undefined;

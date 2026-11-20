@@ -79,7 +79,8 @@ const vehicleHeaders = [
   'Card Holder',
   'Card No',
   'Card ID',
-  'Card Balance',
+  'Balance Before',
+  'Balance After',
   'Liters',
   'Unit Price',
   'Amount',
@@ -105,7 +106,8 @@ const generatorHeaders = [
   'User ID',
   'Card No',
   'Card ID',
-  'Card Balance',
+  'Balance Before',
+  'Balance After',
   'Liters',
   'Unit Price',
   'Amount',
@@ -139,7 +141,8 @@ const vehicleRowValues = (row) => {
     row.card_holder || '',
     row.card_number || '',
     row.card_id ?? '',
-    row.card_balance != null ? Number(row.card_balance) : '',
+    row.balance_before != null ? Number(row.balance_before) : '',
+    row.balance_after != null ? Number(row.balance_after) : '',
     liters,
     row.unit_price != null ? Number(row.unit_price) : '',
     amount,
@@ -171,7 +174,8 @@ const generatorRowValues = (row) => {
     row.person_user_id ?? row.user_id ?? '',
     row.card_number || '',
     row.card_id ?? '',
-    row.card_balance != null ? Number(row.card_balance) : '',
+    row.balance_before != null ? Number(row.balance_before) : '',
+    row.balance_after != null ? Number(row.balance_after) : '',
     liters,
     row.unit_price != null ? Number(row.unit_price) : '',
     amount,
@@ -204,8 +208,9 @@ const vehicleSubtotal = (groupRows) => {
   amount = round2(amount);
   wf = round2(wf);
   const diff = round2(amount - wf);
-  // Align with classic layout: blank identity cols, totals on Liters/Amount/WF Cal/Difference
+  // Blank identity/balance cols; totals on Liters/Amount/WF Cal/Difference
   return [
+    null,
     null,
     null,
     null,

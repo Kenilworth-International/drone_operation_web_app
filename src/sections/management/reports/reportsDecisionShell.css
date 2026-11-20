@@ -1080,3 +1080,26 @@
   gap: 0.75rem;
   min-height: 200px;
 }
+
+.rds-stage-report {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 240px;
+}
+
+.rds-stage-report-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--rds-line);
+}
+
+/* Keep legacy report pickers usable inside the stage */
+.rds-ops-stage .report-date-range,
+.rds-ops-stage .react-datepicker-wrapper {
+  max-width: 100%;
+}

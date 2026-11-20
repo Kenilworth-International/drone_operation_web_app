@@ -37,7 +37,7 @@ const statusText = (s) => {
   return s || '';
 };
 
-const PilotPerformanceCombined = () => {
+const PilotPerformanceCombined = ({ onExportReady }) => {
   const dispatch = useAppDispatch();
   const workspace = useOpsReportWorkspace();
   const [startDate, setStartDate] = useState(startOfMonth);
@@ -192,6 +192,11 @@ const PilotPerformanceCombined = () => {
       rows: dataRows,
     });
   };
+
+  useEffect(() => {
+    onExportReady?.(handleExport);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtered, startDate, endDate, totals]);
 
   useEffect(() => {
     if (!workspace?.setSidebar) return undefined;
