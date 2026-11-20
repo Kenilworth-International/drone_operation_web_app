@@ -9,10 +9,12 @@
   --avm-line: rgba(0, 75, 113, 0.14);
   --avm-line-soft: rgba(0, 75, 113, 0.08);
   --avm-shadow: 0 8px 24px rgba(0, 75, 113, 0.08);
-  padding: 16px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding: 12px 14px 20px;
+  max-width: none;
+  width: 100%;
+  margin: 0;
   font-family: inherit;
+  box-sizing: border-box;
 }
 
 /* Header */
@@ -113,29 +115,41 @@
 
 /* Table */
 .avm-table-wrap {
-  overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--avm-line-soft);
   background: #fff;
   box-shadow: var(--avm-shadow);
-  padding: 16px;
+  padding: 12px 12px 10px;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.avm-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
 }
 
 .avm-table {
   width: 100%;
+  min-width: 0;
+  table-layout: auto;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 12.5px;
 }
 
 .avm-table thead th {
   background: #f7fbfe;
-  padding: 12px 16px;
+  padding: 8px 8px;
   text-align: left;
   font-weight: 600;
   color: var(--avm-primary);
-  font-size: 12px;
+  font-size: 10.5px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
   border-bottom: 1px solid var(--avm-line);
   white-space: nowrap;
 }
@@ -154,28 +168,66 @@
 }
 
 .avm-table td {
-  padding: 14px 16px;
+  padding: 8px 8px;
   vertical-align: middle;
+}
+
+.avm-col-sm {
+  width: 1%;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.avm-col-sm .avm-badge,
+.avm-col-sm .avm-version {
+  margin: 0 auto;
+}
+
+.avm-col-flag {
+  width: 1%;
+  max-width: 4.75rem;
+  padding-left: 4px !important;
+  padding-right: 4px !important;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.avm-col-flag .avm-badge {
+  min-width: 2.6rem;
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+.avm-col-actions {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
 }
 
 .avm-cell-name {
   font-weight: 600;
   color: var(--avm-text);
+  white-space: nowrap;
+  max-width: 9.5rem;
 }
 
 .avm-cell-id {
   font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--avm-muted);
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .avm-version {
   display: inline-block;
-  padding: 3px 10px;
+  padding: 2px 7px;
   background: var(--avm-primary-soft-2);
-  border-radius: 6px;
+  border-radius: 5px;
   font-family: 'Consolas', 'Monaco', monospace;
-  font-size: 13px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--avm-primary);
 }
@@ -183,11 +235,12 @@
 /* Badges */
 .avm-badge {
   display: inline-block;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
   font-weight: 600;
   text-transform: capitalize;
+  line-height: 1.25;
 }
 
 .badge-android {
@@ -272,8 +325,8 @@
 
 .avm-btn-edit {
   background: var(--avm-primary-soft-2);
-  padding: 6px 10px;
-  font-size: 12px;
+  padding: 4px 8px;
+  font-size: 11px;
 }
 
 .avm-btn-edit:hover {
@@ -544,7 +597,11 @@
 
   .avm-table td,
   .avm-table th {
-    padding: 10px 12px;
+    padding: 7px 6px;
+  }
+
+  .avm-cell-id {
+    max-width: 10rem;
   }
 }
 
@@ -631,6 +688,21 @@ body.wing-theme-ict .content-dashboard .avm-field label,
 body.wing-theme-ict .content-dashboard .avm-field-hint,
 body.wing-theme-ict .content-dashboard .avm-toggle-label {
   color: #f6faff !important;
+}
+
+body.wing-theme-ict .content-dashboard .avm-container.ict-dev-page {
+  padding: 10px 12px 18px;
+  max-width: none;
+  width: 100%;
+}
+
+body.wing-theme-ict .content-dashboard .avm-table-wrap.ict-dev-card {
+  padding: 10px 10px 8px !important;
+}
+
+body.wing-theme-ict .content-dashboard .avm-version {
+  background: rgba(172, 209, 255, 0.16);
+  color: #e8f3ff;
 }
 
 body.wing-theme-ict .content-dashboard .avm-btn {

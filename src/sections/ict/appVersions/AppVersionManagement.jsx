@@ -178,62 +178,64 @@ export default function AppVersionManagement() {
       ) : (
         <div className="avm-table-wrap ict-dev-card ict-dev-section">
           <h3 className="ict-dev-section-title">App Version List</h3>
-          <table className="avm-table">
-            <thead>
-              <tr>
-                <th>App Name</th>
-                <th>App ID</th>
-                <th>Platform</th>
-                <th>Min Version</th>
-                <th>Latest Version</th>
-                <th>Force Update</th>
-                <th>Maintenance Going</th>
-                <th>Block Dev Mode</th>
-                <th>OTP Bypass</th>
-                <th>Checking Enabled</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row) => (
-                <tr key={row.id}>
-                  <td className="avm-cell-name">{row.app_name}</td>
-                  <td className="avm-cell-id">{row.app_id}</td>
-                  <td>{getPlatformBadge(row.platform)}</td>
-                  <td><span className="avm-version">{row.min_version}</span></td>
-                  <td><span className="avm-version">{row.latest_version}</span></td>
-                  <td>
-                    <span className={`avm-badge ${toBit(row.force_update, 1) ? 'badge-force' : 'badge-soft'}`}>
-                      {toBit(row.force_update, 1) ? 'Force' : 'Soft'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`avm-badge ${toBit(row.maintenance, 0) ? 'badge-maintenance' : 'badge-normal'}`}>
-                      {toBit(row.maintenance, 0) ? 'Going' : 'No'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className={`avm-badge ${toBit(row.block_developer_mode, 0) ? 'badge-force' : 'badge-soft'}`}>
-                      {toBit(row.block_developer_mode, 0) ? 'Yes' : 'No'}
-                    </span>
-                  </td>
-                  <td className="avm-cell-id">{row.otp_bypass_mobile || '—'}</td>
-                  <td>
-                    <span className={`avm-badge ${toBit(row.is_active, 1) ? 'badge-active' : 'badge-inactive'}`}>
-                      {toBit(row.is_active, 1) ? 'On' : 'Off'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="avm-actions">
-                      <button className="avm-btn avm-btn-edit" onClick={() => openEdit(row)} title="Edit">
-                        Edit
-                      </button>
-                    </div>
-                  </td>
+          <div className="avm-table-scroll">
+            <table className="avm-table">
+              <thead>
+                <tr>
+                  <th>App</th>
+                  <th>App ID</th>
+                  <th className="avm-col-sm">Platform</th>
+                  <th className="avm-col-sm">Min</th>
+                  <th className="avm-col-sm">Latest</th>
+                  <th className="avm-col-flag" title="Force Update">Force</th>
+                  <th className="avm-col-flag" title="Maintenance">Maint.</th>
+                  <th className="avm-col-flag" title="Block Dev Mode">Dev</th>
+                  <th className="avm-col-sm">OTP</th>
+                  <th className="avm-col-sm" title="Checking Enabled">Check</th>
+                  <th className="avm-col-actions">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filtered.map((row) => (
+                  <tr key={row.id}>
+                    <td className="avm-cell-name">{row.app_name}</td>
+                    <td className="avm-cell-id" title={row.app_id}>{row.app_id}</td>
+                    <td className="avm-col-sm">{getPlatformBadge(row.platform)}</td>
+                    <td className="avm-col-sm"><span className="avm-version">{row.min_version}</span></td>
+                    <td className="avm-col-sm"><span className="avm-version">{row.latest_version}</span></td>
+                    <td className="avm-col-flag">
+                      <span className={`avm-badge ${toBit(row.force_update, 1) ? 'badge-force' : 'badge-soft'}`}>
+                        {toBit(row.force_update, 1) ? 'Force' : 'Soft'}
+                      </span>
+                    </td>
+                    <td className="avm-col-flag">
+                      <span className={`avm-badge ${toBit(row.maintenance, 0) ? 'badge-maintenance' : 'badge-normal'}`}>
+                        {toBit(row.maintenance, 0) ? 'On' : 'Off'}
+                      </span>
+                    </td>
+                    <td className="avm-col-flag">
+                      <span className={`avm-badge ${toBit(row.block_developer_mode, 0) ? 'badge-force' : 'badge-soft'}`}>
+                        {toBit(row.block_developer_mode, 0) ? 'Yes' : 'No'}
+                      </span>
+                    </td>
+                    <td className="avm-col-sm avm-cell-id">{row.otp_bypass_mobile || '—'}</td>
+                    <td className="avm-col-sm">
+                      <span className={`avm-badge ${toBit(row.is_active, 1) ? 'badge-active' : 'badge-inactive'}`}>
+                        {toBit(row.is_active, 1) ? 'On' : 'Off'}
+                      </span>
+                    </td>
+                    <td className="avm-col-actions">
+                      <div className="avm-actions">
+                        <button className="avm-btn avm-btn-edit" type="button" onClick={() => openEdit(row)} title="Edit">
+                          Edit
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

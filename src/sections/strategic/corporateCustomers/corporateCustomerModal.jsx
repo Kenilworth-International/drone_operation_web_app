@@ -22,10 +22,14 @@ export function formatRate(v) {
 }
 
 export function formatRetention(row) {
+  const raw = row?.retention_fee_available;
   const available =
-    row?.retention_fee_available === true ||
-    row?.retention_fee_available === 1 ||
-    row?.retention_fee_available === '1';
+    raw === true ||
+    raw === 1 ||
+    raw === '1' ||
+    raw === 'true' ||
+    Number(raw) === 1 ||
+    (raw && typeof raw === 'object' && Array.isArray(raw.data) && Number(raw.data[0]) === 1);
   if (!available) return 'No';
   const pct = row?.retention_percentage;
   if (pct == null || pct === '') return 'Yes';

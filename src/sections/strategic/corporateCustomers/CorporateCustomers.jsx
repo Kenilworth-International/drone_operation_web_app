@@ -288,9 +288,28 @@ function CorporateCustomers() {
       }
     }
     try {
-      const res = await updatePlantation(buildFieldPayload(editRow.id, form, fields)).unwrap();
+      const payload = buildFieldPayload(editRow.id, form, fields);
+      const res = await updatePlantation(payload).unwrap();
       if (res?.status === true) {
-        toast.success(res.message || 'Updated');
+        if (editFocus === 'retention') {
+          const saved = res?.data;
+          const hasCol =
+            saved &&
+            Object.prototype.hasOwnProperty.call(saved, 'retention_fee_available');
+          if (!hasCol || res?.meta?.retentionSupport !== true) {
+            toast.error(
+              'API did not save retention. Run sql/20261120_plantations_retention.sql and restart dsms_backend_dev.'
+            );
+            return;
+          }
+          toast.success(
+            Number(saved.retention_fee_available)
+              ? `Retention saved: Yes · ${saved.retention_percentage ?? '—'}%`
+              : 'Retention saved: No'
+          );
+        } else {
+          toast.success(res.message || 'Updated');
+        }
         closeModals();
         refetch();
       } else {
