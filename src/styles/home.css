@@ -171,6 +171,29 @@
     box-sizing: border-box;
 }
 
+/* Financial Cards: page chrome fixed; only card/settlement body scrolls */
+.content-dashboard.content-dashboard--financial-cards {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100vh;
+    box-sizing: border-box;
+}
+
+.content-dashboard.content-dashboard--financial-cards > * {
+    flex: 1 1 auto;
+    height: 0;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
 /* Employee Profile (HRM): full viewport, scroll sidebar list + tab body only */
 .content-dashboard.content-dashboard--employee-profile,
 .content-dashboard.content-dashboard--organization-structure {
@@ -431,9 +454,6 @@
 
 @media (max-width: 768px) {
   .build-info-footer {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
-    text-align: center;
+    display: none;
   }
 }

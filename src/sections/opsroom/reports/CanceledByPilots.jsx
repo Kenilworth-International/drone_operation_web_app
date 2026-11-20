@@ -8,6 +8,7 @@ import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { FiRefreshCw, FiDownload, FiPrinter } from "react-icons/fi";
+import { useSyncShellPeriod } from '../../management/reports/ReportsPeriodContext';
 
 const CanceledByPilots = () => {
   const dispatch = useAppDispatch();
@@ -17,6 +18,7 @@ const CanceledByPilots = () => {
     return date;
   });
   const [endDate, setEndDate] = useState(new Date());
+  useSyncShellPeriod(setStartDate, setEndDate);
   const [pilotFilter, setPilotFilter] = useState('');
   const [estateFilter, setEstateFilter] = useState('');
   const [reasonFilter, setReasonFilter] = useState('');

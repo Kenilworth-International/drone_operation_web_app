@@ -8,6 +8,7 @@ import {
   useLazyGetBillableExtentsReportQuery,
 } from '../../../api/services NodeJs/billableExtentsReportApi';
 import '../../../styles/billableExtentsReport.css';
+import { useReportsPeriod } from '../../management/reports/ReportsPeriodContext';
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -39,8 +40,14 @@ export default function BillableExtentsReport() {
   const [fetchReport, { data: report, isFetching: loadingReport, error }] =
     useLazyGetBillableExtentsReportQuery();
 
+  const shellPeriod = useReportsPeriod();
   const [startDate, setStartDate] = useState(monthStartKey);
   const [endDate, setEndDate] = useState(todayKey);
+  useEffect(() => {
+    if (!shellPeriod?.startYmd || !shellPeriod?.endYmd) return;
+    setStartDate(shellPeriod.startYmd);
+    setEndDate(shellPeriod.endYmd);
+  }, [shellPeriod?.startYmd, shellPeriod?.endYmd]);
   const [plantationId, setPlantationId] = useState('');
   const [selectedEstates, setSelectedEstates] = useState([]);
   const [missionType, setMissionType] = useState('all');

@@ -10,6 +10,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import '../../../styles/deactivatedPlansReport.css';
 import { useLazyGetDeactivatedPlansReportQuery } from '../../../api/services NodeJs/financeReportApi';
 import { useGetDeactivateReasonsQuery } from '../../../api/services NodeJs/reasonsApi';
+import { useSyncShellPeriod } from '../../management/reports/ReportsPeriodContext';
 
 const toYmd = (date) => date.toLocaleDateString('en-CA');
 
@@ -25,6 +26,7 @@ export default function DeactivatedPlansReport() {
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const [startDate, setStartDate] = useState(firstOfMonth);
   const [endDate, setEndDate] = useState(today);
+  useSyncShellPeriod(setStartDate, setEndDate);
   const [reasonFilter, setReasonFilter] = useState('');
   const [plantationFilter, setPlantationFilter] = useState('');
   const [estateFilter, setEstateFilter] = useState('');

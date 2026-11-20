@@ -2,8 +2,45 @@
 .financial-cards-container {
   padding: 0.75rem 1rem;
   background: linear-gradient(135deg, #f5f7fa 0%, #e8f4f8 100%);
-  min-height: 100vh;
+  min-height: 0;
+  height: 100%;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.financial-cards-header,
+.financial-cards-tabs {
+  flex-shrink: 0;
+}
+
+.cards-view-panel-financial-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cards-view-toolbar-financial-cards {
+  flex-shrink: 0;
+}
+
+.cards-grid-scroll-financial-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-bottom: 0.5rem;
+}
+
+.pending-settlements-section-financial-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Hide browser payment autofill warnings */
@@ -419,13 +456,44 @@
   }
 }
 
+.cards-view-toolbar-financial-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.cards-view-toolbar-financial-cards .settlement-search-wrap-financial-cards {
+  flex: 1 1 200px;
+  max-width: 280px;
+}
+
+.cards-view-count-financial-cards {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .cards-grid-financial-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
-  padding: 4px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  padding: 2px;
   position: relative;
   z-index: 1;
+}
+
+@media (max-width: 1280px) and (min-width: 769px) {
+  .cards-grid-financial-cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .card-item-financial-cards {
@@ -433,20 +501,20 @@
   flex-direction: column;
   transition: transform 0.3s ease;
   isolation: isolate;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   width: 100%;
   position: relative;
   z-index: 1;
 }
 
 .card-item-financial-cards:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
 }
 
 .bank-card-container-financial-cards {
   position: relative;
   width: 100%;
-  height: 280px;
+  height: 210px;
   cursor: pointer;
   perspective: 1000px;
   -webkit-perspective: 1000px;
@@ -454,7 +522,7 @@
   -webkit-transform-style: preserve-3d;
   overflow: visible;
   z-index: 1;
-  padding: 10px 10px 20px 10px;
+  padding: 6px 6px 12px 6px;
   box-sizing: border-box;
 }
 
@@ -497,16 +565,80 @@
 
 .bank-card-front-financial-cards {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  padding: 1.25rem 1.5rem;
+  padding: 0.7rem 0.85rem;
   color: white;
   position: relative;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.28rem;
   box-sizing: border-box;
-  min-height: 240px;
+  min-height: 190px;
+}
+
+.bank-card-category-badge-financial-cards {
+  display: inline-flex;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Category themes (front + back) */
+.bank-card-front-financial-cards.bank-card-theme-fuel-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-fuel-financial-cards {
+  background: linear-gradient(135deg, #0f3d3e 0%, #14532d 48%, #166534 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-fuel-vehicle-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-fuel-vehicle-financial-cards {
+  background: linear-gradient(135deg, #0c4a6e 0%, #075985 50%, #0369a1 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-fuel-generator-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-fuel-generator-financial-cards {
+  background: linear-gradient(135deg, #78350f 0%, #92400e 48%, #b45309 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-slate-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-slate-financial-cards {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 55%, #475569 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-teal-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-teal-financial-cards {
+  background: linear-gradient(135deg, #134e4a 0%, #0f766e 50%, #0d9488 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-forest-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-forest-financial-cards {
+  background: linear-gradient(135deg, #14532d 0%, #166534 50%, #15803d 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-amber-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-amber-financial-cards {
+  background: linear-gradient(135deg, #7c2d12 0%, #9a3412 50%, #c2410c 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-coral-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-coral-financial-cards {
+  background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%);
+}
+
+.bank-card-front-financial-cards.bank-card-theme-navy-financial-cards,
+.bank-card-back-financial-cards.bank-card-theme-navy-financial-cards {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
 }
 
 .bank-card-front-financial-cards::before {
@@ -524,7 +656,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.35rem;
 }
 
 .bank-card-chip-financial-cards {
@@ -538,12 +670,12 @@
 }
 
 .chip-financial-cards {
-  width: 40px;
-  height: 32px;
+  width: 28px;
+  height: 22px;
   background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-  border-radius: 6px;
+  border-radius: 4px;
   position: relative;
-  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
 .chip-financial-cards::before {
@@ -578,23 +710,23 @@
   background: rgba(255, 255, 255, 0.15);
   color: white;
   border: none;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 4px 5px;
+  border-radius: 5px;
   cursor: pointer;
   transition: all 0.3s ease;
-  font-size: 11px;
+  font-size: 10px;
   backdrop-filter: blur(10px);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  margin: 3px;
+  min-width: 22px;
+  height: 22px;
+  margin: 1px;
 }
 
 .btn-card-icon-financial-cards svg {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
 }
 
 .btn-card-icon-financial-cards:hover {
@@ -660,20 +792,20 @@
 }
 
 .bank-card-number-financial-cards {
-  font-size: 1.4rem;
+  font-size: 0.92rem;
   font-weight: 600;
-  letter-spacing: 2px;
-  margin-bottom: 0.7rem;
+  letter-spacing: 1px;
+  margin-bottom: 0.25rem;
   font-family: 'Courier New', monospace;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .bank-card-details-financial-cards {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 0.5rem;
-  gap: 0.6rem;
+  margin-bottom: 0.2rem;
+  gap: 0.4rem;
 }
 
 .bank-card-holder-financial-cards,
@@ -682,17 +814,17 @@
 }
 
 .bank-card-label-financial-cards {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   opacity: 0.8;
-  margin-bottom: 4px;
-  letter-spacing: 1px;
+  margin-bottom: 2px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
 .bank-card-value-financial-cards {
-  font-size: 0.9rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .bank-card-holder-financial-cards .bank-card-value-financial-cards {
@@ -714,16 +846,20 @@
 }
 
 .bank-card-bank-financial-cards {
-  font-size: 0.85rem;
+  font-size: 0.68rem;
   font-weight: 600;
   opacity: 0.9;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .bank-card-balance-financial-cards {
-  font-size: 1.1rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
 }
 
 .bank-card-balance-financial-cards.positive-financial-cards {
@@ -739,43 +875,43 @@
 /* Card Back Side Styles */
 .bank-card-back-financial-cards {
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  padding: 1.25rem 1.5rem;
+  padding: 0.7rem 0.85rem;
   color: white;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   box-sizing: border-box;
-  min-height: 240px;
+  min-height: 190px;
 }
 
 .bank-card-back-stripe-financial-cards {
   width: 100%;
-  height: 40px;
+  height: 28px;
   background: rgba(0, 0, 0, 0.3);
-  margin-top: 1rem;
-  margin-bottom: 1rem;
+  margin-top: 0.45rem;
+  margin-bottom: 0.45rem;
 }
 
 .bank-card-back-cvc-financial-cards {
   background: white;
-  padding: 0.75rem 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 5px;
+  margin-bottom: 0.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
 .bank-card-back-label-financial-cards {
-  font-size: 0.7rem;
+  font-size: 0.58rem;
   color: #666;
-  letter-spacing: 1px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
 .bank-card-back-cvc-value-financial-cards {
-  font-size: 1.2rem;
+  font-size: 0.9rem;
   font-weight: 700;
   color: #1a1a2e;
   font-family: 'Courier New', monospace;
@@ -1168,9 +1304,22 @@
     min-width: 0;
   }
 
+  .cards-view-toolbar-financial-cards {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cards-view-toolbar-financial-cards .settlement-search-wrap-financial-cards {
+    max-width: none;
+  }
+
+  .cards-view-count-financial-cards {
+    margin-left: 0;
+  }
+
   .cards-grid-financial-cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
   }
   
   @media (max-width: 640px) {
@@ -1179,18 +1328,22 @@
     }
   }
 
+  .bank-card-container-financial-cards {
+    height: 200px;
+  }
+
   .bank-card-front-financial-cards {
-    min-height: 220px;
-    padding: 1.1rem 1.2rem;
+    min-height: 180px;
+    padding: 0.65rem 0.75rem;
   }
 
   .bank-card-number-financial-cards {
-    font-size: 1.1rem;
-    letter-spacing: 1.5px;
+    font-size: 0.85rem;
+    letter-spacing: 0.8px;
   }
 
   .bank-card-balance-financial-cards {
-    font-size: 0.95rem;
+    font-size: 0.78rem;
   }
 
   .details-grid-financial-cards {
@@ -1270,10 +1423,11 @@
    ===================================================== */
 .pending-settlements-section-financial-cards {
   margin-top: 0;
-  padding: 2rem;
+  padding: 1rem 1.25rem;
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* flex + overflow set at top of file for inner scroll */
 }
 
 .settlements-header-financial-cards {

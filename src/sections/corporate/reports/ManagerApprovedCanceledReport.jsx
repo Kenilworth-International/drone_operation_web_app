@@ -9,6 +9,7 @@ import { FaCheckCircle, FaTimesCircle } from 'react-icons/fa';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../../styles/deactivatedPlansReport.css';
 import { useLazyGetManagerApprovedCanceledReportQuery } from '../../../api/services NodeJs/financeReportApi';
+import { useSyncShellPeriod } from '../../management/reports/ReportsPeriodContext';
 
 const toYmd = (date) => date.toLocaleDateString('en-CA');
 
@@ -24,6 +25,7 @@ export default function ManagerApprovedCanceledReport() {
   const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const [startDate, setStartDate] = useState(firstOfMonth);
   const [endDate, setEndDate] = useState(today);
+  useSyncShellPeriod(setStartDate, setEndDate);
   const [statusFilter, setStatusFilter] = useState('');
   const [estateFilter, setEstateFilter] = useState('');
   const [reasonFilter, setReasonFilter] = useState('');

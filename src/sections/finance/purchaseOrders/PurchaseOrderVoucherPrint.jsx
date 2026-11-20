@@ -1,5 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaTimes, FaPrint } from 'react-icons/fa';
+import {
+  formatVoucherPrintDateTime,
+  isVoucherPaid,
+  resolveVoucherPaymentStatusLabel,
+} from '../financialCards/transportVoucherPrintUtils';
 
 function fmtLkr(value) {
   return `LKR ${Number(value || 0).toLocaleString('en-US', {
@@ -16,6 +21,8 @@ function formatDate(value) {
 }
 
 export default function PurchaseOrderVoucherPrint({ voucher, onClose }) {
+  const [printStamp, setPrintStamp] = useState(() => new Date());
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose?.();
@@ -26,9 +33,12 @@ export default function PurchaseOrderVoucherPrint({ voucher, onClose }) {
 
   if (!voucher) return null;
   const lines = voucher.lines || [];
+  const paid = isVoucherPaid(voucher);
+  const paymentStatusLabel = resolveVoucherPaymentStatusLabel(voucher);
 
   const handlePrint = () => {
-    window.print();
+    setPrintStamp(new Date());
+    requestAnimationFrame(() => window.print());
   };
 
   return (
@@ -51,6 +61,12 @@ export default function PurchaseOrderVoucherPrint({ voucher, onClose }) {
                 <strong>{voucher.voucher_no}</strong>
               </div>
               <div>Status: {voucher.status}</div>
+              <div>
+                Payment:{' '}
+                <strong className={paid ? 'pov-print-paid' : 'pov-print-unpaid'}>
+                  {paymentStatusLabel}
+                </strong>
+              </div>
               <div>Created: {formatDate(voucher.created_at)}</div>
               <div>Prepared by: {voucher.checked_by_name || voucher.created_by_name || '-'}</div>
               {voucher.approved_by_display ? (
@@ -96,13 +112,20 @@ export default function PurchaseOrderVoucherPrint({ voucher, onClose }) {
           {voucher.decline_reason ? (
             <p className="pov-print-note">Decline reason: {voucher.decline_reason}</p>
           ) : null}
-          {voucher.payment_status === 'paid' ? (
+          {paid ? (
             <p className="pov-print-note">
               Paid via {voucher.payment_method || '-'}
               {voucher.payment_reference ? ` · Ref ${voucher.payment_reference}` : ''}
               {voucher.paid_at ? ` · ${formatDate(voucher.paid_at)}` : ''}
             </p>
-          ) : null}
+          ) : (
+            <p className="pov-print-note">Payment status: Not paid</p>
+          )}
+
+          <footer className="pov-print-footer">
+            <span>DSMS Finance Settlement Document</span>
+            <span>Printed {formatVoucherPrintDateTime(printStamp)}</span>
+          </footer>
         </div>
       </div>
     </div>

@@ -9,6 +9,26 @@ export const formatVoucherDisplayDate = (value) => {
   return slice || '—';
 };
 
+/** True when voucher was marked paid (payment_status) or settled as paid. */
+export const isVoucherPaid = (voucher) =>
+  String(voucher?.payment_status || '').toLowerCase() === 'paid' || Number(voucher?.settled) === 1;
+
+export const resolveVoucherPaymentStatusLabel = (voucher) =>
+  isVoucherPaid(voucher) ? 'Paid' : 'Not paid';
+
+/** Date + time stamp for print / PDF footers. */
+export const formatVoucherPrintDateTime = (value = new Date()) => {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 export const resolveVoucherApprovedBy = (voucher) => {
   if (voucher?.approval_mode === 'print') {
     return voucher?.physical_approved_by_name || voucher?.approved_by_name || '';

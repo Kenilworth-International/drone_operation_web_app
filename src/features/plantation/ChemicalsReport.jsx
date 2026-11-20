@@ -7,6 +7,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import '../../styles/chemicalreport.css';
+import { useSyncShellPeriod } from '../../sections/management/reports/ReportsPeriodContext';
 
 const formatDate = (date) => {
   if (!date) return '';
@@ -24,6 +25,7 @@ const ChemicalsReport = () => {
 
   const [startDate, setStartDate] = useState(firstOfMonth);
   const [endDate, setEndDate] = useState(today);
+  useSyncShellPeriod(setStartDate, setEndDate);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [data, setData] = useState({ chemical_usage: {} });

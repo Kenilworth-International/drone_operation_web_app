@@ -11,7 +11,11 @@
 .controls-booking-calendar { display: flex; gap: 8px; align-items: center; justify-content: center; }
 .month-title-booking-calendar { font-weight: 600; color: #003057; min-width: 160px; text-align: center; }
 .nav-btn-booking-calendar { background: #003057; color: #fff; border: none; padding: 6px 8px; border-radius: 4px; cursor: pointer; }
-.nav-btn-booking-calendar:hover { background: #004b71; }
+.nav-btn-booking-calendar:hover:not(:disabled) { background: #004b71; }
+.nav-btn-booking-calendar:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 /* Top filters */
 .top-filters-booking-calendar {

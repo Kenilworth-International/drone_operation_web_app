@@ -3,13 +3,16 @@ import autoTable from 'jspdf-autotable';
 import { formatFuelMoney, getFuelLineDisplayParts } from './fuelVoucherDescription';
 import {
   formatVoucherDisplayDate,
+  formatVoucherPrintDateTime,
   getFuelVoucherLabels,
   hasVoucherApprovalInfo,
+  isVoucherPaid,
   resolveVoucherApprovalType,
   resolveVoucherApprovedBy,
   resolveVoucherDriverName,
   resolveVoucherCardNumber,
   resolveVoucherCardsSummary,
+  resolveVoucherPaymentStatusLabel,
 } from './transportVoucherPrintUtils';
 
 const VOUCHER_ORG = {
@@ -47,14 +50,18 @@ function drawMetaRows(doc, rows, startX, valueX, startY, rowGap = 5) {
 /**
  * Build and download a fuel (transport or generator) voucher as A4 PDF (invoice-style layout).
  * @param {object} voucher
+ * @param {{ printedAt?: Date }} [options]
  */
-export function downloadTransportVoucherPdf(voucher) {
+export function downloadTransportVoucherPdf(voucher, options = {}) {
   const labels = getFuelVoucherLabels(voucher);
   const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 14;
   const tableWidth = pageWidth - margin * 2;
+  const printedAt = options.printedAt instanceof Date ? options.printedAt : new Date();
+  const paid = isVoucherPaid(voucher);
+  const paymentStatusLabel = resolveVoucherPaymentStatusLabel(voucher);
   let y = 14;
 
   tryAddLogo(doc, margin, y, 28, 28);
@@ -103,6 +110,7 @@ export function downloadTransportVoucherPdf(voucher) {
       ['VOUCHER', voucher?.voucher_no || '—'],
       ['DATE', formatVoucherDisplayDate(voucher?.created_at)],
       ['TXNS', String(txCount)],
+      ['PAYMENT', paymentStatusLabel],
     ],
     metaLabelX,
     metaValueX,
@@ -120,7 +128,20 @@ export function downloadTransportVoucherPdf(voucher) {
     doc.text(approvedBy, midColX, partiesY + 9);
   }
 
-  y = partiesY + 16;
+  y = partiesY + 21;
+
+  if (paid) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(31, 122, 68);
+    const paidBits = ['Paid'];
+    if (voucher?.payment_method) paidBits.push(`via ${voucher.payment_method}`);
+    if (voucher?.payment_reference) paidBits.push(`Ref ${voucher.payment_reference}`);
+    if (voucher?.paid_at) paidBits.push(formatVoucherDisplayDate(voucher.paid_at));
+    doc.text(paidBits.join(' · '), margin, y);
+    doc.setTextColor(0, 0, 0);
+    y += 6;
+  }
 
   const cardsSummary = resolveVoucherCardsSummary(voucher);
   if (cardsSummary.length) {
@@ -237,9 +258,14 @@ export function downloadTransportVoucherPdf(voucher) {
   doc.setDrawColor(203, 213, 225);
   doc.line(margin, footerY - 4, pageWidth - margin, footerY - 4);
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(71, 85, 105);
-  doc.text('DSMS Finance Settlement Document', pageWidth / 2, footerY, { align: 'center' });
+  doc.text('DSMS Finance Settlement Document', pageWidth / 2, footerY - 1, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.text(`Printed ${formatVoucherPrintDateTime(printedAt)}`, pageWidth / 2, footerY + 3.5, {
+    align: 'center',
+  });
 
   const safeNo = String(voucher?.voucher_no || labels.fileFallback).replace(/[^\w.-]+/g, '_');
   doc.save(`${safeNo}.pdf`);

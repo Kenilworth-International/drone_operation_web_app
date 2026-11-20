@@ -7,6 +7,7 @@ import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { Bars } from "react-loader-spinner";
+import { useSyncShellDateRange } from '../../management/reports/ReportsPeriodContext';
 
 const PlantationCoveredAreaReport = () => {
   const dispatch = useAppDispatch();
@@ -14,6 +15,7 @@ const PlantationCoveredAreaReport = () => {
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const [dateRange, setDateRange] = useState([firstDayOfMonth, today]);
+  useSyncShellDateRange(setDateRange);
   const [startDate, endDate] = dateRange;
 
   // Filters

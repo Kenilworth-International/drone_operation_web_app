@@ -654,6 +654,17 @@
   font-style: italic;
   color: #475569;
   font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.plantation-invoice-doc-footer-stamp {
+  font-style: normal;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
 }
 
 .plantation-invoice-doc-header {
@@ -1121,6 +1132,23 @@
   display: block;
   border-top: 1px solid #94a3b8;
   margin-top: 18px;
+}
+
+.fuel-transport-voucher-payment-status.is-paid {
+  color: #1f7a44;
+  font-weight: 700;
+}
+
+.fuel-transport-voucher-payment-status.is-unpaid {
+  color: #9a6700;
+  font-weight: 700;
+}
+
+.fuel-transport-voucher-payment-note {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: #1f7a44;
+  font-weight: 600;
 }
 
 .fuel-transport-voucher-notes {

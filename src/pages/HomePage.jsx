@@ -58,6 +58,11 @@ const HomePage = () => {
   /** App Features: fill content area; scroll feature list inside the page. */
   const isAppFeaturesRoute = location.pathname.includes('/ict/system-admin/app-features');
 
+  /** Financial Cards: header/filters fixed; cards grid scrolls inside. */
+  const isFinancialCardsRoute =
+    location.pathname === '/home/financial-cards' ||
+    location.pathname.endsWith('/financial-cards');
+
   /** Corporate Customer: header fixed; table body scrolls with sticky column headers. */
   const isCorporateCustomersRoute =
     location.pathname === '/home/corporate-customers' ||
@@ -136,7 +141,7 @@ const HomePage = () => {
         />
       )}
       <div 
-        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isAppFeaturesRoute ? ' content-dashboard--app-features' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isWorkSummaryRoute ? ' content-dashboard--work-summary' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isMappingUpdateRoute ? ' content-dashboard--mapping-update' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}`}
+        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isAppFeaturesRoute ? ' content-dashboard--app-features' : ''}${isFinancialCardsRoute ? ' content-dashboard--financial-cards' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isWorkSummaryRoute ? ' content-dashboard--work-summary' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isMappingUpdateRoute ? ' content-dashboard--mapping-update' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}`}
         style={{
           marginLeft: isExternalUser || fullWidthNoLeftNav ? '0' : '280px',
           width: isExternalUser || fullWidthNoLeftNav ? '100vw' : 'calc(100vw - 280px)',

@@ -5,6 +5,7 @@ import { FiDownload } from 'react-icons/fi';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../../styles/planExecutionReport.css';
 import { useLazyGetManagementPlanExecutionReportQuery } from '../../../api/services NodeJs/financeReportApi';
+import { useSyncShellPeriod } from './ReportsPeriodContext';
 
 const toYmd = (date) => date.toLocaleDateString('en-CA');
 const toDisplay = (dateStr) => {
@@ -154,6 +155,7 @@ const PlanExecutionReasonReport = () => {
     return d;
   });
   const [endDate, setEndDate] = useState(new Date());
+  useSyncShellPeriod(setStartDate, setEndDate);
   const [pilotFilter, setPilotFilter] = useState('');
   const [estateFilter, setEstateFilter] = useState('');
   const [planFilter, setPlanFilter] = useState('');

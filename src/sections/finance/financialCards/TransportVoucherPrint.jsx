@@ -5,13 +5,16 @@ import { downloadTransportVoucherPdf } from './transportVoucherPdfExport';
 import { formatFuelMoney, getFuelLineDisplayParts } from './fuelVoucherDescription';
 import {
   formatVoucherDisplayDate,
+  formatVoucherPrintDateTime,
   getFuelVoucherLabels,
   hasVoucherApprovalInfo,
+  isVoucherPaid,
   resolveVoucherApprovalType,
   resolveVoucherApprovedBy,
   resolveVoucherDriverName,
   resolveVoucherCardNumber,
   resolveVoucherCardsSummary,
+  resolveVoucherPaymentStatusLabel,
 } from './transportVoucherPrintUtils';
 
 const VOUCHER_ORG = {
@@ -21,6 +24,7 @@ const VOUCHER_ORG = {
 
 const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [printStamp, setPrintStamp] = useState(() => new Date());
   const labels = getFuelVoucherLabels(voucher);
   const lines = useMemo(() => voucher?.lines || [], [voucher?.lines]);
   const cardsSummary = useMemo(() => resolveVoucherCardsSummary(voucher), [voucher]);
@@ -30,13 +34,15 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
   const isDeclined = voucher?.status === 'declined';
   const showApproval = hasVoucherApprovalInfo(voucher);
   const checkedBy = voucher?.checked_by_name || voucher?.created_by_name || 'Finance';
+  const paymentStatusLabel = resolveVoucherPaymentStatusLabel(voucher);
+  const paid = isVoucherPaid(voucher);
   const logoSrc = `${process.env.PUBLIC_URL || ''}/assets/images/kenilowrthlogoDark.png`;
 
   const handleDownloadPdf = async () => {
     if (!voucher) return;
     setPdfLoading(true);
     try {
-      downloadTransportVoucherPdf(voucher);
+      downloadTransportVoucherPdf(voucher, { printedAt: new Date() });
       toast.success('PDF downloaded');
     } catch (error) {
       console.error(error);
@@ -47,11 +53,12 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
   };
 
   const handlePrint = () => {
+    setPrintStamp(new Date());
     if (typeof onPrint === 'function') {
-      onPrint();
+      requestAnimationFrame(() => onPrint());
       return;
     }
-    window.print();
+    requestAnimationFrame(() => window.print());
   };
 
   return (
@@ -148,8 +155,27 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
                   <span className="plantation-invoice-meta-label">TXNS</span>
                   <span className="plantation-invoice-meta-value">{txCount}</span>
                 </div>
+                <div className="plantation-invoice-meta-row">
+                  <span className="plantation-invoice-meta-label">PAYMENT</span>
+                  <span
+                    className={`plantation-invoice-meta-value fuel-transport-voucher-payment-status${
+                      paid ? ' is-paid' : ' is-unpaid'
+                    }`}
+                  >
+                    {paymentStatusLabel}
+                  </span>
+                </div>
               </div>
             </div>
+
+            {paid ? (
+              <p className="fuel-transport-voucher-payment-note">
+                Paid
+                {voucher?.payment_method ? ` via ${voucher.payment_method}` : ''}
+                {voucher?.payment_reference ? ` · Ref ${voucher.payment_reference}` : ''}
+                {voucher?.paid_at ? ` · ${formatVoucherDisplayDate(voucher.paid_at)}` : ''}
+              </p>
+            ) : null}
 
             {cardsSummary.length > 0 ? (
               <div className="fuel-transport-voucher-cards-summary">
@@ -246,7 +272,10 @@ const TransportVoucherPrint = ({ voucher, onClose, onPrint }) => {
           ) : null}
 
           <footer className="plantation-invoice-doc-footer">
-            DSMS Finance Settlement Document
+            <span>DSMS Finance Settlement Document</span>
+            <span className="plantation-invoice-doc-footer-stamp">
+              Printed {formatVoucherPrintDateTime(printStamp)}
+            </span>
           </footer>
         </article>
       </div>

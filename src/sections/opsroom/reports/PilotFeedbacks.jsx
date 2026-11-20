@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx';
 import { baseApi } from '../../../api/services/allEndpoints';
 import { useAppDispatch } from '../../../store/hooks';
 import '../../../styles/opsreport9.css';
+import { useSyncShellPeriod } from '../../management/reports/ReportsPeriodContext';
 
 const formatDate = (date) => date.toLocaleDateString('en-CA');
 
@@ -17,6 +18,7 @@ const PilotFeedbacks = () => {
     return d; 
   });
   const [endDate, setEndDate] = useState(new Date());
+  useSyncShellPeriod(setStartDate, setEndDate);
   const [loading, setLoading] = useState(false);
   const [apiData, setApiData] = useState(null);
   const [selectedEstate, setSelectedEstate] = useState('all');

@@ -6,8 +6,11 @@
  */
 
 import React, { useState } from 'react';
-import { toast } from 'react-toastify';
-import { voucherStatusLabel } from '../financialCards/fuelTransportVoucherUi';
+import {
+  formatVoucherPrintDateTime,
+  isVoucherPaid,
+  resolveVoucherPaymentStatusLabel,
+} from '../financialCards/transportVoucherPrintUtils';
 import '../../../styles/plantationInvoice.css';
 
 const VOUCHER_ORG = {
@@ -45,18 +48,21 @@ function getApprovalType(voucher) {
 }
 
 function MaintenanceVoucherPrint({ voucher, onClose }) {
-  const [printing, setPrinting] = useState(false);
+  const [printStamp, setPrintStamp] = useState(() => new Date());
   const lines       = voucher?.lines || [];
   const txCount     = voucher?.transaction_count || lines.length || 0;
   const approvedBy  = getApprovedBy(voucher);
   const approvalType = getApprovalType(voucher);
   const isDeclined  = voucher?.status === 'declined';
   const checkedBy   = voucher?.checked_by_name || voucher?.created_by_name || 'Finance';
+  const paid = isVoucherPaid(voucher);
+  const paymentStatusLabel = resolveVoucherPaymentStatusLabel(voucher);
   const logoSrc     = `${process.env.PUBLIC_URL || ''}/assets/images/kenilowrthlogoDark.png`;
   const showApproval = voucher && ['approved', 'declined'].includes(voucher.status);
 
   const handlePrint = () => {
-    window.print();
+    setPrintStamp(new Date());
+    requestAnimationFrame(() => window.print());
   };
 
   return (
@@ -139,8 +145,27 @@ function MaintenanceVoucherPrint({ voucher, onClose }) {
                   <span className="plantation-invoice-meta-label">ITEMS</span>
                   <span className="plantation-invoice-meta-value">{txCount}</span>
                 </div>
+                <div className="plantation-invoice-meta-row">
+                  <span className="plantation-invoice-meta-label">PAYMENT</span>
+                  <span
+                    className={`plantation-invoice-meta-value fuel-transport-voucher-payment-status${
+                      paid ? ' is-paid' : ' is-unpaid'
+                    }`}
+                  >
+                    {paymentStatusLabel}
+                  </span>
+                </div>
               </div>
             </div>
+
+            {paid ? (
+              <p className="fuel-transport-voucher-payment-note">
+                Paid
+                {voucher?.payment_method ? ` via ${voucher.payment_method}` : ''}
+                {voucher?.payment_reference ? ` · Ref ${voucher.payment_reference}` : ''}
+                {voucher?.paid_at ? ` · ${toDateOnly(voucher.paid_at)}` : ''}
+              </p>
+            ) : null}
 
             <table className="plantation-invoice-doc-table fuel-transport-voucher-doc-table">
               <thead>
@@ -209,7 +234,10 @@ function MaintenanceVoucherPrint({ voucher, onClose }) {
           ) : null}
 
           <footer className="plantation-invoice-doc-footer">
-            DSMS Finance Settlement Document — Maintenance
+            <span>DSMS Finance Settlement Document — Maintenance</span>
+            <span className="plantation-invoice-doc-footer-stamp">
+              Printed {formatVoucherPrintDateTime(printStamp)}
+            </span>
           </footer>
         </article>
       </div>

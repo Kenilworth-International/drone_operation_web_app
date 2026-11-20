@@ -451,7 +451,13 @@ const PlanCalendar = () => {
     setSelectedEstate('');
   };
 
-  const goPrevMonth = () => setCurrentMonth((d) => addMonths(d, -1));
+  const earliestAllowedMonth = useMemo(() => startOfMonth(new Date()), []);
+  const canGoPrevMonth = startOfMonth(currentMonth).getTime() > earliestAllowedMonth.getTime();
+  const goPrevMonth = () =>
+    setCurrentMonth((d) => {
+      const prev = addMonths(d, -1);
+      return startOfMonth(prev).getTime() < earliestAllowedMonth.getTime() ? d : prev;
+    });
   const goNextMonth = () => setCurrentMonth((d) => addMonths(d, 1));
 
   const handleCopyPlanDetails = async () => {
@@ -535,7 +541,15 @@ const PlanCalendar = () => {
           
           <div className="controls-booking-calendar">
           <div className="heading-booking-calendar">Plan Calendar</div>
-            <button className="nav-btn-booking-calendar" onClick={goPrevMonth} aria-label="Previous month">◀</button>
+            <button
+              className="nav-btn-booking-calendar"
+              onClick={goPrevMonth}
+              aria-label="Previous month"
+              disabled={!canGoPrevMonth}
+              title={canGoPrevMonth ? 'Previous month' : 'Previous months are hidden'}
+            >
+              ◀
+            </button>
             <div className="month-title-booking-calendar">{format(currentMonth, 'MMMM yyyy')}</div>
             <button className="nav-btn-booking-calendar" onClick={goNextMonth} aria-label="Next month">▶</button>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { Bars } from 'react-loader-spinner';
 import { jsPDF } from 'jspdf';
@@ -7,6 +7,7 @@ import { FiPrinter } from 'react-icons/fi';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../../styles/droneOpsReports.css';
 import { useLazyGetDailyOperationsSummaryQuery } from '../../../api/services NodeJs/opsroomPerformanceSummaryApi';
+import { useReportsPeriod } from './ReportsPeriodContext';
 
 const toYmd = (date) => date.toLocaleDateString('en-CA');
 
@@ -23,7 +24,11 @@ const fmt = (n, digits = 2) => {
 };
 
 export default function DailyDroneOperationsSummaryReport() {
+  const shellPeriod = useReportsPeriod();
   const [selectedDate, setSelectedDate] = useState(new Date());
+  useEffect(() => {
+    if (shellPeriod?.endDate) setSelectedDate(shellPeriod.endDate);
+  }, [shellPeriod?.endYmd]);
   const [data, setData] = useState(null);
   const [hasGenerated, setHasGenerated] = useState(false);
 

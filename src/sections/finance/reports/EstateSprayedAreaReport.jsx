@@ -18,6 +18,7 @@ import { FiRefreshCw, FiDownload, FiPrinter, FiFileText } from "react-icons/fi";
 import CreatePlantationInvoiceModal from './CreatePlantationInvoiceModal';
 import PlantationInvoicePrint from './PlantationInvoicePrint';
 import EstateStatementPrint from './EstateStatementPrint';
+import { useReportsPeriod } from '../../management/reports/ReportsPeriodContext';
 import {
     buildWorkSummaryPdfDocument,
     buildPdfSnapshotLines,
@@ -111,6 +112,11 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
     const [estates, setEstates] = useState([]);
     const [selectedEstates, setSelectedEstates] = useState([]);
     const [selectedMonth, setSelectedMonth] = useState(currentMonthValue);
+    const shellPeriod = useReportsPeriod();
+    useEffect(() => {
+        if (!shellPeriod?.startYmd) return;
+        setSelectedMonth(String(shellPeriod.startYmd).slice(0, 7));
+    }, [shellPeriod?.startYmd]);
     const [listLoading, setListLoading] = useState(false);
     const [reportLoading, setReportLoading] = useState(false);
     const [error, setError] = useState(null);

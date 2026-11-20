@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import DatePicker from 'react-datepicker';
 import { Bars } from 'react-loader-spinner';
 import { jsPDF } from 'jspdf';
@@ -7,6 +7,7 @@ import { FiPrinter } from 'react-icons/fi';
 import 'react-datepicker/dist/react-datepicker.css';
 import '../../../styles/droneOpsReports.css';
 import { useLazyGetDroneDailyPerformanceQuery } from '../../../api/services NodeJs/opsroomPerformanceSummaryApi';
+import { useReportsPeriod } from './ReportsPeriodContext';
 
 const toYearMonth = (date) => {
   const y = date.getFullYear();
@@ -28,7 +29,13 @@ const fmt = (n, digits = 2) => {
 
 export default function DailyDronePerformanceReport() {
   const today = new Date();
+  const shellPeriod = useReportsPeriod();
   const [monthDate, setMonthDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  useEffect(() => {
+    if (!shellPeriod?.startDate) return;
+    const d = shellPeriod.startDate;
+    setMonthDate(new Date(d.getFullYear(), d.getMonth(), 1));
+  }, [shellPeriod?.startYmd]);
   const [rows, setRows] = useState([]);
   const [totals, setTotals] = useState(null);
   const [yearMonth, setYearMonth] = useState('');

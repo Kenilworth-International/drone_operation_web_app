@@ -101,6 +101,46 @@ const formatMonthLabel = (key) => {
 const formatLkr = (value) =>
   value == null || value === '' ? '—' : `LKR ${Number(value).toFixed(2)}`;
 
+const CARD_THEME_FALLBACKS = [
+  'bank-card-theme-slate-financial-cards',
+  'bank-card-theme-teal-financial-cards',
+  'bank-card-theme-forest-financial-cards',
+  'bank-card-theme-amber-financial-cards',
+  'bank-card-theme-coral-financial-cards',
+  'bank-card-theme-navy-financial-cards',
+];
+
+const getCardThemeClass = (card) => {
+  const catId = String(card?.category ?? '').trim();
+  const catName = String(card?.category_name || '').trim().toLowerCase();
+  const sub = String(card?.sub_category_name || '').trim().toLowerCase();
+
+  if (catId === '1' || catName.includes('fuel')) {
+    if (sub === 'vehicle') return 'bank-card-theme-fuel-vehicle-financial-cards';
+    if (sub === 'generator') return 'bank-card-theme-fuel-generator-financial-cards';
+    return 'bank-card-theme-fuel-financial-cards';
+  }
+
+  const key = catId || catName || 'uncategorized';
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) {
+    hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  }
+  return CARD_THEME_FALLBACKS[hash % CARD_THEME_FALLBACKS.length];
+};
+
+const getCardCategoryLabel = (card) => {
+  const cat = String(card?.category_name || '').trim()
+    || (card?.category != null && String(card.category).trim() !== ''
+      ? `Category ${card.category}`
+      : 'Uncategorized');
+  const sub = String(card?.sub_category_name || '').trim().toLowerCase();
+  if (!sub) return cat;
+  const subLabel =
+    sub === 'vehicle' ? 'Vehicle' : sub === 'generator' ? 'Generator' : sub;
+  return `${cat} · ${subLabel}`;
+};
+
 const getHistoryVoucherDetails = (voucher) => {
   const cards = Array.isArray(voucher?.cards_summary) ? voucher.cards_summary : [];
   const txCount = Number(voucher?.transaction_count || 0);
@@ -300,6 +340,11 @@ const FinancialCards = () => {
 
   // Top-level tab: 'cards' (card view) or 'settlements' (transactions to settle)
   const [activeTab, setActiveTab] = useState('cards');
+  const [cardSearch, setCardSearch] = useState('');
+  const [cardCategoryFilter, setCardCategoryFilter] = useState('all');
+  const [cardBankFilter, setCardBankFilter] = useState('all');
+  const [cardKindFilter, setCardKindFilter] = useState('all'); // all | vehicle | generator | other
+  const [cardBalanceFilter, setCardBalanceFilter] = useState('all'); // all | positive | zero | negative
   const [settlementsSubTab, setSettlementsSubTab] = useState('pending');
   const [fuelSettlementSource, setFuelSettlementSource] = useState('vehicle');
 
@@ -406,6 +451,76 @@ const FinancialCards = () => {
 
   const cards = cardsData || [];
   const users = usersData || [];
+
+  const cardFilterBanks = useMemo(() => {
+    const names = new Set();
+    cards.forEach((c) => {
+      const name = String(c?.bank_name || '').trim();
+      if (name) names.add(name);
+    });
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [cards]);
+
+  const cardFilterCategories = useMemo(() => {
+    const map = new Map();
+    cards.forEach((c) => {
+      const id = c?.category != null && String(c.category).trim() !== '' ? String(c.category) : '';
+      if (!id) return;
+      const label = String(c?.category_name || id).trim() || id;
+      if (!map.has(id)) map.set(id, label);
+    });
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cards]);
+
+  const filteredCards = useMemo(() => {
+    const q = cardSearch.trim().toLowerCase();
+    return cards.filter((card) => {
+      if (cardCategoryFilter !== 'all' && String(card?.category ?? '') !== String(cardCategoryFilter)) {
+        return false;
+      }
+      if (
+        cardBankFilter !== 'all' &&
+        String(card?.bank_name || '').trim() !== cardBankFilter
+      ) {
+        return false;
+      }
+      const subType = String(card?.sub_category_name || '').trim().toLowerCase();
+      if (cardKindFilter === 'vehicle' && subType !== 'vehicle') return false;
+      if (cardKindFilter === 'generator' && subType !== 'generator') return false;
+      if (cardKindFilter === 'other' && (subType === 'vehicle' || subType === 'generator')) return false;
+
+      const balance = Number(card?.amount);
+      if (cardBalanceFilter === 'positive' && !(Number.isFinite(balance) && balance > 0)) return false;
+      if (cardBalanceFilter === 'zero' && !(Number.isFinite(balance) && balance === 0)) return false;
+      if (cardBalanceFilter === 'negative' && !(Number.isFinite(balance) && balance < 0)) return false;
+
+      if (!q) return true;
+      const hay = [
+        card?.card_holder,
+        card?.bank_name,
+        card?.category_name,
+        card?.sub_category_name,
+        card?.vehicle_no,
+        card?.no,
+        card?.user_name,
+        card?.id != null ? `Card #${card.id}` : '',
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [
+    cards,
+    cardSearch,
+    cardCategoryFilter,
+    cardBankFilter,
+    cardKindFilter,
+    cardBalanceFilter,
+  ]);
+
   const getCardLast4 = (cardLike) => {
     const raw = String(cardLike?.no || cardLike?.card_number || '').trim();
     const m = raw.match(/(\d{4})(?!.*\d)/);
@@ -1300,8 +1415,78 @@ const FinancialCards = () => {
       {activeTab === 'cards' && (cardsLoading ? (
         <div className="loading-financial-cards">Loading cards...</div>
       ) : (
+        <div className="cards-view-panel-financial-cards">
+        <div className="cards-view-toolbar-financial-cards">
+          <div className="settlement-search-wrap-financial-cards">
+            <FaSearch className="settlement-search-icon-financial-cards" aria-hidden="true" />
+            <input
+              type="search"
+              className="settlement-search-input-financial-cards"
+              placeholder="Search holder, card, bank, vehicle…"
+              value={cardSearch}
+              onChange={(e) => setCardSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="settlement-filter-select-financial-cards"
+            value={cardCategoryFilter}
+            onChange={(e) => setCardCategoryFilter(e.target.value)}
+            aria-label="Filter by category"
+          >
+            <option value="all">All categories</option>
+            {cardFilterCategories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+          <select
+            className="settlement-filter-select-financial-cards"
+            value={cardBankFilter}
+            onChange={(e) => setCardBankFilter(e.target.value)}
+            aria-label="Filter by bank"
+          >
+            <option value="all">All banks</option>
+            {cardFilterBanks.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="settlement-filter-select-financial-cards"
+            value={cardKindFilter}
+            onChange={(e) => setCardKindFilter(e.target.value)}
+            aria-label="Filter by fuel card type"
+          >
+            <option value="all">All types</option>
+            <option value="vehicle">Vehicle fuel</option>
+            <option value="generator">Generator fuel</option>
+            <option value="other">Other</option>
+          </select>
+          <select
+            className="settlement-filter-select-financial-cards"
+            value={cardBalanceFilter}
+            onChange={(e) => setCardBalanceFilter(e.target.value)}
+            aria-label="Filter by balance"
+          >
+            <option value="all">Any balance</option>
+            <option value="positive">Balance &gt; 0</option>
+            <option value="zero">Balance = 0</option>
+            <option value="negative">Balance &lt; 0</option>
+          </select>
+          <span className="cards-view-count-financial-cards">
+            {filteredCards.length} of {cards.length}
+          </span>
+        </div>
+        <div className="cards-grid-scroll-financial-cards">
         <div className="cards-grid-financial-cards">
-          {cards.map((card) => {
+          {filteredCards.length === 0 ? (
+            <div className="loading-financial-cards" style={{ gridColumn: '1 / -1' }}>
+              No cards match these filters.
+            </div>
+          ) : null}
+          {filteredCards.map((card) => {
             const balance = parseFloat(card.amount || 0);
             // By default, use masked values from backend (card.no and card.cvc are already masked)
             // Only use decrypted values if security code was verified
@@ -1323,6 +1508,8 @@ const FinancialCards = () => {
             
             const expDate = card.exp_date ? new Date(card.exp_date).toLocaleDateString('en-US', { month: '2-digit', year: '2-digit' }) : 'N/A';
             const isFlipped = flippedCardId === card.id;
+            const cardThemeClass = getCardThemeClass(card);
+            const cardCategoryLabel = getCardCategoryLabel(card);
             return (
               <div key={card.id} className="card-item-financial-cards">
                 <div 
@@ -1337,7 +1524,7 @@ const FinancialCards = () => {
                 >
                   <div className="bank-card-inner-financial-cards">
                     {/* Front Side */}
-                    <div className="bank-card-front-financial-cards">
+                    <div className={`bank-card-front-financial-cards ${cardThemeClass}`}>
                   <div className="bank-card-header-financial-cards">
                     <div 
                       className="bank-card-chip-financial-cards"
@@ -1403,6 +1590,9 @@ const FinancialCards = () => {
                           </button>
                         </div>
                       </div>
+                      <div className="bank-card-category-badge-financial-cards" title={cardCategoryLabel}>
+                        {cardCategoryLabel}
+                      </div>
                       <div className="bank-card-number-financial-cards">
                         {formattedCardNo}
                       </div>
@@ -1425,7 +1615,7 @@ const FinancialCards = () => {
                     </div>
                     
                     {/* Back Side */}
-                    <div className="bank-card-back-financial-cards">
+                    <div className={`bank-card-back-financial-cards ${cardThemeClass}`}>
                       <div className="bank-card-back-stripe-financial-cards"></div>
                       <div className="bank-card-back-cvc-financial-cards">
                         <div className="bank-card-back-label-financial-cards">CVC</div>
@@ -1436,7 +1626,7 @@ const FinancialCards = () => {
                           <div className="bank-card-back-signature-label-financial-cards">AUTHORIZED SIGNATURE</div>
                           <div className="bank-card-back-signature-box-financial-cards"></div>
                         </div>
-                        <div className="bank-card-back-bank-financial-cards">{card.bank_name || 'BANK'}</div>
+                        <div className="bank-card-back-bank-financial-cards">{cardCategoryLabel}</div>
                       </div>
                     </div>
                   </div>
@@ -1444,6 +1634,8 @@ const FinancialCards = () => {
               </div>
             );
           })}
+        </div>
+        </div>
         </div>
       ))}
 

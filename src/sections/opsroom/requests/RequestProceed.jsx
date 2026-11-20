@@ -95,9 +95,18 @@ const RequestProceed = () => {
   const { data: missionTypesRaw } = useGetBookingCreationMissionTypesQuery();
   const { data: cropTypesRaw } = useGetBookingCreationCropTypesQuery();
 
+  const monthStart = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  }, []);
+
   const adhocData = useMemo(() => {
     const rows = Array.isArray(plantationRows) ? plantationRows : [];
     const requests = rows
+      .filter((row) => {
+        const ymd = String(row?.picked_date || row?.pickedDate || '').slice(0, 10);
+        return /^\d{4}-\d{2}-\d{2}$/.test(ymd) && ymd >= monthStart;
+      })
       .map((row) =>
         mapPlantationRowToAdhocTile(row, {
           missionTypes: missionTypesRaw,
@@ -106,7 +115,7 @@ const RequestProceed = () => {
       )
       .filter(Boolean);
     return { requests, request_count: requests.length };
-  }, [plantationRows, missionTypesRaw, cropTypesRaw]);
+  }, [plantationRows, missionTypesRaw, cropTypesRaw, monthStart]);
 
   const adhocError = adhocQueryError ? 'Failed to load ad-hoc requests' : '';
 
@@ -119,9 +128,17 @@ const RequestProceed = () => {
 
   const rescheduleData = useMemo(() => {
     const rows = Array.isArray(rescheduleRows) ? rescheduleRows : [];
-    const requests = rows.map((row) => mapRescheduleRowToTile(row)).filter(Boolean);
+    const requests = rows
+      .filter((row) => {
+        const ymd = String(
+          row?.requested_picked_date || row?.requestedPickedDate || row?.picked_date || ''
+        ).slice(0, 10);
+        return /^\d{4}-\d{2}-\d{2}$/.test(ymd) && ymd >= monthStart;
+      })
+      .map((row) => mapRescheduleRowToTile(row))
+      .filter(Boolean);
     return { requests };
-  }, [rescheduleRows]);
+  }, [rescheduleRows, monthStart]);
 
   const rescheduleError = rescheduleQueryError ? 'Failed to load reschedule requests' : '';
   

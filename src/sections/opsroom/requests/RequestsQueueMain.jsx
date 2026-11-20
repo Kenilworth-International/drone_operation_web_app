@@ -16,10 +16,23 @@ import { mapPlantationRowToAdhocTile } from '../plantation-plan-requests/plantat
 import { mapRescheduleRowToTile } from '../plantation-plan-requests/plantationPlanRescheduleApproval';
 import '../../../styles/requestsQueue.css';
 
+/** YYYY-MM-01 of the current local calendar month — past months are hidden in the queue. */
+const currentMonthStartYmd = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
+
+const isOnOrAfterMonthStart = (dateValue, monthStart) => {
+  const ymd = String(dateValue || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return false;
+  return ymd >= monthStart;
+};
+
 const RequestsQueueMain = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const routerLocation = useLocation();
+  const monthStart = useMemo(() => currentMonthStartYmd(), []);
 
   const {
     data: plantationRows,
@@ -32,6 +45,7 @@ const RequestsQueueMain = () => {
   const adhocData = useMemo(() => {
     const rows = Array.isArray(plantationRows) ? plantationRows : [];
     const requests = rows
+      .filter((row) => isOnOrAfterMonthStart(row?.picked_date || row?.pickedDate, monthStart))
       .map((row) =>
         mapPlantationRowToAdhocTile(row, {
           missionTypes: missionTypesRaw,
@@ -40,7 +54,7 @@ const RequestsQueueMain = () => {
       )
       .filter(Boolean);
     return { requests, request_count: requests.length };
-  }, [plantationRows, missionTypesRaw, cropTypesRaw]);
+  }, [plantationRows, missionTypesRaw, cropTypesRaw, monthStart]);
 
   const adhocError = adhocQueryError ? 'Failed to load ad-hoc requests' : '';
 
@@ -52,9 +66,17 @@ const RequestsQueueMain = () => {
 
   const rescheduleData = useMemo(() => {
     const rows = Array.isArray(rescheduleRows) ? rescheduleRows : [];
-    const requests = rows.map((row) => mapRescheduleRowToTile(row)).filter(Boolean);
+    const requests = rows
+      .filter((row) =>
+        isOnOrAfterMonthStart(
+          row?.requested_picked_date || row?.requestedPickedDate || row?.picked_date,
+          monthStart
+        )
+      )
+      .map((row) => mapRescheduleRowToTile(row))
+      .filter(Boolean);
     return { requests };
-  }, [rescheduleRows]);
+  }, [rescheduleRows, monthStart]);
 
   const rescheduleError = rescheduleQueryError ? 'Failed to load reschedule requests' : '';
 

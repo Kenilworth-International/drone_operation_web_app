@@ -1,22 +1,27 @@
-import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import {
+  FaChartLine,
+  FaChartBar,
+  FaChartPie,
+  FaFileInvoiceDollar,
+  FaPlane,
+  FaTasks,
+  FaCalendarCheck,
+  FaTimesCircle,
+  FaComments,
+  FaSeedling,
+  FaCheckCircle,
+  FaUserFriends,
+  FaUsers,
+} from 'react-icons/fa';
 import '../styles/modernreport.css';
-import { FaChartLine, FaChartBar, FaChartPie, FaFileInvoiceDollar, FaPlane, FaUsers, FaTasks, FaCalendarCheck, FaTimesCircle, FaComments, FaSeedling, FaCheckCircle, FaUserFriends } from 'react-icons/fa';
 
-// Import your report components
 import EstateSprayedAreaReport from '../sections/finance/reports/EstateSprayedAreaReport';
 import PlantationCoveredAreaReport from '../sections/finance/reports/PlantationCoveredAreaReport';
 import DailyCoveredAreaSummary from '../sections/finance/reports/DailyCoveredAreaSummary';
-import PilotPerformancePilotData from '../sections/opsroom/reports/PilotPerformancePilotData';
-import PilotPerformanceOpsRoomData from '../sections/opsroom/reports/PilotPerformanceOpsRoomData';
-import PilotSummaryOpsRoomData from '../sections/opsroom/reports/PilotSummaryOpsRoomData';
 import OperationsReportPlanWise from '../sections/opsroom/reports/OperationsReportPlanWise';
-import PilotSummaryPilotData from '../sections/opsroom/reports/PilotSummaryPilotData';
-import IncompleteOpsRoomRejected from '../sections/opsroom/reports/IncompleteOpsRoomRejected';
 import CanceledByPilots from '../sections/opsroom/reports/CanceledByPilots';
 import CanceledByOpsRoom from '../sections/opsroom/reports/CanceledByOpsRoom';
-import PilotPerformanceByDateOpsRoom from '../sections/opsroom/reports/PilotPerformanceByDateOpsRoom';
-import PilotPerformanceByDatePilot from '../sections/opsroom/reports/PilotPerformanceByDatePilot';
 import PilotFeedbacks from '../sections/opsroom/reports/PilotFeedbacks';
 import MonthlyPlantationReport from '../sections/opsroom/reports/MonthlyPlantationReport';
 import BillableExtentsReport from '../sections/opsroom/reports/BillableExtentsReport';
@@ -24,460 +29,232 @@ import OpsroomDailyPerformanceSummary from '../sections/opsroom/reports/OpsroomD
 import OpsroomPilotDailyPerformanceSummary from '../sections/opsroom/reports/OpsroomPilotDailyPerformanceSummary';
 import OpsroomMonthlyAchievementSummary from '../sections/opsroom/reports/OpsroomMonthlyAchievementSummary';
 import ChemicalsReport from '../features/plantation/ChemicalsReport';
-import PilotRevenueDaily from '../sections/corporate/charts/PilotRevenueDaily';
-import PilotSummaryMonthly from '../sections/corporate/charts/PilotSummaryMonthly';
-import IndividualPilotSummary from '../sections/corporate/charts/IndividualPilotSummary';
 import PlanExecutionReasonReport from '../sections/management/reports/PlanExecutionReasonReport';
 import DailyDronePerformanceReport from '../sections/management/reports/DailyDronePerformanceReport';
 import DailyDroneOperationsSummaryReport from '../sections/management/reports/DailyDroneOperationsSummaryReport';
 import DeactivatedPlansReport from '../sections/corporate/reports/DeactivatedPlansReport';
 import ManagerApprovedCanceledReport from '../sections/corporate/reports/ManagerApprovedCanceledReport';
-
-// Placeholder component for reports under development
-const ComingSoonReport = ({ reportName }) => (
-  <div style={{ 
-    display: 'flex', 
-    flexDirection: 'column', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    height: '400px',
-    textAlign: 'center',
-    padding: '40px'
-  }}>
-    <div style={{ 
-      fontSize: '48px', 
-      marginBottom: '20px',
-      opacity: 0.6
-    }}>
-      🚧
-    </div>
-    <h3 style={{ 
-      color: '#666', 
-      marginBottom: '10px',
-      fontSize: '24px'
-    }}>
-      {reportName}
-    </h3>
-    <p style={{ 
-      color: '#888', 
-      fontSize: '16px',
-      maxWidth: '400px',
-      lineHeight: '1.5'
-    }}>
-      This report is currently under development. The API integration will be completed soon.
-    </p>
-  </div>
-);
+import ReportsDecisionShell from '../sections/management/reports/ReportsDecisionShell';
+import PilotPerformanceCombined from '../sections/management/reports/merged/PilotPerformanceCombined';
+import PilotSummaryCombined from '../sections/management/reports/merged/PilotSummaryCombined';
+import PilotPerformanceByDateCombined from '../sections/management/reports/merged/PilotPerformanceByDateCombined';
 
 const ModernReportSection = ({ category = null }) => {
-  const navigate = useNavigate();
-  const routerLocation = useLocation();
-  // If category prop is provided, use it and disable category switching
-  // If category is null or 'management', show all categories (Corporate/Management view with tabs)
-  const isCorporateView = category === null || category === 'management';
-  const [activeCategory, setActiveCategory] = useState(category === 'management' ? 'management' : (category || 'management'));
-  const [selectedReport, setSelectedReport] = useState(null);
-
-  // Use the prop category if provided, otherwise use state
-  const currentCategoryKey = category === 'management' ? activeCategory : (category || activeCategory);
-
-  // Define report categories and their metrics
-  const reportCategories = {
+  const reportCatalog = {
     management: {
       title: 'Management Reports',
-      color: '#4472c4',
       reports: [
         {
           id: 'finance_field',
           name: 'Field Wise Report',
-          description: 'Financial analysis by field',
+          description: 'Covered area analysis by field',
           icon: FaChartBar,
+          uiKind: 'ui-dense',
           component: EstateSprayedAreaReport,
-          metrics: { label: 'Fields', value: 'All' }
         },
         {
           id: 'finance_plantation_date',
           name: 'Date Wise Report by Plantation',
-          description: 'Financial breakdown by plantation over time',
+          description: 'Breakdown by plantation over time',
           icon: FaCalendarCheck,
+          uiKind: 'ui-dense',
           component: PlantationCoveredAreaReport,
-          metrics: { label: 'Plantations', value: 'All' }
         },
         {
           id: 'finance_plantation',
           name: 'Plantation Wise Report by Date',
           description: 'Compare plantations by date',
           icon: FaFileInvoiceDollar,
+          uiKind: 'ui-dense',
           component: DailyCoveredAreaSummary,
-          metrics: { label: 'Reports', value: 'All' }
         },
         {
           id: 'plan_execution_reasons',
           name: 'Plan Execution Reasons Report',
           description: 'Plan-wise covered and cancellation reasons',
           icon: FaTasks,
+          uiKind: 'ui-dense',
           component: PlanExecutionReasonReport,
-          metrics: { label: 'Plans', value: 'Date Range' }
         },
         {
           id: 'deactivated_plans_reason',
           name: 'Deactivated with Reason',
-          description: 'Plans deactivated in the period, with deactivate reason from master data',
+          description: 'Plans deactivated in the period, with deactivate reason',
           icon: FaTimesCircle,
+          uiKind: 'ui-dense',
           component: DeactivatedPlansReport,
-          metrics: { label: 'Plans', value: 'Deactivated' }
         },
         {
           id: 'daily_drone_performance_month',
           name: 'Daily Drone Performance (Month-wise)',
-          description: 'Drone × pilot DJI area, flight time and flights by day for the selected month',
+          description: 'Drone × pilot DJI area, flight time and flights by day',
           icon: FaPlane,
+          uiKind: 'ui-board',
           component: DailyDronePerformanceReport,
-          metrics: { label: 'Month', value: 'PDF' }
         },
         {
           id: 'daily_drone_operations_summary',
           name: 'Daily Drone Operations Summary',
-          description: 'Day-wise KPIs, major issues and cancellation summary for management',
+          description: 'Day-wise KPIs, major issues and cancellation summary',
           icon: FaChartPie,
+          uiKind: 'ui-board',
           component: DailyDroneOperationsSummaryReport,
-          metrics: { label: 'Day', value: 'PDF' }
-        }
-      ]
+        },
+      ],
     },
     ops: {
       title: 'Operations Room Reports',
-      color: '#28a745',
       reports: [
         {
-          id: 'pilot_performance_pilot',
-          name: 'Pilot Performance (Pilot Data)',
-          description: 'Detailed pilot performance metrics',
+          id: 'pilot_performance_combined',
+          name: 'Pilot Performance',
+          description: 'Field-level assigned vs Pilot / OpsRoom Ha with completion %',
           icon: FaPlane,
-          component: PilotPerformancePilotData,
-          metrics: { label: 'Pilots', value: 'All' }
+          uiKind: 'ui-board',
+          component: PilotPerformanceCombined,
         },
         {
-          id: 'pilot_performance_ops',
-          name: 'Pilot Performance (OpsRoom Data)',
-          description: 'OpsRoom verified performance data',
-          icon: FaChartLine,
-          component: PilotPerformanceOpsRoomData,
-          metrics: { label: 'Pilots', value: 'All' }
-        },
-        {
-          id: 'pilot_summary_pilot',
-          name: 'Pilot Summary (Pilot Data)',
-          description: 'Summary of pilot activities',
+          id: 'pilot_summary_combined',
+          name: 'Pilot Summary',
+          description: 'Ranked pilot rollup with dual completion and %',
           icon: FaUsers,
-          component: PilotSummaryPilotData,
-          metrics: { label: 'Summary', value: 'All' }
+          uiKind: 'ui-board',
+          component: PilotSummaryCombined,
         },
         {
-          id: 'pilot_summary_ops',
-          name: 'Pilot Summary (OpsRoom Data)',
-          description: 'OpsRoom summary report',
-          icon: FaChartPie,
-          component: PilotSummaryOpsRoomData,
-          metrics: { label: 'Summary', value: 'All' }
-        },
-        {
-          id: 'pilot_date_pilot',
-          name: 'Pilot Performance by Date (Pilot)',
-          description: 'Daily pilot performance tracking',
+          id: 'pilot_date_combined',
+          name: 'Pilot Performance by Date',
+          description: 'Daily Pilot and OpsRoom completed Ha side by side',
           icon: FaCalendarCheck,
-          component: PilotPerformanceByDatePilot,
-          metrics: { label: 'Daily', value: 'All' }
-        },
-        {
-          id: 'pilot_date_ops',
-          name: 'Pilot Performance by Date (OpsRoom)',
-          description: 'Daily OpsRoom performance data',
-          icon: FaCalendarCheck,
-          component: PilotPerformanceByDateOpsRoom,
-          metrics: { label: 'Daily', value: 'All' }
+          uiKind: 'ui-board',
+          component: PilotPerformanceByDateCombined,
         },
         {
           id: 'ops_plan',
           name: 'Operations Report (Plan wise)',
           description: 'Analysis by operational plans',
           icon: FaTasks,
+          uiKind: 'ui-board',
           component: OperationsReportPlanWise,
-          metrics: { label: 'Plans', value: 'All' }
-        },
-        // {
-        //   id: 'incomplete_leader',
-        //   name: 'Incomplete Fields (Leader wise)',
-        //   description: 'Track incomplete tasks by leader',
-        //   icon: FaExclamationTriangle,
-        //   component: OpsReport5,
-        //   metrics: { label: 'Incomplete', value: 'Track' }
-        // },
-        {
-          id: 'incomplete_pilot',
-          name: 'Incomplete Ops Room Rejected',
-          description: 'Pilot rejected incomplete tasks',
-          icon: FaTimesCircle,
-          component: IncompleteOpsRoomRejected,
-          metrics: { label: 'Rejected', value: 'Track' }
         },
         {
           id: 'canceled_pilot',
           name: 'Canceled by Pilots',
           description: 'Pilot canceled and partially completed tasks with reasons',
           icon: FaTimesCircle,
+          uiKind: 'ui-board',
           component: CanceledByPilots,
-          metrics: { label: 'Canceled', value: 'Track' }
         },
         {
           id: 'canceled_ops_room',
           name: 'Canceled by Ops Room',
           description: 'Tasks canceled by ops room in day end process',
           icon: FaTimesCircle,
+          uiKind: 'ui-board',
           component: CanceledByOpsRoom,
-          metrics: { label: 'Canceled', value: 'Track' }
         },
         {
           id: 'deactivated_plans_reason_ops',
           name: 'Deactivated with Reason',
-          description: 'Plans deactivated in the period, with deactivate reason from master data',
+          description: 'Plans deactivated in the period, with deactivate reason',
           icon: FaTimesCircle,
+          uiKind: 'ui-board',
           component: DeactivatedPlansReport,
-          metrics: { label: 'Plans', value: 'Deactivated' }
         },
         {
           id: 'pilot_feedback',
           name: 'Pilot Feedbacks',
           description: 'Pilot feedback and comments',
           icon: FaComments,
+          uiKind: 'ui-board',
           component: PilotFeedbacks,
-          metrics: { label: 'Feedbacks', value: 'All' }
         },
         {
           id: 'monthly_plantation',
           name: 'Monthly Plantation Report',
           description: 'Planned, Assigned & Covered by estate per month',
           icon: FaSeedling,
+          uiKind: 'ui-board',
           component: MonthlyPlantationReport,
-          metrics: { label: 'Monthly', value: 'All' }
         },
         {
           id: 'billable_extents',
           name: 'Billable Extents',
-          description:
-            'Field Ha vs DJI sprayed Ha vs Billing Ha, with chargeable reasons — plantation, estate, and field detail',
+          description: 'Field Ha vs DJI sprayed Ha vs Billing Ha, with chargeable reasons',
           icon: FaFileInvoiceDollar,
+          uiKind: 'ui-board',
           component: BillableExtentsReport,
-          metrics: { label: 'Billing Ha', value: 'DJI' }
         },
         {
           id: 'daily_performance_summary',
           name: 'Daily Performance Summary',
-          description: 'Daily targets, assigned, attended, completed (Ha) — same logic as comb dashboard',
+          description: 'Daily targets, assigned, attended, completed (Ha)',
           icon: FaCalendarCheck,
+          uiKind: 'ui-board',
           component: OpsroomDailyPerformanceSummary,
-          metrics: { label: 'Months', value: 'Multi' }
         },
         {
           id: 'pilot_daily_performance_summary',
           name: 'Pilot Daily Performance Summary',
-          description: 'Same daily metrics as company summary, broken down pilot by pilot',
+          description: 'Daily metrics broken down pilot by pilot',
           icon: FaUserFriends,
+          uiKind: 'ui-board',
           component: OpsroomPilotDailyPerformanceSummary,
-          metrics: { label: 'Pilots', value: 'Daily' }
         },
         {
           id: 'monthly_achievement_summary',
           name: 'Monthly Achievement Data',
-          description: 'Month-wise operational target, assigned, attended, completed (ops & pilot), and achievement %',
+          description: 'Month-wise target, assigned, attended, completed and achievement %',
           icon: FaChartBar,
+          uiKind: 'ui-board',
           component: OpsroomMonthlyAchievementSummary,
-          metrics: { label: 'Year', value: 'Monthly' }
-        }
-      ]
+        },
+      ],
     },
-    finance: {
-      title: 'Finance Reports',
-      color: '#ffc107',
+    plantation: {
+      title: 'Plantation Reports',
       reports: [
         {
           id: 'finance_date_plantation',
           name: 'Date Wise by Plantation',
-          description: 'Financial timeline by plantation',
+          description: 'Timeline by plantation',
           icon: FaChartLine,
+          uiKind: 'ui-editorial',
           component: PlantationCoveredAreaReport,
-          metrics: { label: 'Timeline', value: 'All' }
         },
         {
           id: 'finance_plantation_date',
           name: 'Plantation Wise by Date',
-          description: 'Plantation financial comparison',
+          description: 'Plantation comparison by date',
           icon: FaChartBar,
+          uiKind: 'ui-editorial',
           component: DailyCoveredAreaSummary,
-          metrics: { label: 'Plantations', value: 'All' }
         },
-        {
-          id: 'pilot_revenue_daily',
-          name: 'Pilot Revenue Daily',
-          description: 'Daily pilot earnings and revenue tracking',
-          icon: FaChartLine,
-          component: PilotRevenueDaily,
-          metrics: { label: 'Daily', value: 'Revenue' }
-        },
-        {
-          id: 'pilot_summary_monthly',
-          name: 'Pilot Summary Monthly',
-          description: 'Monthly pilot performance summary',
-          icon: FaChartBar,
-          component: PilotSummaryMonthly,
-          metrics: { label: 'Monthly', value: 'Summary' }
-        },
-        {
-          id: 'individual_pilot_summary',
-          name: 'Individual Pilot Summary',
-          description: 'Individual pilot detailed earnings report',
-          icon: FaUsers,
-          component: IndividualPilotSummary,
-          metrics: { label: 'Individual', value: 'Details' }
-        }
-      ]
-    },
-    plantation: {
-      title: 'Plantation Reports',
-      color: '#17a2b8',
-      reports: [
         {
           id: 'chemicals',
           name: 'Chemicals Report',
           description: 'Chemical usage and analysis',
           icon: FaSeedling,
+          uiKind: 'ui-editorial',
           component: ChemicalsReport,
-          metrics: { label: 'Chemicals', value: 'All' }
         },
         {
           id: 'manager_approved_canceled',
           name: 'Manager Approved / Canceled',
-          description: 'Plantation manager field approvals and cancel reasons (plan_division_fields)',
+          description: 'Manager field approvals and cancel reasons',
           icon: FaCheckCircle,
+          uiKind: 'ui-editorial',
           component: ManagerApprovedCanceledReport,
-          metrics: { label: 'Fields', value: 'Approved & Canceled' }
-        }
-      ]
-    }
+        },
+      ],
+    },
   };
-
-  const handleReportSelect = (report) => {
-    setSelectedReport(report);
-  };
-
-  const handleBackToReports = () => {
-    setSelectedReport(null);
-  };
-
-  const currentCategory = reportCategories[currentCategoryKey];
 
   return (
-    <div className={`modern-report-container ${selectedReport?.id === 'plan_execution_reasons' ? 'plan-excu-root' : ''}`}>
-      {/* Category Tabs - Only show in Corporate view */}
-      {!selectedReport && isCorporateView && (
-        <div className="report-category-tabs">
-          <button
-            className={`category-tab ${activeCategory === 'management' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('management')}
-          >
-            Management Reports
-          </button>
-          <button
-            className={`category-tab ${activeCategory === 'ops' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('ops')}
-          >
-            Operations Room
-          </button>
-          <button
-            className={`category-tab ${activeCategory === 'finance' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('finance')}
-          >
-            Finance
-          </button>
-          <button
-            className={`category-tab ${activeCategory === 'plantation' ? 'active' : ''}`}
-            onClick={() => setActiveCategory('plantation')}
-          >
-            Plantation
-          </button>
-        </div>
-      )}
-
-      {/* Report Selection Grid */}
-      {!selectedReport && (
-        <div className="report-selection-section">
-          <div className="report-section-header">
-            {category === 'ops' && (
-              <button 
-                className="back-button-modernreport" 
-                onClick={() => navigate({ pathname: '/home/workflowDashboard', search: routerLocation.search })}
-                title="Back to Workflow Dashboard"
-              >
-                <span className="back-btn-icon-modernreport">←</span>
-              </button>
-            )}
-            <h2>{currentCategory.title}</h2>
-            <p>Select a report to view detailed analytics</p>
-          </div>
-
-          <div className="report-cards-grid">
-            {currentCategory.reports.map((report) => {
-              const IconComponent = report.icon;
-              return (
-                <div
-                  key={report.id}
-                  className="report-card"
-                  onClick={() => handleReportSelect(report)}
-                  style={{ borderTopColor: currentCategory.color }}
-                >
-                  <div className="report-card-icon" style={{ backgroundColor: `${currentCategory.color}15`, color: currentCategory.color }}>
-                    <IconComponent />
-                  </div>
-                  <div className="report-card-content">
-                    <h3>{report.name}</h3>
-                    <p>{report.description}</p>
-                    <div className="report-card-metrics">
-                      <span className="metric-label">{report.metrics.label}:</span>
-                      <span className="metric-value">{report.metrics.value}</span>
-                    </div>
-                  </div>
-                  <div className="report-card-arrow">→</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Selected Report Display */}
-      {selectedReport && (
-        <div className={`report-display-section ${selectedReport.id === 'plan_execution_reasons' ? 'plan-excu-host' : ''}`}>
-          <div className="report-display-header">
-            <button className="back-button" onClick={handleBackToReports}>
-              ← Back to Reports
-            </button>
-            <div className="report-display-title">
-              <h2>{selectedReport.name}</h2>
-              <p>{selectedReport.description}</p>
-            </div>
-          </div>
-          <div className={`report-display-content ${selectedReport.id === 'plan_execution_reasons' ? 'plan-excu-host-content' : ''}`}>
-            {selectedReport.component ? (
-              <selectedReport.component />
-            ) : (
-              <ComingSoonReport reportName={selectedReport.name} />
-            )}
-          </div>
-        </div>
-      )}
+    <div className="modern-report-container modern-report-decision">
+      <ReportsDecisionShell category={category} reportCatalog={reportCatalog} />
     </div>
   );
 };
 
 export default ModernReportSection;
-

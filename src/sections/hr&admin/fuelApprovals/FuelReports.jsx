@@ -475,7 +475,7 @@ export default function FuelReports({ embedded = false }) {
         </FormControl>
         <TextField
           size="small"
-          label="Search name / card / vehicle / voucher"
+          label="Search name / last 4 / vehicle / voucher"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {
