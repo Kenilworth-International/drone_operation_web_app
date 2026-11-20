@@ -6,11 +6,21 @@
   display: flex;
   flex-direction: column;
   gap: 0;
-  min-height: calc(100vh - 120px);
+  height: 100%;
+  min-height: 0;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
   color: var(--rds-ink);
   font-family: var(--rds-font);
   background: var(--rds-bg);
+  font-size: 0.8rem;
   animation: rds-fade-in 0.45s var(--rds-ease) both;
+}
+
+.rds-shell > .rds-ops {
+  flex: 1;
+  min-height: 0;
 }
 
 @keyframes rds-fade-in {
@@ -160,14 +170,15 @@
   display: flex;
   gap: 0;
   border-bottom: 1px solid var(--rds-line);
-  margin-bottom: 1.25rem;
+  margin-bottom: 0.45rem;
+  flex-shrink: 0;
 }
 
 .rds-tab {
   border: none;
   background: transparent;
-  padding: 0.85rem 1.35rem 0.9rem;
-  font-size: 0.88rem;
+  padding: 0.45rem 0.85rem 0.5rem;
+  font-size: 0.75rem;
   font-weight: 600;
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
   color: var(--rds-muted);
@@ -218,8 +229,8 @@
   background: var(--rds-accent);
   color: #fff;
   border-radius: 2px;
-  padding: 0.5rem 1rem;
-  font-size: 0.8rem;
+  padding: 0.28rem 0.65rem;
+  font-size: 0.68rem;
   font-weight: 600;
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
   cursor: pointer;
@@ -240,28 +251,36 @@
 .rds-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
 }
 
 .rds-table th,
 .rds-table td {
-  padding: 0.5rem 0.6rem;
+  padding: 0.28rem 0.4rem;
   border-bottom: 1px solid var(--rds-line);
   text-align: left;
   white-space: nowrap;
 }
 
 .rds-table th {
-  background: transparent;
+  background: var(--rds-bg, #faf8f4);
   font-weight: 600;
   position: sticky;
   top: 0;
   z-index: 1;
   color: var(--rds-muted);
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.rds-table tfoot td {
+  position: sticky;
+  bottom: 0;
+  background: var(--rds-bg, #faf8f4);
+  font-weight: 600;
+  z-index: 1;
 }
 
 .rds-table td.num,
@@ -460,22 +479,46 @@
    ═══════════════════════════════════════════════════════ */
 .rds-ops {
   display: grid;
-  grid-template-columns: minmax(240px, 300px) 1fr;
+  grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+  align-items: stretch;
   gap: 0;
-  min-height: 480px;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
   animation: rds-fade-in 0.4s var(--rds-ease) both;
 }
 
+/* Ops / Plantation: no board */
+.rds-ops.rds-ops-no-board {
+  min-height: 0;
+}
+
+.rds-ops.rds-ops-no-board .rds-ops-rail-item .rds-ops-rail-desc {
+  display: none;
+}
+
 @media (max-width: 900px) {
-  .rds-ops { grid-template-columns: 1fr; }
+  .rds-ops {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: calc(100vh - 100px);
+    overflow: visible;
+  }
 }
 
 .rds-ops-rail {
   border-right: 1px solid var(--rds-line);
-  padding-right: 1.25rem;
+  padding: 0 0.65rem 0.5rem 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
@@ -483,18 +526,20 @@
     border-right: none;
     border-bottom: 1px solid var(--rds-line);
     padding-right: 0;
-    padding-bottom: 1rem;
-    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0.5rem;
+    max-height: 140px;
   }
 }
 
 .rds-ops-rail-label {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rds-muted);
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.35rem;
+  flex-shrink: 0;
 }
 
 .rds-ops-rail-item {
@@ -503,57 +548,68 @@
   text-align: left;
   border: none;
   background: transparent;
-  padding: 0.7rem 0.5rem 0.7rem 0;
+  padding: 0.38rem 0.35rem 0.38rem 0.4rem;
   border-left: 2px solid transparent;
   cursor: pointer;
   color: var(--rds-ink);
   font: inherit;
-  transition: border-color 0.2s, background 0.2s, padding-left 0.2s var(--rds-ease);
+  transition: border-color 0.15s, background 0.15s;
+  box-sizing: border-box;
 }
 
 .rds-ops-rail-item:hover {
   border-left-color: var(--rds-accent);
-  padding-left: 0.55rem;
   background: rgba(15, 107, 76, 0.05);
 }
 
 .rds-ops-rail-name {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  margin-bottom: 0.15rem;
+  line-height: 1.25;
+  margin: 0;
 }
 
 .rds-ops-rail-desc {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   color: var(--rds-muted);
-  line-height: 1.35;
+  line-height: 1.3;
   font-weight: 400;
 }
 
 .rds-ops-stage {
-  padding-left: 1.75rem;
+  padding-left: 0.75rem;
+  padding-right: 0.15rem;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 @media (max-width: 900px) {
-  .rds-ops-stage { padding-left: 0; }
+  .rds-ops-stage {
+    padding-left: 0;
+    overflow: visible;
+  }
 }
 
 .rds-ops-stage-title {
-  font-size: 1.45rem;
+  font-size: 0.92rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.25rem;
+  letter-spacing: -0.01em;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .rds-ops-stage-sub {
   margin: 0;
   color: var(--rds-muted);
-  font-size: 0.85rem;
+  font-size: 0.68rem;
 }
 
 .rds-ops-gauges {
@@ -799,29 +855,30 @@
   flex-wrap: wrap;
   gap: 0;
   border-bottom: 1px solid var(--rds-line);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.35rem;
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  flex-shrink: 0;
 }
 
 .rds-metric-strip-item {
-  flex: 1 1 120px;
-  padding: 0.75rem 1rem 0.85rem 0;
+  flex: 1 1 90px;
+  padding: 0.35rem 0.65rem 0.4rem 0;
   border-right: 1px solid var(--rds-line);
-  min-width: 110px;
+  min-width: 80px;
 }
 
 .rds-metric-strip-item:last-child { border-right: none; }
 
 .rds-metric-strip-lbl {
-  font-size: 0.65rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--rds-muted);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
 }
 
 .rds-metric-strip-val {
-  font-size: 1.25rem;
+  font-size: 0.95rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
@@ -834,20 +891,23 @@
 }
 
 .rds-chart-bleed {
-  min-height: 220px;
-  margin: 0.25rem 0 1rem;
-  padding-bottom: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-height: 180px;
+  margin: 0.15rem 0 0.45rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--rds-line);
 }
 
 .rds-chart-bleed-title {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--rds-muted);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
 }
 
 .rds-filters-inline {
@@ -933,21 +993,19 @@
 .rds-bydate-legend .leg-p::before { background: #0f6b4c; }
 .rds-bydate-legend .leg-o::before { background: #34d399; }
 
-/* ── Ops report open: left controls ───────────────────── */
+/* ── Ops report open ──────────────────────────────────── */
 .rds-ops-report-open .rds-ops-rail {
-  max-height: calc(100vh - 140px);
   overflow: auto;
-  padding-bottom: 1.5rem;
 }
 
 .rds-ops-back {
   display: inline-block;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.72rem;
 }
 
 .rds-ops-rail-item.is-active {
   border-left-color: var(--rds-accent);
-  padding-left: 0.55rem;
   background: rgba(15, 107, 76, 0.08);
 }
 
@@ -958,84 +1016,205 @@
 .rds-ops-rail-divider {
   height: 1px;
   background: var(--rds-line);
-  margin: 0.85rem 0;
+  margin: 0.5rem 0;
 }
 
 .rds-ops-active-title {
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  margin: 0 0 0.25rem;
-  letter-spacing: -0.01em;
+  margin: 0 0 0.15rem;
 }
 
 .rds-ops-active-desc {
-  margin: 0 0 1rem;
-  font-size: 0.75rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.65rem;
   color: var(--rds-muted);
-  line-height: 1.4;
+  line-height: 1.3;
 }
 
+/* Compact horizontal toolbar (right header) */
 .rds-ops-controls {
   display: flex;
-  flex-direction: column;
-  gap: 1.1rem;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.65rem;
   font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .rds-ops-controls-block {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.rds-ops-controls-block.rds-ops-controls-inline {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.4rem;
 }
 
 .rds-ops-controls-label {
-  font-size: 0.65rem;
+  font-size: 0.58rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--rds-muted);
+  white-space: nowrap;
 }
 
 .rds-ops-field {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  font-size: 0.72rem;
+  gap: 0.1rem;
+  font-size: 0.62rem;
   color: var(--rds-muted);
+  min-width: 0;
+}
+
+.rds-ops-field.rds-ops-field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .rds-ops-field input,
 .rds-ops-field select {
-  border: none;
-  border-bottom: 1.5px solid var(--rds-line);
-  background: transparent;
-  padding: 0.35rem 0.1rem;
-  font-size: 0.85rem;
+  border: 1px solid var(--rds-line);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0.18rem 0.3rem;
+  font-size: 0.72rem;
   color: var(--rds-ink);
   font-family: inherit;
+  max-width: 9.5rem;
+  box-sizing: border-box;
+}
+
+.rds-ops-field input[type='date'],
+.rds-ops-field input[type='month'] {
+  max-width: 8.25rem;
 }
 
 .rds-ops-field input:focus,
 .rds-ops-field select:focus {
   outline: none;
-  border-bottom-color: var(--rds-accent);
+  border-color: var(--rds-accent);
 }
 
 .rds-ops-view-toggle {
   display: flex;
   flex-wrap: wrap;
+  gap: 0.15rem;
+  align-items: center;
+}
+
+.rds-ops-chip-scroll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  align-items: center;
+  overflow: auto;
+  max-width: min(420px, 100%);
+}
+
+/* Fold / 2-row chip filters (dense multi-select) */
+.rds-ops-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.rds-ops-toolbar-primary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  min-width: 0;
+}
+
+.rds-ops-toolbar-fold {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.45rem;
+  min-width: 0;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--rds-line);
+  overflow: visible;
+}
+
+@media (min-width: 900px) {
+  .rds-ops-toolbar-fold {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.45rem 0.85rem;
+  }
+}
+
+.rds-ops-toolbar-fold .rds-ops-chip-fold {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.rds-ops-chip-fold {
+  min-width: 0;
+}
+
+.rds-ops-chip-fold-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.4rem;
+  margin-bottom: 0.2rem;
+}
+
+.rds-ops-chip-fold-summary {
+  font-size: 0.62rem;
+  color: var(--rds-muted);
+  font-weight: 500;
+}
+
+.rds-ops-chip-fold-toggle,
+.rds-ops-filters-toggle {
+  margin-left: auto;
+}
+
+.rds-ops-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   gap: 0.25rem;
+  /* Show chips fully; scroll if the list is long */
+  max-height: 7.5rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-width: 0;
+  padding: 0.1rem 0.15rem 0.25rem 0;
+  box-sizing: border-box;
+}
+
+.rds-ops-chip-grid .rds-ops-view-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .rds-ops-view-btn {
   border: 1px solid var(--rds-line);
   background: transparent;
   color: var(--rds-muted);
-  padding: 0.3rem 0.55rem;
-  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.65rem;
   font-weight: 600;
   font-family: inherit;
   cursor: pointer;
+  line-height: 1.2;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
@@ -1051,51 +1230,201 @@
 }
 
 .rds-ops-export {
-  width: 100%;
-  margin-top: 0.25rem;
+  width: auto;
+  margin-top: 0;
+}
+
+/* Excel already in stage head — hide duplicate from report sidebars */
+.rds-stage-toolbar .rds-ops-export {
+  display: none;
 }
 
 .rds-ops-hint {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: 0.62rem;
   color: var(--rds-muted);
-  line-height: 1.4;
+  line-height: 1.3;
+  display: none; /* hide verbose hints in compact toolbar */
+}
+
+.rds-stage-toolbar .rds-ops-hint {
+  display: none;
 }
 
 .rds-ops-board-dates {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
-  gap: 0.75rem 1rem;
-  margin-top: 0.85rem;
+  gap: 0.5rem 0.75rem;
+  margin-top: 0.5rem;
 }
 
 .rds-ops-board-dates .rds-ops-field {
-  min-width: 8.5rem;
+  min-width: 7rem;
 }
 
 .rds-ops-data {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 200px;
+  gap: 0.45rem;
+  min-height: 0;
+  flex: 1;
+  height: 100%;
 }
 
 .rds-stage-report {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  min-height: 240px;
+  gap: 0.4rem;
+  min-height: 0;
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .rds-stage-report-top {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem 1.25rem;
-  padding-bottom: 0.75rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  padding-bottom: 0.35rem;
   border-bottom: 1px solid var(--rds-line);
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.rds-stage-report-head {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+  flex-shrink: 0;
+}
+
+.rds-stage-report-head .rds-ops-stage-sub {
+  display: none;
+}
+
+.rds-stage-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+  box-sizing: border-box;
+}
+
+.rds-stage-toolbar .rds-ops-controls:not(.rds-ops-toolbar) {
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.55rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+.rds-stage-toolbar .rds-ops-controls-block {
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.35rem;
+}
+
+.rds-stage-toolbar .rds-ops-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.2rem;
+  white-space: nowrap;
+}
+
+.rds-stage-toolbar .rds-ops-field span {
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.rds-stage-toolbar .rds-ops-field select {
+  max-width: 9rem;
+  min-width: 4.5rem;
+  height: 1.55rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.68rem;
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  border: 1px solid var(--rds-line);
+  border-radius: 0;
+  background: #fff;
+  color: var(--rds-ink);
+}
+
+.rds-stage-toolbar .rds-ops-field input[type='date'],
+.rds-stage-toolbar .rds-ops-field input[type='month'] {
+  height: 1.55rem;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.68rem;
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  border: 1px solid var(--rds-line);
+  border-radius: 0;
+  background: #fff;
+  color: var(--rds-ink);
+}
+
+/* Workspace body: no legacy finance card min-height void */
+.rds-stage-report-body .rds-ops-data {
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+  padding: 0;
+}
+
+.rds-stage-report-body .finance-report-container2,
+.rds-stage-report-body .container-chemical {
+  min-height: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+.rds-stage-report-body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+.rds-stage-report-body > .rds-ops-data,
+.rds-stage-report-body > .rds-loading,
+.rds-stage-report-body > .rds-empty {
+  flex: 1;
+  min-height: 0;
+}
+
+.rds-stage-report-body .rds-table-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  max-height: none;
+  height: 100%;
+}
+
+.rds-stage-report-body .rds-table {
+  width: 100%;
+}
+
+.rds-export-btn-compact {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.65rem;
+  margin-left: auto;
 }
 
 /* Keep legacy report pickers usable inside the stage */

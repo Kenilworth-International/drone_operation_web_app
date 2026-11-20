@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import PropTypes from 'prop-types';
+import React, { useState, useEffect, useMemo } from "react";
 import '../../../styles/ops2.css';
 import { baseApi } from '../../../api/services/allEndpoints';
 import { useAppDispatch } from '../../../store/hooks';
@@ -9,8 +8,24 @@ import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { Bars } from "react-loader-spinner";
 import { FiDownload, FiPrinter } from "react-icons/fi";
-const OperationsReportPlanWise = () => {
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
+import { useOpsReportWorkspace } from '../../management/reports/OpsReportWorkspaceContext';
+import OpsReportViewToggle from '../../management/reports/OpsReportViewToggle';
+import { OpsDateRangeControls } from '../../management/reports/OpsPeriodControls';
+import '../../management/reports/reportsDecisionShell.css';
+
+const OperationsReportPlanWise = ({ onExportReady }) => {
     const dispatch = useAppDispatch();
+    const workspace = useOpsReportWorkspace();
     const [plantations, setPlantations] = useState([]);
     const [selectedPlantation, setSelectedPlantation] = useState(null);
     const [estates, setEstates] = useState([]);
@@ -22,8 +37,13 @@ const OperationsReportPlanWise = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-    const [selectedDates, setSelectedDates] = useState([firstDayOfMonth, today]);
+    const [startDate, setStartDate] = useState(firstDayOfMonth);
+    const [endDate, setEndDate] = useState(today);
+    const [view, setView] = useState('chart');
     const [reportData, setReportData] = useState([]);
+
+    // Keep selectedDates alias for export filenames / legacy paths
+    const selectedDates = [startDate, endDate];
 
     useEffect(() => {
         const fetchPlantations = async () => {
@@ -41,7 +61,7 @@ const OperationsReportPlanWise = () => {
             }
         };
         fetchPlantations();
-    }, []);
+    }, [dispatch]);
 
     useEffect(() => {
         const fetchEstates = async () => {
@@ -62,27 +82,27 @@ const OperationsReportPlanWise = () => {
             }
         };
         fetchEstates();
-    }, [selectedPlantation]);
+    }, [dispatch, selectedPlantation]);
 
     useEffect(() => {
         const fetchReportData = async () => {
-            if (selectedPlantation && selectedEstates.length > 0 && selectedDates[0] && selectedDates[1]) {
+            if (selectedPlantation && selectedEstates.length > 0 && startDate && endDate) {
                 try {
                     setLoading(true);
-                    const startDate = selectedDates[0].toLocaleDateString('en-CA');
-                    const endDate = selectedDates[1].toLocaleDateString('en-CA');
+                    const start = startDate.toLocaleDateString('en-CA');
+                    const end = endDate.toLocaleDateString('en-CA');
                     const estateIds = selectedEstates.map(id => Number(id));
 
                     const result = await dispatch(baseApi.endpoints.getFinanceReport.initiate({
-                        startDate,
-                        endDate,
+                        startDate: start,
+                        endDate: end,
                         estates: estateIds
                     }));
                     const response = result.data;
                     const processedData = [];
                     const planMap = new Map();
 
-                    const allEstates = Object.values(response)
+                    const allEstates = Object.values(response || {})
                         .filter(item => item.estate_id);
 
                     allEstates.forEach(estate => {
@@ -109,14 +129,12 @@ const OperationsReportPlanWise = () => {
                                 if (field.manager_status === 0) {
                                     planEntry.managerCanceled += field.field_extent;
                                 } else {
-                                    // Sum dji_field_area from all tasks in the field
                                     let completed = 0;
                                     if (Array.isArray(field.task) && field.task.length > 0) {
                                         completed = field.task.reduce((sum, t) => sum + (Number(t.dji_field_area) || 0), 0);
                                     }
                                     planEntry.completed += completed;
 
-                                    // Only add to teamLeadCanceled if status_team_lead === 'x'
                                     if (field.status_team_lead === 'x') {
                                         planEntry.teamLeadCanceled += field.field_extent;
                                     }
@@ -126,9 +144,7 @@ const OperationsReportPlanWise = () => {
                     });
 
                     planMap.forEach(plan => {
-                        // Calculate incomplete for each plan
                         const incomplete = plan.totalHa - (plan.rescheduledHa + plan.completed + plan.managerCanceled);
-                        console.log("incomplete","ID", plan.planId , incomplete,"totalHa", plan.totalHa, "rescheduledHa", plan.rescheduledHa, "completed", plan.completed, "managerCanceled", plan.managerCanceled);
                         processedData.push({
                             ...plan,
                             estateName: plan.estateName,
@@ -144,13 +160,15 @@ const OperationsReportPlanWise = () => {
                 } finally {
                     setLoading(false);
                 }
+            } else {
+                setReportData([]);
             }
         };
         fetchReportData();
-    }, [selectedEstates, selectedDates, selectedPlantation]);
+    }, [dispatch, selectedEstates, startDate, endDate, selectedPlantation]);
 
-    const calculateTotals = () => {
-        const totals = {
+    const totals = useMemo(() => {
+        const t = {
             totalHa: 0,
             rescheduledHa: 0,
             completed: 0,
@@ -158,20 +176,61 @@ const OperationsReportPlanWise = () => {
             teamLeadCanceled: 0,
             incomplete: 0
         };
-
         reportData.forEach(row => {
-            totals.totalHa += row.totalHa;
-            totals.rescheduledHa += row.rescheduledHa;
-            totals.completed += row.completed;
-            totals.managerCanceled += row.managerCanceled;
-            totals.teamLeadCanceled += row.teamLeadCanceled;
-            totals.incomplete += row.incomplete;
+            t.totalHa += row.totalHa;
+            t.rescheduledHa += row.rescheduledHa;
+            t.completed += row.completed;
+            t.managerCanceled += row.managerCanceled;
+            t.teamLeadCanceled += row.teamLeadCanceled;
+            t.incomplete += row.incomplete;
         });
+        return t;
+    }, [reportData]);
 
-        return totals;
-    };
+    const chartData = useMemo(() => {
+        const byDate = new Map();
+        reportData.forEach((row) => {
+            const key = String(row.date || '').slice(0, 10) || 'Unknown';
+            if (!byDate.has(key)) {
+                byDate.set(key, { name: key, assigned: 0, completed: 0, incomplete: 0, canceled: 0 });
+            }
+            const b = byDate.get(key);
+            b.assigned += Number(row.totalHa) || 0;
+            b.completed += Number(row.completed) || 0;
+            b.incomplete += Number(row.incomplete) || 0;
+            b.canceled += (Number(row.managerCanceled) || 0) + (Number(row.teamLeadCanceled) || 0);
+        });
+        return Array.from(byDate.values())
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((r) => ({
+                ...r,
+                assigned: Number(r.assigned.toFixed(2)),
+                completed: Number(r.completed.toFixed(2)),
+                incomplete: Number(r.incomplete.toFixed(2)),
+                canceled: Number(r.canceled.toFixed(2)),
+            }));
+    }, [reportData]);
 
-    const totals = calculateTotals();
+    const estateChartData = useMemo(() => {
+        const byEstate = new Map();
+        reportData.forEach((row) => {
+            const key = row.estateName || 'Unknown';
+            if (!byEstate.has(key)) {
+                byEstate.set(key, { name: key, assigned: 0, completed: 0 });
+            }
+            const b = byEstate.get(key);
+            b.assigned += Number(row.totalHa) || 0;
+            b.completed += Number(row.completed) || 0;
+        });
+        return Array.from(byEstate.values())
+            .sort((a, b) => b.assigned - a.assigned)
+            .slice(0, 12)
+            .map((r) => ({
+                ...r,
+                assigned: Number(r.assigned.toFixed(2)),
+                completed: Number(r.completed.toFixed(2)),
+            }));
+    }, [reportData]);
 
     const handlePlantationChange = (event) => {
         setSearchTerm(event.target.value);
@@ -210,15 +269,30 @@ const OperationsReportPlanWise = () => {
         );
     };
 
-    const filteredPlantations = plantations.filter(p =>
-        p.plantation.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredPlantations = useMemo(
+        () =>
+            plantations.filter((p) =>
+                p.plantation.toLowerCase().includes(searchTerm.toLowerCase())
+            ),
+        [plantations, searchTerm]
     );
 
     const handleDateChange = (dates) => {
-        setSelectedDates(dates);
-        if (dates[0] && dates[1]) {
+        const [start, end] = dates;
+        if (start) setStartDate(start);
+        if (end) setEndDate(end);
+        if (start && end) {
             setIsCalendarOpen(false);
         }
+    };
+
+    const formatDate = (date) => {
+        if (!date) return '';
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     };
 
     const exportToExcel = () => {
@@ -261,16 +335,6 @@ const OperationsReportPlanWise = () => {
         const worksheet = XLSX.utils.json_to_sheet(dataRows, { header: headers });
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Report");
-        // Helper to format date as YYYY-MM-DD
-        const formatDate = (date) => {
-            if (!date) return '';
-            const d = new Date(date);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
-        // Get selected estate names from estates array
         const selectedEstateNames = estates
             .filter(e => selectedEstates.includes(e.id))
             .map(e => e.estate.replace(/\s+/g, '_'))
@@ -280,7 +344,6 @@ const OperationsReportPlanWise = () => {
 
     const exportPdf = () => {
         const doc = new jsPDF();
-        const totals = calculateTotals();
 
         doc.setFontSize(16);
         doc.text("Operations Report (Plan wise)", 14, 15);
@@ -362,16 +425,6 @@ const OperationsReportPlanWise = () => {
             );
         }
 
-        // Helper to format date as YYYY-MM-DD (reuse above or define here if needed)
-        const formatDate = (date) => {
-            if (!date) return '';
-            const d = new Date(date);
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        };
-        // Get selected estate names from estates array
         const selectedEstateNames = estates
             .filter(e => selectedEstates.includes(e.id))
             .map(e => e.estate.replace(/\s+/g, '_'))
@@ -379,12 +432,240 @@ const OperationsReportPlanWise = () => {
         doc.save(`Operations_Report_Plan_Wise_${selectedEstateNames}_${formatDate(selectedDates[0])}_to_${formatDate(selectedDates[1])}.pdf`);
     };
 
-    // Collect incomplete fields for a separate table
-    const incompleteFields = [];
-    reportData.forEach(plan => {
-        // You may want to check plan fields here, but since reportData is flattened, you may need to keep a reference to fields in processedData if you want more details.
-        // For now, this is a placeholder for how you might collect incomplete fields if you keep them in processedData.
-    });
+    useEffect(() => {
+        onExportReady?.(exportToExcel);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reportData, startDate, endDate, selectedEstates, totals]);
+
+    useEffect(() => {
+        if (!workspace?.setSidebar) return undefined;
+        workspace.setSidebar(
+            <div className="rds-ops-controls">
+                <OpsDateRangeControls
+                    startDate={startDate}
+                    endDate={endDate}
+                    onStartChange={setStartDate}
+                    onEndChange={setEndDate}
+                />
+                <OpsReportViewToggle view={view} onChange={setView} />
+                <div className="rds-ops-controls-block">
+                    <div className="rds-ops-controls-label">Plantation</div>
+                    <label className="rds-ops-field">
+                        <span>Search</span>
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={handlePlantationChange}
+                            onFocus={() => setDropdownOpen(true)}
+                            onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+                            placeholder="Type plantation…"
+                        />
+                    </label>
+                    {dropdownOpen && (
+                        <div className="rds-ops-controls-block" style={{ maxHeight: 140, overflow: 'auto' }}>
+                            {filteredPlantations.length === 0 ? (
+                                <div className="rds-empty" style={{ padding: 8 }}>No matches</div>
+                            ) : (
+                                filteredPlantations.map((p) => (
+                                    <button
+                                        key={p.id}
+                                        type="button"
+                                        className={`rds-ops-view-btn${selectedPlantation === p.id ? ' is-active' : ''}`}
+                                        style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 4 }}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => handlePlantationSelect(p.id)}
+                                    >
+                                        {p.plantation}
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                    )}
+                    {selectedPlantation && (
+                        <button type="button" className="rds-ops-view-btn" onClick={handleClearSelection}>
+                            Clear plantation
+                        </button>
+                    )}
+                </div>
+                {estates.length > 0 && (
+                    <div className="rds-ops-controls-block">
+                        <div className="rds-ops-controls-label">Estates</div>
+                        <label className="rds-ops-field" style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedEstates.length === estates.length && estates.length > 0}
+                                onChange={handleSelectAll}
+                            />
+                            <span>Select all</span>
+                        </label>
+                        <div style={{ maxHeight: 220, overflow: 'auto' }}>
+                            {estates.map((estate) => (
+                                <label
+                                    key={estate.id}
+                                    className="rds-ops-field"
+                                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedEstates.includes(estate.id)}
+                                        onChange={() => handleCheckboxChange(estate.id)}
+                                    />
+                                    <span>{estate.estate}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+        return () => workspace.clearSidebar?.();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [
+        workspace?.setSidebar,
+        startDate,
+        endDate,
+        view,
+        searchTerm,
+        dropdownOpen,
+        selectedPlantation,
+        estates,
+        selectedEstates,
+        filteredPlantations,
+    ]);
+
+    const tableContent = (
+        <>
+            {error ? (
+                <div className={workspace ? 'rds-empty' : 'error-message'}>{error}</div>
+            ) : reportData.length > 0 ? (
+                <div className={workspace ? 'rds-table-wrap' : 'table-container'}>
+                    <table className={workspace ? 'rds-table' : 'report-table'}>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Plan ID</th>
+                                <th>Estate (AP/NP/RP)</th>
+                                <th>Total Ha (Plan Type)</th>
+                                <th>Rescheduled (Ha)</th>
+                                <th>Completed (Ha)</th>
+                                <th>Manager Canceled (Ha)</th>
+                                <th>Team Lead Canceled (Ha)</th>
+                                <th>Incomplete (Ha)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {reportData.map((row, index) => (
+                                <tr key={index}>
+                                    <td>{row.date}</td>
+                                    <td>{row.planId}</td>
+                                    <td>{row.estateName}</td>
+                                    <td>{row.planDetails}</td>
+                                    <td className={workspace ? 'num' : undefined}>{typeof row.rescheduledHa === 'number' ? row.rescheduledHa.toFixed(2) : '0.00'}</td>
+                                    <td className={workspace ? 'num' : undefined}>{typeof row.completed === 'number' ? row.completed.toFixed(2) : '0.00'}</td>
+                                    <td className={workspace ? 'num' : undefined}>{typeof row.managerCanceled === 'number' ? row.managerCanceled.toFixed(2) : '0.00'}</td>
+                                    <td className={workspace ? 'num' : undefined}>{typeof row.teamLeadCanceled === 'number' ? row.teamLeadCanceled.toFixed(2) : '0.00'}</td>
+                                    <td className={workspace ? 'num' : undefined}>{typeof row.incomplete === 'number' ? row.incomplete.toFixed(2) : '0.00'}</td>
+                                </tr>
+                            ))}
+                            <tr className={workspace ? undefined : 'total-row'}>
+                                <td colSpan="3">Total</td>
+                                <td className={workspace ? 'num' : undefined}>{typeof totals.totalHa === 'number' ? totals.totalHa.toFixed(2) : '0.00'}</td>
+                                <td className={workspace ? 'num' : undefined}>{typeof totals.rescheduledHa === 'number' ? totals.rescheduledHa.toFixed(2) : '0.00'}</td>
+                                <td className={workspace ? 'num' : undefined}>{typeof totals.completed === 'number' ? totals.completed.toFixed(2) : '0.00'}</td>
+                                <td className={workspace ? 'num' : undefined}>{typeof totals.managerCanceled === 'number' ? totals.managerCanceled.toFixed(2) : '0.00'}</td>
+                                <td className={workspace ? 'num' : undefined}>{typeof totals.teamLeadCanceled === 'number' ? totals.teamLeadCanceled.toFixed(2) : '0.00'}</td>
+                                <td className={workspace ? 'num' : undefined}>{typeof totals.incomplete === 'number' ? totals.incomplete.toFixed(2) : '0.00'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <div className={workspace ? 'rds-empty' : undefined} style={workspace ? undefined : { textAlign: 'center', padding: '20px', color: '#ff0000' }}>
+                    {!selectedPlantation || selectedEstates.length === 0
+                        ? 'Select a plantation and estates to load the report.'
+                        : 'No data available for the selected date range and filters.'}
+                </div>
+            )}
+        </>
+    );
+
+    const chartContent =
+        chartData.length > 0 || estateChartData.length > 0 ? (
+            <div className="rds-ops-data">
+                <div className="rds-metric-strip">
+                    <div className="rds-metric-strip-item">
+                        <div className="rds-metric-strip-lbl">Assigned</div>
+                        <div className="rds-metric-strip-val">{totals.totalHa.toFixed(1)}</div>
+                    </div>
+                    <div className="rds-metric-strip-item">
+                        <div className="rds-metric-strip-lbl">Completed</div>
+                        <div className="rds-metric-strip-val">{totals.completed.toFixed(1)}</div>
+                    </div>
+                    <div className="rds-metric-strip-item">
+                        <div className="rds-metric-strip-lbl">Incomplete</div>
+                        <div className="rds-metric-strip-val">{totals.incomplete.toFixed(1)}</div>
+                    </div>
+                    <div className="rds-metric-strip-item">
+                        <div className="rds-metric-strip-lbl">Plans</div>
+                        <div className="rds-metric-strip-val">{reportData.length}</div>
+                    </div>
+                </div>
+                {chartData.length > 0 && (
+                    <div className="rds-chart-bleed">
+                        <div className="rds-chart-bleed-title">Daily assigned vs completed</div>
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 24 }}>
+                                <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="assigned" name="Assigned" fill="#94a3b8" />
+                                <Bar dataKey="completed" name="Completed" fill="#0f6b4c" />
+                                <Bar dataKey="incomplete" name="Incomplete" fill="#f59e0b" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
+                {estateChartData.length > 0 && (
+                    <div className="rds-chart-bleed">
+                        <div className="rds-chart-bleed-title">By estate · assigned vs completed</div>
+                        <ResponsiveContainer width="100%" height={260}>
+                            <BarChart data={estateChartData} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+                                <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
+                                <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={56} axisLine={false} tickLine={false} />
+                                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="assigned" name="Assigned" fill="#94a3b8" />
+                                <Bar dataKey="completed" name="Completed" fill="#34d399" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
+            </div>
+        ) : (
+            <div className="rds-empty">
+                {!selectedPlantation || selectedEstates.length === 0
+                    ? 'Select a plantation and estates in the left rail to load the chart.'
+                    : 'No chart data for this period.'}
+            </div>
+        );
+
+    if (workspace) {
+        if (loading && reportData.length === 0 && selectedEstates.length > 0) {
+            return (
+                <div className="rds-loading">
+                    <Bars height={40} width={40} color="#0f6b4c" />
+                </div>
+            );
+        }
+        return (
+            <div className="rds-ops-data">
+                {view === 'chart' ? chartContent : tableContent}
+            </div>
+        );
+    }
 
     return (
         <div className="ops">
@@ -419,15 +700,15 @@ const OperationsReportPlanWise = () => {
                         Select Date
                     </p>
                     <p className="date-range" onClick={() => setIsCalendarOpen(!isCalendarOpen)}>
-                        {selectedDates[0].toLocaleDateString()} - {selectedDates[1]?.toLocaleDateString()}
+                        {startDate.toLocaleDateString()} - {endDate?.toLocaleDateString()}
                     </p>
                     {isCalendarOpen && (
                         <div className="react-date-picker-ops">
                             <DatePicker
-                                selected={selectedDates[0]}
+                                selected={startDate}
                                 onChange={handleDateChange}
-                                startDate={selectedDates[0]}
-                                endDate={selectedDates[1]}
+                                startDate={startDate}
+                                endDate={endDate}
                                 selectsRange
                                 inline
                             />
@@ -473,7 +754,7 @@ const OperationsReportPlanWise = () => {
                     PDF
                 </button>
             </div>
-            {selectedDates[0] && selectedDates[1] && selectedPlantation && (
+            {startDate && endDate && selectedPlantation && (
                 <div className="bottom-ops-part">
                     <div className="bottom-ops-part-left">
                         {estates.length > 0 && (
@@ -520,60 +801,9 @@ const OperationsReportPlanWise = () => {
                                     visible={true}
                                 />
                             </div>
-                        ) : error ? (
-                            <div className="error-message">{error}</div>
                         ) : (
                             <div className="report-container">
-                                {reportData.length > 0 ? (
-                                    <>
-                                        <div className="table-container">
-                                            <table className="report-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Date</th>
-                                                        <th>Plan ID</th>
-                                                        <th>Estate (AP/NP/RP)</th>
-                                                        <th>Total Ha (Plan Type)</th>
-                                                        <th>Rescheduled (Ha)</th>
-                                                        <th>Completed (Ha)</th>
-                                                        <th>Manager Canceled (Ha)</th>
-                                                        <th>Team Lead Canceled (Ha)</th>
-                                                        <th>Incomplete (Ha)</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {reportData.map((row, index) => (
-                                                        <tr key={index}>
-                                                            <td>{row.date}</td>
-                                                            <td>{row.planId}</td>
-                                                            <td>{row.estateName}</td>
-                                                            <td>{row.planDetails}</td>
-                                                            <td>{typeof row.rescheduledHa === 'number' ? row.rescheduledHa.toFixed(2) : '0.00'}</td>
-                                                            <td>{typeof row.completed === 'number' ? row.completed.toFixed(2) : '0.00'}</td>
-                                                            <td>{typeof row.managerCanceled === 'number' ? row.managerCanceled.toFixed(2) : '0.00'}</td>
-                                                            <td>{typeof row.teamLeadCanceled === 'number' ? row.teamLeadCanceled.toFixed(2) : '0.00'}</td>
-                                                            <td>{typeof row.incomplete === 'number' ? row.incomplete.toFixed(2) : '0.00'}</td>
-                                                        </tr>
-                                                    ))}
-                                                    <tr className="total-row">
-                                                        <td colSpan="3">Total</td>
-                                                        <td>{typeof totals.totalHa === 'number' ? totals.totalHa.toFixed(2) : '0.00'}</td>
-                                                        <td>{typeof totals.rescheduledHa === 'number' ? totals.rescheduledHa.toFixed(2) : '0.00'}</td>
-                                                        <td>{typeof totals.completed === 'number' ? totals.completed.toFixed(2) : '0.00'}</td>
-                                                        <td>{typeof totals.managerCanceled === 'number' ? totals.managerCanceled.toFixed(2) : '0.00'}</td>
-                                                        <td>{typeof totals.teamLeadCanceled === 'number' ? totals.teamLeadCanceled.toFixed(2) : '0.00'}</td>
-                                                        <td>{typeof totals.incomplete === 'number' ? totals.incomplete.toFixed(2) : '0.00'}</td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                    </>
-                                ) : (
-                                    <div style={{ textAlign: 'center', padding: '20px', color: '#ff0000' }}>
-                                        No data available for the selected date range and filters.
-                                    </div>
-                                )}
+                                {tableContent}
                             </div>
                         )}
                     </div>

@@ -1,6 +1,17 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bars } from 'react-loader-spinner';
 import { FiRefreshCw } from 'react-icons/fi';
+import {
+  ResponsiveContainer,
+  ComposedChart,
+  Bar,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 import OpsroomPerfSummaryExportControls from './OpsroomPerfSummaryExportControls';
 import {
   buildMonthlyTotalRow,
@@ -13,6 +24,14 @@ import * as XLSX from 'xlsx';
 import autoTable from 'jspdf-autotable';
 import { useLazyGetOpsroomMonthlyAchievementSummaryQuery } from '../../../api/services NodeJs/opsroomPerformanceSummaryApi';
 import { useGetReportPlantationsQuery } from '../../../api/services NodeJs/monthlyPlantationReportApi';
+import { useOpsReportWorkspace } from '../../management/reports/OpsReportWorkspaceContext';
+import OpsReportViewToggle from '../../management/reports/OpsReportViewToggle';
+import {
+  OpsFilterToolbar,
+  OpsMultiMonthControls,
+  OpsPlantationChipControls,
+} from '../../management/reports/OpsPeriodControls';
+import '../../management/reports/reportsDecisionShell.css';
 import '../../../styles/opsroomPerformanceSummary.css';
 
 const MISSION_OPTIONS = [
@@ -61,7 +80,10 @@ const COLUMNS = [
   { key: 'worked_drones', label: 'Worked drones' },
 ];
 
-const OpsroomMonthlyAchievementSummary = () => {
+const OpsroomMonthlyAchievementSummary = ({ onExportReady }) => {
+  const workspace = useOpsReportWorkspace();
+  const [view, setView] = useState('chart');
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonths, setSelectedMonths] = useState(() => monthsForYear(currentYear));
@@ -140,14 +162,14 @@ const OpsroomMonthlyAchievementSummary = () => {
     });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (plantations.length > 0 && !plantationsInitialized.current) {
       setSelectedPlantations(plantations.map((p) => p.id));
       plantationsInitialized.current = true;
     }
   }, [plantations]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedMonths(monthsForYear(selectedYear));
   }, [selectedYear]);
 
@@ -160,6 +182,18 @@ const OpsroomMonthlyAchievementSummary = () => {
     report?.months?.length && report.months.length < 12 ? 'Total' : 'Year total';
 
   const formatCell = (key, value) => formatExportCell(key, value);
+
+  const chartData = useMemo(
+    () =>
+      rows.map((r) => ({
+        name: r.month_display || r.year_month || '',
+        completedOps: Number(r.total_extent_completed_ops_ha) || 0,
+        completedPilot: Number(r.total_extent_completed_pilot_ha) || 0,
+        achievementOps: Number(r.pct_achievement_ops) || 0,
+        achievementPilot: Number(r.pct_achievement_pilot) || 0,
+      })),
+    [rows],
+  );
 
   const exportExcel = (exportColumns) => {
     if (!rows.length || !exportColumns.length) return;
@@ -194,6 +228,233 @@ const OpsroomMonthlyAchievementSummary = () => {
     });
     doc.save(`Monthly_Achievement_${selectedYear}.pdf`);
   };
+
+  useEffect(() => {
+    onExportReady?.(() => exportExcel(COLUMNS));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, totals, selectedYear, totalRowLabel, onExportReady]);
+
+  useEffect(() => {
+    if (!workspace?.setSidebar) return undefined;
+    const filterSummary = `Filters · ${selectedMonths.length} mo · ${selectedPlantations.length} pl`;
+    workspace.setSidebar(
+      <OpsFilterToolbar
+        filtersOpen={filtersOpen}
+        onToggleFilters={() => setFiltersOpen((v) => !v)}
+        filterSummary={filterSummary}
+        primary={
+          <>
+            <div className="rds-ops-controls-block rds-ops-controls-inline">
+              <span className="rds-ops-controls-label">Year</span>
+              <label className="rds-ops-field rds-ops-field-inline">
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  disabled={isFetching}
+                >
+                  {yearOptions.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <OpsReportViewToggle view={view} onChange={setView} />
+            <div className="rds-ops-controls-block rds-ops-controls-inline">
+              <span className="rds-ops-controls-label">Mission</span>
+              <label className="rds-ops-field rds-ops-field-inline">
+                <select
+                  value={missionType}
+                  onChange={(e) => setMissionType(e.target.value)}
+                  disabled={isFetching}
+                >
+                  {MISSION_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <button
+              type="button"
+              className="rds-ops-view-btn is-active"
+              onClick={loadReport}
+              disabled={isFetching || selectedPlantations.length === 0 || selectedMonths.length === 0}
+            >
+              Generate
+            </button>
+          </>
+        }
+        filters={
+          <>
+            <OpsMultiMonthControls
+              options={monthOptions}
+              selected={selectedMonths}
+              onToggle={toggleMonth}
+              onSelectAll={selectAllMonths}
+              onClear={clearAllMonths}
+              disabled={isFetching}
+            />
+            <OpsPlantationChipControls
+              plantations={plantations}
+              selected={selectedPlantations}
+              onToggle={togglePlantation}
+              onSelectAll={selectAllPlantations}
+              onClear={clearAllPlantations}
+              loading={loadingPlantations}
+              disabled={isFetching}
+            />
+          </>
+        }
+      />
+    );
+    return () => workspace.clearSidebar?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    workspace?.setSidebar,
+    filtersOpen,
+    selectedYear,
+    yearOptions,
+    monthOptions,
+    selectedMonths,
+    selectedPlantations,
+    plantations,
+    loadingPlantations,
+    missionType,
+    view,
+    isFetching,
+  ]);
+
+  const tableBlock = (
+    <div className={workspace ? 'rds-table-wrap' : 'ops-perf-summary__table-wrap'}>
+      {!workspace && <h2 className="ops-perf-summary__title">{title}</h2>}
+      <table className={workspace ? 'rds-table' : 'ops-perf-summary__table'}>
+        <thead>
+          <tr>
+            {COLUMNS.map((c) => (
+              <th key={c.key}>{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={row.year_month}>
+              {COLUMNS.map((c) => (
+                <td key={c.key}>{formatCell(c.key, row[c.key])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        {rows.length > 0 && (
+          <tfoot>
+            <tr>
+              {COLUMNS.map((c) => (
+                <td key={c.key}>
+                  {c.key === 'month_display' ? totalRowLabel : formatCell(c.key, totals[c.key])}
+                </td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
+      </table>
+    </div>
+  );
+
+  const chartBlock =
+    chartData.length > 0 ? (
+      <div className="rds-ops-data">
+        <div className="rds-metric-strip">
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Months</div>
+            <div className="rds-metric-strip-val">{rows.length}</div>
+          </div>
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Completed (ops)</div>
+            <div className="rds-metric-strip-val">
+              {Number(totals.total_extent_completed_ops_ha || 0).toFixed(1)}
+            </div>
+          </div>
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Ach. ops %</div>
+            <div className="rds-metric-strip-val">
+              {Number(totals.pct_achievement_ops || 0).toFixed(0)}%
+            </div>
+          </div>
+        </div>
+        <div className="rds-chart-bleed">
+          <div className="rds-chart-bleed-title">Completed Ha + achievement % by month</div>
+          <ResponsiveContainer width="100%" height={300}>
+            <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis
+                yAxisId="ha"
+                tick={{ fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+              />
+              <YAxis
+                yAxisId="pct"
+                orientation="right"
+                tick={{ fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={40}
+                unit="%"
+              />
+              <Tooltip />
+              <Legend />
+              <Bar yAxisId="ha" dataKey="completedOps" name="Completed (ops) Ha" fill="#0f6b4c" />
+              <Bar yAxisId="ha" dataKey="completedPilot" name="Completed (pilot) Ha" fill="#34d399" />
+              <Line
+                yAxisId="pct"
+                type="monotone"
+                dataKey="achievementOps"
+                name="Achievement (ops) %"
+                stroke="#f59e0b"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    ) : (
+      <div className="rds-empty">
+        {report
+          ? 'No chart data for this period.'
+          : 'Select year, months, and plantations, then Generate.'}
+      </div>
+    );
+
+  if (workspace) {
+    if (isFetching && !report) {
+      return (
+        <div className="rds-loading">
+          <Bars height={40} width={40} color="#0f6b4c" visible />
+        </div>
+      );
+    }
+    return (
+      <div className="rds-ops-data">
+        {error && (
+          <p className="ops-perf-summary__error">Failed to load report. Check API connection and try again.</p>
+        )}
+        {isFetching ? (
+          <div className="rds-loading">
+            <Bars height={40} width={40} color="#0f6b4c" visible />
+          </div>
+        ) : (
+          view === 'chart' ? chartBlock : (report ? tableBlock : (
+            <div className="rds-empty">Select year, months, and plantations, then Generate.</div>
+          ))
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="ops-perf-summary">
@@ -367,38 +628,7 @@ const OpsroomMonthlyAchievementSummary = () => {
           <span>Loading…</span>
         </div>
       ) : report ? (
-        <div className="ops-perf-summary__table-wrap">
-          <h2 className="ops-perf-summary__title">{title}</h2>
-          <table className="ops-perf-summary__table">
-            <thead>
-              <tr>
-                {COLUMNS.map((c) => (
-                  <th key={c.key}>{c.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.year_month}>
-                  {COLUMNS.map((c) => (
-                    <td key={c.key}>{formatCell(c.key, row[c.key])}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-            {rows.length > 0 && (
-              <tfoot>
-                <tr>
-                  {COLUMNS.map((c) => (
-                    <td key={c.key}>
-                      {c.key === 'month_display' ? totalRowLabel : formatCell(c.key, totals[c.key])}
-                    </td>
-                  ))}
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+        tableBlock
       ) : (
         <p className="ops-perf-summary__meta" style={{ padding: 16 }}>
           Select plantations, year, and months, then click <strong>Generate</strong> to load the report.

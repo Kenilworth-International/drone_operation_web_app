@@ -126,51 +126,51 @@
   overflow-x: visible;
 }
 .grid-booking-calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e5e7eb; border: 1px solid #e5e7eb; border-radius: 6px; overflow: hidden; }
-.weekday-booking-calendar { background: #f9fafb; color: #374151; font-size: 12px; font-weight: 600; padding: 6px; text-align: center; }
+.weekday-booking-calendar { background: #f9fafb; color: #374151; font-size: 11px; font-weight: 600; padding: 5px; text-align: center; }
 .cell-blank-booking-calendar { background: #fff; min-height: 110px; }
-.cell-booking-calendar { background: #fff; min-height: 110px; padding: 6px; display: flex; flex-direction: column; }
+.cell-booking-calendar { background: #fff; min-height: 110px; padding: 5px; display: flex; flex-direction: column; }
 .cell-booking-calendar:hover { background: #f8fafc; }
 .cell-header-booking-calendar {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 5px;
+  margin-bottom: 4px;
   text-align: center;
   font-family: Arial, Helvetica, sans-serif;
 }
 .daynum-booking-calendar {
   font-family: Arial, Helvetica, sans-serif;
   font-weight: 600;
-  font-size: 20px;
+  font-size: 16px;
   line-height: 1;
   letter-spacing: 0.2px;
   color: #0f172a;
 }
 .count-booking-calendar {
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 600;
   color: #374151;
   background: #f3f4f6;
   border-radius: 10px;
-  padding: 2px 6px;
+  padding: 1px 5px;
 }
 .items-booking-calendar {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   overflow: hidden;
   font-family: Arial, Helvetica, sans-serif;
 }
 .item-booking-calendar {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   border-radius: 4px;
-  padding: 3px 6px;
-  font-size: 12px;
-  line-height: 1.25;
+  padding: 2px 5px;
+  font-size: 10.5px;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -182,12 +182,21 @@
 .item-type-revolving { background: #e3ffd7; color: #1a3a0a; border-left-color: #4ade80; }
 .item-type-adhoc { background: #eed7a1; color: #5c3d00; border-left-color: #f59e0b; }
 .item-type-rescheduled { background: #cdd3ff; color: #1e2a6e; border-left-color: #818cf8; }
-.item-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.item-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.22);
+}
 .item-text-booking-calendar {
   font-family: Arial, Helvetica, sans-serif;
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 /* Loading */
@@ -444,13 +453,24 @@
   }
 
   .item-booking-calendar {
-    font-size: 11px;
+    font-size: 10px;
     padding: 2px 4px;
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
     overflow: hidden;
+  }
+
+  .item-booking-calendar .item-status-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .item-booking-calendar .item-text-booking-calendar {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .modal-booking-calendar--estate-fields .fields-grid-booking-calendar {

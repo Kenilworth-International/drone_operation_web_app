@@ -12,12 +12,25 @@ import {
   FaBalanceScale,
   FaHashtag,
   FaEnvelope,
+  FaPercent,
 } from 'react-icons/fa';
 
 export function formatRate(v) {
   if (v == null || v === '') return '—';
   const n = Number(v);
   return Number.isFinite(n) ? n.toLocaleString(undefined, { maximumFractionDigits: 4 }) : String(v);
+}
+
+export function formatRetention(row) {
+  const available =
+    row?.retention_fee_available === true ||
+    row?.retention_fee_available === 1 ||
+    row?.retention_fee_available === '1';
+  if (!available) return 'No';
+  const pct = row?.retention_percentage;
+  if (pct == null || pct === '') return 'Yes';
+  const n = Number(pct);
+  return Number.isFinite(n) ? `Yes · ${n}%` : `Yes · ${pct}`;
 }
 
 const FOCUS_ICONS = {
@@ -29,6 +42,7 @@ const FOCUS_ICONS = {
   spread_units: FaBalanceScale,
   plantation_code: FaHashtag,
   emails: FaEnvelope,
+  retention: FaPercent,
   address: FaMapMarkerAlt,
   bill_to_address: FaFileInvoiceDollar,
   ship_to_address: FaTruck,
@@ -49,6 +63,21 @@ const SCALAR_FIELDS = {
     placeholder: 'e.g. 12',
   },
   spread_units: { key: 'spread_units', label: 'Spread units', type: 'text', placeholder: 'e.g. kg / Ha' },
+  retention_fee_available: {
+    key: 'retention_fee_available',
+    label: 'Retention fee available',
+    type: 'select',
+    options: [
+      { value: '0', label: 'False' },
+      { value: '1', label: 'True' },
+    ],
+  },
+  retention_percentage: {
+    key: 'retention_percentage',
+    label: 'Percentage (%)',
+    type: 'number',
+    placeholder: 'e.g. 5',
+  },
 };
 
 function PlantationBanner({ row, compact = false }) {
@@ -71,8 +100,30 @@ function PlantationBanner({ row, compact = false }) {
   );
 }
 
-function DetailField({ fieldKey, label, hint, type, readOnly, dataSource, formState, onChange, emphasis }) {
+function DetailField({
+  fieldKey,
+  label,
+  hint,
+  type,
+  options,
+  readOnly,
+  dataSource,
+  formState,
+  onChange,
+  emphasis,
+  disabled = false,
+}) {
   const id = `cc-field-${fieldKey}`;
+  const selectOptions = Array.isArray(options) ? options : [];
+
+  let readonlyValue = dataSource[fieldKey] || '—';
+  if (type === 'number') readonlyValue = formatRate(dataSource[fieldKey]);
+  if (type === 'select') {
+    const raw = dataSource[fieldKey];
+    const match = selectOptions.find((o) => String(o.value) === String(raw === true || raw === 1 ? 1 : raw === false || raw === 0 ? 0 : raw));
+    readonlyValue = match?.label || (raw == null || raw === '' ? '—' : String(raw));
+  }
+
   return (
     <div
       className={`cc-field ${type === 'textarea' ? 'cc-field--full' : ''} ${
@@ -85,7 +136,7 @@ function DetailField({ fieldKey, label, hint, type, readOnly, dataSource, formSt
       {hint ? <p className="cc-field-hint">{hint}</p> : null}
       {readOnly ? (
         <div className="cc-readonly" id={id}>
-          {type === 'number' ? formatRate(dataSource[fieldKey]) : dataSource[fieldKey] || '—'}
+          {readonlyValue}
         </div>
       ) : type === 'textarea' ? (
         <textarea
@@ -96,13 +147,30 @@ function DetailField({ fieldKey, label, hint, type, readOnly, dataSource, formSt
           onChange={(e) => onChange(fieldKey, e.target.value)}
           placeholder={`Enter ${label.toLowerCase()}…`}
         />
+      ) : type === 'select' ? (
+        <select
+          id={id}
+          className={`cc-input cc-select${emphasis ? ' cc-input--emphasis' : ''}`}
+          value={formState[fieldKey] ?? '0'}
+          onChange={(e) => onChange(fieldKey, e.target.value)}
+          disabled={disabled}
+        >
+          {selectOptions.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
       ) : (
         <input
           id={id}
           className={`cc-input${emphasis ? ' cc-input--emphasis' : ''}`}
           type={type}
           step={type === 'number' ? 'any' : undefined}
+          min={fieldKey === 'retention_percentage' ? '0' : undefined}
+          max={fieldKey === 'retention_percentage' ? '100' : undefined}
           value={formState[fieldKey] ?? ''}
+          disabled={disabled}
           onChange={(e) => {
             let next = e.target.value;
             if (fieldKey === 'plantation_code') {
@@ -115,7 +183,9 @@ function DetailField({ fieldKey, label, hint, type, readOnly, dataSource, formSt
               ? 'e.g. BTE'
               : type === 'text'
                 ? `Enter ${label.toLowerCase()}…`
-                : undefined
+                : fieldKey === 'retention_percentage'
+                  ? 'e.g. 5'
+                  : undefined
           }
           maxLength={fieldKey === 'plantation_code' ? 16 : undefined}
           autoCapitalize={fieldKey === 'plantation_code' ? 'characters' : undefined}
@@ -205,16 +275,28 @@ function DetailFormSections({
 
   let scalarSection = null;
   if (Array.isArray(scalarFields) && scalarFields.length > 0) {
+    const retentionOff =
+      String(formState?.retention_fee_available ?? '0') === '0' ||
+      formState?.retention_fee_available === false;
     const fields = scalarFields
       .map((key) => SCALAR_FIELDS[key])
       .filter(Boolean)
-      .map((f) => ({ key: f.key, label: f.label, hint: null, type: f.type, placeholder: f.placeholder }));
+      .map((f) => ({
+        key: f.key,
+        label: f.label,
+        hint: null,
+        type: f.type,
+        placeholder: f.placeholder,
+        options: f.options,
+        disabled: f.key === 'retention_percentage' && retentionOff,
+      }));
     if (fields.length) {
       scalarSection = {
         id: 'scalars',
         title: fields.length === 1 ? fields[0].label : 'Details',
         description: null,
-        gridClass: 'cc-section-grid--single',
+        gridClass:
+          fields.length > 1 ? 'cc-section-grid--pair' : 'cc-section-grid--single',
         fields,
         bare: compact,
       };
@@ -257,11 +339,13 @@ function DetailFormSections({
                 label={f.label}
                 hint={f.hint}
                 type={f.type}
+                options={f.options}
                 readOnly={readOnly || Boolean(section.forceReadOnly)}
                 dataSource={dataSource}
                 formState={formState}
                 onChange={onChange}
                 emphasis={Boolean(section.bare)}
+                disabled={Boolean(f.disabled)}
               />
             ))}
           </div>
@@ -297,7 +381,7 @@ export function CustomerDetailsModal({
       ? 'spray'
       : focusKey === 'spread_units'
         ? 'spread'
-        : focusKey === 'plantation_code' || focusKey === 'emails'
+        : focusKey === 'plantation_code' || focusKey === 'emails' || focusKey === 'retention'
           ? 'address'
           : focusKey || 'default';
 

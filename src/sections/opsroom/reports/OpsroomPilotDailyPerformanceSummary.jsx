@@ -1,6 +1,16 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bars } from 'react-loader-spinner';
 import { FiRefreshCw } from 'react-icons/fi';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 import OpsroomPerfSummaryExportControls from './OpsroomPerfSummaryExportControls';
 import {
   buildPilotTotalRow,
@@ -13,6 +23,14 @@ import * as XLSX from 'xlsx';
 import autoTable from 'jspdf-autotable';
 import { useLazyGetOpsroomPilotDailyPerformanceSummaryQuery } from '../../../api/services NodeJs/opsroomPerformanceSummaryApi';
 import { useGetReportPlantationsQuery } from '../../../api/services NodeJs/monthlyPlantationReportApi';
+import { useOpsReportWorkspace } from '../../management/reports/OpsReportWorkspaceContext';
+import OpsReportViewToggle from '../../management/reports/OpsReportViewToggle';
+import {
+  OpsFilterToolbar,
+  OpsMultiMonthControls,
+  OpsPlantationChipControls,
+} from '../../management/reports/OpsPeriodControls';
+import '../../management/reports/reportsDecisionShell.css';
 import '../../../styles/opsroomPerformanceSummary.css';
 
 const MONTH_NAMES = [
@@ -54,7 +72,10 @@ const formatCell = (key, value) => formatExportCell(key, value);
 const pilotSectionTitle = (pilot) =>
   `${pilot.pilot_name} — ${formatMonthLabel(pilot.year_month)} — ${missionLabel(pilot.mission_type)} (${pilot.month_plan_count} plans · target ${pilot.monthly_target_ha} Ha)`;
 
-const OpsroomPilotDailyPerformanceSummary = () => {
+const OpsroomPilotDailyPerformanceSummary = ({ onExportReady }) => {
+  const workspace = useOpsReportWorkspace();
+  const [view, setView] = useState('chart');
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [selectedMonths, setSelectedMonths] = useState([getCurrentYearMonth()]);
   const [selectedPlantations, setSelectedPlantations] = useState([]);
   const [missionType, setMissionType] = useState('all');
@@ -114,7 +135,7 @@ const OpsroomPilotDailyPerformanceSummary = () => {
     });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (plantations.length > 0 && !plantationsInitialized.current) {
       setSelectedPlantations(plantations.map((p) => p.id));
       plantationsInitialized.current = true;
@@ -156,6 +177,29 @@ const OpsroomPilotDailyPerformanceSummary = () => {
       ),
     [filteredPilots],
   );
+
+  const chartData = useMemo(() => {
+    const byPilot = new Map();
+    filteredFlatRows.forEach((r) => {
+      const key = r.pilot_name || `Pilot #${r.pilot_id}`;
+      if (!byPilot.has(key)) {
+        byPilot.set(key, { name: key, assigned: 0, completedOps: 0, completedPilot: 0 });
+      }
+      const b = byPilot.get(key);
+      b.assigned += Number(r.total_extent_assigned_ha) || 0;
+      b.completedOps += Number(r.total_extent_completed_ops_ha) || 0;
+      b.completedPilot += Number(r.total_extent_completed_pilot_ha) || 0;
+    });
+    return Array.from(byPilot.values())
+      .sort((a, b) => b.completedOps - a.completedOps)
+      .slice(0, 12)
+      .map((r) => ({
+        ...r,
+        assigned: Number(r.assigned.toFixed(2)),
+        completedOps: Number(r.completedOps.toFixed(2)),
+        completedPilot: Number(r.completedPilot.toFixed(2)),
+      }));
+  }, [filteredFlatRows]);
 
   const sortedSelected = [...selectedMonths].sort();
   const exportFileSuffix = sortedSelected.join('_') || 'report';
@@ -246,13 +290,114 @@ const OpsroomPilotDailyPerformanceSummary = () => {
     doc.save(`Pilot_Performance_${exportFileSuffix}_${exportFilterSlug}.pdf`);
   };
 
+  useEffect(() => {
+    onExportReady?.(() => exportExcel(COLUMNS));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredPilots, exportFileSuffix, exportFilterSlug, onExportReady]);
+
+  useEffect(() => {
+    if (!workspace?.setSidebar) return undefined;
+    const filterSummary = `Filters · ${selectedMonths.length} mo · ${selectedPlantations.length} pl`;
+    workspace.setSidebar(
+      <OpsFilterToolbar
+        filtersOpen={filtersOpen}
+        onToggleFilters={() => setFiltersOpen((v) => !v)}
+        filterSummary={filterSummary}
+        primary={
+          <>
+            <OpsReportViewToggle view={view} onChange={setView} />
+            <div className="rds-ops-controls-block rds-ops-controls-inline">
+              <span className="rds-ops-controls-label">Mission</span>
+              <label className="rds-ops-field rds-ops-field-inline">
+                <select
+                  value={missionType}
+                  onChange={(e) => setMissionType(e.target.value)}
+                  disabled={!hasReport && !report}
+                >
+                  {MISSION_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="rds-ops-controls-block rds-ops-controls-inline">
+              <span className="rds-ops-controls-label">Pilot</span>
+              <label className="rds-ops-field rds-ops-field-inline">
+                <select
+                  value={selectedPilotId}
+                  onChange={(e) => setSelectedPilotId(e.target.value)}
+                  disabled={!hasReport && !report}
+                >
+                  <option value="">All</option>
+                  {pilotOptions.map((p) => (
+                    <option key={p.id} value={String(p.id)}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <button
+              type="button"
+              className="rds-ops-view-btn is-active"
+              onClick={loadReport}
+              disabled={isFetching || selectedMonths.length === 0 || selectedPlantations.length === 0}
+            >
+              Generate
+            </button>
+          </>
+        }
+        filters={
+          <>
+            <OpsMultiMonthControls
+              options={monthOptions}
+              selected={selectedMonths}
+              onToggle={toggleMonth}
+              onSelectAll={selectAllMonths}
+              onClear={clearAllMonths}
+              disabled={isFetching}
+            />
+            <OpsPlantationChipControls
+              plantations={plantations}
+              selected={selectedPlantations}
+              onToggle={togglePlantation}
+              onSelectAll={selectAllPlantations}
+              onClear={clearAllPlantations}
+              loading={loadingPlantations}
+              disabled={isFetching}
+            />
+          </>
+        }
+      />
+    );
+    return () => workspace.clearSidebar?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    workspace?.setSidebar,
+    filtersOpen,
+    monthOptions,
+    selectedMonths,
+    selectedPlantations,
+    plantations,
+    loadingPlantations,
+    missionType,
+    selectedPilotId,
+    pilotOptions,
+    view,
+    isFetching,
+    hasReport,
+    report,
+  ]);
+
   const renderPilotTable = (pilot) => (
     <div
       key={`${pilot.pilot_id}-${pilot.mission_type}-${pilot.year_month}`}
       className="ops-perf-summary__pilot-block"
     >
       <h3 className="ops-perf-summary__pilot-title">{pilotSectionTitle(pilot)}</h3>
-      <table className="ops-perf-summary__table">
+      <table className={workspace ? 'rds-table' : 'ops-perf-summary__table'}>
         <thead>
           <tr>
             {COLUMNS.map((c) => (
@@ -279,6 +424,86 @@ const OpsroomPilotDailyPerformanceSummary = () => {
       </table>
     </div>
   );
+
+  const tableBlock = (
+    <div className={workspace ? 'rds-table-wrap' : 'ops-perf-summary__table-wrap'}>
+      {!workspace && <h2 className="ops-perf-summary__title">Pilot Daily Performance Summary</h2>}
+      {report?.pilots?.length === 0 ? (
+        <p className={workspace ? 'rds-empty' : 'ops-perf-summary__meta'} style={workspace ? undefined : { padding: 16 }}>
+          No pilot activity for the selected plantations and months.
+        </p>
+      ) : filteredPilots.length === 0 ? (
+        <p className={workspace ? 'rds-empty' : 'ops-perf-summary__meta'} style={workspace ? undefined : { padding: 16 }}>
+          No data for the current Mission / Pilot filter. Try All for both.
+        </p>
+      ) : (
+        filteredPilots.map(renderPilotTable)
+      )}
+    </div>
+  );
+
+  const chartBlock =
+    chartData.length > 0 ? (
+      <div className="rds-ops-data">
+        <div className="rds-metric-strip">
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Pilots</div>
+            <div className="rds-metric-strip-val">{filteredPilots.length}</div>
+          </div>
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Rows</div>
+            <div className="rds-metric-strip-val">{filteredFlatRows.length}</div>
+          </div>
+        </div>
+        <div className="rds-chart-bleed">
+          <div className="rds-chart-bleed-title">Top pilots · assigned vs completed (Ha)</div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+              <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={56} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={44} />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="assigned" name="Assigned" fill="#94a3b8" />
+              <Bar dataKey="completedOps" name="Completed (ops)" fill="#0f6b4c" />
+              <Bar dataKey="completedPilot" name="Completed (pilot)" fill="#34d399" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    ) : (
+      <div className="rds-empty">
+        {report
+          ? 'No chart data for current filters.'
+          : 'Select months and plantations, then Generate.'}
+      </div>
+    );
+
+  if (workspace) {
+    if (isFetching && !report) {
+      return (
+        <div className="rds-loading">
+          <Bars height={40} width={40} color="#0f6b4c" visible />
+        </div>
+      );
+    }
+    return (
+      <div className="rds-ops-data">
+        {error && (
+          <p className="ops-perf-summary__error">Failed to load report. Check API connection and try again.</p>
+        )}
+        {isFetching ? (
+          <div className="rds-loading">
+            <Bars height={40} width={40} color="#0f6b4c" visible />
+          </div>
+        ) : (
+          view === 'chart' ? chartBlock : (report ? tableBlock : (
+            <div className="rds-empty">Select months and plantations, then Generate.</div>
+          ))
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="ops-perf-summary">
@@ -436,20 +661,7 @@ const OpsroomPilotDailyPerformanceSummary = () => {
           <span>Loading…</span>
         </div>
       ) : hasReport ? (
-        <div className="ops-perf-summary__table-wrap">
-          <h2 className="ops-perf-summary__title">Pilot Daily Performance Summary</h2>
-          {report.pilots?.length === 0 ? (
-            <p className="ops-perf-summary__meta" style={{ padding: 16 }}>
-              No pilot activity for the selected plantations and months.
-            </p>
-          ) : filteredPilots.length === 0 ? (
-            <p className="ops-perf-summary__meta" style={{ padding: 16 }}>
-              No data for the current Mission / Pilot filter. Try All for both.
-            </p>
-          ) : (
-            filteredPilots.map(renderPilotTable)
-          )}
-        </div>
+        tableBlock
       ) : (
         <p className="ops-perf-summary__meta" style={{ padding: 16 }}>
           Select plantations and months, then click <strong>Generate</strong> to load the report.

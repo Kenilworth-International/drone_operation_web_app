@@ -138,6 +138,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Analysis by operational plans',
           icon: FaTasks,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: OperationsReportPlanWise,
         },
         {
@@ -146,6 +147,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Pilot canceled and partially completed tasks with reasons',
           icon: FaTimesCircle,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: CanceledByPilots,
         },
         {
@@ -154,6 +156,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Tasks canceled by ops room in day end process',
           icon: FaTimesCircle,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: CanceledByOpsRoom,
         },
         {
@@ -162,6 +165,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Plans deactivated in the period, with deactivate reason',
           icon: FaTimesCircle,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: DeactivatedPlansReport,
         },
         {
@@ -170,6 +174,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Pilot feedback and comments',
           icon: FaComments,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: PilotFeedbacks,
         },
         {
@@ -178,6 +183,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Planned, Assigned & Covered by estate per month',
           icon: FaSeedling,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: MonthlyPlantationReport,
         },
         {
@@ -186,6 +192,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Field Ha vs DJI sprayed Ha vs Billing Ha, with chargeable reasons',
           icon: FaFileInvoiceDollar,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: BillableExtentsReport,
         },
         {
@@ -194,6 +201,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Daily targets, assigned, attended, completed (Ha)',
           icon: FaCalendarCheck,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: OpsroomDailyPerformanceSummary,
         },
         {
@@ -202,6 +210,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Daily metrics broken down pilot by pilot',
           icon: FaUserFriends,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: OpsroomPilotDailyPerformanceSummary,
         },
         {
@@ -210,6 +219,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Month-wise target, assigned, attended, completed and achievement %',
           icon: FaChartBar,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: OpsroomMonthlyAchievementSummary,
         },
       ],
@@ -223,6 +233,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Timeline by plantation',
           icon: FaChartLine,
           uiKind: 'ui-editorial',
+          opsWorkspace: true,
           component: PlantationCoveredAreaReport,
         },
         {
@@ -231,6 +242,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Plantation comparison by date',
           icon: FaChartBar,
           uiKind: 'ui-editorial',
+          opsWorkspace: true,
           component: DailyCoveredAreaSummary,
         },
         {
@@ -239,6 +251,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Chemical usage and analysis',
           icon: FaSeedling,
           uiKind: 'ui-editorial',
+          opsWorkspace: true,
           component: ChemicalsReport,
         },
         {
@@ -247,6 +260,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Manager field approvals and cancel reasons',
           icon: FaCheckCircle,
           uiKind: 'ui-editorial',
+          opsWorkspace: true,
           component: ManagerApprovedCanceledReport,
         },
       ],

@@ -1,5 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Bars } from 'react-loader-spinner';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 import '../../../styles/ops6.css';
 import ReportDateRangePicker from '../../../components/ReportDateRangePicker';
 import { baseApi } from '../../../api/services/allEndpoints';
@@ -9,9 +19,14 @@ import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { FiRefreshCw, FiDownload, FiPrinter } from "react-icons/fi";
 import { useSyncShellPeriod } from '../../management/reports/ReportsPeriodContext';
+import { useOpsReportWorkspace } from '../../management/reports/OpsReportWorkspaceContext';
+import OpsReportViewToggle from '../../management/reports/OpsReportViewToggle';
+import { OpsDateRangeControls } from '../../management/reports/OpsPeriodControls';
+import '../../management/reports/reportsDecisionShell.css';
 
-const CanceledByOpsRoom = () => {
+const CanceledByOpsRoom = ({ onExportReady }) => {
   const dispatch = useAppDispatch();
+  const workspace = useOpsReportWorkspace();
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setDate(1);
@@ -19,10 +34,11 @@ const CanceledByOpsRoom = () => {
   });
   const [endDate, setEndDate] = useState(new Date());
   useSyncShellPeriod(setStartDate, setEndDate);
+  const [view, setView] = useState('chart');
   const [pilotFilter, setPilotFilter] = useState('');
   const [estateFilter, setEstateFilter] = useState('');
   const [reasonFilter, setReasonFilter] = useState('');
-  const [reasonFlagFilter, setReasonFlagFilter] = useState(''); // '' = All, 'c' = Canceled, 'h' = Partially
+  const [reasonFlagFilter, setReasonFlagFilter] = useState('');
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
   const [pilotOptions, setPilotOptions] = useState([]);
@@ -62,7 +78,7 @@ const CanceledByOpsRoom = () => {
       const plans = result.data || [];
 
       const flattenedData = plans.flatMap((plan) =>
-        plan.tasks.map((task) => ({
+        (plan.tasks || []).map((task) => ({
           plan_id: plan.plan_id,
           date: plan.date,
           estate: plan.estate,
@@ -100,13 +116,46 @@ const CanceledByOpsRoom = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, reasonFlagFilter]);
 
-  const filteredData = data.filter(
-    (task) =>
-      (!pilotFilter || task.pilot === pilotFilter) &&
-      (!estateFilter || task.estate === estateFilter) &&
-      (!reasonFilter || task.reason === reasonFilter) &&
-      (!reasonFlagFilter || task.reason_flag === reasonFlagFilter)
+  const filteredData = useMemo(
+    () =>
+      data.filter(
+        (task) =>
+          (!pilotFilter || task.pilot === pilotFilter) &&
+          (!estateFilter || task.estate === estateFilter) &&
+          (!reasonFilter || task.reason === reasonFilter) &&
+          (!reasonFlagFilter || task.reason_flag === reasonFlagFilter)
+      ),
+    [data, pilotFilter, estateFilter, reasonFilter, reasonFlagFilter]
   );
+
+  const reasonChartData = useMemo(() => {
+    const counts = new Map();
+    filteredData.forEach((task) => {
+      const label = task.reason || 'No reason';
+      counts.set(label, (counts.get(label) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({
+        name: name.length > 28 ? `${name.slice(0, 26)}…` : name,
+        count,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 12);
+  }, [filteredData]);
+
+  const typeChartData = useMemo(() => {
+    const counts = { canceled: 0, partial: 0, other: 0 };
+    filteredData.forEach((task) => {
+      if (task.reason_flag === 'c') counts.canceled += 1;
+      else if (task.reason_flag === 'h') counts.partial += 1;
+      else counts.other += 1;
+    });
+    return [
+      { name: 'Canceled', count: counts.canceled },
+      { name: 'Partially', count: counts.partial },
+      { name: 'Other', count: counts.other },
+    ].filter((r) => r.count > 0);
+  }, [filteredData]);
 
   const formatDateForFilename = (date) => {
     if (!date) return '';
@@ -209,6 +258,206 @@ const CanceledByOpsRoom = () => {
     );
   };
 
+  useEffect(() => {
+    onExportReady?.(downloadExcel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredData, startDate, endDate, pilotFilter, estateFilter, reasonFilter, reasonFlagFilter]);
+
+  useEffect(() => {
+    if (!workspace?.setSidebar) return undefined;
+    workspace.setSidebar(
+      <div className="rds-ops-controls">
+        <OpsDateRangeControls
+          startDate={startDate}
+          endDate={endDate}
+          onStartChange={setStartDate}
+          onEndChange={setEndDate}
+        />
+        <OpsReportViewToggle view={view} onChange={setView} />
+        <div className="rds-ops-controls-block rds-ops-controls-inline">
+          <span className="rds-ops-controls-label">Filters</span>
+          <label className="rds-ops-field rds-ops-field-inline">
+            <span>Pilot</span>
+            <select value={pilotFilter} onChange={(e) => setPilotFilter(e.target.value)}>
+              <option value="">All</option>
+              {pilotOptions.map((pilot) => (
+                <option key={pilot} value={pilot}>{pilot}</option>
+              ))}
+            </select>
+          </label>
+          <label className="rds-ops-field rds-ops-field-inline">
+            <span>Estate</span>
+            <select value={estateFilter} onChange={(e) => setEstateFilter(e.target.value)}>
+              <option value="">All</option>
+              {estateOptions.map((estate) => (
+                <option key={estate} value={estate}>{estate}</option>
+              ))}
+            </select>
+          </label>
+          <label className="rds-ops-field rds-ops-field-inline">
+            <span>Reason</span>
+            <select value={reasonFilter} onChange={(e) => setReasonFilter(e.target.value)}>
+              <option value="">All</option>
+              {reasonOptions.map((reason) => (
+                <option key={reason} value={reason}>{reason}</option>
+              ))}
+            </select>
+          </label>
+          <label className="rds-ops-field rds-ops-field-inline">
+            <span>Type</span>
+            <select value={reasonFlagFilter} onChange={(e) => setReasonFlagFilter(e.target.value)}>
+              <option value="">All</option>
+              <option value="c">Canceled</option>
+              <option value="h">Partially</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    );
+    return () => workspace.clearSidebar?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    workspace?.setSidebar,
+    startDate,
+    endDate,
+    view,
+    pilotFilter,
+    estateFilter,
+    reasonFilter,
+    reasonFlagFilter,
+    pilotOptions,
+    estateOptions,
+    reasonOptions,
+  ]);
+
+  if (loading) {
+    return (
+      <div className={workspace ? 'rds-loading' : 'flex justify-center items-center h-full'}>
+        <Bars color="#004B71" height={workspace ? 40 : 80} width={workspace ? 40 : 80} />
+      </div>
+    );
+  }
+
+  const tableBlock = filteredData.length === 0 ? (
+    <div className={workspace ? 'rds-empty' : 'flex flex-col justify-center items-center h-full text-gray-500'}>
+      {!workspace && <div className="text-2xl mb-2">📊</div>}
+      <p className={workspace ? undefined : 'text-lg'}>No ops room canceled data for the selected criteria</p>
+      {!workspace && (
+        <button
+          onClick={fetchData}
+          className="mt-4 flex items-center bg-blue-500 text-white"
+        >
+          <FiRefreshCw className="mr-2" />
+          Refresh Data
+        </button>
+      )}
+    </div>
+  ) : (
+    <div className={workspace ? 'rds-table-wrap' : 'table-container'}>
+      <table className={workspace ? 'rds-table' : undefined}>
+        <thead>
+          <tr>
+            <th>Plan ID</th>
+            <th>Date</th>
+            <th>Estate (Area)</th>
+            <th>Task ID</th>
+            <th>Pilot Status</th>
+            <th>Reason Type</th>
+            <th>Ops Operator</th>
+            <th>Pilot</th>
+            <th>Field</th>
+            <th>Area</th>
+            <th>DJI Field Area</th>
+            <th>Cancel Reason (Ops Room)</th>
+            <th>Reason if not sprayed</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredData.map((task) => (
+            <tr key={task.task_id}>
+              <td>{task.plan_id}</td>
+              <td>{formatDisplayDate(task.date)}</td>
+              <td>{`${task.estate} (${task.estate_area})`}</td>
+              <td>{task.task_id}</td>
+              <td>{pilotStatusLabel(task.pilot_status)}</td>
+              <td>{reasonFlagLabel(task.reason_flag)}</td>
+              <td>{task.ops_operator || '-'}</td>
+              <td>{task.pilot}</td>
+              <td>{task.field}</td>
+              <td>{task.area}</td>
+              <td>{task.dji_field_area}</td>
+              <td>{task.reason}</td>
+              <td>{task.reason_if_not_sprayed}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  const chartBlock =
+    reasonChartData.length > 0 || typeChartData.length > 0 ? (
+      <div className="rds-ops-data">
+        <div className="rds-metric-strip">
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Tasks</div>
+            <div className="rds-metric-strip-val">{filteredData.length}</div>
+          </div>
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Canceled</div>
+            <div className="rds-metric-strip-val">
+              {filteredData.filter((t) => t.reason_flag === 'c').length}
+            </div>
+          </div>
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Partial</div>
+            <div className="rds-metric-strip-val">
+              {filteredData.filter((t) => t.reason_flag === 'h').length}
+            </div>
+          </div>
+        </div>
+        {typeChartData.length > 0 && (
+          <div className="rds-chart-bleed">
+            <div className="rds-chart-bleed-title">By reason type</div>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={typeChartData} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
+                <Tooltip />
+                <Bar dataKey="count" name="Tasks" fill="#34d399" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        {reasonChartData.length > 0 && (
+          <div className="rds-chart-bleed">
+            <div className="rds-chart-bleed-title">Top cancel reasons</div>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={reasonChartData} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
+                <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={56} axisLine={false} tickLine={false} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={36} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="count" name="Tasks" fill="#0f6b4c" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    ) : (
+      <div className="rds-empty">No chart data for this period.</div>
+    );
+
+  if (workspace) {
+    return (
+      <div className="rds-ops-data">
+        {view === 'chart' ? chartBlock : tableBlock}
+      </div>
+    );
+  }
+
   return (
     <div className="ops-container6">
       <div className="ops6-section">
@@ -284,66 +533,7 @@ const CanceledByOpsRoom = () => {
           </div>
         </div>
       </div>
-      <div>
-        {loading ? (
-          <div className="flex justify-center items-center h-full">
-            <Bars color="#004B71" height={80} width={80} />
-          </div>
-        ) : filteredData.length === 0 ? (
-          <div className="flex flex-col justify-center items-center h-full text-gray-500">
-            <div className="text-2xl mb-2">📊</div>
-            <p className="text-lg">No ops room canceled data for the selected criteria</p>
-            <button
-              onClick={fetchData}
-              className="mt-4 flex items-center bg-blue-500 text-white"
-            >
-              <FiRefreshCw className="mr-2" />
-              Refresh Data
-            </button>
-          </div>
-        ) : (
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Plan ID</th>
-                  <th>Date</th>
-                  <th>Estate (Area)</th>
-                  <th>Task ID</th>
-                  <th>Pilot Status</th>
-                  <th>Reason Type</th>
-                  <th>Ops Operator</th>
-                  <th>Pilot</th>
-                  <th>Field</th>
-                  <th>Area</th>
-                  <th>DJI Field Area</th>
-                  <th>Cancel Reason (Ops Room)</th>
-                  <th>Reason if not sprayed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((task) => (
-                  <tr key={task.task_id}>
-                    <td>{task.plan_id}</td>
-                    <td>{formatDisplayDate(task.date)}</td>
-                    <td>{`${task.estate} (${task.estate_area})`}</td>
-                    <td>{task.task_id}</td>
-                    <td>{pilotStatusLabel(task.pilot_status)}</td>
-                    <td>{reasonFlagLabel(task.reason_flag)}</td>
-                      <td>{task.ops_operator || '-'}</td>
-                    <td>{task.pilot}</td>
-                    <td>{task.field}</td>
-                    <td>{task.area}</td>
-                    <td>{task.dji_field_area}</td>
-                    <td>{task.reason}</td>
-                    <td>{task.reason_if_not_sprayed}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <div>{tableBlock}</div>
     </div>
   );
 };

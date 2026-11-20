@@ -1,6 +1,16 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bars } from 'react-loader-spinner';
 import { FiRefreshCw } from 'react-icons/fi';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+} from 'recharts';
 import OpsroomPerfSummaryExportControls from './OpsroomPerfSummaryExportControls';
 import {
   buildDailyTotalRow,
@@ -13,6 +23,14 @@ import * as XLSX from 'xlsx';
 import autoTable from 'jspdf-autotable';
 import { useLazyGetOpsroomDailyPerformanceSummaryQuery } from '../../../api/services NodeJs/opsroomPerformanceSummaryApi';
 import { useGetReportPlantationsQuery } from '../../../api/services NodeJs/monthlyPlantationReportApi';
+import { useOpsReportWorkspace } from '../../management/reports/OpsReportWorkspaceContext';
+import OpsReportViewToggle from '../../management/reports/OpsReportViewToggle';
+import {
+  OpsFilterToolbar,
+  OpsMultiMonthControls,
+  OpsPlantationChipControls,
+} from '../../management/reports/OpsPeriodControls';
+import '../../management/reports/reportsDecisionShell.css';
 import '../../../styles/opsroomPerformanceSummary.css';
 
 const MONTH_NAMES = [
@@ -51,7 +69,10 @@ const COLUMNS = [
   { key: 'active_drones', label: 'Number of assigned drones' },
 ];
 
-const OpsroomDailyPerformanceSummary = () => {
+const OpsroomDailyPerformanceSummary = ({ onExportReady }) => {
+  const workspace = useOpsReportWorkspace();
+  const [view, setView] = useState('chart');
+  const [filtersOpen, setFiltersOpen] = useState(true);
   const [selectedMonths, setSelectedMonths] = useState([getCurrentYearMonth()]);
   const [selectedPlantations, setSelectedPlantations] = useState([]);
   const [missionType, setMissionType] = useState('all');
@@ -117,7 +138,7 @@ const OpsroomDailyPerformanceSummary = () => {
     });
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (plantations.length > 0 && !plantationsInitialized.current) {
       setSelectedPlantations(plantations.map((p) => p.id));
       plantationsInitialized.current = true;
@@ -138,6 +159,17 @@ const OpsroomDailyPerformanceSummary = () => {
   }, [report]);
 
   const exportFileSuffix = sortedSelected.join('_') || 'report';
+
+  const chartData = useMemo(
+    () =>
+      rows.map((r) => ({
+        name: r.date_display || r.date || '',
+        target: Number(r.daily_operational_target_ha) || 0,
+        completedOps: Number(r.total_extent_completed_ops_ha) || 0,
+        completedPilot: Number(r.total_extent_completed_pilot_ha) || 0,
+      })),
+    [rows],
+  );
 
   const exportExcel = (exportColumns) => {
     if (!rows.length || !exportColumns.length) return;
@@ -174,6 +206,190 @@ const OpsroomDailyPerformanceSummary = () => {
     });
     doc.save(`Performance_Summary_${exportFileSuffix}.pdf`);
   };
+
+  useEffect(() => {
+    onExportReady?.(() => exportExcel(COLUMNS));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, totals, exportFileSuffix, onExportReady]);
+
+  useEffect(() => {
+    if (!workspace?.setSidebar) return undefined;
+    const filterSummary = `Filters · ${selectedMonths.length} mo · ${selectedPlantations.length} pl`;
+    workspace.setSidebar(
+      <OpsFilterToolbar
+        filtersOpen={filtersOpen}
+        onToggleFilters={() => setFiltersOpen((v) => !v)}
+        filterSummary={filterSummary}
+        primary={
+          <>
+            <OpsReportViewToggle view={view} onChange={setView} />
+            <div className="rds-ops-controls-block rds-ops-controls-inline">
+              <span className="rds-ops-controls-label">Mission</span>
+              <label className="rds-ops-field rds-ops-field-inline">
+                <select
+                  value={missionType}
+                  onChange={(e) => setMissionType(e.target.value)}
+                  disabled={isFetching}
+                >
+                  {MISSION_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <button
+              type="button"
+              className="rds-ops-view-btn is-active"
+              onClick={loadReport}
+              disabled={isFetching || selectedMonths.length === 0 || selectedPlantations.length === 0}
+            >
+              Generate
+            </button>
+          </>
+        }
+        filters={
+          <>
+            <OpsMultiMonthControls
+              options={monthOptions}
+              selected={selectedMonths}
+              onToggle={toggleMonth}
+              onSelectAll={selectAllMonths}
+              onClear={clearAllMonths}
+              disabled={isFetching}
+            />
+            <OpsPlantationChipControls
+              plantations={plantations}
+              selected={selectedPlantations}
+              onToggle={togglePlantation}
+              onSelectAll={selectAllPlantations}
+              onClear={clearAllPlantations}
+              loading={loadingPlantations}
+              disabled={isFetching}
+            />
+          </>
+        }
+      />
+    );
+    return () => workspace.clearSidebar?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    workspace?.setSidebar,
+    filtersOpen,
+    monthOptions,
+    selectedMonths,
+    selectedPlantations,
+    plantations,
+    loadingPlantations,
+    missionType,
+    view,
+    isFetching,
+  ]);
+
+  const tableBlock = (
+    <div className={workspace ? 'rds-table-wrap' : 'ops-perf-summary__table-wrap'}>
+      {!workspace && <h2 className="ops-perf-summary__title">{title}</h2>}
+      <table className={workspace ? 'rds-table' : 'ops-perf-summary__table'}>
+        <thead>
+          <tr>
+            {COLUMNS.map((c) => (
+              <th key={c.key}>{c.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.year_month}-${row.date}`}>
+              {COLUMNS.map((c) => (
+                <td key={c.key}>{formatExportCell(c.key, row[c.key])}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+        {rows.length > 0 && (
+          <tfoot>
+            <tr>
+              {buildDailyTotalRow(COLUMNS, totals).map((cell, idx) => (
+                <td key={COLUMNS[idx].key}>{cell}</td>
+              ))}
+            </tr>
+          </tfoot>
+        )}
+      </table>
+    </div>
+  );
+
+  const chartBlock =
+    chartData.length > 0 ? (
+      <div className="rds-ops-data">
+        <div className="rds-metric-strip">
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Days</div>
+            <div className="rds-metric-strip-val">{rows.length}</div>
+          </div>
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Completed (ops)</div>
+            <div className="rds-metric-strip-val">
+              {Number(totals.total_extent_completed_ops_ha || 0).toFixed(1)}
+            </div>
+          </div>
+          <div className="rds-metric-strip-item">
+            <div className="rds-metric-strip-lbl">Target</div>
+            <div className="rds-metric-strip-val">
+              {Number(report?.monthly_target_ha || 0).toFixed(1)}
+            </div>
+          </div>
+        </div>
+        <div className="rds-chart-bleed">
+          <div className="rds-chart-bleed-title">Daily completed vs target</div>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 24 }}>
+              <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={44} />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="target" name="Target" stroke="#94a3b8" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="completedOps" name="Completed (ops)" stroke="#0f6b4c" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="completedPilot" name="Completed (pilot)" stroke="#34d399" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    ) : (
+      <div className="rds-empty">
+        {report
+          ? 'No chart data for this period.'
+          : 'Select months and plantations, then Generate.'}
+      </div>
+    );
+
+  if (workspace) {
+    if (isFetching && !report) {
+      return (
+        <div className="rds-loading">
+          <Bars height={40} width={40} color="#0f6b4c" visible />
+        </div>
+      );
+    }
+    return (
+      <div className="rds-ops-data">
+        {error && (
+          <p className="ops-perf-summary__error">Failed to load report. Check API connection and try again.</p>
+        )}
+        {isFetching ? (
+          <div className="rds-loading">
+            <Bars height={40} width={40} color="#0f6b4c" visible />
+          </div>
+        ) : (
+          view === 'chart' ? chartBlock : (report ? tableBlock : (
+            <div className="rds-empty">Select months and plantations, then Generate.</div>
+          ))
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="ops-perf-summary">
@@ -316,36 +532,7 @@ const OpsroomDailyPerformanceSummary = () => {
           <span>Loading…</span>
         </div>
       ) : report ? (
-        <div className="ops-perf-summary__table-wrap">
-          <h2 className="ops-perf-summary__title">{title}</h2>
-          <table className="ops-perf-summary__table">
-            <thead>
-              <tr>
-                {COLUMNS.map((c) => (
-                  <th key={c.key}>{c.label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={`${row.year_month}-${row.date}`}>
-                  {COLUMNS.map((c) => (
-                    <td key={c.key}>{formatExportCell(c.key, row[c.key])}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-            {rows.length > 0 && (
-              <tfoot>
-                <tr>
-                  {buildDailyTotalRow(COLUMNS, totals).map((cell, idx) => (
-                    <td key={COLUMNS[idx].key}>{cell}</td>
-                  ))}
-                </tr>
-              </tfoot>
-            )}
-          </table>
-        </div>
+        tableBlock
       ) : (
         <p className="ops-perf-summary__meta" style={{ padding: 16 }}>
           Select plantations and months, then click <strong>Generate</strong> to load the report.

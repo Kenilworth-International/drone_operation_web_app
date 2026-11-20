@@ -7,11 +7,27 @@
   width: 100%;
 }
 
-/* Decision UI owns its own surface — drop legacy grey frame */
+/* Decision UI: fill parent cream pane edge-to-edge */
 .modern-report-container.modern-report-decision {
   background: transparent;
-  padding: 0.75rem 1.25rem 2rem;
-  min-height: calc(100vh - 80px);
+  padding: 0.35rem 0.5rem 0.35rem 0.55rem;
+  height: 100%;
+  min-height: 0;
+  max-width: 100%;
+  width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+}
+
+.modern-report-container.modern-report-decision .rds-shell {
+  width: 100%;
+  max-width: 100%;
+  flex: 1;
+  min-height: 0;
+  height: auto;
 }
 
 /* Category Tabs */

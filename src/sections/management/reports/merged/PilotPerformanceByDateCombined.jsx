@@ -12,6 +12,8 @@ import {
 import { baseApi } from '../../../../api/services/allEndpoints';
 import { useAppDispatch } from '../../../../store/hooks';
 import { useOpsReportWorkspace } from '../OpsReportWorkspaceContext';
+import OpsReportViewToggle from '../OpsReportViewToggle';
+import { OpsMonthControls } from '../OpsPeriodControls';
 import {
   exportLegacyAoaExcel,
   formatHa,
@@ -29,7 +31,7 @@ const PilotPerformanceByDateCombined = ({ onExportReady }) => {
   const dispatch = useAppDispatch();
   const workspace = useOpsReportWorkspace();
   const [yearMonth, setYearMonth] = useState(currentYearMonth);
-  const [view, setView] = useState('both');
+  const [view, setView] = useState('chart');
   const [apiData, setApiData] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -197,50 +199,11 @@ const PilotPerformanceByDateCombined = ({ onExportReady }) => {
     if (!workspace?.setSidebar) return undefined;
     workspace.setSidebar(
       <div className="rds-ops-controls">
-        <div className="rds-ops-controls-block">
-          <div className="rds-ops-controls-label">Month</div>
-          <label className="rds-ops-field">
-            <span>Whole month</span>
-            <input
-              type="month"
-              value={yearMonth}
-              max={currentYearMonth()}
-              onChange={(e) => e.target.value && setYearMonth(e.target.value)}
-            />
-          </label>
-          <p className="rds-ops-hint">
-            {toYmd(start)} → {toYmd(end)}
-          </p>
-        </div>
-
-        <div className="rds-ops-controls-block">
-          <div className="rds-ops-controls-label">Data view</div>
-          <div className="rds-ops-view-toggle">
-            {[
-              ['chart', 'Chart'],
-              ['table', 'Table'],
-              ['both', 'Both'],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={`rds-ops-view-btn${view === key ? ' is-active' : ''}`}
-                onClick={() => setView(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="rds-export-btn rds-ops-export"
-          onClick={handleExport}
-          disabled={!pilotRows.length}
-        >
-          Download Excel
-        </button>
+        <OpsMonthControls yearMonth={yearMonth} onChange={setYearMonth} />
+        <p className="rds-ops-hint">
+          {toYmd(start)} → {toYmd(end)}
+        </p>
+        <OpsReportViewToggle view={view} onChange={setView} />
       </div>
     );
     return () => workspace.clearSidebar?.();
@@ -257,27 +220,30 @@ const PilotPerformanceByDateCombined = ({ onExportReady }) => {
 
   return (
     <div className="rds-ops-data">
-      {(view === 'chart' || view === 'both') && trend.length > 0 && (
-        <div className="rds-chart-bleed">
-          <div className="rds-chart-bleed-title">Daily series · Pilot vs OpsRoom</div>
-          <div className="rds-bydate-legend">
-            <span className="leg-p">Pilot Ha</span>
-            <span className="leg-o">OpsRoom Ha</span>
+      {view === 'chart' &&
+        (trend.length > 0 ? (
+          <div className="rds-chart-bleed">
+            <div className="rds-chart-bleed-title">Daily series · Pilot vs OpsRoom</div>
+            <div className="rds-bydate-legend">
+              <span className="leg-p">Pilot Ha</span>
+              <span className="leg-o">OpsRoom Ha</span>
+            </div>
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={trend} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="2 6" stroke="#c9d9d2" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
+                <Tooltip />
+                <Line type="monotone" dataKey="pilot" name="Pilot Ha" stroke="#0f6b4c" strokeWidth={2.5} dot={false} />
+                <Line type="monotone" dataKey="ops" name="OpsRoom Ha" stroke="#34d399" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={trend} margin={{ top: 8, right: 12, left: 0, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="2 6" stroke="#c9d9d2" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} width={40} />
-              <Tooltip />
-              <Line type="monotone" dataKey="pilot" name="Pilot Ha" stroke="#0f6b4c" strokeWidth={2.5} dot={false} />
-              <Line type="monotone" dataKey="ops" name="OpsRoom Ha" stroke="#34d399" strokeWidth={2.5} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+        ) : (
+          <div className="rds-empty">No daily spray data for this month.</div>
+        ))}
 
-      {(view === 'table' || view === 'both') &&
+      {view === 'table' &&
         (!pilotRows.length ? (
           <div className="rds-empty">No daily spray data for this month.</div>
         ) : (

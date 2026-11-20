@@ -258,6 +258,26 @@
     overflow: hidden;
 }
 
+/* Decision reports: cream fills to viewport bottom (no white gutter under shell) */
+.content-dashboard.content-dashboard--reports-decision {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 0;
+  background: #f6f1e8;
+}
+
+.content-dashboard.content-dashboard--reports-decision > * {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* External plantation portal: fill viewport, shell handles scroll */
 .content-dashboard.content-dashboard--plantation-external {
     overflow-x: auto;

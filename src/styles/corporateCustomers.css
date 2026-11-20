@@ -209,10 +209,23 @@
 
 .cc-modal--accent-address,
 .cc-modal--accent-bill_to_address,
-.cc-modal--accent-ship_to_address {
+.cc-modal--accent-ship_to_address,
+.cc-modal--accent-retention {
   --cc-accent: #00695c;
   --cc-accent-soft: #e0f2f1;
   --cc-accent-border: #b2dfdb;
+}
+
+.cc-select {
+  appearance: auto;
+  cursor: pointer;
+}
+
+.cc-input:disabled,
+.cc-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f3f5f7;
 }
 
 .cc-modal-head--compact {

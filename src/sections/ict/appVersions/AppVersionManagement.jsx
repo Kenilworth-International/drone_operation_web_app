@@ -187,10 +187,10 @@ export default function AppVersionManagement() {
                 <th>Min Version</th>
                 <th>Latest Version</th>
                 <th>Force Update</th>
-                <th>Maintenance</th>
+                <th>Maintenance Going</th>
                 <th>Block Dev Mode</th>
                 <th>OTP Bypass</th>
-                <th>Status</th>
+                <th>Checking Enabled</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -209,7 +209,7 @@ export default function AppVersionManagement() {
                   </td>
                   <td>
                     <span className={`avm-badge ${toBit(row.maintenance, 0) ? 'badge-maintenance' : 'badge-normal'}`}>
-                      {toBit(row.maintenance, 0) ? 'On' : 'Off'}
+                      {toBit(row.maintenance, 0) ? 'Going' : 'No'}
                     </span>
                   </td>
                   <td>
@@ -220,7 +220,7 @@ export default function AppVersionManagement() {
                   <td className="avm-cell-id">{row.otp_bypass_mobile || '—'}</td>
                   <td>
                     <span className={`avm-badge ${toBit(row.is_active, 1) ? 'badge-active' : 'badge-inactive'}`}>
-                      {toBit(row.is_active, 1) ? 'Active' : 'Inactive'}
+                      {toBit(row.is_active, 1) ? 'On' : 'Off'}
                     </span>
                   </td>
                   <td>
@@ -240,12 +240,12 @@ export default function AppVersionManagement() {
       {/* Store URL preview */}
       {filtered.length > 0 && (
         <div className="avm-info-note">
-          <strong>Tip:</strong> Turning <strong>Maintenance</strong> ON blocks the mobile app for <strong>all users</strong> on
-          every platform until you turn it OFF (message shown is <strong>Maintenance Message</strong>).{' '}
-          <strong>Block Dev Mode</strong> blocks Android users who have <strong>Developer Options</strong> enabled
-          (turn OFF for internal testing). Raising{' '}
-          <em>min_version</em> above an installed version shows the update screen; the open button uses <strong>Store URL</strong>{' '}
-          if set, otherwise a default listing URL from <strong>App ID</strong>.
+          <strong>Tip:</strong> <strong>Checking Enabled</strong> must be On for the row to apply.{' '}
+          <strong>Maintenance Going</strong> blocks the mobile app for <strong>all users</strong> until turned off
+          (shows <strong>Maintenance Message</strong>). <strong>Block Dev Mode</strong> blocks Android when{' '}
+          <strong>Developer Options</strong> are on. For force update, set <em>min_version</em> <strong>above</strong> the
+          installed app version (e.g. installed 1.3.7 → min 1.3.8); Force/Soft only matters once the install is below min.
+          Store button uses <strong>Store URL</strong> or a default listing from <strong>App ID</strong>.
         </div>
       )}
 
@@ -361,7 +361,7 @@ export default function AppVersionManagement() {
                   </label>
                 </div>
                 <div className="avm-field avm-field-toggle">
-                  <label>Active</label>
+                  <label>Checking Enabled</label>
                   <label className="avm-toggle">
                     <input
                       type="checkbox"
@@ -369,7 +369,11 @@ export default function AppVersionManagement() {
                       onChange={(e) => handleChange('is_active', e.target.checked ? 1 : 0)}
                     />
                     <span className="avm-toggle-slider" />
-                    <span className="avm-toggle-label">{toBit(form.is_active, 1) ? 'Active' : 'Inactive'}</span>
+                    <span className="avm-toggle-label">
+                      {toBit(form.is_active, 1)
+                        ? 'On — app uses this rule for version / maintenance checks'
+                        : 'Off — this row is ignored by mobile apps'}
+                    </span>
                   </label>
                 </div>
 
@@ -398,7 +402,7 @@ export default function AppVersionManagement() {
                   <span className="avm-section-label">Maintenance Mode</span>
                 </div>
                 <div className="avm-field avm-field-toggle">
-                  <label>Maintenance</label>
+                  <label>Maintenance Going</label>
                   <label className="avm-toggle">
                     <input
                       type="checkbox"
@@ -408,8 +412,8 @@ export default function AppVersionManagement() {
                     <span className="avm-toggle-slider avm-toggle-slider-orange" />
                     <span className="avm-toggle-label">
                       {toBit(form.maintenance, 0)
-                        ? 'ON - app blocked for all users'
-                        : 'OFF - normal operation'}
+                        ? 'Going — block app for all users until turned off'
+                        : 'No — normal operation'}
                     </span>
                   </label>
                 </div>

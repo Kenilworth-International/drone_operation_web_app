@@ -56,7 +56,7 @@ const TAB_META = {
   ops: {
     label: 'Operations Room',
     theme: 'theme-ops',
-    boardTitle: 'Operations board',
+    boardTitle: 'Operations Room',
     accent: '#0f6b4c',
   },
   plantation: {
@@ -94,6 +94,8 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
   const currentTab = lockedCategory || (activeTab === 'finance' ? 'plantation' : activeTab);
   const catalog = reportCatalog[currentTab] || { title: '', reports: [] };
   const tabMeta = TAB_META[currentTab] || TAB_META.management;
+  /** No snapshot board — always open a report (Ops + Plantation). */
+  const isNoBoardTab = currentTab === 'ops' || currentTab === 'plantation';
 
   const periodValue = useMemo(
     () => ({
@@ -121,8 +123,25 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
     }
   };
 
+  // Ops / Plantation: always open a report (no board)
+  const catalogReportIds = useMemo(
+    () => (catalog.reports || []).map((r) => r.id).join('|'),
+    [catalog.reports]
+  );
   useEffect(() => {
-    if (selectedReport) return;
+    if (!isNoBoardTab) return;
+    const reports = catalog.reports || [];
+    const first = reports[0];
+    if (!first) return;
+    setSelectedReport((prev) => {
+      if (prev && reports.some((r) => r.id === prev.id)) return prev;
+      return first;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- catalogReportIds tracks catalog identity
+  }, [isNoBoardTab, catalogReportIds]);
+
+  useEffect(() => {
+    if (selectedReport || isNoBoardTab) return;
     let cancelled = false;
     (async () => {
       setOverviewLoading(true);
@@ -144,7 +163,7 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
     return () => {
       cancelled = true;
     };
-  }, [dispatch, periodValue.startYmd, periodValue.endYmd, selectedReport, currentTab]);
+  }, [dispatch, periodValue.startYmd, periodValue.endYmd, selectedReport, currentTab, isNoBoardTab]);
 
   const summary = useMemo(() => summarizeFieldRows(overviewRows), [overviewRows]);
   const trend = useMemo(
@@ -192,7 +211,7 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
             </div>
           )}
 
-          {category === 'ops' && !selectedReport && (
+          {category === 'ops' && (
             <div style={{ marginBottom: '0.75rem' }}>
               <button
                 type="button"
@@ -212,6 +231,7 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
           <BoardLayout
             catalog={catalog}
             tabMeta={tabMeta}
+            isNoBoardTab={isNoBoardTab}
             selectedReport={selectedReport}
             onSelectReport={openReport}
             onClearReport={() => setSelectedReport(null)}
@@ -239,6 +259,7 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
 function BoardLayout({
   catalog,
   tabMeta,
+  isNoBoardTab,
   selectedReport,
   onSelectReport,
   onClearReport,
@@ -261,6 +282,7 @@ function BoardLayout({
   const usesWorkspaceControls = Boolean(selectedReport?.opsWorkspace);
   const pilotPct = clampPct(summary.pctPilot);
   const opsPct = clampPct(summary.pctOps);
+  const showBoard = !selectedReport && !isNoBoardTab;
 
   useEffect(() => {
     if (!selectedReport) {
@@ -269,12 +291,11 @@ function BoardLayout({
     }
     if (usesWorkspaceControls) return undefined;
 
-    // Legacy / non-workspace reports: dates + Excel live in the left data-view panel
     workspace?.setSidebar?.(
       <div className="rds-ops-controls">
-        <div className="rds-ops-controls-block">
-          <div className="rds-ops-controls-label">Date range</div>
-          <label className="rds-ops-field">
+        <div className="rds-ops-controls-block rds-ops-controls-inline">
+          <span className="rds-ops-controls-label">Period</span>
+          <label className="rds-ops-field rds-ops-field-inline">
             <span>From</span>
             <input
               type="date"
@@ -286,7 +307,7 @@ function BoardLayout({
               }}
             />
           </label>
-          <label className="rds-ops-field">
+          <label className="rds-ops-field rds-ops-field-inline">
             <span>To</span>
             <input
               type="date"
@@ -316,10 +337,6 @@ function BoardLayout({
             ))}
           </div>
         </div>
-        <p className="rds-ops-hint">
-          Chart / table and any extra filters appear on the right. Use Download Excel above the data
-          when available.
-        </p>
       </div>
     );
     return () => workspace?.clearSidebar?.();
@@ -337,41 +354,32 @@ function BoardLayout({
   ]);
 
   return (
-    <div className={`rds-ops${selectedReport ? ' rds-ops-report-open' : ''}`}>
+    <div className={`rds-ops${selectedReport ? ' rds-ops-report-open' : ''}${isNoBoardTab ? ' rds-ops-no-board' : ''}`}>
       <aside className="rds-ops-rail">
-        {selectedReport && (
+        {selectedReport && !isNoBoardTab && (
           <button type="button" className="rds-back rds-ops-back" onClick={onClearReport}>
             ← Board
           </button>
         )}
-        <div className="rds-ops-rail-label">Report rail</div>
+        <div className="rds-ops-rail-label">Reports</div>
         {(catalog.reports || []).map((report) => (
           <button
             key={report.id}
             type="button"
             className={`rds-ops-rail-item${selectedReport?.id === report.id ? ' is-active' : ''}`}
             onClick={() => onSelectReport(report)}
+            title={report.description || report.name}
           >
             <span className="rds-ops-rail-name">{report.name}</span>
-            {!selectedReport && (
+            {!selectedReport && !isNoBoardTab && (
               <span className="rds-ops-rail-desc">{report.description}</span>
             )}
           </button>
         ))}
-
-        {selectedReport && (
-          <>
-            <div className="rds-ops-rail-divider" />
-            <div className="rds-ops-rail-label">Data view</div>
-            <h3 className="rds-ops-active-title">{selectedReport.name}</h3>
-            <p className="rds-ops-active-desc">{selectedReport.description}</p>
-            {workspace?.sidebar}
-          </>
-        )}
       </aside>
 
       <section className="rds-ops-stage">
-        {!selectedReport && (
+        {showBoard && (
           <>
             <div>
               <h2 className="rds-ops-stage-title">{tabMeta.boardTitle}</h2>
@@ -516,23 +524,23 @@ function BoardLayout({
             }`}
           >
             <div className="rds-stage-report-top">
-              <div>
-                <h2 className="rds-ops-stage-title" style={{ marginBottom: 0 }}>
-                  {selectedReport.name}
-                </h2>
-                <p className="rds-ops-stage-sub" style={{ marginTop: '0.25rem' }}>
-                  {periodValue.startYmd} → {periodValue.endYmd}
-                </p>
+              <div className="rds-stage-report-head">
+                <h2 className="rds-ops-stage-title">{selectedReport.name}</h2>
+                {typeof exportHandler === 'function' && (
+                  <button type="button" className="rds-export-btn rds-export-btn-compact" onClick={() => exportHandler()}>
+                    Excel
+                  </button>
+                )}
               </div>
-              {typeof exportHandler === 'function' && (
-                <button type="button" className="rds-export-btn" onClick={() => exportHandler()}>
-                  Download Excel
-                </button>
-              )}
+              {workspace?.sidebar ? (
+                <div className="rds-stage-toolbar">{workspace.sidebar}</div>
+              ) : null}
             </div>
             <div
               className={
-                selectedReport.id === 'plan_execution_reasons' ? 'plan-excu-host-content' : undefined
+                selectedReport.id === 'plan_execution_reasons'
+                  ? 'plan-excu-host-content rds-stage-report-body'
+                  : 'rds-stage-report-body'
               }
             >
               {ReportComponent ? (
@@ -546,6 +554,10 @@ function BoardLayout({
               )}
             </div>
           </div>
+        )}
+
+        {isNoBoardTab && !selectedReport && (
+          <div className="rds-empty">Select a report from the rail.</div>
         )}
       </section>
     </div>

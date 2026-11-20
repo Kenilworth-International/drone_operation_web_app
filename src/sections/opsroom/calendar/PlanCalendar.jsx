@@ -451,13 +451,7 @@ const PlanCalendar = () => {
     setSelectedEstate('');
   };
 
-  const earliestAllowedMonth = useMemo(() => startOfMonth(new Date()), []);
-  const canGoPrevMonth = startOfMonth(currentMonth).getTime() > earliestAllowedMonth.getTime();
-  const goPrevMonth = () =>
-    setCurrentMonth((d) => {
-      const prev = addMonths(d, -1);
-      return startOfMonth(prev).getTime() < earliestAllowedMonth.getTime() ? d : prev;
-    });
+  const goPrevMonth = () => setCurrentMonth((d) => addMonths(d, -1));
   const goNextMonth = () => setCurrentMonth((d) => addMonths(d, 1));
 
   const handleCopyPlanDetails = async () => {
@@ -545,8 +539,7 @@ const PlanCalendar = () => {
               className="nav-btn-booking-calendar"
               onClick={goPrevMonth}
               aria-label="Previous month"
-              disabled={!canGoPrevMonth}
-              title={canGoPrevMonth ? 'Previous month' : 'Previous months are hidden'}
+              title="Previous month"
             >
               ◀
             </button>

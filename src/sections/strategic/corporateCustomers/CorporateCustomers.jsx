@@ -8,7 +8,7 @@ import {
 } from '../../../api/services NodeJs/mappingHierarchyApi';
 import { withCurrentWingSearch } from '../../../config/wingRouteGuard';
 import '../../../styles/corporateCustomers.css';
-import { CustomerDetailsModal, formatRate } from './corporateCustomerModal';
+import { CustomerDetailsModal, formatRate, formatRetention } from './corporateCustomerModal';
 import PlantationRatePicker from './PlantationRatePicker';
 import PlantationEmailsEditor, {
   formatEmailsPreview,
@@ -24,6 +24,8 @@ const EMPTY_FORM = {
   spray_units: '',
   spray_max_chemical: '',
   spread_units: '',
+  retention_fee_available: '0',
+  retention_percentage: '',
 };
 
 const FOCUS_META = {
@@ -90,6 +92,12 @@ const FOCUS_META = {
     addressFields: ['ship_to_address'],
     saveLabel: 'Save address',
   },
+  retention: {
+    title: 'Retention',
+    subtitle: 'Whether a retention fee applies for this plantation, and the percentage.',
+    scalarFields: ['retention_fee_available', 'retention_percentage'],
+    saveLabel: 'Save retention',
+  },
 };
 
 function formatText(v, maxLen = 48) {
@@ -97,6 +105,11 @@ function formatText(v, maxLen = 48) {
   const s = String(v).trim();
   if (s.length <= maxLen) return s;
   return `${s.slice(0, maxLen)}…`;
+}
+
+function retentionAvailableToForm(value) {
+  if (value === true || value === 1 || value === '1') return '1';
+  return '0';
 }
 
 function rowToForm(row) {
@@ -112,6 +125,11 @@ function rowToForm(row) {
         ? String(row.spray_max_chemical)
         : '12',
     spread_units: row.spread_units ?? '',
+    retention_fee_available: retentionAvailableToForm(row.retention_fee_available),
+    retention_percentage:
+      row.retention_percentage != null && row.retention_percentage !== ''
+        ? String(row.retention_percentage)
+        : '',
   };
 }
 
@@ -120,6 +138,28 @@ function buildFieldPayload(id, form, fields) {
   fields.forEach((key) => {
     if (key === 'emails') {
       payload.emails = Array.isArray(form.emails) ? form.emails : [];
+      return;
+    }
+    if (key === 'retention_fee_available') {
+      payload.retention_fee_available = form.retention_fee_available === '1' || form.retention_fee_available === true || form.retention_fee_available === 1 ? 1 : 0;
+      return;
+    }
+    if (key === 'retention_percentage') {
+      const available =
+        form.retention_fee_available === '1' ||
+        form.retention_fee_available === true ||
+        form.retention_fee_available === 1;
+      if (!available) {
+        payload.retention_percentage = null;
+        return;
+      }
+      const raw = String(form.retention_percentage ?? '').trim();
+      if (raw === '') {
+        payload.retention_percentage = null;
+        return;
+      }
+      const n = Number(raw);
+      payload.retention_percentage = Number.isFinite(n) && n >= 0 ? n : null;
       return;
     }
     const raw = String(form[key] ?? '').trim();
@@ -209,7 +249,12 @@ function CorporateCustomers() {
   };
 
   const onFormChange = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => {
+      if (key === 'retention_fee_available' && String(value) === '0') {
+        return { ...prev, retention_fee_available: value, retention_percentage: '' };
+      }
+      return { ...prev, [key]: value };
+    });
   };
 
   const handleSaveFields = async (e) => {
@@ -226,6 +271,20 @@ function CorporateCustomers() {
       if (bad.length) {
         toast.error(`Invalid email: ${bad[0]}`);
         return;
+      }
+    }
+    if (editFocus === 'retention') {
+      const available =
+        form.retention_fee_available === '1' ||
+        form.retention_fee_available === true ||
+        form.retention_fee_available === 1;
+      if (available) {
+        const raw = String(form.retention_percentage ?? '').trim();
+        const n = Number(raw);
+        if (raw === '' || !Number.isFinite(n) || n < 0 || n > 100) {
+          toast.error('Enter a retention percentage between 0 and 100');
+          return;
+        }
       }
     }
     try {
@@ -301,6 +360,7 @@ function CorporateCustomers() {
                   <th>Spread rate</th>
                   <th>Spread units</th>
                   <th>Scout rate</th>
+                  <th>Retention</th>
                   <th>Address</th>
                   <th>Bill-to</th>
                   <th>Ship-to</th>
@@ -309,7 +369,7 @@ function CorporateCustomers() {
               <tbody>
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="cc-empty">
+                    <td colSpan={13} className="cc-empty">
                       No plantations found.
                     </td>
                   </tr>
@@ -356,6 +416,12 @@ function CorporateCustomers() {
                       </ClickableCell>
                       <ClickableCell title="Update scout rate" onOpen={() => openEdit(row, 'scout')}>
                         {formatRate(row.scout_rate)}
+                      </ClickableCell>
+                      <ClickableCell
+                        title="Update retention"
+                        onOpen={() => openEdit(row, 'retention')}
+                      >
+                        {formatRetention(row)}
                       </ClickableCell>
                       <ClickableCell
                         className="cc-cell-text"

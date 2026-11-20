@@ -13,6 +13,8 @@ import {
 import { baseApi } from '../../../../api/services/allEndpoints';
 import { useAppDispatch } from '../../../../store/hooks';
 import { useOpsReportWorkspace } from '../OpsReportWorkspaceContext';
+import OpsReportViewToggle from '../OpsReportViewToggle';
+import { OpsDateRangeControls } from '../OpsPeriodControls';
 import {
   exportLegacyExcel,
   formatHa,
@@ -32,7 +34,7 @@ const PilotSummaryCombined = ({ onExportReady }) => {
   const workspace = useOpsReportWorkspace();
   const [startDate, setStartDate] = useState(startOfMonth);
   const [endDate, setEndDate] = useState(() => new Date());
-  const [view, setView] = useState('both');
+  const [view, setView] = useState('chart');
   const [pilotFilter, setPilotFilter] = useState('');
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -176,52 +178,17 @@ const PilotSummaryCombined = ({ onExportReady }) => {
     if (!workspace?.setSidebar) return undefined;
     workspace.setSidebar(
       <div className="rds-ops-controls">
-        <div className="rds-ops-controls-block">
-          <div className="rds-ops-controls-label">Date range</div>
-          <label className="rds-ops-field">
-            <span>From</span>
-            <input
-              type="date"
-              value={toYmd(startDate)}
-              max={toYmd(endDate)}
-              onChange={(e) => e.target.value && setStartDate(new Date(`${e.target.value}T00:00:00`))}
-            />
-          </label>
-          <label className="rds-ops-field">
-            <span>To</span>
-            <input
-              type="date"
-              value={toYmd(endDate)}
-              min={toYmd(startDate)}
-              max={toYmd(new Date())}
-              onChange={(e) => e.target.value && setEndDate(new Date(`${e.target.value}T00:00:00`))}
-            />
-          </label>
-        </div>
+        <OpsDateRangeControls
+          startDate={startDate}
+          endDate={endDate}
+          onStartChange={setStartDate}
+          onEndChange={setEndDate}
+        />
+        <OpsReportViewToggle view={view} onChange={setView} />
 
-        <div className="rds-ops-controls-block">
-          <div className="rds-ops-controls-label">Data view</div>
-          <div className="rds-ops-view-toggle">
-            {[
-              ['chart', 'Chart'],
-              ['table', 'Table'],
-              ['both', 'Both'],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={`rds-ops-view-btn${view === key ? ' is-active' : ''}`}
-                onClick={() => setView(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="rds-ops-controls-block">
-          <div className="rds-ops-controls-label">Filter</div>
-          <label className="rds-ops-field">
+        <div className="rds-ops-controls-block rds-ops-controls-inline">
+          <span className="rds-ops-controls-label">Filter</span>
+          <label className="rds-ops-field rds-ops-field-inline">
             <span>Pilot</span>
             <select value={pilotFilter} onChange={(e) => setPilotFilter(e.target.value)}>
               <option value="">All</option>
@@ -233,15 +200,6 @@ const PilotSummaryCombined = ({ onExportReady }) => {
             </select>
           </label>
         </div>
-
-        <button
-          type="button"
-          className="rds-export-btn rds-ops-export"
-          onClick={handleExport}
-          disabled={!sorted.length}
-        >
-          Download Excel
-        </button>
       </div>
     );
     return () => workspace.clearSidebar?.();
@@ -262,7 +220,7 @@ const PilotSummaryCombined = ({ onExportReady }) => {
         <div className="rds-empty">No pilot summary for this period.</div>
       ) : (
         <>
-          {(view === 'chart' || view === 'both') && (
+          {view === 'chart' && (
             <>
               <div className="rds-chart-bleed-title">Ranked by assigned Ha · % Pilot / % Ops</div>
               <div className="rds-leaderboard">
@@ -290,7 +248,7 @@ const PilotSummaryCombined = ({ onExportReady }) => {
               {chartData.length > 0 && (
                 <div className="rds-chart-bleed">
                   <div className="rds-chart-bleed-title">Assigned vs completed</div>
-                  <ResponsiveContainer width="100%" height={220}>
+                  <ResponsiveContainer width="100%" height={260}>
                     <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 48 }}>
                       <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
                       <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" height={60} axisLine={false} tickLine={false} />
@@ -307,7 +265,7 @@ const PilotSummaryCombined = ({ onExportReady }) => {
             </>
           )}
 
-          {(view === 'table' || view === 'both') && (
+          {view === 'table' && (
             <div className="rds-table-wrap">
               <table className="rds-table">
                 <thead>

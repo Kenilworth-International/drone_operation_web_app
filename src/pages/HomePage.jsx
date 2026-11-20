@@ -99,6 +99,20 @@ const HomePage = () => {
       || pathname.startsWith('/home/plantation-dashboard/');
   }, [location]);
 
+  /** Management / Ops / Plantation decision reports: cream fill to bottom (no white gutter). */
+  const isReportsDecisionRoute = useMemo(() => {
+    const { pathname } = location;
+    return (
+      pathname === '/home/reports' ||
+      pathname.startsWith('/home/reports/') ||
+      pathname.includes('/reports/management') ||
+      pathname.includes('/reports/ops') ||
+      pathname.includes('/reports/plantation') ||
+      pathname.includes('/reports/finance') ||
+      pathname.includes('/reports/corporate')
+    );
+  }, [location]);
+
   // Helper to detect mobile view
   const isMobile = () => window.innerWidth <= 768;
 
@@ -141,7 +155,7 @@ const HomePage = () => {
         />
       )}
       <div 
-        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isAppFeaturesRoute ? ' content-dashboard--app-features' : ''}${isFinancialCardsRoute ? ' content-dashboard--financial-cards' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isWorkSummaryRoute ? ' content-dashboard--work-summary' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isMappingUpdateRoute ? ' content-dashboard--mapping-update' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}`}
+        className={`content-dashboard${isWingHubLanding ? ' content-dashboard--wing-hub' : ''}${showCombChrome || isDashboardChartBreakdownRoute || isOdWingShell ? ' content-dashboard--comb' : ''}${isMasterDataUpdateRoute ? ' content-dashboard--master-data-split' : ''}${isAppFeaturesRoute ? ' content-dashboard--app-features' : ''}${isFinancialCardsRoute ? ' content-dashboard--financial-cards' : ''}${isCorporateCustomersRoute ? ' content-dashboard--corporate-customers' : ''}${isWorkSummaryRoute ? ' content-dashboard--work-summary' : ''}${isEmployeeProfileRoute ? ' content-dashboard--employee-profile' : ''}${isHrmDashboardRoute ? ' content-dashboard--hrm-dashboard' : ''}${isWeatherPredictionRoute ? ' content-dashboard--weather-prediction' : ''}${isMappingUpdateRoute ? ' content-dashboard--mapping-update' : ''}${isPlantationExternalRoute ? ' content-dashboard--plantation-external' : ''}${isReportsDecisionRoute ? ' content-dashboard--reports-decision' : ''}`}
         style={{
           marginLeft: isExternalUser || fullWidthNoLeftNav ? '0' : '280px',
           width: isExternalUser || fullWidthNoLeftNav ? '100vw' : 'calc(100vw - 280px)',
