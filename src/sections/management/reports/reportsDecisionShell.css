@@ -932,3 +932,151 @@
 
 .rds-bydate-legend .leg-p::before { background: #0f6b4c; }
 .rds-bydate-legend .leg-o::before { background: #34d399; }
+
+/* ── Ops report open: left controls ───────────────────── */
+.rds-ops-report-open .rds-ops-rail {
+  max-height: calc(100vh - 140px);
+  overflow: auto;
+  padding-bottom: 1.5rem;
+}
+
+.rds-ops-back {
+  display: inline-block;
+  margin-bottom: 0.85rem;
+}
+
+.rds-ops-rail-item.is-active {
+  border-left-color: var(--rds-accent);
+  padding-left: 0.55rem;
+  background: rgba(15, 107, 76, 0.08);
+}
+
+.rds-ops-rail-item.is-active .rds-ops-rail-name {
+  color: var(--rds-accent);
+}
+
+.rds-ops-rail-divider {
+  height: 1px;
+  background: var(--rds-line);
+  margin: 0.85rem 0;
+}
+
+.rds-ops-active-title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  letter-spacing: -0.01em;
+}
+
+.rds-ops-active-desc {
+  margin: 0 0 1rem;
+  font-size: 0.75rem;
+  color: var(--rds-muted);
+  line-height: 1.4;
+}
+
+.rds-ops-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+}
+
+.rds-ops-controls-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.rds-ops-controls-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--rds-muted);
+}
+
+.rds-ops-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--rds-muted);
+}
+
+.rds-ops-field input,
+.rds-ops-field select {
+  border: none;
+  border-bottom: 1.5px solid var(--rds-line);
+  background: transparent;
+  padding: 0.35rem 0.1rem;
+  font-size: 0.85rem;
+  color: var(--rds-ink);
+  font-family: inherit;
+}
+
+.rds-ops-field input:focus,
+.rds-ops-field select:focus {
+  outline: none;
+  border-bottom-color: var(--rds-accent);
+}
+
+.rds-ops-view-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.rds-ops-view-btn {
+  border: 1px solid var(--rds-line);
+  background: transparent;
+  color: var(--rds-muted);
+  padding: 0.3rem 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.rds-ops-view-btn:hover {
+  color: var(--rds-ink);
+  border-color: var(--rds-accent);
+}
+
+.rds-ops-view-btn.is-active {
+  background: var(--rds-accent);
+  border-color: var(--rds-accent);
+  color: #fff;
+}
+
+.rds-ops-export {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.rds-ops-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--rds-muted);
+  line-height: 1.4;
+}
+
+.rds-ops-board-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem 1rem;
+  margin-top: 0.85rem;
+}
+
+.rds-ops-board-dates .rds-ops-field {
+  min-width: 8.5rem;
+}
+
+.rds-ops-data {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-height: 200px;
+}

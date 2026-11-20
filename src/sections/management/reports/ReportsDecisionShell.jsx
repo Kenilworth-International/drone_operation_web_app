@@ -17,6 +17,10 @@ import { baseApi } from '../../../api/services/allEndpoints';
 import { useAppDispatch } from '../../../store/hooks';
 import { ReportsPeriodContext } from './ReportsPeriodContext';
 import {
+  OpsReportWorkspaceProvider,
+  useOpsReportWorkspace,
+} from './OpsReportWorkspaceContext';
+import {
   formatHa,
   formatPct,
   toYmd,
@@ -272,9 +276,52 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
           <div>
             <h2 className="rds-ops-stage-title">Operations board</h2>
             <p className="rds-ops-stage-sub">
-              Live snapshot for {periodValue.startYmd} → {periodValue.endYmd}. Pick a report from the
-              rail — dual Pilot / OpsRoom completion stays in view.
+              Snapshot for {periodValue.startYmd} → {periodValue.endYmd}. Open a report from the rail —
+              each report keeps its own dates and Excel download.
             </p>
+            <div className="rds-ops-board-dates">
+              <label className="rds-ops-field">
+                <span>From</span>
+                <input
+                  type="date"
+                  value={periodValue.startYmd}
+                  max={periodValue.endYmd}
+                  onChange={(e) => {
+                    setActivePreset(null);
+                    if (e.target.value) setStartDate(new Date(`${e.target.value}T00:00:00`));
+                  }}
+                />
+              </label>
+              <label className="rds-ops-field">
+                <span>To</span>
+                <input
+                  type="date"
+                  value={periodValue.endYmd}
+                  min={periodValue.startYmd}
+                  max={toYmd(new Date())}
+                  onChange={(e) => {
+                    setActivePreset(null);
+                    if (e.target.value) setEndDate(new Date(`${e.target.value}T00:00:00`));
+                  }}
+                />
+              </label>
+              <div className="rds-ops-view-toggle">
+                {[
+                  ['week', 'Week'],
+                  ['month', 'Month'],
+                  ['last', 'Last'],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`rds-ops-view-btn${activePreset === key ? ' is-active' : ''}`}
+                    onClick={() => applyPreset(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {overviewLoading ? (
@@ -412,132 +459,201 @@ const ReportsDecisionShell = ({ category = null, reportCatalog }) => {
 
   const ReportComponent = selectedReport?.component;
   const uiKind = selectedReport?.uiKind || 'ui-dense';
+  const isOpsTab = currentTab === 'ops';
+  const showTopPeriod = !isOpsTab;
 
   return (
     <ReportsPeriodContext.Provider value={periodValue}>
-      <div className={`rds-shell ${themeClass}`}>
-        <div className="rds-period">
-          <div className="rds-period-field">
-            <span className="rds-period-label">From</span>
-            <input
-              type="date"
-              value={periodValue.startYmd}
-              max={periodValue.endYmd}
-              onChange={(e) => {
-                setActivePreset(null);
-                const v = e.target.value;
-                if (v) setStartDate(new Date(`${v}T00:00:00`));
-              }}
-            />
-          </div>
-          <div className="rds-period-field">
-            <span className="rds-period-label">To</span>
-            <input
-              type="date"
-              value={periodValue.endYmd}
-              min={periodValue.startYmd}
-              max={toYmd(new Date())}
-              onChange={(e) => {
-                setActivePreset(null);
-                const v = e.target.value;
-                if (v) setEndDate(new Date(`${v}T00:00:00`));
-              }}
-            />
-          </div>
-          <div className="rds-presets">
-            {[
-              ['week', 'This week'],
-              ['month', 'This month'],
-              ['last', 'Last month'],
-            ].map(([key, label]) => (
-              <button
-                key={key}
-                type="button"
-                className={`rds-preset${activePreset === key ? ' is-active' : ''}`}
-                onClick={() => applyPreset(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {isCorporateView && !selectedReport && (
-          <div className="rds-tabs">
-            {['management', 'ops', 'plantation'].map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                className={`rds-tab${currentTab === tab ? ' is-active' : ''}`}
-                onClick={() => handleTabChange(tab)}
-              >
-                {TAB_META[tab].label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {!selectedReport && category === 'ops' && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <button
-              type="button"
-              className="rds-back"
-              onClick={() =>
-                navigate({
-                  pathname: '/home/workflowDashboard',
-                  search: routerLocation.search,
-                })
-              }
-            >
-              ← Workflow
-            </button>
-          </div>
-        )}
-
-        {!selectedReport && renderOverview()}
-
-        {selectedReport && (
-          <div
-            className={`rds-report-host ${uiKind}${
-              selectedReport.id === 'plan_execution_reasons' ? ' plan-excu-host' : ''
-            }`}
-          >
-            <div className="rds-report-toolbar">
-              <button type="button" className="rds-back" onClick={() => setSelectedReport(null)}>
-                ← All reports
-              </button>
-              <h2 className="rds-report-title">{selectedReport.name}</h2>
-              {typeof exportHandler === 'function' && (
-                <button type="button" className="rds-export-btn" onClick={() => exportHandler()}>
-                  Download Excel
-                </button>
-              )}
-            </div>
-            <p className="rds-muted" style={{ margin: 0 }}>
-              {selectedReport.description}
-              <span aria-hidden> · </span>
-              {periodValue.startYmd} → {periodValue.endYmd}
-            </p>
-            <div
-              className={
-                selectedReport.id === 'plan_execution_reasons' ? 'plan-excu-host-content' : undefined
-              }
-            >
-              {ReportComponent ? (
-                <ReportComponent
-                  startDate={startDate}
-                  endDate={endDate}
-                  onExportReady={onExportReady}
+      <OpsReportWorkspaceProvider>
+        <div className={`rds-shell ${themeClass}`}>
+          {showTopPeriod && (
+            <div className="rds-period">
+              <div className="rds-period-field">
+                <span className="rds-period-label">From</span>
+                <input
+                  type="date"
+                  value={periodValue.startYmd}
+                  max={periodValue.endYmd}
+                  onChange={(e) => {
+                    setActivePreset(null);
+                    const v = e.target.value;
+                    if (v) setStartDate(new Date(`${v}T00:00:00`));
+                  }}
                 />
-              ) : (
-                <div className="rds-empty">Report unavailable.</div>
-              )}
+              </div>
+              <div className="rds-period-field">
+                <span className="rds-period-label">To</span>
+                <input
+                  type="date"
+                  value={periodValue.endYmd}
+                  min={periodValue.startYmd}
+                  max={toYmd(new Date())}
+                  onChange={(e) => {
+                    setActivePreset(null);
+                    const v = e.target.value;
+                    if (v) setEndDate(new Date(`${v}T00:00:00`));
+                  }}
+                />
+              </div>
+              <div className="rds-presets">
+                {[
+                  ['week', 'This week'],
+                  ['month', 'This month'],
+                  ['last', 'Last month'],
+                ].map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`rds-preset${activePreset === key ? ' is-active' : ''}`}
+                    onClick={() => applyPreset(key)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {isCorporateView && !selectedReport && (
+            <div className="rds-tabs">
+              {['management', 'ops', 'plantation'].map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={`rds-tab${currentTab === tab ? ' is-active' : ''}`}
+                  onClick={() => handleTabChange(tab)}
+                >
+                  {TAB_META[tab].label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!selectedReport && category === 'ops' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+              <button
+                type="button"
+                className="rds-back"
+                onClick={() =>
+                  navigate({
+                    pathname: '/home/workflowDashboard',
+                    search: routerLocation.search,
+                  })
+                }
+              >
+                ← Workflow
+              </button>
+            </div>
+          )}
+
+          {!selectedReport && renderOverview()}
+
+          {selectedReport && isOpsTab && (
+            <OpsSelectedReportLayout
+              catalog={catalog}
+              selectedReport={selectedReport}
+              onBack={() => setSelectedReport(null)}
+              onSelectReport={openReport}
+              ReportComponent={ReportComponent}
+            />
+          )}
+
+          {selectedReport && !isOpsTab && (
+            <div
+              className={`rds-report-host ${uiKind}${
+                selectedReport.id === 'plan_execution_reasons' ? ' plan-excu-host' : ''
+              }`}
+            >
+              <div className="rds-report-toolbar">
+                <button type="button" className="rds-back" onClick={() => setSelectedReport(null)}>
+                  ← All reports
+                </button>
+                <h2 className="rds-report-title">{selectedReport.name}</h2>
+                {typeof exportHandler === 'function' && (
+                  <button type="button" className="rds-export-btn" onClick={() => exportHandler()}>
+                    Download Excel
+                  </button>
+                )}
+              </div>
+              <p className="rds-muted" style={{ margin: 0 }}>
+                {selectedReport.description}
+                <span aria-hidden> · </span>
+                {periodValue.startYmd} → {periodValue.endYmd}
+              </p>
+              <div
+                className={
+                  selectedReport.id === 'plan_execution_reasons' ? 'plan-excu-host-content' : undefined
+                }
+              >
+                {ReportComponent ? (
+                  <ReportComponent
+                    startDate={startDate}
+                    endDate={endDate}
+                    onExportReady={onExportReady}
+                  />
+                ) : (
+                  <div className="rds-empty">Report unavailable.</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </OpsReportWorkspaceProvider>
     </ReportsPeriodContext.Provider>
   );
 };
+
+/** Ops Room: left = view options / dates / excel; right = chart/table. */
+function OpsSelectedReportLayout({
+  catalog,
+  selectedReport,
+  onBack,
+  onSelectReport,
+  ReportComponent,
+}) {
+  const workspace = useOpsReportWorkspace();
+  const usesWorkspaceControls = Boolean(selectedReport?.opsWorkspace);
+
+  useEffect(() => {
+    if (usesWorkspaceControls) return undefined;
+    workspace?.setSidebar?.(
+      <div className="rds-ops-controls">
+        <p className="rds-ops-hint">
+          This report keeps its own date and export controls in the view on the right.
+        </p>
+      </div>
+    );
+    return () => workspace?.clearSidebar?.();
+  }, [usesWorkspaceControls, selectedReport?.id, workspace]);
+
+  return (
+    <div className="rds-ops rds-ops-report-open">
+      <aside className="rds-ops-rail">
+        <button type="button" className="rds-back rds-ops-back" onClick={onBack}>
+          ← Board
+        </button>
+        <div className="rds-ops-rail-label">Reports</div>
+        {(catalog.reports || []).map((report) => (
+          <button
+            key={report.id}
+            type="button"
+            className={`rds-ops-rail-item${selectedReport.id === report.id ? ' is-active' : ''}`}
+            onClick={() => onSelectReport(report)}
+          >
+            <span className="rds-ops-rail-name">{report.name}</span>
+          </button>
+        ))}
+        <div className="rds-ops-rail-divider" />
+        <div className="rds-ops-rail-label">Data view</div>
+        <h3 className="rds-ops-active-title">{selectedReport.name}</h3>
+        <p className="rds-ops-active-desc">{selectedReport.description}</p>
+        {workspace?.sidebar}
+      </aside>
+      <section className="rds-ops-stage">
+        {ReportComponent ? <ReportComponent /> : <div className="rds-empty">Report unavailable.</div>}
+      </section>
+    </div>
+  );
+}
 
 export default ReportsDecisionShell;

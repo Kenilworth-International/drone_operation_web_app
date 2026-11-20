@@ -12,9 +12,9 @@ import {
 } from 'recharts';
 import { baseApi } from '../../../../api/services/allEndpoints';
 import { useAppDispatch } from '../../../../store/hooks';
-import { useReportsPeriod } from '../ReportsPeriodContext';
+import { useOpsReportWorkspace } from '../OpsReportWorkspaceContext';
 import {
-  exportReportExcel,
+  exportLegacyExcel,
   formatHa,
   formatPct,
   toYmd,
@@ -25,12 +25,24 @@ import {
 } from '../reportsOverviewMetrics';
 import '../reportsDecisionShell.css';
 
-const PilotPerformanceCombined = ({ startDate: propStart, endDate: propEnd, onExportReady }) => {
-  const dispatch = useAppDispatch();
-  const period = useReportsPeriod();
-  const startDate = propStart || period?.startDate;
-  const endDate = propEnd || period?.endDate;
+const startOfMonth = () => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+};
 
+const statusText = (s) => {
+  if (s === 'c') return 'Completed';
+  if (s === 'p') return 'Partial';
+  if (s === 'n') return 'Not started';
+  return s || '';
+};
+
+const PilotPerformanceCombined = () => {
+  const dispatch = useAppDispatch();
+  const workspace = useOpsReportWorkspace();
+  const [startDate, setStartDate] = useState(startOfMonth);
+  const [endDate, setEndDate] = useState(() => new Date());
+  const [view, setView] = useState('both'); // chart | table | both
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({
@@ -41,7 +53,6 @@ const PilotPerformanceCombined = ({ startDate: propStart, endDate: propEnd, onEx
   });
 
   useEffect(() => {
-    if (!startDate || !endDate) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -52,8 +63,7 @@ const PilotPerformanceCombined = ({ startDate: propStart, endDate: propEnd, onEx
             endDate: toYmd(endDate),
           })
         );
-        if (cancelled) return;
-        setRows(flattenPilotPerformance(result.data || {}));
+        if (!cancelled) setRows(flattenPilotPerformance(result.data || {}));
       } catch (e) {
         if (!cancelled) setRows([]);
       } finally {
@@ -123,62 +133,171 @@ const PilotPerformanceCombined = ({ startDate: propStart, endDate: propEnd, onEx
   }, [filtered]);
 
   const handleExport = () => {
-    exportReportExcel({
-      title: 'Pilot Performance — Pilot + OpsRoom',
-      filePrefix: 'pilot_performance_combined',
+    // Legacy columns + OpsRoom / % extras
+    const headers = [
+      'Date',
+      'Pilot',
+      'Group',
+      'Plantation',
+      'Region',
+      'Estate',
+      'Field Name',
+      'Assigned (ha)',
+      'Completed Pilot (ha)',
+      'Completed OpsRoom (ha)',
+      '% Pilot',
+      '% OpsRoom',
+      'Status',
+    ];
+    const dataRows = filtered.map((r) => [
+      r.date,
+      r.pilotName,
+      r.group,
+      r.plantation,
+      r.region,
+      r.estate,
+      r.fieldName,
+      formatHa(r.assigned),
+      formatHa(r.completedPilot),
+      formatHa(r.completedOps),
+      formatPct(r.pctPilot),
+      formatPct(r.pctOps),
+      statusText(r.taskStatus),
+    ]);
+    dataRows.push([
+      'Total',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      formatHa(totals.assigned),
+      formatHa(totals.completedPilot),
+      formatHa(totals.completedOps),
+      formatPct(totals.pctPilot),
+      formatPct(totals.pctOps),
+      '',
+    ]);
+    const filterLabel =
+      filters.pilotName ||
+      filters.estate ||
+      filters.region ||
+      filters.plantation ||
+      'All_Pilots';
+    exportLegacyExcel({
       sheetName: 'Pilot Performance',
-      startDate,
-      endDate,
-      headers: [
-        'Date',
-        'Pilot',
-        'Group',
-        'Plantation',
-        'Region',
-        'Estate',
-        'Field',
-        'Type',
-        'Assigned Ha',
-        'Completed Pilot Ha',
-        'Completed OpsRoom Ha',
-        '% Pilot',
-        '% OpsRoom',
-        'Status',
-      ],
-      rows: filtered.map((r) => [
-        r.date,
-        r.pilotName,
-        r.group,
-        r.plantation,
-        r.region,
-        r.estate,
-        r.fieldName,
-        r.planType,
-        formatHa(r.assigned),
-        formatHa(r.completedPilot),
-        formatHa(r.completedOps),
-        formatPct(r.pctPilot),
-        formatPct(r.pctOps),
-        r.taskStatus,
-      ]),
+      fileName: `Pilot_Performance_${String(filterLabel).replace(/\s+/g, '_')}_${toYmd(startDate)}_to_${toYmd(endDate)}.xlsx`,
+      headers,
+      rows: dataRows,
     });
   };
 
   useEffect(() => {
-    onExportReady?.(handleExport);
+    if (!workspace?.setSidebar) return undefined;
+    workspace.setSidebar(
+      <div className="rds-ops-controls">
+        <div className="rds-ops-controls-block">
+          <div className="rds-ops-controls-label">Date range</div>
+          <label className="rds-ops-field">
+            <span>From</span>
+            <input
+              type="date"
+              value={toYmd(startDate)}
+              max={toYmd(endDate)}
+              onChange={(e) => e.target.value && setStartDate(new Date(`${e.target.value}T00:00:00`))}
+            />
+          </label>
+          <label className="rds-ops-field">
+            <span>To</span>
+            <input
+              type="date"
+              value={toYmd(endDate)}
+              min={toYmd(startDate)}
+              max={toYmd(new Date())}
+              onChange={(e) => e.target.value && setEndDate(new Date(`${e.target.value}T00:00:00`))}
+            />
+          </label>
+        </div>
+
+        <div className="rds-ops-controls-block">
+          <div className="rds-ops-controls-label">Data view</div>
+          <div className="rds-ops-view-toggle">
+            {[
+              ['chart', 'Chart'],
+              ['table', 'Table'],
+              ['both', 'Both'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={`rds-ops-view-btn${view === key ? ' is-active' : ''}`}
+                onClick={() => setView(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="rds-ops-controls-block">
+          <div className="rds-ops-controls-label">Filters</div>
+          {[
+            ['pilotName', 'Pilot', filterOptions.pilots],
+            ['plantation', 'Plantation', filterOptions.plantations],
+            ['region', 'Region', filterOptions.regions],
+            ['estate', 'Estate', filterOptions.estates],
+          ].map(([key, label, opts]) => (
+            <label key={key} className="rds-ops-field">
+              <span>{label}</span>
+              <select
+                value={filters[key]}
+                onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))}
+              >
+                <option value="">All</option>
+                {opts.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          className="rds-export-btn rds-ops-export"
+          onClick={handleExport}
+          disabled={!filtered.length}
+        >
+          Download Excel
+        </button>
+      </div>
+    );
+    return () => workspace.clearSidebar?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtered, startDate, endDate]);
+  }, [
+    workspace?.setSidebar,
+    startDate,
+    endDate,
+    view,
+    filters,
+    filterOptions,
+    filtered.length,
+    totals,
+  ]);
 
   if (loading) {
     return (
       <div className="rds-loading">
-        <Bars height={40} width={40} color="#2d6a4f" />
+        <Bars height={40} width={40} color="#0f6b4c" />
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="rds-ops-data">
       <div className="rds-metric-strip">
         <div className="rds-metric-strip-item">
           <div className="rds-metric-strip-lbl">Assigned</div>
@@ -200,10 +319,10 @@ const PilotPerformanceCombined = ({ startDate: propStart, endDate: propEnd, onEx
         </div>
       </div>
 
-      {chartData.length > 0 && (
+      {(view === 'chart' || view === 'both') && chartData.length > 0 && (
         <div className="rds-chart-bleed">
           <div className="rds-chart-bleed-title">Top pilots · assigned vs completed</div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={240}>
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 40 }}>
               <CartesianGrid strokeDasharray="3 6" stroke="#c9d9d2" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-25} textAnchor="end" height={50} axisLine={false} tickLine={false} />
@@ -218,72 +337,47 @@ const PilotPerformanceCombined = ({ startDate: propStart, endDate: propEnd, onEx
         </div>
       )}
 
-      <div className="rds-filters-inline">
-        {[
-          ['pilotName', 'Pilot', filterOptions.pilots],
-          ['plantation', 'Plantation', filterOptions.plantations],
-          ['region', 'Region', filterOptions.regions],
-          ['estate', 'Estate', filterOptions.estates],
-        ].map(([key, label, opts]) => (
-          <select
-            key={key}
-            value={filters[key]}
-            onChange={(e) => setFilters((f) => ({ ...f, [key]: e.target.value }))}
-            aria-label={label}
-          >
-            <option value="">All {label}s</option>
-            {opts.map((o) => (
-              <option key={o} value={o}>
-                {o}
-              </option>
-            ))}
-          </select>
-        ))}
-        <button type="button" className="rds-export-btn" onClick={handleExport} disabled={!filtered.length}>
-          Download Excel
-        </button>
-      </div>
-
-      {!filtered.length ? (
-        <div className="rds-empty">No field data for this period.</div>
-      ) : (
-        <div className="rds-table-wrap">
-          <table className="rds-table">
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Pilot</th>
-                <th>Plantation</th>
-                <th>Estate</th>
-                <th>Field</th>
-                <th className="num">Assigned</th>
-                <th className="num">Pilot Ha</th>
-                <th className="num">OpsRoom Ha</th>
-                <th className="num">% Pilot</th>
-                <th className="num">% Ops</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((r, i) => (
-                <tr key={`${r.date}-${r.pilotName}-${r.fieldName}-${i}`}>
-                  <td>{String(r.date || '').slice(0, 10)}</td>
-                  <td>{r.pilotName}</td>
-                  <td>{r.plantation}</td>
-                  <td>{r.estate}</td>
-                  <td>{r.fieldName}</td>
-                  <td className="num">{formatHa(r.assigned)}</td>
-                  <td className="num">{formatHa(r.completedPilot)}</td>
-                  <td className="num">{formatHa(r.completedOps)}</td>
-                  <td className="num">{formatPct(r.pctPilot)}</td>
-                  <td className="num">{formatPct(r.pctOps)}</td>
-                  <td>{r.taskStatus}</td>
+      {(view === 'table' || view === 'both') &&
+        (!filtered.length ? (
+          <div className="rds-empty">No field data for this period.</div>
+        ) : (
+          <div className="rds-table-wrap">
+            <table className="rds-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Pilot</th>
+                  <th>Plantation</th>
+                  <th>Estate</th>
+                  <th>Field</th>
+                  <th className="num">Assigned</th>
+                  <th className="num">Pilot Ha</th>
+                  <th className="num">OpsRoom Ha</th>
+                  <th className="num">% Pilot</th>
+                  <th className="num">% Ops</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {filtered.map((r, i) => (
+                  <tr key={`${r.date}-${r.pilotName}-${r.fieldName}-${i}`}>
+                    <td>{String(r.date || '').slice(0, 10)}</td>
+                    <td>{r.pilotName}</td>
+                    <td>{r.plantation}</td>
+                    <td>{r.estate}</td>
+                    <td>{r.fieldName}</td>
+                    <td className="num">{formatHa(r.assigned)}</td>
+                    <td className="num">{formatHa(r.completedPilot)}</td>
+                    <td className="num">{formatHa(r.completedOps)}</td>
+                    <td className="num">{formatPct(r.pctPilot)}</td>
+                    <td className="num">{formatPct(r.pctOps)}</td>
+                    <td>{statusText(r.taskStatus)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
     </div>
   );
 };

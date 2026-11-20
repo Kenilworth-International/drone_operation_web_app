@@ -8,41 +8,42 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from 'recharts';
 import { baseApi } from '../../../../api/services/allEndpoints';
 import { useAppDispatch } from '../../../../store/hooks';
-import { useReportsPeriod } from '../ReportsPeriodContext';
+import { useOpsReportWorkspace } from '../OpsReportWorkspaceContext';
 import {
-  exportReportExcel,
+  exportLegacyAoaExcel,
   formatHa,
+  monthBounds,
   toYmd,
 } from '../reportsExcelExport';
 import '../reportsDecisionShell.css';
 
-const PilotPerformanceByDateCombined = ({
-  startDate: propStart,
-  endDate: propEnd,
-  onExportReady,
-}) => {
-  const dispatch = useAppDispatch();
-  const period = useReportsPeriod();
-  const startDate = propStart || period?.startDate;
-  const endDate = propEnd || period?.endDate;
+const currentYearMonth = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
+const PilotPerformanceByDateCombined = () => {
+  const dispatch = useAppDispatch();
+  const workspace = useOpsReportWorkspace();
+  const [yearMonth, setYearMonth] = useState(currentYearMonth);
+  const [view, setView] = useState('both');
   const [apiData, setApiData] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const { start, end } = useMemo(() => monthBounds(yearMonth), [yearMonth]);
+
   useEffect(() => {
-    if (!startDate || !endDate) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
         const result = await dispatch(
           baseApi.endpoints.getPilotTeamSprayArea.initiate({
-            startDate: toYmd(startDate),
-            endDate: toYmd(endDate),
+            startDate: toYmd(start),
+            endDate: toYmd(end),
           })
         );
         if (cancelled) return;
@@ -57,21 +58,27 @@ const PilotPerformanceByDateCombined = ({
     return () => {
       cancelled = true;
     };
-  }, [dispatch, startDate, endDate]);
+  }, [dispatch, start, end]);
 
-  const { dateKeys, pilotRows, trend } = useMemo(() => {
-    const empty = { dateKeys: [], pilotRows: [], trend: [] };
+  const { dateKeys, pilotRows, teamRows, trend, monthLabel } = useMemo(() => {
+    const empty = { dateKeys: [], pilotRows: [], teamRows: [], trend: [], monthLabel: '' };
     if (!apiData || apiData.status !== 'true' || !Array.isArray(apiData.dates)) return empty;
 
     const dateKeys = apiData.dates.map((d) => d.date);
+    let monthLabel = '';
+    if (dateKeys.length > 0) {
+      const d0 = new Date(dateKeys[0]);
+      const mm = d0.toLocaleString('en-US', { month: 'short' });
+      const yy = String(d0.getFullYear()).slice(-2);
+      monthLabel = `${mm}-${yy}`;
+    }
+
     const pilotMap = new Map();
     const trendMap = new Map();
 
     apiData.dates.forEach((day) => {
       const date = day.date;
-      if (!trendMap.has(date)) {
-        trendMap.set(date, { date, pilot: 0, ops: 0 });
-      }
+      if (!trendMap.has(date)) trendMap.set(date, { date, pilot: 0, ops: 0 });
       const t = trendMap.get(date);
       (day.pilots || []).forEach((p) => {
         const id = p.pilot_id || p.pilot_name;
@@ -81,7 +88,6 @@ const PilotPerformanceByDateCombined = ({
         const opsHa = Number(p.ops_room_dji_field_area) || 0;
         t.pilot += pilotHa;
         t.ops += opsHa;
-
         if (!pilotMap.has(id)) {
           pilotMap.set(id, {
             id,
@@ -105,6 +111,16 @@ const PilotPerformanceByDateCombined = ({
       .filter((r) => r.totalPilot !== 0 || r.totalOps !== 0)
       .sort((a, b) => b.totalOps + b.totalPilot - (a.totalOps + a.totalPilot));
 
+    const teamMap = new Map();
+    pilotRows.forEach((r) => {
+      if (!teamMap.has(r.team)) teamMap.set(r.team, []);
+      teamMap.get(r.team).push(r);
+    });
+    const teamRows = Array.from(teamMap.entries()).map(([teamName, pilots]) => ({
+      teamName,
+      pilots,
+    }));
+
     const trend = Array.from(trendMap.values())
       .sort((a, b) => String(a.date).localeCompare(String(b.date)))
       .map((r) => ({
@@ -113,54 +129,130 @@ const PilotPerformanceByDateCombined = ({
         ops: Number(r.ops.toFixed(2)),
       }));
 
-    return { dateKeys, pilotRows, trend };
+    return { dateKeys, pilotRows, teamRows, trend, monthLabel };
   }, [apiData]);
 
   const handleExport = () => {
-    const headers = [
-      'Team',
-      'Pilot',
-      ...dateKeys.flatMap((d) => [`${d} Pilot`, `${d} OpsRoom`]),
-      'Total Pilot',
-      'Total OpsRoom',
+    // Legacy pivoted layout, with Pilot + OpsRoom value pairs per day + totals
+    const days = (dateKeys || []).map((dk) => new Date(dk).getDate());
+    const title = 'Pilot Performance by Date (Pilot + OpsRoom)';
+    const sheetHeaders = [
+      [title],
+      ['Team', 'Pilot', 'Metric', monthLabel, ...new Array(Math.max(days.length - 1, 0)).fill(''), 'Total'],
+      ['', '', '', ...days, ''],
     ];
-    const rows = pilotRows.map((r) => [
-      r.team,
-      r.name,
-      ...dateKeys.flatMap((d) => [
-        formatHa(r.perDatePilot[d] || 0),
-        formatHa(r.perDateOps[d] || 0),
-      ]),
-      formatHa(r.totalPilot),
-      formatHa(r.totalOps),
-    ]);
-    exportReportExcel({
-      title: 'Pilot Performance by Date — Pilot + OpsRoom',
-      filePrefix: 'pilot_performance_by_date_combined',
-      sheetName: 'By Date',
-      startDate,
-      endDate,
-      headers,
-      rows,
+
+    const body = [];
+    teamRows.forEach((team) => {
+      team.pilots.forEach((pilot) => {
+        body.push([
+          team.teamName,
+          pilot.name,
+          'Pilot',
+          ...dateKeys.map((dk) => Number(pilot.perDatePilot[dk] || 0)),
+          Number(pilot.totalPilot || 0),
+        ]);
+        body.push([
+          team.teamName,
+          pilot.name,
+          'OpsRoom',
+          ...dateKeys.map((dk) => Number(pilot.perDateOps[dk] || 0)),
+          Number(pilot.totalOps || 0),
+        ]);
+      });
+    });
+
+    const aoa = [...sheetHeaders, ...body];
+    const lastCol = (dateKeys?.length || 0) + 3;
+    const merges = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: lastCol } },
+      { s: { r: 1, c: 0 }, e: { r: 2, c: 0 } },
+      { s: { r: 1, c: 1 }, e: { r: 2, c: 1 } },
+      { s: { r: 1, c: 2 }, e: { r: 2, c: 2 } },
+      { s: { r: 1, c: 3 }, e: { r: 1, c: lastCol - 1 } },
+      { s: { r: 1, c: lastCol }, e: { r: 2, c: lastCol } },
+    ];
+
+    exportLegacyAoaExcel({
+      sheetName: 'Pilot Performance',
+      fileName: `Pilot_Performance_ByDate_${toYmd(start)}_to_${toYmd(end)}.xlsx`,
+      aoa,
+      merges,
+      cols: [
+        { wch: 15 },
+        { wch: 22 },
+        { wch: 10 },
+        ...new Array(days.length).fill({ wch: 6 }),
+        { wch: 10 },
+      ],
     });
   };
 
   useEffect(() => {
-    onExportReady?.(handleExport);
+    if (!workspace?.setSidebar) return undefined;
+    workspace.setSidebar(
+      <div className="rds-ops-controls">
+        <div className="rds-ops-controls-block">
+          <div className="rds-ops-controls-label">Month</div>
+          <label className="rds-ops-field">
+            <span>Whole month</span>
+            <input
+              type="month"
+              value={yearMonth}
+              max={currentYearMonth()}
+              onChange={(e) => e.target.value && setYearMonth(e.target.value)}
+            />
+          </label>
+          <p className="rds-ops-hint">
+            {toYmd(start)} → {toYmd(end)}
+          </p>
+        </div>
+
+        <div className="rds-ops-controls-block">
+          <div className="rds-ops-controls-label">Data view</div>
+          <div className="rds-ops-view-toggle">
+            {[
+              ['chart', 'Chart'],
+              ['table', 'Table'],
+              ['both', 'Both'],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={`rds-ops-view-btn${view === key ? ' is-active' : ''}`}
+                onClick={() => setView(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="rds-export-btn rds-ops-export"
+          onClick={handleExport}
+          disabled={!pilotRows.length}
+        >
+          Download Excel
+        </button>
+      </div>
+    );
+    return () => workspace.clearSidebar?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pilotRows, dateKeys, startDate, endDate]);
+  }, [workspace?.setSidebar, yearMonth, view, pilotRows.length, start, end, dateKeys, teamRows]);
 
   if (loading) {
     return (
       <div className="rds-loading">
-        <Bars height={40} width={40} color="#2d6a4f" />
+        <Bars height={40} width={40} color="#0f6b4c" />
       </div>
     );
   }
 
   return (
-    <div>
-      {trend.length > 0 && (
+    <div className="rds-ops-data">
+      {(view === 'chart' || view === 'both') && trend.length > 0 && (
         <div className="rds-chart-bleed">
           <div className="rds-chart-bleed-title">Daily series · Pilot vs OpsRoom</div>
           <div className="rds-bydate-legend">
@@ -180,61 +272,56 @@ const PilotPerformanceByDateCombined = ({
         </div>
       )}
 
-      <div className="rds-filters-inline" style={{ justifyContent: 'flex-end' }}>
-        <button type="button" className="rds-export-btn" onClick={handleExport} disabled={!pilotRows.length}>
-          Download Excel
-        </button>
-      </div>
-
-      {!pilotRows.length ? (
-        <div className="rds-empty">No daily spray data for this period.</div>
-      ) : (
-        <div className="rds-table-wrap">
-          <table className="rds-table">
-            <thead>
-              <tr>
-                <th>Team</th>
-                <th>Pilot</th>
-                {dateKeys.map((d) => (
-                  <th key={d} colSpan={2} style={{ textAlign: 'center' }}>
-                    {String(d).slice(5)}
-                  </th>
-                ))}
-                <th className="num">Σ Pilot</th>
-                <th className="num">Σ Ops</th>
-              </tr>
-              <tr>
-                <th />
-                <th />
-                {dateKeys.map((d) => (
-                  <React.Fragment key={`${d}-sub`}>
-                    <th className="num">P</th>
-                    <th className="num">O</th>
-                  </React.Fragment>
-                ))}
-                <th />
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {pilotRows.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.team}</td>
-                  <td>{r.name}</td>
+      {(view === 'table' || view === 'both') &&
+        (!pilotRows.length ? (
+          <div className="rds-empty">No daily spray data for this month.</div>
+        ) : (
+          <div className="rds-table-wrap">
+            <table className="rds-table">
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>Pilot</th>
                   {dateKeys.map((d) => (
-                    <React.Fragment key={`${r.id}-${d}`}>
-                      <td className="num">{formatHa(r.perDatePilot[d] || 0)}</td>
-                      <td className="num">{formatHa(r.perDateOps[d] || 0)}</td>
+                    <th key={d} colSpan={2} style={{ textAlign: 'center' }}>
+                      {String(d).slice(5)}
+                    </th>
+                  ))}
+                  <th className="num">Σ Pilot</th>
+                  <th className="num">Σ Ops</th>
+                </tr>
+                <tr>
+                  <th />
+                  <th />
+                  {dateKeys.map((d) => (
+                    <React.Fragment key={`${d}-sub`}>
+                      <th className="num">P</th>
+                      <th className="num">O</th>
                     </React.Fragment>
                   ))}
-                  <td className="num">{formatHa(r.totalPilot)}</td>
-                  <td className="num">{formatHa(r.totalOps)}</td>
+                  <th />
+                  <th />
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+              </thead>
+              <tbody>
+                {pilotRows.map((r) => (
+                  <tr key={r.id}>
+                    <td>{r.team}</td>
+                    <td>{r.name}</td>
+                    {dateKeys.map((d) => (
+                      <React.Fragment key={`${r.id}-${d}`}>
+                        <td className="num">{formatHa(r.perDatePilot[d] || 0)}</td>
+                        <td className="num">{formatHa(r.perDateOps[d] || 0)}</td>
+                      </React.Fragment>
+                    ))}
+                    <td className="num">{formatHa(r.totalPilot)}</td>
+                    <td className="num">{formatHa(r.totalOps)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
     </div>
   );
 };

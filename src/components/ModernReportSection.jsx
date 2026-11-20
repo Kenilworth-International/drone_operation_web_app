@@ -111,6 +111,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Field-level assigned vs Pilot / OpsRoom Ha with completion %',
           icon: FaPlane,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: PilotPerformanceCombined,
         },
         {
@@ -119,6 +120,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Ranked pilot rollup with dual completion and %',
           icon: FaUsers,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: PilotSummaryCombined,
         },
         {
@@ -127,6 +129,7 @@ const ModernReportSection = ({ category = null }) => {
           description: 'Daily Pilot and OpsRoom completed Ha side by side',
           icon: FaCalendarCheck,
           uiKind: 'ui-board',
+          opsWorkspace: true,
           component: PilotPerformanceByDateCombined,
         },
         {
