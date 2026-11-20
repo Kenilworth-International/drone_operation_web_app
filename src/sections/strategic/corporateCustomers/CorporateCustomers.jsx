@@ -293,20 +293,26 @@ function CorporateCustomers() {
       if (res?.status === true) {
         if (editFocus === 'retention') {
           const saved = res?.data;
-          const hasCol =
-            saved &&
-            Object.prototype.hasOwnProperty.call(saved, 'retention_fee_available');
-          if (!hasCol || res?.meta?.retentionSupport !== true) {
-            toast.error(
-              'API did not save retention. Run sql/20261120_plantations_retention.sql and restart dsms_backend_dev.'
+          const savedAvailable = saved?.retention_fee_available;
+          const wroteRetention =
+            saved != null &&
+            (savedAvailable === 0 ||
+              savedAvailable === 1 ||
+              savedAvailable === true ||
+              savedAvailable === false ||
+              savedAvailable === '0' ||
+              savedAvailable === '1');
+          if (!wroteRetention) {
+            toast.warning(
+              'Saved, but retention was not written. Deploy/restart dsms_backend_dev and run sql/20261120_plantations_retention.sql.'
             );
-            return;
+          } else {
+            toast.success(
+              Number(savedAvailable)
+                ? `Retention saved: Yes · ${saved.retention_percentage ?? '—'}%`
+                : 'Retention saved: No'
+            );
           }
-          toast.success(
-            Number(saved.retention_fee_available)
-              ? `Retention saved: Yes · ${saved.retention_percentage ?? '—'}%`
-              : 'Retention saved: No'
-          );
         } else {
           toast.success(res.message || 'Updated');
         }
