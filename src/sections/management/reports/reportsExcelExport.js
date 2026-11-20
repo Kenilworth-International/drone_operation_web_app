@@ -75,3 +75,61 @@ export function formatHa(value) {
   if (!Number.isFinite(n)) return '0.00';
   return n.toFixed(2);
 }
+
+/**
+ * Legacy-style Excel: header row + data (+ optional total), no meta banner.
+ * Matches earlier ops-room exports; extra columns/rows are fine.
+ */
+export function exportLegacyExcel({
+  sheetName = 'Report',
+  fileName,
+  headers,
+  rows,
+  merges = null,
+  cols = null,
+}) {
+  const body = (rows || []).map((row) =>
+    (row || []).map((cell) => (cell == null ? '' : cell))
+  );
+  const worksheet = XLSX.utils.aoa_to_sheet([headers, ...body]);
+  if (merges?.length) worksheet['!merges'] = merges;
+  if (cols?.length) worksheet['!cols'] = cols;
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, String(sheetName).slice(0, 31));
+  XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
+  return fileName;
+}
+
+/** Multi-row header Excel (e.g. by-date pivoted layout). */
+export function exportLegacyAoaExcel({
+  sheetName = 'Report',
+  fileName,
+  aoa,
+  merges = null,
+  cols = null,
+}) {
+  const worksheet = XLSX.utils.aoa_to_sheet(aoa || []);
+  if (merges?.length) worksheet['!merges'] = merges;
+  if (cols?.length) worksheet['!cols'] = cols;
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, String(sheetName).slice(0, 31));
+  XLSX.writeFile(workbook, fileName.endsWith('.xlsx') ? fileName : `${fileName}.xlsx`);
+  return fileName;
+}
+
+export function monthBounds(yearMonth) {
+  const [y, m] = String(yearMonth || '').split('-').map(Number);
+  if (!y || !m) {
+    const now = new Date();
+    return {
+      start: new Date(now.getFullYear(), now.getMonth(), 1),
+      end: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+      yearMonth: `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`,
+    };
+  }
+  return {
+    start: new Date(y, m - 1, 1),
+    end: new Date(y, m, 0),
+    yearMonth: `${y}-${pad2(m)}`,
+  };
+}

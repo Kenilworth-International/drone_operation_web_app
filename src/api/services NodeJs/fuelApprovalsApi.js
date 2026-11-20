@@ -102,5 +102,6 @@ export const {
   useGetPendingFuelApprovalsQuery,
   useGetFuelApprovalsHistoryQuery,
   useGetFuelApprovalsReportQuery,
+  useLazyGetFuelApprovalsReportQuery,
   useDecideFuelApprovalMutation,
 } = fuelApprovalsApi;

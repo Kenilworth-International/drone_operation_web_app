@@ -26,8 +26,11 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import LocalGasStationIcon from '@mui/icons-material/LocalGasStation';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import BoltIcon from '@mui/icons-material/Bolt';
-import * as XLSX from 'xlsx';
-import { useGetFuelApprovalsReportQuery } from '../../../api/services NodeJs/fuelApprovalsApi';
+import {
+  useGetFuelApprovalsReportQuery,
+  useLazyGetFuelApprovalsReportQuery,
+} from '../../../api/services NodeJs/fuelApprovalsApi';
+import { downloadDetailedFuelReportExcel } from './fuelReportExcelExport';
 import './fuelReports.css';
 
 const formatDate = (value) => {
@@ -164,6 +167,8 @@ export default function FuelReports({ embedded = false }) {
     // Always refetch when filters/tab change; avoid flashing stale cache mid-switch.
     refetchOnMountOrArgChange: true,
   });
+  const [fetchReportForExport] = useLazyGetFuelApprovalsReportQuery();
+  const [exporting, setExporting] = useState(false);
 
   /**
    * Use currentData only (result for THIS queryArgs).
@@ -290,111 +295,22 @@ export default function FuelReports({ embedded = false }) {
       });
   }, [rows, viewTab, showLoading]);
 
-  const downloadExcel = () => {
-    const wb = XLSX.utils.book_new();
-    if (viewTab === 'vehicle') {
-      const vehicleSheet = vehicleGroups.map((g) => ({
-        Month: g.month,
-        Vehicle: g.vehicle_no,
-        Category: [g.vehicle_category_name, g.fuel_category_name].filter(Boolean).join(' · '),
-        KM: g.full_km != null ? Number(g.full_km) : '',
-        'Fuel bills': g.bills.length,
-        Liters: g.liters,
-        Amount: g.amount,
-      }));
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet(vehicleSheet.length ? vehicleSheet : [{ Note: 'No vehicles' }]),
-        'Vehicles'
-      );
-      const billRows = [];
-      vehicleGroups.forEach((g) => {
-        g.bills.forEach((r, idx) => {
-          billRows.push({
-            Month: g.month,
-            Vehicle: idx === 0 ? g.vehicle_no : '',
-            KM: idx === 0 ? (g.full_km != null ? Number(g.full_km) : '') : '',
-            Date: formatDate(r.date),
-            Time: r.time || '',
-            Driver: r.person_name || '',
-            Mobile: r.person_mobile || '',
-            'Card Holder': r.card_holder || '',
-            'Card No': r.card_number || '',
-            Liters: r.liters != null ? Number(r.liters) : '',
-            Amount: r.amount != null ? Number(r.amount) : '',
-            Approval: r.approval_status || '',
-            'Voucher No': r.voucher_no || '',
-            Payment: r.payment_status || '',
-            'Tx ID': r.id,
-          });
-        });
-      });
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet(billRows.length ? billRows : [{ Note: 'No rows' }]),
-        'Vehicle Bills'
-      );
-    } else {
-      const pilotSheet = generatorPilotGroups.map((g) => ({
-        Month: g.month,
-        Pilot: g.person_name,
-        Mobile: g.person_mobile,
-        'Sprayed Ha (month)': g.sprayed_ha != null ? Number(g.sprayed_ha) : 0,
-        'Fuel bills': g.bills.length,
-        Liters: g.liters,
-        Amount: g.amount,
-      }));
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet(pilotSheet.length ? pilotSheet : [{ Note: 'No pilots' }]),
-        'Pilots'
-      );
-      const billRows = [];
-      generatorPilotGroups.forEach((g) => {
-        g.bills.forEach((r, idx) => {
-          billRows.push({
-            Month: g.month,
-            Pilot: idx === 0 ? g.person_name : '',
-            'Sprayed Ha (month)': idx === 0 ? (g.sprayed_ha != null ? Number(g.sprayed_ha) : 0) : '',
-            Date: formatDate(r.date),
-            Time: r.time || '',
-            'Card Holder': r.card_holder || '',
-            'Card No': r.card_number || '',
-            Liters: r.liters != null ? Number(r.liters) : '',
-            Amount: r.amount != null ? Number(r.amount) : '',
-            Approval: r.approval_status || '',
-            'Voucher No': r.voucher_no || '',
-            Payment: r.payment_status || '',
-            'Tx ID': r.id,
-          });
-        });
-      });
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet(billRows.length ? billRows : [{ Note: 'No rows' }]),
-        'Generator Bills'
-      );
+  const downloadExcel = async () => {
+    setExporting(true);
+    try {
+      const exportArgs = {
+        ...queryArgs,
+        fuel_source: 'all',
+      };
+      const result = await fetchReportForExport(exportArgs).unwrap();
+      downloadDetailedFuelReportExcel(result?.rows || [], { months: monthValues });
+    } catch (err) {
+      console.error(err);
+      // Fallback: export whatever is currently loaded for the active tab
+      downloadDetailedFuelReportExcel(rows, { months: monthValues });
+    } finally {
+      setExporting(false);
     }
-    XLSX.utils.book_append_sheet(
-      wb,
-      XLSX.utils.json_to_sheet([
-        {
-          Months: monthValues.join(', '),
-          Source: viewTab,
-          Rows: summary.total_rows || 0,
-          Pilots: viewTab === 'generator' ? generatorPilotGroups.length : '',
-          Liters: summary.total_liters || 0,
-          Amount: summary.total_amount || 0,
-          KM: summary.total_full_km || 0,
-          'Sprayed Ha': summary.total_sprayed_ha || 0,
-          Paid: summary.paid_amount || 0,
-          Unpaid: summary.unpaid_amount || 0,
-        },
-      ]),
-      'Summary'
-    );
-    const stamp = monthValues.length ? monthValues.join('_') : 'all';
-    XLSX.writeFile(wb, `Fuel_Reports_${viewTab}_${stamp}.xlsx`);
   };
 
   return (
@@ -422,11 +338,11 @@ export default function FuelReports({ embedded = false }) {
             size="small"
             variant="contained"
             startIcon={<DownloadIcon />}
-            onClick={downloadExcel}
-            disabled={showLoading || !rows.length}
+            onClick={() => void downloadExcel()}
+            disabled={showLoading || exporting || !rows.length}
             sx={{ textTransform: 'none', background: '#0f766e' }}
           >
-            Download Excel
+            {exporting ? 'Preparing…' : 'Download Excel'}
           </Button>
         </div>
       </header>
