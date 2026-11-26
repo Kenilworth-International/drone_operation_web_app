@@ -638,7 +638,7 @@ export default function CreatePlantationInvoiceModal({
     if (isPre && !hasSystemPriorCredit && manualPriorCredit !== '') {
       const manual = Number(manualPriorCredit);
       if (!Number.isFinite(manual) || manual < 0) {
-        toast.error('Enter a valid M-2 credit amount (0 or more)');
+        toast.error(`Enter a valid ${m2MonthLabel || 'prior month'} credit note amount (0 or more)`);
         return;
       }
     }
@@ -717,7 +717,7 @@ export default function CreatePlantationInvoiceModal({
       }}
     >
       <div
-        className="plantation-invoice-modal"
+        className={`plantation-invoice-modal${isPre ? ' plantation-invoice-modal--pre' : ''}`}
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
@@ -816,7 +816,7 @@ export default function CreatePlantationInvoiceModal({
               {isPre && hasSystemPriorCredit ? (
                 <div className="inv-callout inv-callout--final" style={{ marginBottom: 14 }}>
                   <div className="inv-callout-body">
-                    <strong>M-2 credit note found ({m2MonthLabel})</strong>
+                    <strong>{m2MonthLabel} credit note found</strong>
                     <p>
                       System credit LKR {formatMoney(systemPriorCredit)}
                       {systemPriorCredits.length
@@ -825,22 +825,24 @@ export default function CreatePlantationInvoiceModal({
                             .filter(Boolean)
                             .join(', ')}`
                         : ''}{' '}
-                      will reduce this pre-invoice balance (fixed 2-month lag).
+                      will reduce this pre-invoice balance (2 months earlier).
                     </p>
                   </div>
                 </div>
               ) : null}
 
               {isPre && !hasSystemPriorCredit ? (
-                <div className="inv-callout inv-callout--final" style={{ marginBottom: 14 }}>
-                  <div className="inv-callout-body">
-                    <strong>No {m2MonthLabel} credit note in system</strong>
-                    <p style={{ marginBottom: 10 }}>
-                      Temporary: enter the M-2 credit balance manually if there was an unused
-                      credit for that month. Leave blank or 0 if none.
-                    </p>
-                    <div className="pre-invoice-basis-field" style={{ maxWidth: 280 }}>
-                      <label htmlFor="inv-manual-m2">Manual M-2 credit (LKR) — {m2MonthLabel}</label>
+                <div className="inv-callout inv-callout--final pre-invoice-m2-callout">
+                  <div className="inv-callout-body pre-invoice-m2-callout-body">
+                    <div className="pre-invoice-m2-copy">
+                      <strong>No {m2MonthLabel} credit note in system</strong>
+                      <p>
+                        Temporary: enter the {m2MonthLabel} credit note balance manually if there
+                        was an unused credit for that month. Leave blank or 0 if none.
+                      </p>
+                    </div>
+                    <div className="pre-invoice-basis-field pre-invoice-m2-field">
+                      <label htmlFor="inv-manual-m2">{m2MonthLabel} credit note (LKR)</label>
                       <input
                         id="inv-manual-m2"
                         type="number"
@@ -877,7 +879,8 @@ export default function CreatePlantationInvoiceModal({
                     )}
                     {priorCredit > 0 ? (
                       <p>
-                        M-2 credit already applied on the pre-invoice: LKR {formatMoney(priorCredit)}
+                        {m2MonthLabel} credit already applied on the pre-invoice: LKR{' '}
+                        {formatMoney(priorCredit)}
                         {Array.isArray(draft.prior_credits) && draft.prior_credits.length
                           ? ` (${draft.prior_credits
                               .map((c) => c.invoice_no)
@@ -940,150 +943,154 @@ export default function CreatePlantationInvoiceModal({
                 </div>
               </div>
 
-              {rateRows.length > 0 ? (
-                <div className="plantation-invoice-option-panel plantation-invoice-rates-panel">
-                  <div className="plantation-invoice-option-panel-title">Rates (LKR / Ha)</div>
-                  <div className="plantation-invoice-option-panel-body">
-                    <div className="plantation-invoice-rates-table">
-                      {rateRows.map((row) => {
-                        const currentNum =
-                          row.current != null && row.current !== '' ? Number(row.current) : null;
-                        const canSwap =
-                          Number.isFinite(currentNum) && String(row.value) !== String(currentNum);
-                        return (
-                          <div key={row.mission} className="plantation-invoice-rate-row">
-                            <label htmlFor={row.inputId} className="plantation-invoice-rate-label">
-                              {row.mission}
-                            </label>
-                            <input
-                              id={row.inputId}
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="plantation-invoice-fuel-price-input"
-                              value={row.value}
-                              onChange={(e) => handleMissionRateChange(row.mission, e.target.value)}
-                            />
-                            <div className="plantation-invoice-rate-current">
-                              <span>
-                                Current{' '}
-                                {Number.isFinite(currentNum) ? formatMoney(currentNum) : '—'}
-                              </span>
-                              <button
-                                type="button"
-                                className="plantation-invoice-rates-current-btn"
-                                disabled={!canSwap}
-                                onClick={() => swapToCurrentRate(row.mission)}
-                              >
-                                Use
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+              <div className="plantation-invoice-options-band plantation-invoice-options-band--rates-fuel">
+                <div className="plantation-invoice-option-panel plantation-invoice-rates-taxes-panel">
+                  {rateRows.length > 0 ? (
+                    <>
+                      <div className="plantation-invoice-option-panel-title">Rates (LKR / Ha)</div>
+                      <div className="plantation-invoice-option-panel-body">
+                        <div className="plantation-invoice-rates-table">
+                          {rateRows.map((row) => {
+                            const currentNum =
+                              row.current != null && row.current !== '' ? Number(row.current) : null;
+                            const canSwap =
+                              Number.isFinite(currentNum) && String(row.value) !== String(currentNum);
+                            return (
+                              <div key={row.mission} className="plantation-invoice-rate-row">
+                                <label htmlFor={row.inputId} className="plantation-invoice-rate-label">
+                                  {row.mission}
+                                </label>
+                                <input
+                                  id={row.inputId}
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  className="plantation-invoice-fuel-price-input"
+                                  value={row.value}
+                                  onChange={(e) => handleMissionRateChange(row.mission, e.target.value)}
+                                />
+                                <div className="plantation-invoice-rate-current">
+                                  <span>
+                                    Current{' '}
+                                    {Number.isFinite(currentNum) ? formatMoney(currentNum) : '—'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="plantation-invoice-rates-current-btn"
+                                    disabled={!canSwap}
+                                    onClick={() => swapToCurrentRate(row.mission)}
+                                  >
+                                    Use
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
+                  <div
+                    className={`plantation-invoice-option-panel-title${
+                      rateRows.length > 0 ? ' plantation-invoice-option-panel-title--sub' : ''
+                    }`}
+                  >
+                    Taxes
+                  </div>
+                  <div className="plantation-invoice-option-panel-body plantation-invoice-tax-list">
+                    {taxTypes.map((t) => (
+                      <label key={t.id}>
+                        <input
+                          type="checkbox"
+                          checked={selectedTaxIds.includes(Number(t.id))}
+                          onChange={() => toggleTax(Number(t.id))}
+                        />
+                        <span>
+                          {t.tax_name} ({Number(t.rate_percent).toFixed(2)}%)
+                        </span>
+                      </label>
+                    ))}
                   </div>
                 </div>
-              ) : null}
 
-              <div className="plantation-invoice-taxes-fuel-section">
-                <div className="plantation-invoice-taxes-fuel-row">
-                  <div className="plantation-invoice-option-panel">
-                    <div className="plantation-invoice-option-panel-title">Taxes</div>
-                    <div className="plantation-invoice-option-panel-body plantation-invoice-tax-list">
-                      {taxTypes.map((t) => (
-                        <label key={t.id}>
-                          <input
-                            type="checkbox"
-                            checked={selectedTaxIds.includes(Number(t.id))}
-                            onChange={() => toggleTax(Number(t.id))}
-                          />
-                          <span>
-                            {t.tax_name} ({Number(t.rate_percent).toFixed(2)}%)
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="plantation-invoice-option-panel">
-                    <label className="plantation-invoice-option-panel-title plantation-invoice-fuel-title-toggle">
-                      <input
-                        type="checkbox"
-                        checked={includeFuelSurcharge}
-                        onChange={(e) => handleFuelSurchargeToggle(e.target.checked)}
-                      />
-                      <span>Fuel surcharge</span>
-                    </label>
-                    <div className="plantation-invoice-option-panel-body">
-                      {includeFuelSurcharge ? (
-                        <div className="plantation-invoice-fuel-fields">
-                          <div className="plantation-invoice-fuel-price-row">
-                            <label htmlFor="inv-fuel-type" className="plantation-invoice-fuel-price-label">
-                              Fuel type
-                            </label>
-                            <select
-                              id="inv-fuel-type"
-                              className="plantation-invoice-fuel-type-select"
-                              value={selectedFuelCategoryId}
-                              onChange={handleFuelCategoryChange}
-                            >
-                              {!fuelCategories.length ? (
-                                <option value="">No fuel prices in DB</option>
-                              ) : null}
-                              {fuelCategories.map((cat) => (
-                                <option key={cat.id} value={String(cat.id)}>
-                                  {cat.category}
-                                  {cat.unit_price != null && cat.unit_price !== ''
-                                    ? ` — ${formatMoney(cat.unit_price)}`
-                                    : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="plantation-invoice-fuel-price-row">
-                            <label htmlFor="inv-fuel-month" className="plantation-invoice-fuel-price-label">
-                              Price (LKR / L)
-                              <span className="plantation-invoice-fuel-month">
-                                {' '}
-                                · {billingMonth ? billingMonth.slice(0, 7) : 'month'}
-                              </span>
-                            </label>
-                            <input
-                              id="inv-fuel-month"
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              className="plantation-invoice-fuel-price-input"
-                              value={monthlyFuelPrice}
-                              onChange={handleFuelPriceChange}
-                              placeholder="e.g. 311"
-                              title={fuelPriceHint}
-                            />
-                          </div>
-                          <p className="plantation-invoice-fuel-hint plantation-invoice-fuel-hint--source">
-                            {fuelPriceHint}
-                          </p>
-                          <p className="plantation-invoice-fuel-hint">
-                            <strong>1 Ha needs {fuelLitersPerHa} L</strong>
-                            {' · '}
-                            Rate/Ha = (price − {formatMoney(fuelBasePrice)}) × {fuelLitersPerHa}
-                            {fuelRatePreview != null ? (
-                              <>
-                                {' = '}
-                                <strong>{formatMoney(fuelRatePreview)}</strong>
-                              </>
+                <div className="plantation-invoice-option-panel">
+                  <label className="plantation-invoice-option-panel-title plantation-invoice-fuel-title-toggle">
+                    <input
+                      type="checkbox"
+                      checked={includeFuelSurcharge}
+                      onChange={(e) => handleFuelSurchargeToggle(e.target.checked)}
+                    />
+                    <span>Fuel surcharge</span>
+                  </label>
+                  <div className="plantation-invoice-option-panel-body">
+                    {includeFuelSurcharge ? (
+                      <div className="plantation-invoice-fuel-fields">
+                        <div className="plantation-invoice-fuel-price-row">
+                          <label htmlFor="inv-fuel-type" className="plantation-invoice-fuel-price-label">
+                            Fuel type
+                          </label>
+                          <select
+                            id="inv-fuel-type"
+                            className="plantation-invoice-fuel-type-select"
+                            value={selectedFuelCategoryId}
+                            onChange={handleFuelCategoryChange}
+                          >
+                            {!fuelCategories.length ? (
+                              <option value="">No fuel prices in DB</option>
                             ) : null}
-                          </p>
-                          <p className="plantation-invoice-panel-muted" style={{ marginTop: 6 }}>
-                            Price is taken from Fuel Prices (fuel type). It cannot be edited on the invoice.
-                          </p>
+                            {fuelCategories.map((cat) => (
+                              <option key={cat.id} value={String(cat.id)}>
+                                {cat.category}
+                                {cat.unit_price != null && cat.unit_price !== ''
+                                  ? ` — ${formatMoney(cat.unit_price)}`
+                                  : ''}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      ) : (
-                        <p className="plantation-invoice-panel-muted">
-                          Uses Fuel Prices (default Petrol Octane 92). 1 Ha = {fuelLitersPerHa} L.
+                        <div className="plantation-invoice-fuel-price-row">
+                          <label htmlFor="inv-fuel-month" className="plantation-invoice-fuel-price-label">
+                            Price (LKR / L)
+                            <span className="plantation-invoice-fuel-month">
+                              {' '}
+                              · {billingMonth ? billingMonth.slice(0, 7) : 'month'}
+                            </span>
+                          </label>
+                          <input
+                            id="inv-fuel-month"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            className="plantation-invoice-fuel-price-input"
+                            value={monthlyFuelPrice}
+                            onChange={handleFuelPriceChange}
+                            placeholder="e.g. 311"
+                            title={fuelPriceHint}
+                          />
+                        </div>
+                        <p className="plantation-invoice-fuel-hint plantation-invoice-fuel-hint--source">
+                          {fuelPriceHint}
                         </p>
-                      )}
-                    </div>
+                        <p className="plantation-invoice-fuel-hint">
+                          <strong>1 Ha needs {fuelLitersPerHa} L</strong>
+                          {' · '}
+                          Rate/Ha = (price − {formatMoney(fuelBasePrice)}) × {fuelLitersPerHa}
+                          {fuelRatePreview != null ? (
+                            <>
+                              {' = '}
+                              <strong>{formatMoney(fuelRatePreview)}</strong>
+                            </>
+                          ) : null}
+                        </p>
+                        <p className="plantation-invoice-panel-muted" style={{ marginTop: 6 }}>
+                          Price is taken from Fuel Prices (fuel type). It cannot be edited on the invoice.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="plantation-invoice-panel-muted">
+                        Uses Fuel Prices (default Petrol Octane 92). 1 Ha = {fuelLitersPerHa} L.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1173,10 +1180,8 @@ export default function CreatePlantationInvoiceModal({
                         <div>
                           <span>
                             {isPre
-                              ? hasSystemPriorCredit
-                                ? 'Prior credit (M-2)'
-                                : 'Manual M-2 credit'
-                              : 'Prior credit on pre (M-2)'}
+                              ? `${m2MonthLabel} credit note`
+                              : `${m2MonthLabel} credit on pre`}
                           </span>
                           <span>− {formatMoney(priorCredit)}</span>
                         </div>

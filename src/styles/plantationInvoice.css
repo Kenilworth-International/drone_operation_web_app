@@ -43,7 +43,7 @@
   background: #fff;
   border-radius: 12px;
   width: 100%;
-  max-width: 920px;
+  max-width: min(1180px, 96vw);
   max-height: 92vh;
   overflow: hidden;
   display: flex;
@@ -51,20 +51,33 @@
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
 }
 
+.plantation-invoice-modal--pre {
+  max-width: min(1280px, 97vw);
+}
+
 .plantation-invoice-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
+  padding: 14px 18px;
   border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.plantation-invoice-modal--pre .plantation-invoice-modal-header {
+  padding: 12px 16px;
 }
 
 .plantation-invoice-modal-body {
-  padding: 16px 20px;
+  padding: 14px 18px;
   overflow-x: hidden;
   overflow-y: auto;
   flex: 1;
   min-width: 0;
+}
+
+.plantation-invoice-modal--pre .plantation-invoice-modal-body {
+  padding: 12px 16px 14px;
 }
 
 .plantation-invoice-modal-close {
@@ -89,13 +102,17 @@
 }
 
 .plantation-invoice-modal-footer {
-  padding: 14px 20px;
+  padding: 12px 16px;
   border-top: 1px solid #e2e8f0;
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 10px;
   flex-shrink: 0;
   background: #f8fafc;
+}
+
+.plantation-invoice-modal--pre .plantation-invoice-modal-footer {
+  padding: 10px 16px;
 }
 
 .plantation-invoice-btn {
@@ -149,14 +166,43 @@
 
 .pre-invoice-basis-row {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto minmax(140px, 1fr);
-  gap: 14px;
+  grid-template-columns: minmax(100px, 1fr) minmax(100px, 1fr) auto minmax(120px, 1fr);
+  gap: 10px 12px;
   align-items: end;
-  margin-bottom: 16px;
-  padding: 12px 14px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
+}
+
+.pre-invoice-m2-callout {
+  margin-bottom: 12px !important;
+}
+
+.pre-invoice-m2-callout-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+  gap: 12px 16px;
+  align-items: end;
+}
+
+.pre-invoice-m2-copy p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.pre-invoice-m2-field {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+}
+
+@media (max-width: 820px) {
+  .pre-invoice-m2-callout-body {
+    grid-template-columns: 1fr;
+  }
 }
 
 .pre-invoice-basis-field label {
@@ -207,9 +253,13 @@
 .plantation-invoice-form-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.75fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 12px 14px;
+  margin-bottom: 12px;
   align-items: end;
+}
+
+.plantation-invoice-modal--pre .plantation-invoice-form-grid {
+  margin-bottom: 10px;
 }
 
 .plantation-invoice-form-grid > div {
@@ -249,14 +299,50 @@
   }
 }
 
+.plantation-invoice-options-band {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+
+.plantation-invoice-options-band--rates-fuel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.plantation-invoice-rates-taxes-panel {
+  gap: 0;
+}
+
+.plantation-invoice-option-panel-title--sub {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.plantation-invoice-rates-taxes-panel .plantation-invoice-tax-list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+@media (max-width: 820px) {
+  .plantation-invoice-options-band--rates-fuel {
+    grid-template-columns: 1fr;
+  }
+}
+
 .plantation-invoice-taxes-fuel-section {
-  margin: 12px 0 20px;
+  margin: 0;
 }
 
 .plantation-invoice-taxes-fuel-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 12px;
   align-items: stretch;
 }
 
@@ -271,22 +357,22 @@
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   background: #f8fafc;
-  padding: 14px 16px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
 }
 
 .plantation-invoice-option-panel-title {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 600;
   color: #1e293b;
-  margin: 0 0 12px;
-  padding-bottom: 10px;
+  margin: 0 0 8px;
+  padding-bottom: 8px;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .plantation-invoice-rates-panel {
-  margin: 0 0 14px;
+  margin: 0;
 }
 
 .plantation-invoice-rates-table {
@@ -371,8 +457,16 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-height: 88px;
+  gap: 8px;
+  min-height: 0;
+}
+
+.plantation-invoice-modal--pre .plantation-invoice-option-panel-body {
+  min-height: 0;
+}
+
+.plantation-invoice-modal--pre .plantation-invoice-fuel-type-select {
+  max-width: 62%;
 }
 
 .plantation-invoice-panel-muted {

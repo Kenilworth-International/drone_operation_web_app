@@ -33,22 +33,39 @@ import '../../../styles/bookingsCalender.css';
 import '../../../styles/updateservices.css';
 
 const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const ALL_PLANTATIONS = { id: '', group: 'All plantations' };
 const ALL_ESTATES = { id: '', group: 'All estates' };
 const ALL_MISSIONS = { id: '', group: 'All missions' };
 const ALL_CROPS = { id: '', group: 'All crops' };
 
-function slotMatchesFilters(slot, { estateId, missionTypeId, cropTypeId }) {
-  if (estateId && Number(slot.estateId) !== Number(estateId)) return false;
+function resolvePlantationId(item, estatePlantationMap) {
+  if (item?.plantationId != null && item.plantationId !== '') {
+    return Number(item.plantationId);
+  }
+  if (item?.estateId == null) return null;
+  const mapped = estatePlantationMap.get(Number(item.estateId));
+  return mapped != null ? Number(mapped) : null;
+}
+
+function itemMatchesFilters(item, filters, estatePlantationMap) {
+  const { plantationId, estateId, missionTypeId, cropTypeId } = filters;
+  if (plantationId) {
+    const pid = resolvePlantationId(item, estatePlantationMap);
+    if (Number(pid) !== Number(plantationId)) return false;
+  }
+  if (estateId && Number(item.estateId) !== Number(estateId)) return false;
   if (missionTypeId) {
     const m = String(missionTypeId).toLowerCase();
-    if (String(slot.missionTypeId || '').toLowerCase() !== m) return false;
+    if (String(item.missionTypeId || '').toLowerCase() !== m) return false;
   }
-  if (cropTypeId && Number(slot.cropTypeId) !== Number(cropTypeId)) return false;
+  if (cropTypeId && Number(item.cropTypeId) !== Number(cropTypeId)) return false;
   return true;
 }
 
 function hasActiveFilters(filters) {
-  return Boolean(filters.estateId || filters.missionTypeId || filters.cropTypeId);
+  return Boolean(
+    filters.plantationId || filters.estateId || filters.missionTypeId || filters.cropTypeId
+  );
 }
 
 const SLOT_CELL_ORDER = { pending: 0, rejected: 1 };
@@ -86,6 +103,7 @@ export default function AcceptMonthlyPlansBoard({
   const yearMonth = format(currentMonth, 'yyyy-MM');
   const dateBounds = useMemo(() => monthDateBounds(yearMonth), [yearMonth]);
 
+  const [filterPlantation, setFilterPlantation] = useState(null);
   const [filterEstate, setFilterEstate] = useState(null);
   const [filterMission, setFilterMission] = useState(null);
   const [filterCrop, setFilterCrop] = useState(null);
@@ -96,13 +114,23 @@ export default function AcceptMonthlyPlansBoard({
   const [changeDateModal, setChangeDateModal] = useState(null);
   const [changeDateValue, setChangeDateValue] = useState('');
 
+  const estatePlantationMap = useMemo(() => {
+    const map = new Map();
+    for (const estate of estates) {
+      if (estate?.id == null) continue;
+      map.set(Number(estate.id), estate.plantation != null ? Number(estate.plantation) : null);
+    }
+    return map;
+  }, [estates]);
+
   const filters = useMemo(
     () => ({
+      plantationId: filterPlantation?.id ?? null,
       estateId: filterEstate?.id ?? null,
       missionTypeId: filterMission?.id ?? null,
       cropTypeId: filterCrop?.id ?? null,
     }),
-    [filterEstate, filterMission, filterCrop]
+    [filterPlantation, filterEstate, filterMission, filterCrop]
   );
 
   const filtersActive = hasActiveFilters(filters);
@@ -254,12 +282,12 @@ export default function AcceptMonthlyPlansBoard({
   const selectAllFiltered = useCallback(() => {
     const next = new Set();
     for (const slot of pendingSlots) {
-      if (!filtersActive || slotMatchesFilters(slot, filters)) {
+      if (!filtersActive || itemMatchesFilters(slot, filters, estatePlantationMap)) {
         next.add(slot.slotKey);
       }
     }
     setSelectedSlots(next);
-  }, [pendingSlots, filters, filtersActive]);
+  }, [pendingSlots, filters, filtersActive, estatePlantationMap]);
 
   const clearSelection = useCallback(() => setSelectedSlots(new Set()), []);
 
@@ -344,10 +372,25 @@ export default function AcceptMonthlyPlansBoard({
     if (!busy) setConfirmAction(null);
   };
 
-  const estateOptions = useMemo(
-    () => estates.map((e) => ({ id: e.id, group: e.estate })),
-    [estates]
-  );
+  const plantationOptions = useMemo(() => {
+    const byId = new Map();
+    for (const estate of estates) {
+      const id = estate?.plantation;
+      const name = estate?.plantation_name;
+      if (id == null || byId.has(Number(id))) continue;
+      byId.set(Number(id), { id: Number(id), group: name || `Plantation #${id}` });
+    }
+    return Array.from(byId.values()).sort((a, b) =>
+      String(a.group).localeCompare(String(b.group))
+    );
+  }, [estates]);
+
+  const estateOptions = useMemo(() => {
+    const list = filterPlantation?.id
+      ? estates.filter((e) => Number(e.plantation) === Number(filterPlantation.id))
+      : estates;
+    return list.map((e) => ({ id: e.id, group: e.estate }));
+  }, [estates, filterPlantation]);
 
   const missionOptions = useMemo(
     () =>
@@ -362,6 +405,30 @@ export default function AcceptMonthlyPlansBoard({
     () => cropTypes.map((c) => ({ id: c.id, group: c.crop || c.crop_type || c.name || c.id })),
     [cropTypes]
   );
+
+  const planCounts = useMemo(() => {
+    const match = (item) =>
+      !filtersActive || itemMatchesFilters(item, filters, estatePlantationMap);
+    const existing = existingPlans.filter(match).length;
+    const pending = openRequestSlots.filter(
+      (slot) => slot.slotStatus === 'pending' && match(slot)
+    ).length;
+    const rejected = openRequestSlots.filter(
+      (slot) => slot.slotStatus === 'rejected' && match(slot)
+    ).length;
+    return {
+      existing,
+      pending,
+      rejected,
+      all: existing + pending + rejected,
+    };
+  }, [
+    existingPlans,
+    openRequestSlots,
+    filters,
+    filtersActive,
+    estatePlantationMap,
+  ]);
 
   if (isLoading && !board) {
     return (
@@ -393,6 +460,24 @@ export default function AcceptMonthlyPlansBoard({
   return (
     <div className="accept-monthly-board">
       <div className="accept-monthly-actions-row">
+        <div className="mission-type-controls accept-monthly-inline-filter">
+          <label htmlFor="accept-filter-plantation">Plantation</label>
+          <CustomDropdown
+            options={[ALL_PLANTATIONS, ...plantationOptions]}
+            onSelect={(val) => {
+              const next = val?.id ? val : null;
+              setFilterPlantation(next);
+              if (
+                next?.id &&
+                filterEstate?.id &&
+                Number(estatePlantationMap.get(Number(filterEstate.id))) !== Number(next.id)
+              ) {
+                setFilterEstate(null);
+              }
+            }}
+            selectedValue={filterPlantation || ALL_PLANTATIONS}
+          />
+        </div>
         <div className="mission-type-controls accept-monthly-inline-filter">
           <label htmlFor="accept-filter-estate">Estate</label>
           <CustomDropdown
@@ -448,9 +533,18 @@ export default function AcceptMonthlyPlansBoard({
 
       <div className="accept-monthly-meta-bar">
         <div className="accept-monthly-legend">
-          <span className="legend existing">Existing plan</span>
-          <span className="legend pending">Pending request</span>
-          <span className="legend rejected">Rejected</span>
+          <span className="legend all" title="Existing + pending + rejected for current filters">
+            All plans <strong>{planCounts.all}</strong>
+          </span>
+          <span className="legend existing">
+            Existing plan <strong>{planCounts.existing}</strong>
+          </span>
+          <span className="legend pending">
+            Pending request <strong>{planCounts.pending}</strong>
+          </span>
+          <span className="legend rejected">
+            Rejected <strong>{planCounts.rejected}</strong>
+          </span>
           <span className="legend hint">Right-click pending → Change date</span>
         </div>
       </div>
@@ -501,8 +595,18 @@ export default function AcceptMonthlyPlansBoard({
               ))}
               {calendarDays.map((day) => {
                 const dateKey = format(day, 'yyyy-MM-dd');
-                const existing = existingByDate.get(dateKey) || [];
-                const slots = sortSlotsForCellDisplay(slotsByDate.get(dateKey) || []);
+                const existingRaw = existingByDate.get(dateKey) || [];
+                const slotsRaw = sortSlotsForCellDisplay(slotsByDate.get(dateKey) || []);
+                const existing = filtersActive
+                  ? existingRaw.filter((plan) =>
+                      itemMatchesFilters(plan, filters, estatePlantationMap)
+                    )
+                  : existingRaw;
+                const slots = filtersActive
+                  ? slotsRaw.filter((slot) =>
+                      itemMatchesFilters(slot, filters, estatePlantationMap)
+                    )
+                  : slotsRaw;
                 const holidayMeta = holidayMetaByDate[dateKey];
                 const holidayTitle = holidayHoverText(holidayMeta);
                 const dayClasses = [
@@ -546,13 +650,12 @@ export default function AcceptMonthlyPlansBoard({
                       {slots.map((slot) => {
                         const isSelected = selectedSlots.has(slot.slotKey);
                         const isPending = slot.slotStatus === 'pending';
-                        const matches = slotMatchesFilters(slot, filters);
+                        const matches = itemMatchesFilters(slot, filters, estatePlantationMap);
                         const cls = [
                           'booking-calender-task',
                           'accept-monthly-task-requested',
                           `accept-monthly-task-${slot.slotStatus || 'pending'}`,
                           filtersActive && matches && isPending ? 'accept-monthly-task-filtered' : '',
-                          filtersActive && !matches && isPending ? 'accept-monthly-task-dimmed' : '',
                           isSelected ? 'accept-monthly-task-selected' : '',
                         ]
                           .filter(Boolean)

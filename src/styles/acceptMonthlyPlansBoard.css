@@ -196,6 +196,17 @@
   flex-shrink: 0;
 }
 
+.accept-monthly-legend .legend strong {
+  font-weight: 700;
+  color: #1f2937;
+  margin-left: 2px;
+}
+
+.accept-monthly-legend .all::before {
+  background: #334155;
+  border: 1px solid #334155;
+}
+
 .accept-monthly-legend .existing::before {
   background: #004b71;
   border: 1px solid #004b71;
