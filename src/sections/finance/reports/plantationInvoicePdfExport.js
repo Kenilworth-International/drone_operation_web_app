@@ -284,6 +284,10 @@ export function downloadPlantationInvoicePdf(invoice) {
     drawTotal('PREPAID', `− ${formatMoney(invoice.prepaid_applied)}`, ty);
     ty += 5;
   }
+  if (Number(invoice.prior_credit_applied) > 0) {
+    drawTotal('M-2 CREDIT', `− ${formatMoney(invoice.prior_credit_applied)}`, ty);
+    ty += 5;
+  }
   const isCredit =
     String(invoice.invoice_type) === 'credit_note' || Number(invoice.credit_amount) > 0;
   drawTotal(

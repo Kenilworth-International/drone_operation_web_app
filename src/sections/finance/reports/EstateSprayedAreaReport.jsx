@@ -136,7 +136,7 @@ const EstateSprayedAreaReport = ({ onInvoicePreview }) => {
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
     const [invoiceWorkSummaryRows, setInvoiceWorkSummaryRows] = useState([]);
     const [invoiceDocKind, setInvoiceDocKind] = useState('final_invoice');
-    /** Paid pre / M-2 credit exists even when work summary has no spray rows. */
+    /** Paid pre (incl. M-2 applied on pre) exists even when work summary has no spray rows. */
     const [zeroSprayCreditAvailable, setZeroSprayCreditAvailable] = useState(false);
     const [localPreviewInvoice, setLocalPreviewInvoice] = useState(null);
     const [estateStatement, setEstateStatement] = useState(null);

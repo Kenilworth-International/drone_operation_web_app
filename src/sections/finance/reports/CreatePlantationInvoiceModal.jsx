@@ -30,6 +30,14 @@ import {
 const formatMoney = (n) =>
   Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+function formatMonthLabel(dateStr) {
+  const raw = String(dateStr || '').slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw || 'M-2';
+  const [y, m] = raw.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  return d.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
 /** Prefer Petrol 92 (official code or name), else first priced category. */
 function findDefaultFuelCategory(categories = []) {
   const list = Array.isArray(categories) ? categories : [];
@@ -120,6 +128,7 @@ export default function CreatePlantationInvoiceModal({
   const [sprayRateInput, setSprayRateInput] = useState('');
   const [spreadRateInput, setSpreadRateInput] = useState('');
   const [scoutRateInput, setScoutRateInput] = useState('');
+  const [manualPriorCredit, setManualPriorCredit] = useState('');
   const fuelDefaultsAppliedRef = useRef(false);
 
   const onCloseRef = useRef(onClose);
@@ -154,6 +163,7 @@ export default function CreatePlantationInvoiceModal({
       setSprayRateInput('');
       setSpreadRateInput('');
       setScoutRateInput('');
+      setManualPriorCredit('');
       fuelDefaultsAppliedRef.current = false;
       return undefined;
     }
@@ -232,6 +242,12 @@ export default function CreatePlantationInvoiceModal({
         const histSource = String(fuelCfg.price_source || 'none');
         setBillingMonth(month);
         setDraft(data);
+        const systemCredits = Array.isArray(data?.prior_credits)
+          ? data.prior_credits.filter((c) => c && c.id != null && Number(c.id) > 0)
+          : [];
+        if (systemCredits.length > 0) {
+          setManualPriorCredit('');
+        }
         const plant = data?.plantation || {};
         setSprayRateInput(
           plant.spray_rate != null && plant.spray_rate !== '' ? String(plant.spray_rate) : ''
@@ -500,7 +516,24 @@ export default function CreatePlantationInvoiceModal({
   }, [displayDraft, taxTypes, selectedTaxIds]);
 
   const prepaid = Number(draft?.prepaid_applied || 0);
-  const priorCredit = Number(draft?.prior_credit_applied || 0);
+  const systemPriorCredits = Array.isArray(draft?.prior_credits)
+    ? draft.prior_credits.filter((c) => c && c.id != null && Number(c.id) > 0)
+    : [];
+  const hasSystemPriorCredit = systemPriorCredits.length > 0;
+  const systemPriorCredit = Number(draft?.prior_credit_applied || 0);
+  const manualPriorCreditValue = Number(manualPriorCredit);
+  const effectiveManualPrior =
+    isPre &&
+    !hasSystemPriorCredit &&
+    Number.isFinite(manualPriorCreditValue) &&
+    manualPriorCreditValue > 0
+      ? Math.round(manualPriorCreditValue * 100) / 100
+      : 0;
+  const priorCredit = hasSystemPriorCredit
+    ? systemPriorCredit
+    : isPre
+      ? effectiveManualPrior
+      : systemPriorCredit;
   const coverage = Math.round((prepaid + priorCredit) * 100) / 100;
   const previewNet =
     preview && coverage > 0
@@ -508,6 +541,7 @@ export default function CreatePlantationInvoiceModal({
       : preview?.total;
   const isCreditNote =
     isFinal && coverage > 0 && Number.isFinite(previewNet) && previewNet < -0.009;
+  const m2MonthLabel = formatMonthLabel(draft?.m2_period_start);
 
   const handleFuelCategoryChange = (e) => {
     const id = e.target.value;
@@ -601,6 +635,13 @@ export default function CreatePlantationInvoiceModal({
         return;
       }
     }
+    if (isPre && !hasSystemPriorCredit && manualPriorCredit !== '') {
+      const manual = Number(manualPriorCredit);
+      if (!Number.isFinite(manual) || manual < 0) {
+        toast.error('Enter a valid M-2 credit amount (0 or more)');
+        return;
+      }
+    }
 
     try {
       const created = await createInvoice({
@@ -621,6 +662,8 @@ export default function CreatePlantationInvoiceModal({
         linked_pre_invoice_id:
           draft?.linked_pre_invoice?.id || linkedPreInvoiceId || undefined,
         prepaid_applied: draft?.prepaid_applied != null ? Number(draft.prepaid_applied) : undefined,
+        manual_prior_credit:
+          isPre && !hasSystemPriorCredit ? effectiveManualPrior || 0 : undefined,
         fuel_surcharge: includeFuelSurcharge
           ? {
               billing_month: billingMonth,
@@ -770,6 +813,48 @@ export default function CreatePlantationInvoiceModal({
                 </div>
               ) : null}
 
+              {isPre && hasSystemPriorCredit ? (
+                <div className="inv-callout inv-callout--final" style={{ marginBottom: 14 }}>
+                  <div className="inv-callout-body">
+                    <strong>M-2 credit note found ({m2MonthLabel})</strong>
+                    <p>
+                      System credit LKR {formatMoney(systemPriorCredit)}
+                      {systemPriorCredits.length
+                        ? ` — ${systemPriorCredits
+                            .map((c) => c.invoice_no)
+                            .filter(Boolean)
+                            .join(', ')}`
+                        : ''}{' '}
+                      will reduce this pre-invoice balance (fixed 2-month lag).
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {isPre && !hasSystemPriorCredit ? (
+                <div className="inv-callout inv-callout--final" style={{ marginBottom: 14 }}>
+                  <div className="inv-callout-body">
+                    <strong>No {m2MonthLabel} credit note in system</strong>
+                    <p style={{ marginBottom: 10 }}>
+                      Temporary: enter the M-2 credit balance manually if there was an unused
+                      credit for that month. Leave blank or 0 if none.
+                    </p>
+                    <div className="pre-invoice-basis-field" style={{ maxWidth: 280 }}>
+                      <label htmlFor="inv-manual-m2">Manual M-2 credit (LKR) — {m2MonthLabel}</label>
+                      <input
+                        id="inv-manual-m2"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={manualPriorCredit}
+                        onChange={(e) => setManualPriorCredit(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {isFinal &&
               (draft.reconciliation || draft.linked_pre_invoice || priorCredit > 0) ? (
                 <div
@@ -792,15 +877,14 @@ export default function CreatePlantationInvoiceModal({
                     )}
                     {priorCredit > 0 ? (
                       <p>
-                        M-2 credit applied LKR {formatMoney(priorCredit)}
+                        M-2 credit already applied on the pre-invoice: LKR {formatMoney(priorCredit)}
                         {Array.isArray(draft.prior_credits) && draft.prior_credits.length
                           ? ` (${draft.prior_credits
                               .map((c) => c.invoice_no)
                               .filter(Boolean)
                               .join(', ')})`
                           : ''}
-                        . Jan overpayment settles in March (fixed 2-month lag). Refunds remain
-                        available on the credit note.
+                        . Carried into this final document; not applied again.
                       </p>
                     ) : null}
                     {draft.reconciliation?.guidance ? (
@@ -1087,7 +1171,13 @@ export default function CreatePlantationInvoiceModal({
                       ) : null}
                       {priorCredit > 0 ? (
                         <div>
-                          <span>Prior credit (M-2)</span>
+                          <span>
+                            {isPre
+                              ? hasSystemPriorCredit
+                                ? 'Prior credit (M-2)'
+                                : 'Manual M-2 credit'
+                              : 'Prior credit on pre (M-2)'}
+                          </span>
                           <span>− {formatMoney(priorCredit)}</span>
                         </div>
                       ) : null}

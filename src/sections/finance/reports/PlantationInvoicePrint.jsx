@@ -255,6 +255,12 @@ export default function PlantationInvoicePrint({ invoice, onClose, onBack, varia
                   <span>{formatMoney(invoice.prepaid_applied)}</span>
                 </div>
               ) : null}
+              {Number(invoice.prior_credit_applied) > 0 ? (
+                <div>
+                  <span>M-2 CREDIT APPLIED</span>
+                  <span>{formatMoney(invoice.prior_credit_applied)}</span>
+                </div>
+              ) : null}
               <div className="total-line">
                 <span>
                   {String(invoice.invoice_type) === 'credit_note' || Number(invoice.credit_amount) > 0

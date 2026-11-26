@@ -304,6 +304,12 @@ function PaymentDrawer({ invoice, onClose, onInvoiceUpdated }) {
                       <strong>{formatMoney(invoice.prepaid_applied)}</strong>
                     </div>
                   ) : null}
+                  {Number(invoice.prior_credit_applied) > 0 ? (
+                    <div>
+                      <span>M-2 credit</span>
+                      <strong>{formatMoney(invoice.prior_credit_applied)}</strong>
+                    </div>
+                  ) : null}
                 </>
               )}
             </div>
