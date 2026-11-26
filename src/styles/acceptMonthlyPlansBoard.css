@@ -81,48 +81,87 @@
 }
 
 .accept-monthly-actions-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) repeat(4, auto);
-  gap: 10px;
-  align-items: end;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 6px 8px;
   width: 100%;
-  padding-top: 14px;
+  padding-top: 8px;
   margin-top: 0;
   border-top: none;
   box-sizing: border-box;
+  overflow-x: auto;
 }
 
 .accept-monthly-board .accept-monthly-actions-row .mission-type-controls.accept-monthly-inline-filter {
-  width: 100%;
+  width: auto;
   min-width: 0;
   max-width: none;
-  flex: none;
+  flex: 1 1 0;
+  max-width: 11.5rem;
 }
 
 .accept-monthly-inline-filter label {
-  margin-bottom: 4px;
-  font-size: 11px;
+  margin-bottom: 2px;
+  font-size: 10px;
   font-weight: 600;
-  color: #555;
+  color: #64748b;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.accept-monthly-actions-row .custom-dropdown .selected {
+  padding: 4px 8px;
+  min-height: 28px;
+  font-size: 11.5px;
+  line-height: 1.2;
+}
+
+.accept-monthly-actions-row .custom-dropdown .selected-label,
+.accept-monthly-actions-row .custom-dropdown .selected span {
+  font-size: 11.5px;
+}
+
+.accept-monthly-actions-row .custom-dropdown .dropdown-icon {
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+}
+
+.accept-monthly-actions-row .custom-dropdown .options {
+  font-size: 11.5px;
+  max-height: 180px;
+}
+
+.accept-monthly-actions-row .custom-dropdown .option {
+  padding: 6px 8px;
+  font-size: 11.5px;
 }
 
 .accept-monthly-actions-row .accept-monthly-mark-btn {
   width: auto;
-  max-width: 100%;
+  max-width: none;
   box-sizing: border-box;
   text-align: center;
-  padding: 8px 12px;
-  font-size: 12px;
-  justify-self: start;
+  padding: 5px 9px;
+  font-size: 11px;
+  height: 28px;
+  line-height: 1.1;
+  align-self: flex-end;
+  flex: 0 0 auto;
 }
 
 .accept-monthly-loading-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 13px;
+  gap: 6px;
+  margin: 0;
+  padding-bottom: 2px;
+  font-size: 11px;
   color: #004b71;
+  flex: 0 0 auto;
+  align-self: flex-end;
 }
 
 .accept-monthly-mark-btn {
@@ -130,8 +169,8 @@
   background: #004b71;
   color: #fff;
   border-radius: 4px;
-  padding: 9px 14px;
-  font-size: 13px;
+  padding: 5px 9px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
@@ -164,25 +203,25 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  margin-top: 4px;
+  gap: 8px;
+  padding-top: 8px;
+  margin-top: 2px;
   border-top: 1px solid #eee;
 }
 
 .accept-monthly-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px 16px;
-  font-size: 12px;
+  gap: 6px 10px;
+  font-size: 11px;
   color: #555;
 }
 
 .accept-monthly-legend .legend {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 5px;
+  padding: 2px 6px;
   border-radius: 4px;
   background: #f8f9fa;
   border: 1px solid #e9ecef;
@@ -434,18 +473,21 @@
 }
 
 @media (max-width: 1100px) {
-  .accept-monthly-actions-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .accept-monthly-actions-row .accept-monthly-mark-btn {
-    justify-self: stretch;
-    width: 100%;
+  .accept-monthly-board .accept-monthly-actions-row .mission-type-controls.accept-monthly-inline-filter {
+    flex: 0 0 auto;
+    min-width: 8.5rem;
+    max-width: 10rem;
   }
 
   .accept-monthly-calendar-section .booking-calender-day {
     min-height: 90px;
   }
+}
+
+/* Shorten long approve/reject labels so the row stays compact */
+.accept-monthly-actions-row .accept-monthly-mark-btn.approve,
+.accept-monthly-actions-row .accept-monthly-mark-btn.reject {
+  min-width: 0;
 }
 
 .accept-monthly-legend .hint {

@@ -655,6 +655,22 @@ export const plantationDashboardApi = baseApi.injectEndpoints({
       invalidatesTags: ['PlantationMonthlyPlanRequests', 'Plans', 'Calendar'],
     }),
 
+    changeAcceptedPlantationMonthlyPlanDate: builder.mutation({
+      queryFn: async ({ planId, pickedDate }) => {
+        const result = await nodeBackendBaseQuery(
+          {
+            url: '/api/plantation-monthly-plan-requests/change-accepted-plan-date',
+            method: 'POST',
+            body: { planId, pickedDate },
+          },
+          {},
+          {}
+        );
+        return result;
+      },
+      invalidatesTags: ['PlantationMonthlyPlanRequests', 'Plans', 'Calendar'],
+    }),
+
     declinePlantationMonthlyPlanRequest: builder.mutation({
       queryFn: async ({ id, declineReason }) => {
         const result = await nodeBackendBaseQuery(
@@ -838,6 +854,7 @@ export const {
   useBulkApprovePlantationMonthlyPlanRequestsMutation,
   useBulkRejectPlantationMonthlyPlanRequestsMutation,
   useChangePlantationMonthlyPlanLineDateMutation,
+  useChangeAcceptedPlantationMonthlyPlanDateMutation,
   useDeclinePlantationMonthlyPlanRequestMutation,
   useGetPlantationSessionContextQuery,
   useLazyGetPlantationSessionContextQuery,

@@ -15,6 +15,7 @@ import {
   useBulkApprovePlantationMonthlyPlanRequestsMutation,
   useBulkRejectPlantationMonthlyPlanRequestsMutation,
   useChangePlantationMonthlyPlanLineDateMutation,
+  useChangeAcceptedPlantationMonthlyPlanDateMutation,
 } from '../../../api/services NodeJs/plantationDashboardApi';
 import {
   buildBulkApprovePayload,
@@ -145,11 +146,16 @@ export default function AcceptMonthlyPlansBoard({
 
   const [bulkApprove] = useBulkApprovePlantationMonthlyPlanRequestsMutation();
   const [bulkReject] = useBulkRejectPlantationMonthlyPlanRequestsMutation();
-  const [changeLineDate, { isLoading: changingDate }] =
+  const [changeLineDate, { isLoading: changingPendingDate }] =
     useChangePlantationMonthlyPlanLineDateMutation();
+  const [changeAcceptedPlanDate, { isLoading: changingAcceptedDate }] =
+    useChangeAcceptedPlantationMonthlyPlanDateMutation();
+  const changingDate = changingPendingDate || changingAcceptedDate;
 
   const existingPlans = board?.existingPlans || [];
   const requestedSlots = board?.requestedSlots || [];
+  const canChangeDates = Boolean(board?.canChangeDates);
+  const nextYearMonth = board?.nextYearMonth || format(addMonths(new Date(), 1), 'yyyy-MM');
   const openRequestSlots = useMemo(
     () => requestedSlots.filter((slot) => slot.slotStatus !== 'approved'),
     [requestedSlots]
@@ -214,23 +220,59 @@ export default function AcceptMonthlyPlansBoard({
     });
   }, []);
 
-  const openChangeDateForSlot = useCallback((slot) => {
-    if (!slot || slot.slotStatus !== 'pending') return;
-    setContextMenu(null);
-    setChangeDateModal(slot);
-    setChangeDateValue(slot.pickedDate || '');
-  }, []);
+  const openChangeDateForSlot = useCallback(
+    (slot) => {
+      if (!slot || slot.slotStatus !== 'pending' || !canChangeDates) return;
+      setContextMenu(null);
+      setChangeDateModal({ kind: 'pending', ...slot });
+      setChangeDateValue(slot.pickedDate || '');
+    },
+    [canChangeDates]
+  );
 
-  const handlePendingContextMenu = useCallback((e, slot) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (slot.slotStatus !== 'pending') return;
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      slot,
-    });
-  }, []);
+  const openChangeDateForPlan = useCallback(
+    (plan) => {
+      if (!plan || !canChangeDates) return;
+      setContextMenu(null);
+      setChangeDateModal({
+        kind: 'accepted',
+        planId: plan.id,
+        pickedDate: plan.pickedDate,
+        estateName: plan.estateName,
+        missionLabel: plan.missionTypeId || 'plan',
+      });
+      setChangeDateValue(plan.pickedDate || '');
+    },
+    [canChangeDates]
+  );
+
+  const handlePendingContextMenu = useCallback(
+    (e, slot) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (slot.slotStatus !== 'pending' || !canChangeDates) return;
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        target: { kind: 'pending', slot },
+      });
+    },
+    [canChangeDates]
+  );
+
+  const handleExistingContextMenu = useCallback(
+    (e, plan) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!canChangeDates || !plan) return;
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        target: { kind: 'accepted', plan },
+      });
+    },
+    [canChangeDates]
+  );
 
   const closeChangeDateModal = () => {
     if (changingDate) return;
@@ -240,6 +282,12 @@ export default function AcceptMonthlyPlansBoard({
 
   const submitChangeDate = async () => {
     if (!changeDateModal) return;
+    if (!canChangeDates) {
+      toast.error(`Date change is only available for next month (${nextYearMonth}).`, {
+        position: 'top-center',
+      });
+      return;
+    }
     const nextDate = String(changeDateValue || '').trim();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) {
       toast.error('Select a valid date.', { position: 'top-center' });
@@ -251,25 +299,39 @@ export default function AcceptMonthlyPlansBoard({
       return;
     }
     try {
-      const result = await changeLineDate({
-        requestId: changeDateModal.requestId,
-        lineId: changeDateModal.lineId,
-        pickedDate: nextDate,
-      }).unwrap();
-      const data = result?.data ?? result;
-      toast.success(
-        `Moved request #${changeDateModal.requestId} from ${
-          data?.previousPickedDate || changeDateModal.pickedDate
-        } to ${nextDate}.`,
-        { position: 'top-center' }
-      );
+      if (changeDateModal.kind === 'accepted') {
+        const result = await changeAcceptedPlanDate({
+          planId: changeDateModal.planId,
+          pickedDate: nextDate,
+        }).unwrap();
+        const data = result?.data ?? result;
+        toast.success(
+          `Rescheduled plan #${changeDateModal.planId} from ${
+            data?.previousPickedDate || changeDateModal.pickedDate
+          } to ${nextDate}.`,
+          { position: 'top-center' }
+        );
+      } else {
+        const result = await changeLineDate({
+          requestId: changeDateModal.requestId,
+          lineId: changeDateModal.lineId,
+          pickedDate: nextDate,
+        }).unwrap();
+        const data = result?.data ?? result;
+        toast.success(
+          `Moved request #${changeDateModal.requestId} from ${
+            data?.previousPickedDate || changeDateModal.pickedDate
+          } to ${nextDate}.`,
+          { position: 'top-center' }
+        );
+        setSelectedSlots((prev) => {
+          const next = new Set(prev);
+          next.delete(changeDateModal.slotKey);
+          return next;
+        });
+      }
       setChangeDateModal(null);
       setChangeDateValue('');
-      setSelectedSlots((prev) => {
-        const next = new Set(prev);
-        next.delete(changeDateModal.slotKey);
-        return next;
-      });
       await refetch();
       if (onApproved) await onApproved();
     } catch (e) {
@@ -503,7 +565,7 @@ export default function AcceptMonthlyPlansBoard({
           />
         </div>
         <button type="button" className="accept-monthly-mark-btn" onClick={selectAllFiltered}>
-          Select filtered
+          Select
         </button>
         <button type="button" className="accept-monthly-mark-btn secondary" onClick={clearSelection}>
           Clear
@@ -513,16 +575,18 @@ export default function AcceptMonthlyPlansBoard({
           className="accept-monthly-mark-btn approve"
           disabled={selectedCount < 1 || busy}
           onClick={requestApproveConfirm}
+          title={busy && confirmAction === 'approve' ? 'Approving…' : `Approve selected (${selectedCount})`}
         >
-          {busy && confirmAction === 'approve' ? 'Approving…' : `Approve selected (${selectedCount})`}
+          {busy && confirmAction === 'approve' ? '…' : `Approve (${selectedCount})`}
         </button>
         <button
           type="button"
           className="accept-monthly-mark-btn reject"
           disabled={selectedCount < 1 || busy}
           onClick={requestRejectConfirm}
+          title={busy && confirmAction === 'reject' ? 'Rejecting…' : `Reject selected (${selectedCount})`}
         >
-          {busy && confirmAction === 'reject' ? 'Rejecting…' : `Reject selected (${selectedCount})`}
+          {busy && confirmAction === 'reject' ? '…' : `Reject (${selectedCount})`}
         </button>
         {isFetching ? (
           <div className="accept-monthly-loading-bar">
@@ -545,7 +609,11 @@ export default function AcceptMonthlyPlansBoard({
           <span className="legend rejected">
             Rejected <strong>{planCounts.rejected}</strong>
           </span>
-          <span className="legend hint">Right-click pending → Change date</span>
+          <span className="legend hint">
+            {canChangeDates
+              ? 'Right-click pending or existing → Change date (next month)'
+              : `Date change only on next month (${nextYearMonth})`}
+          </span>
         </div>
       </div>
 
@@ -636,17 +704,23 @@ export default function AcceptMonthlyPlansBoard({
                       </div>
                     ) : null}
                     <div className="booking-calender-tasks accept-monthly-tasks">
-                      {existing.map((plan) => (
-                        <div
-                          key={`ex-${plan.id}`}
-                          className="booking-calender-task accept-monthly-task-existing"
-                          title="Existing plan"
-                        >
-                          <span className="booking-calender-task-estate">
-                            {plan.estateName} - ID: {plan.id}
-                          </span>
-                        </div>
-                      ))}
+                      {existing.map((plan) => {
+                        const planTitle = canChangeDates
+                          ? `Existing plan #${plan.id} · ${plan.pickedDate} · Right-click to reschedule`
+                          : `Existing plan #${plan.id} · ${plan.pickedDate}`;
+                        return (
+                          <div
+                            key={`ex-${plan.id}`}
+                            className="booking-calender-task accept-monthly-task-existing"
+                            title={planTitle}
+                            onContextMenu={(e) => handleExistingContextMenu(e, plan)}
+                          >
+                            <span className="booking-calender-task-estate">
+                              {plan.estateName} - ID: {plan.id}
+                            </span>
+                          </div>
+                        );
+                      })}
                       {slots.map((slot) => {
                         const isSelected = selectedSlots.has(slot.slotKey);
                         const isPending = slot.slotStatus === 'pending';
@@ -661,9 +735,10 @@ export default function AcceptMonthlyPlansBoard({
                           .filter(Boolean)
                           .join(' ');
                         const slotLabel = `${slot.estateName} - ${slot.missionLabel}`;
-                        const slotTitle = isPending
-                          ? `Request #${slot.requestId} · ${slot.pickedDate} · Right-click to change date`
-                          : `Request #${slot.requestId} · ${slot.pickedDate}`;
+                        const slotTitle =
+                          isPending && canChangeDates
+                            ? `Request #${slot.requestId} · ${slot.pickedDate} · Right-click to change date`
+                            : `Request #${slot.requestId} · ${slot.pickedDate}`;
 
                         if (!isPending) {
                           return (
@@ -707,7 +782,13 @@ export default function AcceptMonthlyPlansBoard({
             type="button"
             className="accept-monthly-context-item"
             role="menuitem"
-            onClick={() => openChangeDateForSlot(contextMenu.slot)}
+            onClick={() => {
+              if (contextMenu.target?.kind === 'accepted') {
+                openChangeDateForPlan(contextMenu.target.plan);
+              } else {
+                openChangeDateForSlot(contextMenu.target?.slot);
+              }
+            }}
           >
             Change date
           </button>
@@ -718,7 +799,11 @@ export default function AcceptMonthlyPlansBoard({
         <div className="plan-popup-overlay" onClick={closeChangeDateModal}>
           <div className="plan-popup-container" onClick={(e) => e.stopPropagation()}>
             <div className="plan-popup-header">
-              <h3>Change requested date</h3>
+              <h3>
+                {changeDateModal.kind === 'accepted'
+                  ? 'Reschedule accepted plan'
+                  : 'Change requested date'}
+              </h3>
               <button
                 type="button"
                 className="plan-popup-close"
@@ -731,9 +816,19 @@ export default function AcceptMonthlyPlansBoard({
             </div>
             <div className="plan-popup-content">
               <p className="plan-popup-message">
-                Move pending request <strong>#{changeDateModal.requestId}</strong> (
-                {changeDateModal.estateName} · {changeDateModal.missionLabel}) within{' '}
-                <strong>{yearMonth}</strong>.
+                {changeDateModal.kind === 'accepted' ? (
+                  <>
+                    Move accepted plan <strong>#{changeDateModal.planId}</strong> (
+                    {changeDateModal.estateName}) within <strong>{yearMonth}</strong>. Next month
+                    only.
+                  </>
+                ) : (
+                  <>
+                    Move pending request <strong>#{changeDateModal.requestId}</strong> (
+                    {changeDateModal.estateName} · {changeDateModal.missionLabel}) within{' '}
+                    <strong>{yearMonth}</strong>.
+                  </>
+                )}
               </p>
               <div className="accept-monthly-change-date-field">
                 <label htmlFor="accept-change-date-input">New date</label>
