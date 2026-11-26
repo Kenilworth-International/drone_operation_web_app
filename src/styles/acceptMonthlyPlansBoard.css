@@ -65,11 +65,14 @@
 }
 
 .create-bookings-shell .form-section-top.create-bookings-panel-connect,
-.accept-monthly-board .form-section-top {
+.accept-monthly-board .form-section-top,
+.accept-monthly-filters-panel {
   border-radius: 0 0 8px 8px;
   border-top: none;
   margin-top: 0;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: visible;
+  z-index: 30;
 }
 
 .accept-monthly-board {
@@ -90,7 +93,10 @@
   margin-top: 0;
   border-top: none;
   box-sizing: border-box;
-  overflow-x: auto;
+  /* Must stay visible — overflow-x:auto clips CustomDropdown absolute menus */
+  overflow: visible;
+  position: relative;
+  z-index: 40;
 }
 
 .accept-monthly-board .accept-monthly-actions-row .mission-type-controls.accept-monthly-inline-filter {
@@ -99,6 +105,14 @@
   max-width: none;
   flex: 1 1 0;
   max-width: 11.5rem;
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+
+.accept-monthly-board .accept-monthly-actions-row .mission-type-controls.accept-monthly-inline-filter:focus-within,
+.accept-monthly-board .accept-monthly-actions-row .mission-type-controls.accept-monthly-inline-filter:has(.options) {
+  z-index: 50;
 }
 
 .accept-monthly-inline-filter label {
@@ -129,9 +143,14 @@
   margin-left: 6px;
 }
 
+.accept-monthly-actions-row .custom-dropdown {
+  overflow: visible;
+}
+
 .accept-monthly-actions-row .custom-dropdown .options {
   font-size: 11.5px;
   max-height: 180px;
+  z-index: 60;
 }
 
 .accept-monthly-actions-row .custom-dropdown .option {

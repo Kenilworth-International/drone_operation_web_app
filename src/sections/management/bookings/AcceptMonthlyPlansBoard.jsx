@@ -521,6 +521,7 @@ export default function AcceptMonthlyPlansBoard({
 
   return (
     <div className="accept-monthly-board">
+      <div className="form-section-top create-bookings-panel-connect accept-monthly-filters-panel">
       <div className="accept-monthly-actions-row">
         <div className="mission-type-controls accept-monthly-inline-filter">
           <label htmlFor="accept-filter-plantation">Plantation</label>
@@ -615,6 +616,7 @@ export default function AcceptMonthlyPlansBoard({
               : `Date change only on next month (${nextYearMonth})`}
           </span>
         </div>
+      </div>
       </div>
 
       {emptyBoard ? (
